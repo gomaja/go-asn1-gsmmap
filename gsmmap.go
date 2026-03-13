@@ -1,8 +1,32 @@
 package gsmmap
 
 import (
+	"encoding/hex"
+	"encoding/json"
+
 	"github.com/warthog618/sms/encoding/tpdu"
 )
+
+// HexBytes is a []byte that marshals to/from hex strings in JSON
+// instead of the default base64 encoding.
+type HexBytes []byte
+
+func (h HexBytes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hex.EncodeToString(h))
+}
+
+func (h *HexBytes) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return err
+	}
+	*h = b
+	return nil
+}
 
 // SriSm represents a Send Routing Info for Short Message request.
 type SriSm struct {
@@ -174,8 +198,8 @@ type SubscriberInfo struct {
 	LocationInformationEPS  *EPSLocationInformation
 	LocationInformationGPRS *GPRSLocationInformation
 	IMEI                    string // decoded TBCD; empty if absent
-	MsClassmark2            []byte // raw octets; nil if absent
-	TimeZone                []byte // raw octet; nil if absent
+	MsClassmark2            HexBytes // raw octets; nil if absent
+	TimeZone                HexBytes // raw octet; nil if absent
 	DaylightSavingTime      *int   // nil if absent; 0=noAdjustment, 1=+1h, 2=+2h
 }
 
@@ -212,11 +236,11 @@ type CSLocationInformation struct {
 	MscNumber                string // decoded; empty if absent
 	MscNumberNature          uint8
 	MscNumberPlan            uint8
-	GeographicalInformation  []byte // raw 8 octets; nil if absent
-	GeodeticInformation      []byte // raw 10 octets; nil if absent
-	CellGlobalId             []byte // raw fixed-length cell ID or SAI; nil if absent
-	LAI                      []byte // raw 5-octet LAI; nil if absent
-	LocationNumber           []byte // raw octets; nil if absent
+	GeographicalInformation  HexBytes // raw 8 octets; nil if absent
+	GeodeticInformation      HexBytes // raw 10 octets; nil if absent
+	CellGlobalId             HexBytes // raw fixed-length cell ID or SAI; nil if absent
+	LAI                      HexBytes // raw 5-octet LAI; nil if absent
+	LocationNumber           HexBytes // raw octets; nil if absent
 	CurrentLocationRetrieved bool
 	SAIPresent               bool
 }
@@ -224,22 +248,22 @@ type CSLocationInformation struct {
 // EPSLocationInformation contains EPS/LTE location data.
 type EPSLocationInformation struct {
 	AgeOfLocationInformation *int   // seconds; nil if absent
-	EUtranCellGlobalIdentity []byte // raw 7 octets; nil if absent
-	TrackingAreaIdentity     []byte // raw 5 octets; nil if absent
-	GeographicalInformation  []byte // raw 8 octets; nil if absent
-	GeodeticInformation      []byte // raw 10 octets; nil if absent
+	EUtranCellGlobalIdentity HexBytes // raw 7 octets; nil if absent
+	TrackingAreaIdentity     HexBytes // raw 5 octets; nil if absent
+	GeographicalInformation  HexBytes // raw 8 octets; nil if absent
+	GeodeticInformation      HexBytes // raw 10 octets; nil if absent
 	CurrentLocationRetrieved bool
-	MmeName                  []byte // raw DiameterIdentity; nil if absent
+	MmeName                  HexBytes // raw DiameterIdentity; nil if absent
 }
 
 // GPRSLocationInformation contains GPRS domain location data.
 type GPRSLocationInformation struct {
 	AgeOfLocationInformation *int   // seconds; nil if absent
-	CellGlobalId             []byte // raw fixed-length cell ID or SAI; nil if absent
-	LAI                      []byte // raw 5-octet LAI; nil if absent
-	RouteingAreaIdentity     []byte // raw octets; nil if absent
-	GeographicalInformation  []byte // raw 8 octets; nil if absent
-	GeodeticInformation      []byte // raw 10 octets; nil if absent
+	CellGlobalId             HexBytes // raw fixed-length cell ID or SAI; nil if absent
+	LAI                      HexBytes // raw 5-octet LAI; nil if absent
+	RouteingAreaIdentity     HexBytes // raw octets; nil if absent
+	GeographicalInformation  HexBytes // raw 8 octets; nil if absent
+	GeodeticInformation      HexBytes // raw 10 octets; nil if absent
 	SgsnNumber               string // decoded; empty if absent
 	SgsnNumberNature         uint8
 	SgsnNumberPlan           uint8
