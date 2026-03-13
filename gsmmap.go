@@ -243,34 +243,34 @@ type CSLocationInformation struct {
 	MscNumber                string // decoded; empty if absent
 	MscNumberNature          uint8
 	MscNumberPlan            uint8
-	GeographicalInformation  HexBytes // raw 8 octets; nil if absent
-	GeodeticInformation      HexBytes // raw 10 octets; nil if absent
-	CellGlobalId             HexBytes // raw fixed-length cell ID or SAI; nil if absent
-	LAI                      HexBytes // raw 5-octet LAI; nil if absent
-	LocationNumber           HexBytes // raw octets; nil if absent
+	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
+	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
+	CellGlobalId             HexBytes          // raw fixed-length cell ID or SAI; nil if absent
+	LAI                      HexBytes          // raw 5-octet LAI; nil if absent
+	LocationNumber           HexBytes          // raw octets; nil if absent
 	CurrentLocationRetrieved bool
 	SAIPresent               bool
 }
 
 // EPSLocationInformation contains EPS/LTE location data.
 type EPSLocationInformation struct {
-	AgeOfLocationInformation *int   // seconds; nil if absent
-	EUtranCellGlobalIdentity HexBytes // raw 7 octets; nil if absent
-	TrackingAreaIdentity     HexBytes // raw 5 octets; nil if absent
-	GeographicalInformation  HexBytes // raw 8 octets; nil if absent
-	GeodeticInformation      HexBytes // raw 10 octets; nil if absent
+	AgeOfLocationInformation *int              // seconds; nil if absent
+	EUtranCellGlobalIdentity HexBytes          // raw 7 octets; nil if absent
+	TrackingAreaIdentity     HexBytes          // raw 5 octets; nil if absent
+	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
+	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
 	CurrentLocationRetrieved bool
-	MmeName                  HexBytes // raw DiameterIdentity; nil if absent
+	MmeName                  HexBytes          // raw DiameterIdentity; nil if absent
 }
 
 // GPRSLocationInformation contains GPRS domain location data.
 type GPRSLocationInformation struct {
-	AgeOfLocationInformation *int   // seconds; nil if absent
-	CellGlobalId             HexBytes // raw fixed-length cell ID or SAI; nil if absent
-	LAI                      HexBytes // raw 5-octet LAI; nil if absent
-	RouteingAreaIdentity     HexBytes // raw octets; nil if absent
-	GeographicalInformation  HexBytes // raw 8 octets; nil if absent
-	GeodeticInformation      HexBytes // raw 10 octets; nil if absent
+	AgeOfLocationInformation *int              // seconds; nil if absent
+	CellGlobalId             HexBytes          // raw fixed-length cell ID or SAI; nil if absent
+	LAI                      HexBytes          // raw 5-octet LAI; nil if absent
+	RouteingAreaIdentity     HexBytes          // raw octets; nil if absent
+	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
+	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
 	SgsnNumber               string // decoded; empty if absent
 	SgsnNumberNature         uint8
 	SgsnNumberPlan           uint8

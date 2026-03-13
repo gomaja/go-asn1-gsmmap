@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"bytes"
 	"encoding/hex"
+	"math"
 	"testing"
 )
 
@@ -581,7 +582,12 @@ func TestATIResCSLocationRoundTrip(t *testing.T) {
 				AgeOfLocationInformation: &age,
 				VlrNumber:                "628160360000",
 				MscNumber:                "628160360001",
-				GeographicalInformation:  []byte{0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80},
+				GeographicalInformation: &GeographicalInfo{
+					ShapeType:       ShapeEllipsoidPointUncertainty,
+					Latitude:        22.632522583007812,
+					Longitude:       113.02974700927734,
+					UncertaintyCode: func() *uint8 { v := uint8(0); return &v }(),
+				},
 				CurrentLocationRetrieved: true,
 				SAIPresent:               true,
 			},
@@ -611,9 +617,17 @@ func TestATIResCSLocationRoundTrip(t *testing.T) {
 	if loc.MscNumber != "628160360001" {
 		t.Errorf("MscNumber: got %s, want 628160360001", loc.MscNumber)
 	}
-	expectedGeo := []byte{0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80}
-	if !bytes.Equal(loc.GeographicalInformation, expectedGeo) {
-		t.Errorf("GeographicalInformation: got %x, want %x", loc.GeographicalInformation, expectedGeo)
+	if loc.GeographicalInformation == nil {
+		t.Fatal("GeographicalInformation is nil")
+	}
+	if loc.GeographicalInformation.ShapeType != ShapeEllipsoidPointUncertainty {
+		t.Errorf("GeographicalInformation.ShapeType: got %d, want %d", loc.GeographicalInformation.ShapeType, ShapeEllipsoidPointUncertainty)
+	}
+	if math.Abs(loc.GeographicalInformation.Latitude-22.632522583007812) > 0.0001 {
+		t.Errorf("GeographicalInformation.Latitude: got %f, want ~22.6325", loc.GeographicalInformation.Latitude)
+	}
+	if math.Abs(loc.GeographicalInformation.Longitude-113.02974700927734) > 0.0001 {
+		t.Errorf("GeographicalInformation.Longitude: got %f, want ~113.0297", loc.GeographicalInformation.Longitude)
 	}
 	if !loc.CurrentLocationRetrieved {
 		t.Error("CurrentLocationRetrieved should be true")
