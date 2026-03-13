@@ -42,7 +42,7 @@ type MtFsm struct {
 type MoFsm struct {
 	ServiceCentreAddressDA string
 	SCADANature            uint8 // address nature indicator (default: International)
-	SCAPlan                uint8 // numbering plan indicator (default: ISDN)
+	SCADAPlan              uint8 // numbering plan indicator (default: ISDN)
 	MSISDN                 string
 	MSISDNNature           uint8 // address nature indicator (default: International)
 	MSISDNPlan             uint8 // numbering plan indicator (default: ISDN)

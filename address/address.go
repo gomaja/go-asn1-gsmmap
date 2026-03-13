@@ -47,7 +47,8 @@ func Decode(encoded []byte) (extension, natureOfAddress, numberingPlan uint8, di
 	numberingPlan = firstOctet & 0x0F
 
 	if len(encoded) > 1 {
-		digits = encoded[1:]
+		digits = make([]byte, len(encoded)-1)
+		copy(digits, encoded[1:])
 	} else {
 		digits = []byte{}
 	}

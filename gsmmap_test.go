@@ -1,6 +1,7 @@
 package gsmmap
 
 import (
+	"bytes"
 	"encoding/hex"
 	"testing"
 )
@@ -237,6 +238,9 @@ func TestUpdateGprsLocationWithLCSRoundTrip(t *testing.T) {
 	}
 	if !parsed.SGSNCapability.SupportedLCSCapabilitySets.LcsCapabilitySet1 {
 		t.Error("LcsCapabilitySet1 should be true")
+	}
+	if !parsed.SGSNCapability.SupportedLCSCapabilitySets.LcsCapabilitySet2 {
+		t.Error("LcsCapabilitySet2 should be true")
 	}
 }
 
@@ -607,8 +611,9 @@ func TestATIResCSLocationRoundTrip(t *testing.T) {
 	if loc.MscNumber != "628160360001" {
 		t.Errorf("MscNumber: got %s, want 628160360001", loc.MscNumber)
 	}
-	if len(loc.GeographicalInformation) != 8 {
-		t.Errorf("GeographicalInformation length: got %d, want 8", len(loc.GeographicalInformation))
+	expectedGeo := []byte{0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80}
+	if !bytes.Equal(loc.GeographicalInformation, expectedGeo) {
+		t.Errorf("GeographicalInformation: got %x, want %x", loc.GeographicalInformation, expectedGeo)
 	}
 	if !loc.CurrentLocationRetrieved {
 		t.Error("CurrentLocationRetrieved should be true")
@@ -642,13 +647,8 @@ func TestATIResCSLocationCellIdRoundTrip(t *testing.T) {
 	if loc == nil {
 		t.Fatal("LocationInformation is nil")
 	}
-	if len(loc.CellGlobalId) != len(cellId) {
-		t.Fatalf("CellGlobalId length: got %d, want %d", len(loc.CellGlobalId), len(cellId))
-	}
-	for i := range cellId {
-		if loc.CellGlobalId[i] != cellId[i] {
-			t.Errorf("CellGlobalId[%d]: got %02x, want %02x", i, loc.CellGlobalId[i], cellId[i])
-		}
+	if !bytes.Equal(loc.CellGlobalId, cellId) {
+		t.Errorf("CellGlobalId: got %x, want %x", loc.CellGlobalId, cellId)
 	}
 }
 
@@ -676,8 +676,8 @@ func TestATIResCSLocationLAIRoundTrip(t *testing.T) {
 	if loc == nil {
 		t.Fatal("LocationInformation is nil")
 	}
-	if len(loc.LAI) != len(lai) {
-		t.Fatalf("LAI length: got %d, want %d", len(loc.LAI), len(lai))
+	if !bytes.Equal(loc.LAI, lai) {
+		t.Errorf("LAI: got %x, want %x", loc.LAI, lai)
 	}
 }
 
@@ -713,11 +713,11 @@ func TestATIResEPSLocationRoundTrip(t *testing.T) {
 	if eps.AgeOfLocationInformation == nil || *eps.AgeOfLocationInformation != 30 {
 		t.Errorf("AgeOfLocationInformation: got %v, want 30", eps.AgeOfLocationInformation)
 	}
-	if len(eps.EUtranCellGlobalIdentity) != 7 {
-		t.Errorf("E-UTRAN CGI length: got %d, want 7", len(eps.EUtranCellGlobalIdentity))
+	if !bytes.Equal(eps.EUtranCellGlobalIdentity, ecgi) {
+		t.Errorf("E-UTRAN CGI: got %x, want %x", eps.EUtranCellGlobalIdentity, ecgi)
 	}
-	if len(eps.TrackingAreaIdentity) != 5 {
-		t.Errorf("TAI length: got %d, want 5", len(eps.TrackingAreaIdentity))
+	if !bytes.Equal(eps.TrackingAreaIdentity, tai) {
+		t.Errorf("TAI: got %x, want %x", eps.TrackingAreaIdentity, tai)
 	}
 	if !eps.CurrentLocationRetrieved {
 		t.Error("CurrentLocationRetrieved should be true")
@@ -756,6 +756,10 @@ func TestATIResGPRSLocationRoundTrip(t *testing.T) {
 	}
 	if gprs.SgsnNumber != "628160360000" {
 		t.Errorf("SgsnNumber: got %s, want 628160360000", gprs.SgsnNumber)
+	}
+	expectedRAI := []byte{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45}
+	if !bytes.Equal(gprs.RouteingAreaIdentity, expectedRAI) {
+		t.Errorf("RouteingAreaIdentity: got %x, want %x", gprs.RouteingAreaIdentity, expectedRAI)
 	}
 	if !gprs.CurrentLocationRetrieved {
 		t.Error("CurrentLocationRetrieved should be true")
@@ -840,8 +844,9 @@ func TestATIResFullRoundTrip(t *testing.T) {
 	}
 
 	// MsClassmark2
-	if len(si.MsClassmark2) != 3 {
-		t.Errorf("MsClassmark2 length: got %d, want 3", len(si.MsClassmark2))
+	expectedMsClassmark2 := []byte{0x33, 0x19, 0x83}
+	if !bytes.Equal(si.MsClassmark2, expectedMsClassmark2) {
+		t.Errorf("MsClassmark2: got %x, want %x", si.MsClassmark2, expectedMsClassmark2)
 	}
 
 	// TimeZone

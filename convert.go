@@ -224,7 +224,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 // --- MO-ForwardSM ---
 
 func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
-	scaDA, err := encodeAddressField(m.ServiceCentreAddressDA, m.SCADANature, m.SCAPlan)
+	scaDA, err := encodeAddressField(m.ServiceCentreAddressDA, m.SCADANature, m.SCADAPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding ServiceCentreAddressDA: %w", err)
 	}
@@ -261,7 +261,7 @@ func convertArgToMoFsm(arg *gsm_map.MOForwardSMArg) (*MoFsm, error) {
 		}
 		moFsm.ServiceCentreAddressDA = sca
 		moFsm.SCADANature = nature
-		moFsm.SCAPlan = plan
+		moFsm.SCADAPlan = plan
 	default:
 		return nil, fmt.Errorf("unexpected SMRPDA choice: %d", arg.SmRPDA.Choice)
 	}
@@ -1163,7 +1163,6 @@ func convertCamelPhasesToBitString(cp *SupportedCamelPhases) runtime.BitString {
 	bitLen := 1
 	if cp.Phase1 {
 		b |= 0x80
-		bitLen = 1
 	}
 	if cp.Phase2 {
 		b |= 0x40
@@ -1176,9 +1175,6 @@ func convertCamelPhasesToBitString(cp *SupportedCamelPhases) runtime.BitString {
 	if cp.Phase4 {
 		b |= 0x10
 		bitLen = 4
-	}
-	if bitLen == 0 {
-		bitLen = 1
 	}
 	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
 }
@@ -1205,15 +1201,9 @@ func convertLCSCapsToBitString(lcs *SupportedLCSCapabilitySets) runtime.BitStrin
 	bitLen := 2 // minimum per spec
 	if lcs.LcsCapabilitySet1 {
 		b |= 0x80
-		if bitLen < 1 {
-			bitLen = 1
-		}
 	}
 	if lcs.LcsCapabilitySet2 {
 		b |= 0x40
-		if bitLen < 2 {
-			bitLen = 2
-		}
 	}
 	if lcs.LcsCapabilitySet3 {
 		b |= 0x20
@@ -1255,14 +1245,10 @@ func convertRequestedNodesToBitString(rn *RequestedNodes) runtime.BitString {
 	bitLen := 1
 	if rn.MME {
 		b |= 0x80
-		bitLen = 1
 	}
 	if rn.SGSN {
 		b |= 0x40
 		bitLen = 2
-	}
-	if bitLen == 0 {
-		bitLen = 1
 	}
 	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
 }
