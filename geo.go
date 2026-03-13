@@ -135,6 +135,12 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 
 // Encode encodes a GeographicalInfo back to raw octets per 3GPP TS 23.032.
 func (gi *GeographicalInfo) Encode() ([]byte, error) {
+	if math.IsNaN(gi.Latitude) || math.IsInf(gi.Latitude, 0) {
+		return nil, fmt.Errorf("latitude is not a finite number: %v", gi.Latitude)
+	}
+	if math.IsNaN(gi.Longitude) || math.IsInf(gi.Longitude, 0) {
+		return nil, fmt.Errorf("longitude is not a finite number: %v", gi.Longitude)
+	}
 	latBytes, lonBytes := encodeLatLon(gi.Latitude, gi.Longitude)
 
 	switch gi.ShapeType {
@@ -181,6 +187,9 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 		copy(data[4:7], lonBytes[:])
 		if gi.Altitude != nil {
 			alt := *gi.Altitude
+			if alt < -32767 {
+				return nil, fmt.Errorf("altitude out of range: %d", alt)
+			}
 			if alt < 0 {
 				data[7] = 0x80 | byte((-alt)>>8)
 				data[8] = byte(-alt)
@@ -277,6 +286,11 @@ func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte) {
 	latBytes[2] = byte(latN)
 
 	lonN := int32(math.Round(lon / 360.0 * float64(1<<24)))
+	if lonN > 0x7FFFFF {
+		lonN = 0x7FFFFF
+	} else if lonN < -0x800000 {
+		lonN = -0x800000
+	}
 	lonBytes[0] = byte(lonN >> 16)
 	lonBytes[1] = byte(lonN >> 8)
 	lonBytes[2] = byte(lonN)
