@@ -12,10 +12,17 @@ import (
 type HexBytes []byte
 
 func (h HexBytes) MarshalJSON() ([]byte, error) {
+	if h == nil {
+		return []byte("null"), nil
+	}
 	return json.Marshal(hex.EncodeToString(h))
 }
 
 func (h *HexBytes) UnmarshalJSON(data []byte) error {
+	if string(data) == "null" {
+		*h = nil
+		return nil
+	}
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err
