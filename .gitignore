@@ -1,0 +1,13 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Local dev
+local_test*/
+
+# Plans (internal dev notes)
+plans/
