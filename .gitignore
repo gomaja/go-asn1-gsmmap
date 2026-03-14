@@ -1,16 +1,13 @@
 # IDE
 .idea/
 .vscode/
+.claude/
 *.swp
+plans/
+docs/
 
 # OS
 .DS_Store
 
-# Claude Code
-.claude/
-
 # Local dev
 local_test*/
-
-# Plans (internal dev notes)
-plans/
