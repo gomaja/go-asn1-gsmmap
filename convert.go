@@ -849,17 +849,15 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 	}
 
 	if loc.CellGlobalId != nil {
-		cgid := gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId)
-		li.CellGlobalIdOrServiceAreaIdOrLAI = &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{
-			Choice:                                 gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength,
-			CellGlobalIdOrServiceAreaIdFixedLength: &cgid,
-		}
+		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
+			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId),
+		)
+		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
 	} else if loc.LAI != nil {
-		lai := gsm_map.LAIFixedLength(loc.LAI)
-		li.CellGlobalIdOrServiceAreaIdOrLAI = &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{
-			Choice:         gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength,
-			LaiFixedLength: &lai,
-		}
+		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAILaiFixedLength(
+			gsm_map.LAIFixedLength(loc.LAI),
+		)
+		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
 	}
 
 	if loc.LocationNumber != nil {
@@ -945,28 +943,22 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 // --- SubscriberState conversion ---
 
 func convertSubscriberStateToAsn1(ss *SubscriberStateInfo) *gsm_map.SubscriberState {
-	s := &gsm_map.SubscriberState{}
+	var s gsm_map.SubscriberState
 	switch ss.State {
 	case StateAssumedIdle:
-		s.Choice = gsm_map.SubscriberStateChoiceAssumedIdle
-		s.AssumedIdle = &struct{}{}
+		s = gsm_map.NewSubscriberStateAssumedIdle(struct{}{})
 	case StateCamelBusy:
-		s.Choice = gsm_map.SubscriberStateChoiceCamelBusy
-		s.CamelBusy = &struct{}{}
+		s = gsm_map.NewSubscriberStateCamelBusy(struct{}{})
 	case StateNetDetNotReachable:
-		s.Choice = gsm_map.SubscriberStateChoiceNetDetNotReachable
 		if ss.NotReachableReason != nil {
-			reason := gsm_map.NotReachableReason(*ss.NotReachableReason)
-			s.NetDetNotReachable = &reason
+			s = gsm_map.NewSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(*ss.NotReachableReason))
 		} else {
-			reason := gsm_map.NotReachableReason(0)
-			s.NetDetNotReachable = &reason
+			s = gsm_map.NewSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(0))
 		}
 	case StateNotProvidedFromVLR:
-		s.Choice = gsm_map.SubscriberStateChoiceNotProvidedFromVLR
-		s.NotProvidedFromVLR = &struct{}{}
+		s = gsm_map.NewSubscriberStateNotProvidedFromVLR(struct{}{})
 	}
-	return s
+	return &s
 }
 
 func convertAsn1ToSubscriberState(ss *gsm_map.SubscriberState) *SubscriberStateInfo {
@@ -1082,17 +1074,15 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	}
 
 	if loc.CellGlobalId != nil {
-		cgid := gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId)
-		li.CellGlobalIdOrServiceAreaIdOrLAI = &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{
-			Choice:                                 gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength,
-			CellGlobalIdOrServiceAreaIdFixedLength: &cgid,
-		}
+		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
+			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId),
+		)
+		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
 	} else if loc.LAI != nil {
-		lai := gsm_map.LAIFixedLength(loc.LAI)
-		li.CellGlobalIdOrServiceAreaIdOrLAI = &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{
-			Choice:         gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength,
-			LaiFixedLength: &lai,
-		}
+		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAILaiFixedLength(
+			gsm_map.LAIFixedLength(loc.LAI),
+		)
+		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
 	}
 
 	if loc.RouteingAreaIdentity != nil {
