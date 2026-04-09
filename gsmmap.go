@@ -4,8 +4,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
+	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/warthog618/sms/encoding/tpdu"
 )
+
+// GetErrorString converts a MAP error code to its string representation.
+func GetErrorString(errCode int64) string {
+	return gsm_map.ErrorCode(errCode).String()
+}
 
 // HexBytes is a []byte that marshals to/from hex strings in JSON
 // instead of the default base64 encoding.
