@@ -198,17 +198,15 @@ func TestParseMoFsm(t *testing.T) {
 				return
 			}
 
-			if tc.skipRoundTrip {
-				return
-			}
-
 			marshaledBytes, err := moFsm.Marshal()
 			if err != nil {
 				t.Fatalf("Failed to marshal MoFsm: %v", err)
 			}
 
-			if diff := cmp.Diff(originalBytes, marshaledBytes); diff != "" {
-				t.Errorf("Marshaled bytes don't match original (-original +marshaled):\n%s", diff)
+			if !tc.skipRoundTrip {
+				if diff := cmp.Diff(originalBytes, marshaledBytes); diff != "" {
+					t.Errorf("Marshaled bytes don't match original (-original +marshaled):\n%s", diff)
+				}
 			}
 		})
 	}

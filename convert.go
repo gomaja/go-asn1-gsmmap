@@ -724,6 +724,9 @@ func convertSmRpDaToWire(da *SmRpDa) (gsm_map.SMRPDA, error) {
 		}
 		return gsm_map.NewSMRPDAImsi(gsm_map.IMSI(imsiBytes)), nil
 	case len(da.LMSI) > 0:
+		if len(da.LMSI) != 4 {
+			return gsm_map.SMRPDA{}, fmt.Errorf("SmRpDa LMSI must be exactly 4 octets, got %d", len(da.LMSI))
+		}
 		return gsm_map.NewSMRPDALmsi(gsm_map.LMSI(da.LMSI)), nil
 	case da.ServiceCentreAddressDA != "":
 		scaDA, err := encodeAddressField(da.ServiceCentreAddressDA, da.SCADANature, da.SCADAPlan)
@@ -853,6 +856,9 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 		}
 		smRpDa = da
 	} else {
+		if m.ServiceCentreAddressDA == "" {
+			return nil, fmt.Errorf("MoFsm: ServiceCentreAddressDA is empty (set SmRpDa for other DA variants)")
+		}
 		scaDA, err := encodeAddressField(m.ServiceCentreAddressDA, m.SCADANature, m.SCADAPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ServiceCentreAddressDA: %w", err)
@@ -869,6 +875,9 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 		}
 		smRpOa = oa
 	} else {
+		if m.MSISDN == "" {
+			return nil, fmt.Errorf("MoFsm: MSISDN is empty (set SmRpOa for other OA variants)")
+		}
 		msisdn, err := encodeAddressField(m.MSISDN, m.MSISDNNature, m.MSISDNPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding MSISDN: %w", err)

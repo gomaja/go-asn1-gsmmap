@@ -196,20 +196,22 @@ type SmRpOa struct {
 // MoFsm represents a Mobile Originated Forward Short Message (opCode 46).
 type MoFsm struct {
 	// SM-RP-DA: destination address CHOICE.
-	// For backward compatibility, ServiceCentreAddressDA/SCADANature/SCADAPlan
-	// are kept as top-level fields. For other DA variants, use SmRpDa.
+	// ServiceCentreAddressDA is the common variant. When SmRpDa is set it
+	// overrides ServiceCentreAddressDA and allows any SM-RP-DA alternative
+	// (IMSI, LMSI, serviceCentreAddressDA, noSM-RP-DA).
 	ServiceCentreAddressDA string
 	SCADANature            uint8 // address nature indicator (default: International)
 	SCADAPlan              uint8 // numbering plan indicator (default: ISDN)
-	SmRpDa                 *SmRpDa // set for IMSI/LMSI/noSM-RP-DA alternatives; overrides ServiceCentreAddressDA
+	SmRpDa                 *SmRpDa // when set, overrides ServiceCentreAddressDA
 
 	// SM-RP-OA: originator address CHOICE.
-	// For backward compatibility, MSISDN/MSISDNNature/MSISDNPlan are kept.
-	// For other OA variants, use SmRpOa.
+	// MSISDN is the common variant. When SmRpOa is set it overrides MSISDN
+	// and allows any SM-RP-OA alternative (msisdn, serviceCentreAddressOA,
+	// noSM-RP-OA).
 	MSISDN       string
 	MSISDNNature uint8 // address nature indicator (default: International)
 	MSISDNPlan   uint8 // numbering plan indicator (default: ISDN)
-	SmRpOa       *SmRpOa // set for serviceCentreAddressOA/noSM-RP-OA alternatives; overrides MSISDN
+	SmRpOa       *SmRpOa // when set, overrides MSISDN
 
 	TPDU tpdu.TPDU
 

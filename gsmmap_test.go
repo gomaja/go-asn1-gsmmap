@@ -1551,7 +1551,7 @@ func TestMoFsmRespRoundTrip(t *testing.T) {
 	})
 }
 
-func TestMoFsmSmRpDaChoiceValidation(t *testing.T) {
+func TestMoFsmChoiceValidation(t *testing.T) {
 	knownHex := "302d84069122609098998206912260539128041b01510a912260716622000011d972180d4a82eee13928cc7ebbcb20"
 	knownBytes, err := hex.DecodeString(knownHex)
 	if err != nil {
