@@ -587,4 +587,7 @@ var (
 	ErrSriInvalidCallReferenceNumber = errors.New("sri: CallReferenceNumber, if set, must be 1..8 octets")
 	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
 	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
+
+	ErrSriSmMissingSipUriB             = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
+	ErrSriSmInvalidDeliveryTimerValue  = errors.New("sriSm: SM-DeliveryTimerValue must be 30..600")
 )

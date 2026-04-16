@@ -102,7 +102,11 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 	arg.T4TriggerIndicator = boolToNullPtr(s.T4TriggerIndicator)
 
 	if s.CorrelationID != nil {
-		arg.CorrelationID = convertCorrelationIDToWire(s.CorrelationID)
+		cid, err := convertCorrelationIDToWire(s.CorrelationID)
+		if err != nil {
+			return nil, fmt.Errorf("CorrelationID: %w", err)
+		}
+		arg.CorrelationID = cid
 	}
 
 	arg.SmsfSupportIndicator = boolToNullPtr(s.SmsfSupportIndicator)
@@ -279,7 +283,11 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 
 	// IpSmGwGuidance
 	if s.IpSmGwGuidance != nil {
-		out.IpSmGwGuidance = convertIpSmGwGuidanceToWire(s.IpSmGwGuidance)
+		gw, err := convertIpSmGwGuidanceToWire(s.IpSmGwGuidance)
+		if err != nil {
+			return nil, fmt.Errorf("IpSmGwGuidance: %w", err)
+		}
+		out.IpSmGwGuidance = gw
 	}
 
 	return out, nil
@@ -469,7 +477,10 @@ func convertWireToNetworkNodeDiameterAddress(w *gsm_map.NetworkNodeDiameterAddre
 	}
 }
 
-func convertCorrelationIDToWire(c *SriSmCorrelationID) *gsm_map.CorrelationID {
+func convertCorrelationIDToWire(c *SriSmCorrelationID) (*gsm_map.CorrelationID, error) {
+	if len(c.SipUriB) == 0 {
+		return nil, ErrSriSmMissingSipUriB
+	}
 	out := &gsm_map.CorrelationID{
 		SipUriB: gsm_map.SIPURI(c.SipUriB),
 	}
@@ -481,7 +492,7 @@ func convertCorrelationIDToWire(c *SriSmCorrelationID) *gsm_map.CorrelationID {
 		v := gsm_map.SIPURI(c.SipUriA)
 		out.SipUriA = &v
 	}
-	return out
+	return out, nil
 }
 
 func convertWireToCorrelationID(w *gsm_map.CorrelationID) *SriSmCorrelationID {
@@ -497,11 +508,15 @@ func convertWireToCorrelationID(w *gsm_map.CorrelationID) *SriSmCorrelationID {
 	return c
 }
 
-func convertIpSmGwGuidanceToWire(g *IpSmGwGuidance) *gsm_map.IPSMGWGuidance {
+func convertIpSmGwGuidanceToWire(g *IpSmGwGuidance) (*gsm_map.IPSMGWGuidance, error) {
+	if g.MinimumDeliveryTimeValue < 30 || g.MinimumDeliveryTimeValue > 600 ||
+		g.RecommendedDeliveryTimeValue < 30 || g.RecommendedDeliveryTimeValue > 600 {
+		return nil, ErrSriSmInvalidDeliveryTimerValue
+	}
 	return &gsm_map.IPSMGWGuidance{
 		MinimumDeliveryTimeValue:     gsm_map.SMDeliveryTimerValue(g.MinimumDeliveryTimeValue),
 		RecommendedDeliveryTimeValue: gsm_map.SMDeliveryTimerValue(g.RecommendedDeliveryTimeValue),
-	}
+	}, nil
 }
 
 func convertWireToIpSmGwGuidance(w *gsm_map.IPSMGWGuidance) *IpSmGwGuidance {
