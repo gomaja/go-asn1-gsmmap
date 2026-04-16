@@ -909,6 +909,394 @@ func TestParseATIResInvalidData(t *testing.T) {
 	}
 }
 
+// --- ATI (opCode 71) expanded coverage tests ---
+
+func TestATIResPSSubscriberStateRoundTrip(t *testing.T) {
+	reason := ReasonRestrictedArea
+	tests := []struct {
+		name string
+		in   *PsSubscriberState
+	}{
+		{"ps-Detached", &PsSubscriberState{PsDetached: true}},
+		{"ps-AttachedReachableForPaging", &PsSubscriberState{PsAttachedReachableForPaging: true}},
+		{"ps-AttachedNotReachableForPaging", &PsSubscriberState{PsAttachedNotReachableForPaging: true}},
+		{"notProvidedFromSGSNorMME", &PsSubscriberState{NotProvidedFromSGSNorMME: true}},
+		{"netDetNotReachable", &PsSubscriberState{NetDetNotReachable: &reason}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := &AnyTimeInterrogationRes{
+				SubscriberInfo: SubscriberInfo{PsSubscriberState: tt.in},
+			}
+			data, err := res.Marshal()
+			if err != nil {
+				t.Fatalf("Marshal error: %v", err)
+			}
+			parsed, err := ParseAnyTimeInterrogationRes(data)
+			if err != nil {
+				t.Fatalf("Parse error: %v", err)
+			}
+			ps := parsed.SubscriberInfo.PsSubscriberState
+			if ps == nil {
+				t.Fatal("PsSubscriberState is nil after round-trip")
+			}
+			if diff := cmp.Diff(tt.in, ps); diff != "" {
+				t.Errorf("PsSubscriberState mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestATIResMNPInfoResRoundTrip(t *testing.T) {
+	nps := MnpOwnNumberPortedOut
+	in := &MnpInfoRes{
+		RouteingNumber:          HexBytes{0x31, 0x33, 0x37},
+		IMSI:                    "310150123456789",
+		MSISDN:                  "31612345678",
+		MSISDNNature:            address.NatureInternational,
+		MSISDNPlan:              address.PlanISDN,
+		NumberPortabilityStatus: &nps,
+	}
+	res := &AnyTimeInterrogationRes{
+		SubscriberInfo: SubscriberInfo{MnpInfoRes: in},
+	}
+	data, err := res.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+	parsed, err := ParseAnyTimeInterrogationRes(data)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	got := parsed.SubscriberInfo.MnpInfoRes
+	if got == nil {
+		t.Fatal("MnpInfoRes is nil after round-trip")
+	}
+	if !bytes.Equal(got.RouteingNumber, in.RouteingNumber) {
+		t.Errorf("RouteingNumber: got %x, want %x", got.RouteingNumber, in.RouteingNumber)
+	}
+	if got.IMSI != in.IMSI {
+		t.Errorf("IMSI: got %s, want %s", got.IMSI, in.IMSI)
+	}
+	if got.MSISDN != in.MSISDN {
+		t.Errorf("MSISDN: got %s, want %s", got.MSISDN, in.MSISDN)
+	}
+	if got.NumberPortabilityStatus == nil || *got.NumberPortabilityStatus != nps {
+		t.Errorf("NumberPortabilityStatus: got %v, want %v", got.NumberPortabilityStatus, nps)
+	}
+}
+
+func TestATIResImsVoiceSupportRoundTrip(t *testing.T) {
+	values := []ImsVoiceOverPSSessionsIndication{
+		IMSVoiceOverPSNotSupported,
+		IMSVoiceOverPSSupported,
+		IMSVoiceOverPSUnknown,
+	}
+	for _, v := range values {
+		v := v
+		t.Run(map[ImsVoiceOverPSSessionsIndication]string{
+			IMSVoiceOverPSNotSupported: "NotSupported",
+			IMSVoiceOverPSSupported:    "Supported",
+			IMSVoiceOverPSUnknown:      "Unknown",
+		}[v], func(t *testing.T) {
+			res := &AnyTimeInterrogationRes{
+				SubscriberInfo: SubscriberInfo{
+					ImsVoiceOverPSSessionsIndication: &v,
+				},
+			}
+			data, err := res.Marshal()
+			if err != nil {
+				t.Fatalf("Marshal error: %v", err)
+			}
+			parsed, err := ParseAnyTimeInterrogationRes(data)
+			if err != nil {
+				t.Fatalf("Parse error: %v", err)
+			}
+			got := parsed.SubscriberInfo.ImsVoiceOverPSSessionsIndication
+			if got == nil || *got != v {
+				t.Errorf("IMSVoiceOverPSSessionsIndication: got %v, want %v", got, v)
+			}
+		})
+	}
+}
+
+func TestATIResLastActivityRoundTrip(t *testing.T) {
+	ratType := UsedRatEUTRAN
+	// Time is an opaque octet string per 3GPP TS 23.032.
+	lastTime := HexBytes{0x31, 0x32, 0x31, 0x35, 0x31, 0x36, 0x32, 0x30, 0x34, 0x34, 0x35, 0x36, 0x5a}
+	res := &AnyTimeInterrogationRes{
+		SubscriberInfo: SubscriberInfo{
+			LastUEActivityTime: lastTime,
+			LastRATType:        &ratType,
+		},
+	}
+	data, err := res.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+	parsed, err := ParseAnyTimeInterrogationRes(data)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	si := parsed.SubscriberInfo
+	if !bytes.Equal(si.LastUEActivityTime, lastTime) {
+		t.Errorf("LastUEActivityTime: got %x, want %x", si.LastUEActivityTime, lastTime)
+	}
+	if si.LastRATType == nil || *si.LastRATType != ratType {
+		t.Errorf("LastRATType: got %v, want %v", si.LastRATType, ratType)
+	}
+}
+
+func TestATIResLocationInformation5GSRoundTrip(t *testing.T) {
+	age := 31
+	rat := UsedRatEUTRAN
+	in := &LocationInformation5GS{
+		NrCellGlobalIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45, 0x67, 0x89},
+		EUtranCellGlobalIdentity: HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45, 0x67},
+		GeographicalInformation: &GeographicalInfo{
+			ShapeType:       ShapeEllipsoidPointUncertainty,
+			Latitude:        22.632522583007812,
+			Longitude:       113.02974700927734,
+			UncertaintyCode: func() *uint8 { v := uint8(0); return &v }(),
+		},
+		GeodeticInformation:      HexBytes{0x80, 0x31, 0x11, 0x11, 0x22, 0x22, 0x33, 0x33, 0x44, 0x44},
+		AmfAddress:               HexBytes("amf.example.com"),
+		TrackingAreaIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23},
+		CurrentLocationRetrieved: true,
+		AgeOfLocationInformation: &age,
+		VplmnID:                  HexBytes{0x62, 0xf2, 0x20},
+		LocalTimeZone:            HexBytes{0x08},
+		RatType:                  &rat,
+		NrTrackingAreaIdentity:   HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45},
+	}
+	res := &AnyTimeInterrogationRes{
+		SubscriberInfo: SubscriberInfo{LocationInformation5GS: in},
+	}
+	data, err := res.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+	parsed, err := ParseAnyTimeInterrogationRes(data)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+	got := parsed.SubscriberInfo.LocationInformation5GS
+	if got == nil {
+		t.Fatal("LocationInformation5GS is nil after round-trip")
+	}
+	if !bytes.Equal(got.NrCellGlobalIdentity, in.NrCellGlobalIdentity) {
+		t.Errorf("NrCellGlobalIdentity: got %x, want %x", got.NrCellGlobalIdentity, in.NrCellGlobalIdentity)
+	}
+	if !bytes.Equal(got.EUtranCellGlobalIdentity, in.EUtranCellGlobalIdentity) {
+		t.Errorf("EUtranCellGlobalIdentity: got %x, want %x", got.EUtranCellGlobalIdentity, in.EUtranCellGlobalIdentity)
+	}
+	if got.GeographicalInformation == nil {
+		t.Fatal("GeographicalInformation is nil")
+	}
+	if math.Abs(got.GeographicalInformation.Latitude-in.GeographicalInformation.Latitude) > 0.0001 {
+		t.Errorf("Latitude: got %f, want %f", got.GeographicalInformation.Latitude, in.GeographicalInformation.Latitude)
+	}
+	if !bytes.Equal(got.GeodeticInformation, in.GeodeticInformation) {
+		t.Errorf("GeodeticInformation: got %x, want %x", got.GeodeticInformation, in.GeodeticInformation)
+	}
+	if !bytes.Equal(got.AmfAddress, in.AmfAddress) {
+		t.Errorf("AmfAddress: got %x, want %x", got.AmfAddress, in.AmfAddress)
+	}
+	if !bytes.Equal(got.TrackingAreaIdentity, in.TrackingAreaIdentity) {
+		t.Errorf("TrackingAreaIdentity: got %x, want %x", got.TrackingAreaIdentity, in.TrackingAreaIdentity)
+	}
+	if !got.CurrentLocationRetrieved {
+		t.Error("CurrentLocationRetrieved should be true")
+	}
+	if got.AgeOfLocationInformation == nil || *got.AgeOfLocationInformation != age {
+		t.Errorf("AgeOfLocationInformation: got %v, want %v", got.AgeOfLocationInformation, age)
+	}
+	if !bytes.Equal(got.VplmnID, in.VplmnID) {
+		t.Errorf("VplmnID: got %x, want %x", got.VplmnID, in.VplmnID)
+	}
+	if !bytes.Equal(got.LocalTimeZone, in.LocalTimeZone) {
+		t.Errorf("LocalTimeZone: got %x, want %x", got.LocalTimeZone, in.LocalTimeZone)
+	}
+	if got.RatType == nil || *got.RatType != rat {
+		t.Errorf("RatType: got %v, want %v", got.RatType, rat)
+	}
+	if !bytes.Equal(got.NrTrackingAreaIdentity, in.NrTrackingAreaIdentity) {
+		t.Errorf("NrTrackingAreaIdentity: got %x, want %x", got.NrTrackingAreaIdentity, in.NrTrackingAreaIdentity)
+	}
+}
+
+func TestATIResUserCSGInformationRoundTrip(t *testing.T) {
+	// 27-bit CSG-Id packed into 4 octets per BIT STRING semantics.
+	csg := &UserCSGInformation{
+		CsgID:      HexBytes{0x11, 0x22, 0x33, 0x40},
+		CsgIDBits:  27,
+		AccessMode: HexBytes{0x00},
+		CMI:        HexBytes{0x01},
+	}
+
+	// CS location carries UserCSGInformation on tag [11].
+	csLoc := &CSLocationInformation{
+		VlrNumber:          "31612345678",
+		SelectedLSAId:      HexBytes{0xAA, 0xBB, 0xCC},
+		UserCSGInformation: csg,
+	}
+	gprsLoc := &GPRSLocationInformation{
+		SgsnNumber:          "31612345678",
+		SelectedLSAIdentity: HexBytes{0xDD, 0xEE, 0xFF},
+		UserCSGInformation:  csg,
+	}
+
+	res := &AnyTimeInterrogationRes{
+		SubscriberInfo: SubscriberInfo{
+			LocationInformation:     csLoc,
+			LocationInformationGPRS: gprsLoc,
+		},
+	}
+	data, err := res.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+	parsed, err := ParseAnyTimeInterrogationRes(data)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+
+	gotCS := parsed.SubscriberInfo.LocationInformation
+	if gotCS == nil || gotCS.UserCSGInformation == nil {
+		t.Fatal("CS LocationInformation.UserCSGInformation is nil")
+	}
+	if !bytes.Equal(gotCS.UserCSGInformation.CsgID, csg.CsgID) ||
+		gotCS.UserCSGInformation.CsgIDBits != csg.CsgIDBits {
+		t.Errorf("CS CsgID: got %x/%d, want %x/%d",
+			gotCS.UserCSGInformation.CsgID, gotCS.UserCSGInformation.CsgIDBits,
+			csg.CsgID, csg.CsgIDBits)
+	}
+	if !bytes.Equal(gotCS.SelectedLSAId, HexBytes{0xAA, 0xBB, 0xCC}) {
+		t.Errorf("CS SelectedLSAId: got %x", gotCS.SelectedLSAId)
+	}
+
+	gotGPRS := parsed.SubscriberInfo.LocationInformationGPRS
+	if gotGPRS == nil || gotGPRS.UserCSGInformation == nil {
+		t.Fatal("GPRS LocationInformationGPRS.UserCSGInformation is nil")
+	}
+	if !bytes.Equal(gotGPRS.SelectedLSAIdentity, HexBytes{0xDD, 0xEE, 0xFF}) {
+		t.Errorf("GPRS SelectedLSAIdentity: got %x", gotGPRS.SelectedLSAIdentity)
+	}
+	if gotGPRS.UserCSGInformation.CsgIDBits != csg.CsgIDBits {
+		t.Errorf("GPRS UserCSGInformation.CsgIDBits: got %d, want %d",
+			gotGPRS.UserCSGInformation.CsgIDBits, csg.CsgIDBits)
+	}
+}
+
+func TestATIResFull5GSRoundTrip(t *testing.T) {
+	age := 31
+	nps := MnpForeignNumberPortedIn
+	imsVoice := IMSVoiceOverPSSupported
+	rat := UsedRatEUTRAN
+
+	in := &AnyTimeInterrogationRes{
+		SubscriberInfo: SubscriberInfo{
+			LocationInformation: &CSLocationInformation{
+				VlrNumber:                "31612345678",
+				CurrentLocationRetrieved: true,
+			},
+			PsSubscriberState: &PsSubscriberState{
+				PsAttachedReachableForPaging: true,
+			},
+			MnpInfoRes: &MnpInfoRes{
+				RouteingNumber:          HexBytes{0x31, 0x33, 0x37},
+				IMSI:                    "310150123456789",
+				MSISDN:                  "31612345678",
+				NumberPortabilityStatus: &nps,
+			},
+			ImsVoiceOverPSSessionsIndication: &imsVoice,
+			LastUEActivityTime:               HexBytes{0x31, 0x32, 0x31, 0x35, 0x31, 0x36},
+			LastRATType:                      &rat,
+			LocationInformation5GS: &LocationInformation5GS{
+				NrCellGlobalIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45, 0x67, 0x89},
+				CurrentLocationRetrieved: true,
+				AgeOfLocationInformation: &age,
+				VplmnID:                  HexBytes{0x62, 0xf2, 0x20},
+				RatType:                  &rat,
+			},
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal error: %v", err)
+	}
+	parsed, err := ParseAnyTimeInterrogationRes(data)
+	if err != nil {
+		t.Fatalf("Parse error: %v", err)
+	}
+
+	si := parsed.SubscriberInfo
+	if si.LocationInformation == nil || si.LocationInformation.VlrNumber != "31612345678" {
+		t.Errorf("LocationInformation.VlrNumber mismatch: %+v", si.LocationInformation)
+	}
+	if si.PsSubscriberState == nil || !si.PsSubscriberState.PsAttachedReachableForPaging {
+		t.Errorf("PsSubscriberState.PsAttachedReachableForPaging not set: %+v", si.PsSubscriberState)
+	}
+	if si.MnpInfoRes == nil || si.MnpInfoRes.IMSI != "310150123456789" {
+		t.Errorf("MnpInfoRes.IMSI mismatch: %+v", si.MnpInfoRes)
+	}
+	if si.ImsVoiceOverPSSessionsIndication == nil || *si.ImsVoiceOverPSSessionsIndication != imsVoice {
+		t.Errorf("IMSVoiceOverPSSessionsIndication mismatch: %v", si.ImsVoiceOverPSSessionsIndication)
+	}
+	if si.LastRATType == nil || *si.LastRATType != rat {
+		t.Errorf("LastRATType mismatch: %v", si.LastRATType)
+	}
+	if si.LocationInformation5GS == nil {
+		t.Fatal("LocationInformation5GS is nil")
+	}
+	if !si.LocationInformation5GS.CurrentLocationRetrieved {
+		t.Error("LocationInformation5GS.CurrentLocationRetrieved should be true")
+	}
+}
+
+func TestPsSubscriberStateChoiceValidation(t *testing.T) {
+	reason := ReasonImsiDetached
+	cases := []struct {
+		name    string
+		in      *PsSubscriberState
+		wantErr error
+	}{
+		{
+			name:    "empty",
+			in:      &PsSubscriberState{},
+			wantErr: ErrAtiPsSubscriberStateNoAlternative,
+		},
+		{
+			name: "multiple",
+			in: &PsSubscriberState{
+				PsDetached:                   true,
+				PsAttachedReachableForPaging: true,
+			},
+			wantErr: ErrAtiPsSubscriberStateMultipleAlternatives,
+		},
+		{
+			name: "multiple-with-net-det",
+			in: &PsSubscriberState{
+				PsDetached:         true,
+				NetDetNotReachable: &reason,
+			},
+			wantErr: ErrAtiPsSubscriberStateMultipleAlternatives,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			res := &AnyTimeInterrogationRes{
+				SubscriberInfo: SubscriberInfo{PsSubscriberState: tc.in},
+			}
+			_, err := res.Marshal()
+			if !errors.Is(err, tc.wantErr) {
+				t.Errorf("got err=%v, want %v", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestMarshalInvalidInputs(t *testing.T) {
 	// Invalid MSISDN (non-hex)
 	sriSm := &SriSm{
