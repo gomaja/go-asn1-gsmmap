@@ -63,11 +63,55 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 		return nil, fmt.Errorf("encoding ServiceCentreAddress: %w", err)
 	}
 
-	return &gsm_map.RoutingInfoForSMArg{
+	arg := &gsm_map.RoutingInfoForSMArg{
 		Msisdn:               gsm_map.ISDNAddressString(msisdn),
 		SmRPPRI:               s.SmRpPri,
 		ServiceCentreAddress: gsm_map.AddressString(sca),
-	}, nil
+	}
+
+	// Optional fields (post-extension marker).
+	arg.GprsSupportIndicator = boolToNullPtr(s.GprsSupportIndicator)
+
+	if s.SmRpMti != nil {
+		v := gsm_map.SMRPMTI(*s.SmRpMti)
+		arg.SmRPMTI = &v
+	}
+
+	if len(s.SmRpSmea) > 0 {
+		v := gsm_map.SMRPSMEA(s.SmRpSmea)
+		arg.SmRPSMEA = &v
+	}
+
+	if s.SmDeliveryNotIntended != nil {
+		v := gsm_map.SMDeliveryNotIntended(*s.SmDeliveryNotIntended)
+		arg.SmDeliveryNotIntended = &v
+	}
+
+	arg.IpSmGwGuidanceIndicator = boolToNullPtr(s.IpSmGwGuidanceIndicator)
+
+	if s.IMSI != "" {
+		imsiBytes, err := tbcd.Encode(s.IMSI)
+		if err != nil {
+			return nil, fmt.Errorf("encoding IMSI: %w", err)
+		}
+		v := gsm_map.IMSI(imsiBytes)
+		arg.Imsi = &v
+	}
+
+	arg.SingleAttemptDelivery = boolToNullPtr(s.SingleAttemptDelivery)
+	arg.T4TriggerIndicator = boolToNullPtr(s.T4TriggerIndicator)
+
+	if s.CorrelationID != nil {
+		cid, err := convertCorrelationIDToWire(s.CorrelationID)
+		if err != nil {
+			return nil, fmt.Errorf("CorrelationID: %w", err)
+		}
+		arg.CorrelationID = cid
+	}
+
+	arg.SmsfSupportIndicator = boolToNullPtr(s.SmsfSupportIndicator)
+
+	return arg, nil
 }
 
 func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
@@ -81,7 +125,7 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 		return nil, fmt.Errorf("decoding ServiceCentreAddress: %w", err)
 	}
 
-	return &SriSm{
+	s := &SriSm{
 		MSISDN:               msisdn,
 		MSISDNNature:         msisdnNature,
 		MSISDNPlan:           msisdnPlan,
@@ -89,7 +133,45 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 		ServiceCentreAddress: sca,
 		SCANature:            scaNature,
 		SCAPlan:              scaPlan,
-	}, nil
+	}
+
+	// Optional fields (post-extension marker).
+	s.GprsSupportIndicator = nullPtrToBool(arg.GprsSupportIndicator)
+
+	if arg.SmRPMTI != nil {
+		v := int(*arg.SmRPMTI)
+		s.SmRpMti = &v
+	}
+
+	if arg.SmRPSMEA != nil {
+		s.SmRpSmea = HexBytes(*arg.SmRPSMEA)
+	}
+
+	if arg.SmDeliveryNotIntended != nil {
+		v := SmDeliveryNotIntended(*arg.SmDeliveryNotIntended)
+		s.SmDeliveryNotIntended = &v
+	}
+
+	s.IpSmGwGuidanceIndicator = nullPtrToBool(arg.IpSmGwGuidanceIndicator)
+
+	if arg.Imsi != nil {
+		imsi, err := tbcd.Decode(*arg.Imsi)
+		if err != nil {
+			return nil, fmt.Errorf("decoding optional IMSI: %w", err)
+		}
+		s.IMSI = imsi
+	}
+
+	s.SingleAttemptDelivery = nullPtrToBool(arg.SingleAttemptDelivery)
+	s.T4TriggerIndicator = nullPtrToBool(arg.T4TriggerIndicator)
+
+	if arg.CorrelationID != nil {
+		s.CorrelationID = convertWireToCorrelationID(arg.CorrelationID)
+	}
+
+	s.SmsfSupportIndicator = nullPtrToBool(arg.SmsfSupportIndicator)
+
+	return s, nil
 }
 
 // --- SRI-SM Response ---
@@ -109,12 +191,106 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 		return nil, fmt.Errorf("encoding NetworkNodeNumber: %w", err)
 	}
 
-	return &gsm_map.RoutingInfoForSMRes{
-		Imsi: gsm_map.IMSI(imsiBytes),
-		LocationInfoWithLMSI: gsm_map.LocationInfoWithLMSI{
-			NetworkNodeNumber: gsm_map.ISDNAddressString(nnn),
-		},
-	}, nil
+	li := gsm_map.LocationInfoWithLMSI{
+		NetworkNodeNumber: gsm_map.ISDNAddressString(nnn),
+	}
+
+	// LMSI
+	if len(s.LocationInfoWithLMSI.LMSI) > 0 {
+		v := gsm_map.LMSI(s.LocationInfoWithLMSI.LMSI)
+		li.Lmsi = &v
+	}
+
+	// GprsNodeIndicator
+	li.GprsNodeIndicator = boolToNullPtr(s.LocationInfoWithLMSI.GprsNodeIndicator)
+
+	// AdditionalNumber
+	if s.LocationInfoWithLMSI.AdditionalNumber != nil {
+		an, err := convertAdditionalNumberToWire(s.LocationInfoWithLMSI.AdditionalNumber)
+		if err != nil {
+			return nil, fmt.Errorf("encoding AdditionalNumber: %w", err)
+		}
+		li.AdditionalNumber = an
+	}
+
+	// NetworkNodeDiameterAddress
+	if s.LocationInfoWithLMSI.NetworkNodeDiameterAddress != nil {
+		li.NetworkNodeDiameterAddress = convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.NetworkNodeDiameterAddress)
+	}
+
+	// AdditionalNetworkNodeDiameterAddress
+	if s.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress != nil {
+		li.AdditionalNetworkNodeDiameterAddress = convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress)
+	}
+
+	// ThirdNumber
+	if s.LocationInfoWithLMSI.ThirdNumber != nil {
+		tn, err := convertAdditionalNumberToWire(s.LocationInfoWithLMSI.ThirdNumber)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ThirdNumber: %w", err)
+		}
+		li.ThirdNumber = tn
+	}
+
+	// ThirdNetworkNodeDiameterAddress
+	if s.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress != nil {
+		li.ThirdNetworkNodeDiameterAddress = convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress)
+	}
+
+	// ImsNodeIndicator
+	li.ImsNodeIndicator = boolToNullPtr(s.LocationInfoWithLMSI.ImsNodeIndicator)
+
+	// Smsf3gppNumber
+	if s.LocationInfoWithLMSI.Smsf3gppNumber != "" {
+		encoded, err := encodeAddressField(s.LocationInfoWithLMSI.Smsf3gppNumber, s.LocationInfoWithLMSI.Smsf3gppNumberNature, s.LocationInfoWithLMSI.Smsf3gppNumberPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding Smsf3gppNumber: %w", err)
+		}
+		v := gsm_map.ISDNAddressString(encoded)
+		li.Smsf3gppNumber = &v
+	}
+
+	// Smsf3gppDiameterAddress
+	if s.LocationInfoWithLMSI.Smsf3gppDiameterAddress != nil {
+		li.Smsf3gppDiameterAddress = convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.Smsf3gppDiameterAddress)
+	}
+
+	// SmsfNon3gppNumber
+	if s.LocationInfoWithLMSI.SmsfNon3gppNumber != "" {
+		encoded, err := encodeAddressField(s.LocationInfoWithLMSI.SmsfNon3gppNumber, s.LocationInfoWithLMSI.SmsfNon3gppNumberNature, s.LocationInfoWithLMSI.SmsfNon3gppNumberPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SmsfNon3gppNumber: %w", err)
+		}
+		v := gsm_map.ISDNAddressString(encoded)
+		li.SmsfNon3gppNumber = &v
+	}
+
+	// SmsfNon3gppDiameterAddress
+	if s.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress != nil {
+		li.SmsfNon3gppDiameterAddress = convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress)
+	}
+
+	// Smsf3gppAddressIndicator
+	li.Smsf3gppAddressIndicator = boolToNullPtr(s.LocationInfoWithLMSI.Smsf3gppAddressIndicator)
+
+	// SmsfNon3gppAddressIndicator
+	li.SmsfNon3gppAddressIndicator = boolToNullPtr(s.LocationInfoWithLMSI.SmsfNon3gppAddressIndicator)
+
+	out := &gsm_map.RoutingInfoForSMRes{
+		Imsi:                 gsm_map.IMSI(imsiBytes),
+		LocationInfoWithLMSI: li,
+	}
+
+	// IpSmGwGuidance
+	if s.IpSmGwGuidance != nil {
+		gw, err := convertIpSmGwGuidanceToWire(s.IpSmGwGuidance)
+		if err != nil {
+			return nil, fmt.Errorf("IpSmGwGuidance: %w", err)
+		}
+		out.IpSmGwGuidance = gw
+	}
+
+	return out, nil
 }
 
 func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error) {
@@ -128,14 +304,226 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 		return nil, fmt.Errorf("decoding NetworkNodeNumber: %w", err)
 	}
 
-	return &SriSmResp{
-		IMSI: imsi,
-		LocationInfoWithLMSI: LocationInfoWithLMSI{
-			NetworkNodeNumber:       nnn,
-			NetworkNodeNumberNature: nnnNature,
-			NetworkNodeNumberPlan:   nnnPlan,
-		},
+	li := LocationInfoWithLMSI{
+		NetworkNodeNumber:       nnn,
+		NetworkNodeNumberNature: nnnNature,
+		NetworkNodeNumberPlan:   nnnPlan,
+	}
+
+	// LMSI
+	if res.LocationInfoWithLMSI.Lmsi != nil {
+		li.LMSI = HexBytes(*res.LocationInfoWithLMSI.Lmsi)
+	}
+
+	// GprsNodeIndicator
+	li.GprsNodeIndicator = nullPtrToBool(res.LocationInfoWithLMSI.GprsNodeIndicator)
+
+	// AdditionalNumber
+	if res.LocationInfoWithLMSI.AdditionalNumber != nil {
+		an, err := convertWireToAdditionalNumber(res.LocationInfoWithLMSI.AdditionalNumber)
+		if err != nil {
+			return nil, fmt.Errorf("decoding AdditionalNumber: %w", err)
+		}
+		li.AdditionalNumber = an
+	}
+
+	// NetworkNodeDiameterAddress
+	if res.LocationInfoWithLMSI.NetworkNodeDiameterAddress != nil {
+		li.NetworkNodeDiameterAddress = convertWireToNetworkNodeDiameterAddress(res.LocationInfoWithLMSI.NetworkNodeDiameterAddress)
+	}
+
+	// AdditionalNetworkNodeDiameterAddress
+	if res.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress != nil {
+		li.AdditionalNetworkNodeDiameterAddress = convertWireToNetworkNodeDiameterAddress(res.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress)
+	}
+
+	// ThirdNumber
+	if res.LocationInfoWithLMSI.ThirdNumber != nil {
+		tn, err := convertWireToAdditionalNumber(res.LocationInfoWithLMSI.ThirdNumber)
+		if err != nil {
+			return nil, fmt.Errorf("decoding ThirdNumber: %w", err)
+		}
+		li.ThirdNumber = tn
+	}
+
+	// ThirdNetworkNodeDiameterAddress
+	if res.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress != nil {
+		li.ThirdNetworkNodeDiameterAddress = convertWireToNetworkNodeDiameterAddress(res.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress)
+	}
+
+	// ImsNodeIndicator
+	li.ImsNodeIndicator = nullPtrToBool(res.LocationInfoWithLMSI.ImsNodeIndicator)
+
+	// Smsf3gppNumber
+	if res.LocationInfoWithLMSI.Smsf3gppNumber != nil {
+		num, nature, plan, err := decodeAddressField(*res.LocationInfoWithLMSI.Smsf3gppNumber)
+		if err != nil {
+			return nil, fmt.Errorf("decoding Smsf3gppNumber: %w", err)
+		}
+		li.Smsf3gppNumber = num
+		li.Smsf3gppNumberNature = nature
+		li.Smsf3gppNumberPlan = plan
+	}
+
+	// Smsf3gppDiameterAddress
+	if res.LocationInfoWithLMSI.Smsf3gppDiameterAddress != nil {
+		li.Smsf3gppDiameterAddress = convertWireToNetworkNodeDiameterAddress(res.LocationInfoWithLMSI.Smsf3gppDiameterAddress)
+	}
+
+	// SmsfNon3gppNumber
+	if res.LocationInfoWithLMSI.SmsfNon3gppNumber != nil {
+		num, nature, plan, err := decodeAddressField(*res.LocationInfoWithLMSI.SmsfNon3gppNumber)
+		if err != nil {
+			return nil, fmt.Errorf("decoding SmsfNon3gppNumber: %w", err)
+		}
+		li.SmsfNon3gppNumber = num
+		li.SmsfNon3gppNumberNature = nature
+		li.SmsfNon3gppNumberPlan = plan
+	}
+
+	// SmsfNon3gppDiameterAddress
+	if res.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress != nil {
+		li.SmsfNon3gppDiameterAddress = convertWireToNetworkNodeDiameterAddress(res.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress)
+	}
+
+	// Smsf3gppAddressIndicator
+	li.Smsf3gppAddressIndicator = nullPtrToBool(res.LocationInfoWithLMSI.Smsf3gppAddressIndicator)
+
+	// SmsfNon3gppAddressIndicator
+	li.SmsfNon3gppAddressIndicator = nullPtrToBool(res.LocationInfoWithLMSI.SmsfNon3gppAddressIndicator)
+
+	resp := &SriSmResp{
+		IMSI:                 imsi,
+		LocationInfoWithLMSI: li,
+	}
+
+	// IpSmGwGuidance
+	if res.IpSmGwGuidance != nil {
+		resp.IpSmGwGuidance = convertWireToIpSmGwGuidance(res.IpSmGwGuidance)
+	}
+
+	return resp, nil
+}
+
+// --- SRI-SM helper converters ---
+
+func convertAdditionalNumberToWire(a *AdditionalNumber) (*gsm_map.AdditionalNumber, error) {
+	hasMsc := a.MscNumber != ""
+	hasSgsn := a.SgsnNumber != ""
+	switch {
+	case hasMsc && hasSgsn:
+		return nil, ErrSriChoiceMultipleAlternatives
+	case hasMsc:
+		encoded, err := encodeAddressField(a.MscNumber, a.MscNumberNature, a.MscNumberPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding MscNumber: %w", err)
+		}
+		v := gsm_map.NewAdditionalNumberMscNumber(gsm_map.ISDNAddressString(encoded))
+		return &v, nil
+	case hasSgsn:
+		encoded, err := encodeAddressField(a.SgsnNumber, a.SgsnNumberNature, a.SgsnNumberPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SgsnNumber: %w", err)
+		}
+		v := gsm_map.NewAdditionalNumberSgsnNumber(gsm_map.ISDNAddressString(encoded))
+		return &v, nil
+	default:
+		return nil, ErrSriChoiceNoAlternative
+	}
+}
+
+func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumber, error) {
+	an := &AdditionalNumber{}
+	switch w.Choice {
+	case gsm_map.AdditionalNumberChoiceMscNumber:
+		if w.MscNumber == nil {
+			return nil, ErrSriChoiceNoAlternative
+		}
+		num, nature, plan, err := decodeAddressField(*w.MscNumber)
+		if err != nil {
+			return nil, fmt.Errorf("decoding MscNumber: %w", err)
+		}
+		an.MscNumber = num
+		an.MscNumberNature = nature
+		an.MscNumberPlan = plan
+	case gsm_map.AdditionalNumberChoiceSgsnNumber:
+		if w.SgsnNumber == nil {
+			return nil, ErrSriChoiceNoAlternative
+		}
+		num, nature, plan, err := decodeAddressField(*w.SgsnNumber)
+		if err != nil {
+			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
+		}
+		an.SgsnNumber = num
+		an.SgsnNumberNature = nature
+		an.SgsnNumberPlan = plan
+	default:
+		return nil, ErrSriChoiceNoAlternative
+	}
+	return an, nil
+}
+
+func convertNetworkNodeDiameterAddressToWire(n *NetworkNodeDiameterAddress) *gsm_map.NetworkNodeDiameterAddress {
+	return &gsm_map.NetworkNodeDiameterAddress{
+		DiameterName:  gsm_map.DiameterIdentity(n.DiameterName),
+		DiameterRealm: gsm_map.DiameterIdentity(n.DiameterRealm),
+	}
+}
+
+func convertWireToNetworkNodeDiameterAddress(w *gsm_map.NetworkNodeDiameterAddress) *NetworkNodeDiameterAddress {
+	return &NetworkNodeDiameterAddress{
+		DiameterName:  HexBytes(w.DiameterName),
+		DiameterRealm: HexBytes(w.DiameterRealm),
+	}
+}
+
+func convertCorrelationIDToWire(c *SriSmCorrelationID) (*gsm_map.CorrelationID, error) {
+	if len(c.SipUriB) == 0 {
+		return nil, ErrSriSmMissingSipUriB
+	}
+	out := &gsm_map.CorrelationID{
+		SipUriB: gsm_map.SIPURI(c.SipUriB),
+	}
+	if len(c.HlrID) > 0 {
+		v := gsm_map.HLRId(c.HlrID)
+		out.HlrId = &v
+	}
+	if len(c.SipUriA) > 0 {
+		v := gsm_map.SIPURI(c.SipUriA)
+		out.SipUriA = &v
+	}
+	return out, nil
+}
+
+func convertWireToCorrelationID(w *gsm_map.CorrelationID) *SriSmCorrelationID {
+	c := &SriSmCorrelationID{
+		SipUriB: HexBytes(w.SipUriB),
+	}
+	if w.HlrId != nil {
+		c.HlrID = HexBytes(*w.HlrId)
+	}
+	if w.SipUriA != nil {
+		c.SipUriA = HexBytes(*w.SipUriA)
+	}
+	return c
+}
+
+func convertIpSmGwGuidanceToWire(g *IpSmGwGuidance) (*gsm_map.IPSMGWGuidance, error) {
+	if g.MinimumDeliveryTimeValue < 30 || g.MinimumDeliveryTimeValue > 600 ||
+		g.RecommendedDeliveryTimeValue < 30 || g.RecommendedDeliveryTimeValue > 600 {
+		return nil, ErrSriSmInvalidDeliveryTimerValue
+	}
+	return &gsm_map.IPSMGWGuidance{
+		MinimumDeliveryTimeValue:     gsm_map.SMDeliveryTimerValue(g.MinimumDeliveryTimeValue),
+		RecommendedDeliveryTimeValue: gsm_map.SMDeliveryTimerValue(g.RecommendedDeliveryTimeValue),
 	}, nil
+}
+
+func convertWireToIpSmGwGuidance(w *gsm_map.IPSMGWGuidance) *IpSmGwGuidance {
+	return &IpSmGwGuidance{
+		MinimumDeliveryTimeValue:     int(w.MinimumDeliveryTimeValue),
+		RecommendedDeliveryTimeValue: int(w.RecommendedDeliveryTimeValue),
+	}
 }
 
 // --- MT-ForwardSM ---

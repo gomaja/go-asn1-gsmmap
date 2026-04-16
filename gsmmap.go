@@ -42,7 +42,45 @@ func (h *HexBytes) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// SriSm represents a Send Routing Info for Short Message request.
+// SmDeliveryNotIntended per 3GPP TS 29.002.
+type SmDeliveryNotIntended int
+
+const (
+	SmDeliveryOnlyIMSIRequested   SmDeliveryNotIntended = 0
+	SmDeliveryOnlyMCCMNCRequested SmDeliveryNotIntended = 1
+)
+
+// SriSmCorrelationID corresponds to CorrelationID SEQUENCE.
+type SriSmCorrelationID struct {
+	HlrID   HexBytes // HLR-Id, optional
+	SipUriA HexBytes // SIP-URI, optional
+	SipUriB HexBytes // SIP-URI, mandatory within CorrelationID
+}
+
+// AdditionalNumber is the Additional-Number CHOICE.
+// Set exactly one of MscNumber or SgsnNumber.
+type AdditionalNumber struct {
+	MscNumber       string
+	MscNumberNature uint8
+	MscNumberPlan   uint8
+	SgsnNumber       string
+	SgsnNumberNature uint8
+	SgsnNumberPlan   uint8
+}
+
+// NetworkNodeDiameterAddress SEQUENCE.
+type NetworkNodeDiameterAddress struct {
+	DiameterName  HexBytes // DiameterIdentity
+	DiameterRealm HexBytes // DiameterIdentity
+}
+
+// IpSmGwGuidance SEQUENCE (IP-SM-GW-Guidance).
+type IpSmGwGuidance struct {
+	MinimumDeliveryTimeValue     int // SM-DeliveryTimerValue (INTEGER 30..600)
+	RecommendedDeliveryTimeValue int // SM-DeliveryTimerValue
+}
+
+// SriSm represents a Send Routing Info for Short Message request (opCode 45).
 type SriSm struct {
 	MSISDN               string
 	MSISDNNature         uint8 // address nature indicator (default: International)
@@ -51,12 +89,25 @@ type SriSm struct {
 	ServiceCentreAddress string
 	SCANature            uint8 // address nature indicator (default: International)
 	SCAPlan              uint8 // numbering plan indicator (default: ISDN)
+
+	// Optional fields (post-extension marker).
+	GprsSupportIndicator    bool                   // [7] NULL — SMS-GMSC supports receiving two numbers from HLR
+	SmRpMti                 *int                   // [8] SM-RP-MTI: 0=SMS Deliver, 1=SMS Status Report (0..10)
+	SmRpSmea                HexBytes               // [9] SM-RP-SMEA: 1..12 octets (address per 3GPP TS 23.040)
+	SmDeliveryNotIntended   *SmDeliveryNotIntended  // [10] ENUMERATED
+	IpSmGwGuidanceIndicator bool                   // [11] NULL
+	IMSI                    string                 // [12] optional IMSI for delivery control
+	SingleAttemptDelivery   bool                   // [13] NULL
+	T4TriggerIndicator      bool                   // [14] NULL
+	CorrelationID           *SriSmCorrelationID    // [15] SEQUENCE
+	SmsfSupportIndicator    bool                   // [16] NULL
 }
 
 // SriSmResp represents a Send Routing Info for Short Message response.
 type SriSmResp struct {
 	IMSI                 string
 	LocationInfoWithLMSI LocationInfoWithLMSI
+	IpSmGwGuidance       *IpSmGwGuidance // [5] optional
 }
 
 // LocationInfoWithLMSI contains location information with LMSI.
@@ -64,6 +115,24 @@ type LocationInfoWithLMSI struct {
 	NetworkNodeNumber       string
 	NetworkNodeNumberNature uint8 // address nature indicator
 	NetworkNodeNumberPlan   uint8 // numbering plan indicator
+	LMSI                    HexBytes          // 4 octets; nil if absent
+	GprsNodeIndicator       bool              // [5] NULL
+	AdditionalNumber        *AdditionalNumber // [6] CHOICE
+	NetworkNodeDiameterAddress           *NetworkNodeDiameterAddress // [7]
+	AdditionalNetworkNodeDiameterAddress *NetworkNodeDiameterAddress // [8]
+	ThirdNumber             *AdditionalNumber           // [9] CHOICE
+	ThirdNetworkNodeDiameterAddress      *NetworkNodeDiameterAddress // [10]
+	ImsNodeIndicator        bool              // [11] NULL
+	Smsf3gppNumber          string            // [12]
+	Smsf3gppNumberNature    uint8
+	Smsf3gppNumberPlan      uint8
+	Smsf3gppDiameterAddress *NetworkNodeDiameterAddress // [13]
+	SmsfNon3gppNumber       string            // [14]
+	SmsfNon3gppNumberNature uint8
+	SmsfNon3gppNumberPlan   uint8
+	SmsfNon3gppDiameterAddress *NetworkNodeDiameterAddress // [15]
+	Smsf3gppAddressIndicator    bool // [16] NULL
+	SmsfNon3gppAddressIndicator bool // [17] NULL
 }
 
 // MtFsm represents a Mobile Terminated Forward Short Message.
@@ -518,4 +587,7 @@ var (
 	ErrSriInvalidCallReferenceNumber = errors.New("sri: CallReferenceNumber, if set, must be 1..8 octets")
 	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
 	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
+
+	ErrSriSmMissingSipUriB             = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
+	ErrSriSmInvalidDeliveryTimerValue  = errors.New("sriSm: SM-DeliveryTimerValue must be 30..600")
 )
