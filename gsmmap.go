@@ -226,7 +226,29 @@ type MoFsmResp struct {
 	SmRpUI HexBytes // optional SM-RP-UI (SignalInfo); nil if absent
 }
 
-// UpdateLocation represents an UpdateLocation request.
+// AddInfo corresponds to ADD-Info SEQUENCE (opCode 2).
+type AddInfo struct {
+	IMEISV                   string // IMEI (TBCD-decoded)
+	SkipSubscriberDataUpdate bool
+}
+
+// SuperChargerInfo is the SuperChargerInfo CHOICE (opCode 2).
+// Set exactly one: SendSubscriberData=true, or SubscriberDataStored (non-nil).
+type SuperChargerInfo struct {
+	SendSubscriberData   bool
+	SubscriberDataStored HexBytes // AgeIndicator; nil if not this alternative
+}
+
+// SupportedRATTypes BIT STRING (5 bits defined) (opCode 2).
+type SupportedRATTypes struct {
+	UTRAN          bool // bit 0
+	GERAN          bool // bit 1
+	GAN            bool // bit 2
+	IHSPAEvolution bool // bit 3
+	EUTRAN         bool // bit 4
+}
+
+// UpdateLocation represents an UpdateLocation request (opCode 2).
 type UpdateLocation struct {
 	IMSI      string
 	MSCNumber string
@@ -237,12 +259,35 @@ type UpdateLocation struct {
 	VLRPlan   uint8 // numbering plan indicator (default: ISDN)
 
 	VlrCapability *VlrCapability
+
+	// Optional fields.
+	LMSI                        HexBytes                    // [10] 4 octets; nil if absent
+	InformPreviousNetworkEntity bool                        // [11] NULL
+	CsLCSNotSupportedByUE       bool                        // [12] NULL
+	VGmlcAddress                HexBytes                    // [2] GSN-Address; nil if absent
+	AddInfo                     *AddInfo                    // [13]
+	PagingArea                  []HexBytes                  // [14] list of LocationArea (kept opaque)
+	SkipSubscriberDataUpdate    bool                        // [15] NULL
+	RestorationIndicator        bool                        // [16] NULL
+	EplmnList                   []HexBytes                  // [3] list of PLMNId (3 octets each)
+	MmeDiameterAddress          *NetworkNodeDiameterAddress // [4]
 }
 
-// VlrCapability contains VLR capability information.
+// VlrCapability contains VLR capability information (opCode 2).
 type VlrCapability struct {
-	SupportedCamelPhases       *SupportedCamelPhases
-	SupportedLCSCapabilitySets *SupportedLCSCapabilitySets
+	SupportedCamelPhases       *SupportedCamelPhases       // [0]
+	SupportedLCSCapabilitySets *SupportedLCSCapabilitySets // [5]
+
+	SolsaSupportIndicator                      bool              // [2] NULL
+	IstSupportIndicator                        *int              // [1] 0=basicISTSupported, 1=istCommandSupported
+	SuperChargerSupportedInServingNetworkEntity *SuperChargerInfo // [3] CHOICE
+	LongFTNSupported                           bool              // [4] NULL
+	OfferedCamel4CSIs                          *OfferedCamel4CSIs // [6]
+	SupportedRATTypesIndicator                 *SupportedRATTypes // [7]
+	LongGroupIDSupported                       bool              // [8] NULL
+	MtRoamingForwardingSupported               bool              // [9] NULL
+	MsisdnLessOperationSupported               bool              // [10] NULL
+	ResetIdsSupported                          bool              // [11] NULL
 }
 
 // SupportedCamelPhases indicates which CAMEL phases are supported.
@@ -262,11 +307,13 @@ type SupportedLCSCapabilitySets struct {
 	LcsCapabilitySet5 bool
 }
 
-// UpdateLocationRes represents an UpdateLocation response.
+// UpdateLocationRes represents an UpdateLocation response (opCode 2).
 type UpdateLocationRes struct {
-	HLRNumber       string
-	HLRNumberNature uint8 // address nature indicator
-	HLRNumberPlan   uint8 // numbering plan indicator
+	HLRNumber            string
+	HLRNumberNature      uint8 // address nature indicator
+	HLRNumberPlan        uint8 // numbering plan indicator
+	AddCapability        bool  // NULL
+	PagingAreaCapability bool  // [0] NULL
 }
 
 // UpdateGprsLocation represents an UpdateGprsLocation request.
@@ -673,4 +720,7 @@ var (
 	ErrMoFsmSmRpDaMultipleAlternatives = errors.New("moFsm: SmRpDa CHOICE has multiple alternatives set")
 	ErrMoFsmSmRpOaNoAlternative        = errors.New("moFsm: SmRpOa CHOICE has no alternative set")
 	ErrMoFsmSmRpOaMultipleAlternatives = errors.New("moFsm: SmRpOa CHOICE has multiple alternatives set")
+
+	ErrSuperChargerInfoNoAlternative        = errors.New("updateLocation: SuperChargerInfo CHOICE has no alternative set")
+	ErrSuperChargerInfoMultipleAlternatives = errors.New("updateLocation: SuperChargerInfo CHOICE has multiple alternatives set")
 )
