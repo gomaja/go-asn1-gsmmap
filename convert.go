@@ -1630,6 +1630,9 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	}
 
 	if s.SupportedFeaturesBits > 0 {
+		if len(s.SupportedFeatures) == 0 || s.SupportedFeaturesBits > len(s.SupportedFeatures)*8 {
+			return nil, fmt.Errorf("SGSNCapability: SupportedFeaturesBits (%d) inconsistent with bytes (%d)", s.SupportedFeaturesBits, len(s.SupportedFeatures))
+		}
 		bs := runtime.BitString{Bytes: append([]byte(nil), s.SupportedFeatures...), BitLength: s.SupportedFeaturesBits}
 		out.SupportedFeatures = &bs
 	}
@@ -1647,6 +1650,9 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	out.ResetIdsSupported = boolToNullPtr(s.ResetIdsSupported)
 
 	if s.ExtSupportedFeaturesBits > 0 {
+		if len(s.ExtSupportedFeatures) == 0 || s.ExtSupportedFeaturesBits > len(s.ExtSupportedFeatures)*8 {
+			return nil, fmt.Errorf("SGSNCapability: ExtSupportedFeaturesBits (%d) inconsistent with bytes (%d)", s.ExtSupportedFeaturesBits, len(s.ExtSupportedFeatures))
+		}
 		bs := runtime.BitString{Bytes: append([]byte(nil), s.ExtSupportedFeatures...), BitLength: s.ExtSupportedFeaturesBits}
 		out.ExtSupportedFeatures = &bs
 	}
@@ -1727,9 +1733,15 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 		return nil, ErrSriChoiceNoAlternative
 	}
 	if hasPdn {
-		pgu := convertPdnGwUpdateToWire(e.PdnGwUpdate)
+		pgu, err := convertPdnGwUpdateToWire(e.PdnGwUpdate)
+		if err != nil {
+			return nil, err
+		}
 		v := gsm_map.NewEPSInfoPdnGwUpdate(*pgu)
 		return &v, nil
+	}
+	if len(e.IsrInformation) == 0 || e.IsrInformationBits > len(e.IsrInformation)*8 {
+		return nil, fmt.Errorf("EpsInfo: IsrInformationBits (%d) inconsistent with bytes (%d)", e.IsrInformationBits, len(e.IsrInformation))
 	}
 	bs := runtime.BitString{Bytes: append([]byte(nil), e.IsrInformation...), BitLength: e.IsrInformationBits}
 	v := gsm_map.NewEPSInfoIsrInformation(bs)
@@ -1744,10 +1756,6 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 		}
 		return &EpsInfo{PdnGwUpdate: convertWireToPdnGwUpdate(w.PdnGwUpdate)}, nil
 	case gsm_map.EPSInfoChoiceIsrInformation:
-		// go-asn1 v0.1.7 has a known TODO in EPSInfo.UnmarshalBER that leaves
-		// IsrInformation as nil even when the ISR alternative is present on
-		// the wire. Surface the alternative with an empty BIT STRING so the
-		// caller can at least tell which CHOICE was picked.
 		out := &EpsInfo{}
 		if w.IsrInformation != nil {
 			out.IsrInformation = HexBytes(append([]byte(nil), w.IsrInformation.Bytes...))
@@ -1759,20 +1767,24 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 	}
 }
 
-func convertPdnGwUpdateToWire(p *PdnGwUpdate) *gsm_map.PDNGWUpdate {
+func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 	out := &gsm_map.PDNGWUpdate{}
 	if len(p.APN) > 0 {
 		apn := gsm_map.APN(append([]byte(nil), p.APN...))
 		out.Apn = &apn
 	}
 	if p.PdnGwIdentity != nil {
-		out.PdnGwIdentity = convertPdnGwIdentityToWire(p.PdnGwIdentity)
+		id, err := convertPdnGwIdentityToWire(p.PdnGwIdentity)
+		if err != nil {
+			return nil, err
+		}
+		out.PdnGwIdentity = id
 	}
 	if p.ContextID != nil {
 		v := gsm_map.ContextId(int64(*p.ContextID))
 		out.ContextId = &v
 	}
-	return out
+	return out, nil
 }
 
 func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) *PdnGwUpdate {
@@ -1790,7 +1802,16 @@ func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) *PdnGwUpdate {
 	return out
 }
 
-func convertPdnGwIdentityToWire(p *PdnGwIdentity) *gsm_map.PDNGWIdentity {
+func convertPdnGwIdentityToWire(p *PdnGwIdentity) (*gsm_map.PDNGWIdentity, error) {
+	if len(p.IPv4Address) > 0 && len(p.IPv4Address) != 4 {
+		return nil, fmt.Errorf("PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", len(p.IPv4Address))
+	}
+	if len(p.IPv6Address) > 0 && len(p.IPv6Address) != 16 {
+		return nil, fmt.Errorf("PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", len(p.IPv6Address))
+	}
+	if len(p.IPv4Address) == 0 && len(p.IPv6Address) == 0 && len(p.Name) == 0 {
+		return nil, fmt.Errorf("PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be set")
+	}
 	out := &gsm_map.PDNGWIdentity{}
 	if len(p.IPv4Address) > 0 {
 		v := gsm_map.PDPAddress(append([]byte(nil), p.IPv4Address...))
@@ -1804,7 +1825,7 @@ func convertPdnGwIdentityToWire(p *PdnGwIdentity) *gsm_map.PDNGWIdentity {
 		v := gsm_map.FQDN(append([]byte(nil), p.Name...))
 		out.PdnGwName = &v
 	}
-	return out
+	return out, nil
 }
 
 func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) *PdnGwIdentity {

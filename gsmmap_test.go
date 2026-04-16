@@ -2034,10 +2034,12 @@ func TestUpdateGprsLocationEpsInfoIsr(t *testing.T) {
 	if got.EpsInfo.PdnGwUpdate != nil {
 		t.Error("PdnGwUpdate should be nil in IsrInformation alternative")
 	}
-	// NOTE: go-asn1 v0.1.7 has a known TODO in EPSInfo.UnmarshalBER that
-	// leaves IsrInformation data un-decoded. We still confirm the CHOICE
-	// alternative was recognised (PdnGwUpdate remains nil and EpsInfo is
-	// non-nil). Full bit-level round-trip is pending an upstream fix.
+	if got.EpsInfo.IsrInformationBits != in.EpsInfo.IsrInformationBits {
+		t.Errorf("IsrInformationBits: got %d want %d", got.EpsInfo.IsrInformationBits, in.EpsInfo.IsrInformationBits)
+	}
+	if !bytes.Equal(got.EpsInfo.IsrInformation, in.EpsInfo.IsrInformation) {
+		t.Errorf("IsrInformation: got %x want %x", got.EpsInfo.IsrInformation, in.EpsInfo.IsrInformation)
+	}
 }
 
 func TestUpdateGprsLocationResFullRoundTrip(t *testing.T) {
