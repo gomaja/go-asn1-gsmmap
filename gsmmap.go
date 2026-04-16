@@ -477,7 +477,7 @@ type RequestedInfo struct {
 	LocalTimeZoneRequest            bool
 }
 
-// AnyTimeInterrogation represents an ATI request.
+// AnyTimeInterrogation represents an ATI request (opCode 71).
 type AnyTimeInterrogation struct {
 	SubscriberIdentity SubscriberIdentity
 	RequestedInfo      RequestedInfo
@@ -486,21 +486,91 @@ type AnyTimeInterrogation struct {
 	GsmSCFPlan         uint8 // numbering plan indicator (default: ISDN)
 }
 
-// AnyTimeInterrogationRes represents an ATI response.
+// AnyTimeInterrogationRes represents an ATI response (opCode 71).
 type AnyTimeInterrogationRes struct {
 	SubscriberInfo SubscriberInfo
 }
 
-// SubscriberInfo contains subscriber information returned by ATI.
+// SubscriberInfo contains subscriber information returned by ATI (opCode 71).
 type SubscriberInfo struct {
-	LocationInformation     *CSLocationInformation
-	SubscriberState         *SubscriberStateInfo
-	LocationInformationEPS  *EPSLocationInformation
-	LocationInformationGPRS *GPRSLocationInformation
-	IMEI                    string // decoded TBCD; empty if absent
-	MsClassmark2            HexBytes // raw octets; nil if absent
-	TimeZone                HexBytes // raw octet; nil if absent
-	DaylightSavingTime      *int   // nil if absent; 0=noAdjustment, 1=+1h, 2=+2h
+	LocationInformation     *CSLocationInformation  // [0]
+	SubscriberState         *SubscriberStateInfo    // [1]
+	LocationInformationGPRS *GPRSLocationInformation // [3]
+	PsSubscriberState       *PsSubscriberState      // [4] CHOICE
+	IMEI                    string                  // [5] decoded TBCD; empty if absent
+	MsClassmark2            HexBytes                // [6] raw octets; nil if absent
+	GprsMSClass             *GprsMSClass            // [7]
+	MnpInfoRes              *MnpInfoRes             // [8]
+	ImsVoiceOverPSSessionsIndication *ImsVoiceOverPSSessionsIndication // [9]
+	LastUEActivityTime      HexBytes                // [10] Time octet string; nil if absent
+	LastRATType             *UsedRatType            // [11]
+	EpsSubscriberState      *PsSubscriberState      // [12] CHOICE
+	LocationInformationEPS  *EPSLocationInformation // [13]
+	TimeZone                HexBytes                // [14] raw octet; nil if absent
+	DaylightSavingTime      *int                    // [15] nil if absent; 0=noAdjustment, 1=+1h, 2=+2h
+	LocationInformation5GS  *LocationInformation5GS // [16]
+}
+
+// PsSubscriberState is the PS-SubscriberState CHOICE (opCode 71).
+// Set exactly one alternative. The PDP-ContextInfoList alternatives carry
+// opaque BER-encoded gsm_map.PDPContextInfo bytes.
+type PsSubscriberState struct {
+	NotProvidedFromSGSNorMME         bool       // [0] NULL
+	PsDetached                       bool       // [1] NULL
+	PsAttachedNotReachableForPaging  bool       // [2] NULL
+	PsAttachedReachableForPaging     bool       // [3] NULL
+	PsPDPActiveNotReachableForPaging []HexBytes // [4] opaque PDP-ContextInfoList
+	PsPDPActiveReachableForPaging    []HexBytes // [5] opaque PDP-ContextInfoList
+	NetDetNotReachable               *int       // untagged, NotReachableReason
+}
+
+// MnpInfoRes is the MNPInfoRes SEQUENCE (opCode 71, number portability result).
+type MnpInfoRes struct {
+	RouteingNumber          HexBytes                 // [0] raw bytes
+	IMSI                    string                   // [1] TBCD-decoded
+	MSISDN                  string                   // [2] ISDN
+	MSISDNNature            uint8                    // address nature indicator
+	MSISDNPlan              uint8                    // numbering plan indicator
+	NumberPortabilityStatus *NumberPortabilityStatus // [3] enum
+}
+
+// ImsVoiceOverPSSessionsIndication per 3GPP TS 29.002 (opCode 71).
+type ImsVoiceOverPSSessionsIndication int
+
+const (
+	IMSVoiceOverPSNotSupported ImsVoiceOverPSSessionsIndication = 0
+	IMSVoiceOverPSSupported    ImsVoiceOverPSSessionsIndication = 1
+	IMSVoiceOverPSUnknown      ImsVoiceOverPSSessionsIndication = 2
+)
+
+// GprsMSClass is the GPRSMSClass SEQUENCE (opCode 71).
+type GprsMSClass struct {
+	MSNetworkCapability     HexBytes // [0] mandatory
+	MSRadioAccessCapability HexBytes // [1] optional
+}
+
+// UserCSGInformation is the UserCSGInformation SEQUENCE (opCode 71).
+type UserCSGInformation struct {
+	CsgID      HexBytes // [0] CSG-Id BIT STRING (raw bytes)
+	CsgIDBits  int      // BitLength for the BIT STRING
+	AccessMode HexBytes // [2]
+	CMI        HexBytes // [3]
+}
+
+// LocationInformation5GS is the LocationInformation5GS SEQUENCE (opCode 71).
+type LocationInformation5GS struct {
+	NrCellGlobalIdentity     HexBytes          // [0]
+	EUtranCellGlobalIdentity HexBytes          // [1]
+	GeographicalInformation  *GeographicalInfo // [2]
+	GeodeticInformation      HexBytes          // [3]
+	AmfAddress               HexBytes          // [4] FQDN
+	TrackingAreaIdentity     HexBytes          // [5]
+	CurrentLocationRetrieved bool              // [6] NULL
+	AgeOfLocationInformation *int              // [7]
+	VplmnID                  HexBytes          // [8] 3 octets
+	LocalTimeZone            HexBytes          // [9]
+	RatType                  *UsedRatType      // [10]
+	NrTrackingAreaIdentity   HexBytes          // [12]
 }
 
 // SubscriberStateInfo represents the subscriber state CHOICE.
@@ -527,7 +597,7 @@ const (
 	ReasonNotRegistered  = 3
 )
 
-// CSLocationInformation contains CS domain location data.
+// CSLocationInformation contains CS domain location data (opCode 71).
 type CSLocationInformation struct {
 	AgeOfLocationInformation *int   // seconds; nil if absent
 	VlrNumber                string // decoded; empty if absent
@@ -536,11 +606,13 @@ type CSLocationInformation struct {
 	MscNumber                string // decoded; empty if absent
 	MscNumberNature          uint8
 	MscNumberPlan            uint8
-	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
-	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
-	CellGlobalId             HexBytes          // raw fixed-length cell ID or SAI; nil if absent
-	LAI                      HexBytes          // raw 5-octet LAI; nil if absent
-	LocationNumber           HexBytes          // raw octets; nil if absent
+	GeographicalInformation  *GeographicalInfo   // decoded per 3GPP TS 23.032; nil if absent
+	GeodeticInformation      HexBytes            // raw 10 octets; nil if absent
+	CellGlobalId             HexBytes            // raw fixed-length cell ID or SAI; nil if absent
+	LAI                      HexBytes            // raw 5-octet LAI; nil if absent
+	LocationNumber           HexBytes            // raw octets; nil if absent
+	SelectedLSAId            HexBytes            // [5] LSAIdentity; nil if absent
+	UserCSGInformation       *UserCSGInformation // [11]
 	CurrentLocationRetrieved bool
 	SAIPresent               bool
 }
@@ -556,17 +628,19 @@ type EPSLocationInformation struct {
 	MmeName                  HexBytes          // raw DiameterIdentity; nil if absent
 }
 
-// GPRSLocationInformation contains GPRS domain location data.
+// GPRSLocationInformation contains GPRS domain location data (opCode 71).
 type GPRSLocationInformation struct {
-	AgeOfLocationInformation *int              // seconds; nil if absent
-	CellGlobalId             HexBytes          // raw fixed-length cell ID or SAI; nil if absent
-	LAI                      HexBytes          // raw 5-octet LAI; nil if absent
-	RouteingAreaIdentity     HexBytes          // raw octets; nil if absent
-	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
-	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
-	SgsnNumber               string // decoded; empty if absent
+	AgeOfLocationInformation *int                // seconds; nil if absent
+	CellGlobalId             HexBytes            // raw fixed-length cell ID or SAI; nil if absent
+	LAI                      HexBytes            // raw 5-octet LAI; nil if absent
+	RouteingAreaIdentity     HexBytes            // raw octets; nil if absent
+	GeographicalInformation  *GeographicalInfo   // decoded per 3GPP TS 23.032; nil if absent
+	GeodeticInformation      HexBytes            // raw 10 octets; nil if absent
+	SgsnNumber               string              // decoded; empty if absent
 	SgsnNumberNature         uint8
 	SgsnNumberPlan           uint8
+	SelectedLSAIdentity      HexBytes            // [4] LSAIdentity; nil if absent
+	UserCSGInformation       *UserCSGInformation // [10]
 	CurrentLocationRetrieved bool
 	SAIPresent               bool
 }
@@ -823,4 +897,7 @@ var (
 
 	ErrSuperChargerInfoNoAlternative        = errors.New("updateLocation: SuperChargerInfo CHOICE has no alternative set")
 	ErrSuperChargerInfoMultipleAlternatives = errors.New("updateLocation: SuperChargerInfo CHOICE has multiple alternatives set")
+
+	ErrAtiPsSubscriberStateNoAlternative        = errors.New("ati: PsSubscriberState CHOICE has no alternative set")
+	ErrAtiPsSubscriberStateMultipleAlternatives = errors.New("ati: PsSubscriberState CHOICE has multiple alternatives set")
 )
