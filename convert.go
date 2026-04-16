@@ -1054,7 +1054,99 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 			vlrCap.SupportedLCSCapabilitySets = &bs
 		}
 
+		vlrCap.SolsaSupportIndicator = boolToNullPtr(u.VlrCapability.SolsaSupportIndicator)
+
+		if u.VlrCapability.IstSupportIndicator != nil {
+			v := gsm_map.ISTSupportIndicator(int64(*u.VlrCapability.IstSupportIndicator))
+			vlrCap.IstSupportIndicator = &v
+		}
+
+		if u.VlrCapability.SuperChargerSupportedInServingNetworkEntity != nil {
+			sc, err := convertSuperChargerInfoToWire(u.VlrCapability.SuperChargerSupportedInServingNetworkEntity)
+			if err != nil {
+				return nil, fmt.Errorf("SuperChargerInfo: %w", err)
+			}
+			vlrCap.SuperChargerSupportedInServingNetworkEntity = sc
+		}
+
+		vlrCap.LongFTNSupported = boolToNullPtr(u.VlrCapability.LongFTNSupported)
+
+		if u.VlrCapability.OfferedCamel4CSIs != nil {
+			bs := convertOfferedCamel4CSIsToBitString(u.VlrCapability.OfferedCamel4CSIs)
+			vlrCap.OfferedCamel4CSIs = &bs
+		}
+
+		if u.VlrCapability.SupportedRATTypesIndicator != nil {
+			bs := convertSupportedRATTypesToBitString(u.VlrCapability.SupportedRATTypesIndicator)
+			vlrCap.SupportedRATTypesIndicator = &bs
+		}
+
+		vlrCap.LongGroupIDSupported = boolToNullPtr(u.VlrCapability.LongGroupIDSupported)
+		vlrCap.MtRoamingForwardingSupported = boolToNullPtr(u.VlrCapability.MtRoamingForwardingSupported)
+		vlrCap.MsisdnLessOperationSupported = boolToNullPtr(u.VlrCapability.MsisdnLessOperationSupported)
+		vlrCap.ResetIdsSupported = boolToNullPtr(u.VlrCapability.ResetIdsSupported)
+
 		arg.VlrCapability = vlrCap
+	}
+
+	// Optional fields.
+	if len(u.LMSI) > 0 {
+		if len(u.LMSI) != 4 {
+			return nil, fmt.Errorf("UpdateLocation: LMSI must be exactly 4 octets, got %d", len(u.LMSI))
+		}
+		v := gsm_map.LMSI(u.LMSI)
+		arg.Lmsi = &v
+	}
+
+	arg.InformPreviousNetworkEntity = boolToNullPtr(u.InformPreviousNetworkEntity)
+	arg.CsLCSNotSupportedByUE = boolToNullPtr(u.CsLCSNotSupportedByUE)
+
+	if u.VGmlcAddress != "" {
+		gsnAddr, err := gsn.Build(u.VGmlcAddress)
+		if err != nil {
+			return nil, fmt.Errorf("encoding VGmlcAddress: %w", err)
+		}
+		v := gsm_map.GSNAddress(gsnAddr)
+		arg.VGmlcAddress = &v
+	}
+
+	if u.AddInfo != nil {
+		ai, err := convertAddInfoToWire(u.AddInfo)
+		if err != nil {
+			return nil, fmt.Errorf("AddInfo: %w", err)
+		}
+		arg.AddInfo = ai
+	}
+
+	if len(u.PagingArea) > 0 {
+		pa := make(gsm_map.PagingArea, len(u.PagingArea))
+		for i, raw := range u.PagingArea {
+			// Each raw HexBytes is BER-encoded LocationArea CHOICE.
+			var la gsm_map.LocationArea
+			if err := la.UnmarshalBER(raw); err != nil {
+				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
+			}
+			pa[i] = la
+		}
+		arg.PagingArea = pa
+	}
+
+	arg.SkipSubscriberDataUpdate = boolToNullPtr(u.SkipSubscriberDataUpdate)
+	arg.RestorationIndicator = boolToNullPtr(u.RestorationIndicator)
+
+	if len(u.EplmnList) > 0 {
+		list := make(gsm_map.EPLMNList, len(u.EplmnList))
+		for i, raw := range u.EplmnList {
+			if len(raw) != 3 {
+				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
+			}
+			list[i] = gsm_map.PLMNId(raw)
+		}
+		arg.EplmnList = list
+	}
+
+	if u.MmeDiameterAddress != nil {
+		arg.MmeDiameterAddress = convertNetworkNodeDiameterAddressToWire(u.MmeDiameterAddress)
 	}
 
 	return arg, nil
@@ -1097,10 +1189,97 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 			vlrCap.SupportedLCSCapabilitySets = convertBitStringToLCSCaps(*arg.VlrCapability.SupportedLCSCapabilitySets)
 		}
 
-		// Only set if at least one capability was parsed
-		if vlrCap.SupportedCamelPhases != nil || vlrCap.SupportedLCSCapabilitySets != nil {
-			u.VlrCapability = vlrCap
+		vlrCap.SolsaSupportIndicator = nullPtrToBool(arg.VlrCapability.SolsaSupportIndicator)
+
+		if arg.VlrCapability.IstSupportIndicator != nil {
+			v := int(int64(*arg.VlrCapability.IstSupportIndicator))
+			vlrCap.IstSupportIndicator = &v
 		}
+
+		if arg.VlrCapability.SuperChargerSupportedInServingNetworkEntity != nil {
+			sc, err := convertWireToSuperChargerInfo(arg.VlrCapability.SuperChargerSupportedInServingNetworkEntity)
+			if err != nil {
+				return nil, fmt.Errorf("SuperChargerInfo: %w", err)
+			}
+			vlrCap.SuperChargerSupportedInServingNetworkEntity = sc
+		}
+
+		vlrCap.LongFTNSupported = nullPtrToBool(arg.VlrCapability.LongFTNSupported)
+
+		if arg.VlrCapability.OfferedCamel4CSIs != nil && arg.VlrCapability.OfferedCamel4CSIs.BitLength > 0 {
+			vlrCap.OfferedCamel4CSIs = convertBitStringToOfferedCamel4CSIs(*arg.VlrCapability.OfferedCamel4CSIs)
+		}
+
+		if arg.VlrCapability.SupportedRATTypesIndicator != nil && arg.VlrCapability.SupportedRATTypesIndicator.BitLength > 0 {
+			if arg.VlrCapability.SupportedRATTypesIndicator.BitLength < 2 || arg.VlrCapability.SupportedRATTypesIndicator.BitLength > 8 {
+				return nil, fmt.Errorf("UpdateLocation: SupportedRATTypes BitLength must be 2..8, got %d", arg.VlrCapability.SupportedRATTypesIndicator.BitLength)
+			}
+			vlrCap.SupportedRATTypesIndicator = convertBitStringToSupportedRATTypes(*arg.VlrCapability.SupportedRATTypesIndicator)
+		}
+
+		vlrCap.LongGroupIDSupported = nullPtrToBool(arg.VlrCapability.LongGroupIDSupported)
+		vlrCap.MtRoamingForwardingSupported = nullPtrToBool(arg.VlrCapability.MtRoamingForwardingSupported)
+		vlrCap.MsisdnLessOperationSupported = nullPtrToBool(arg.VlrCapability.MsisdnLessOperationSupported)
+		vlrCap.ResetIdsSupported = nullPtrToBool(arg.VlrCapability.ResetIdsSupported)
+
+		u.VlrCapability = vlrCap
+	}
+
+	// Optional fields.
+	if arg.Lmsi != nil {
+		if len(*arg.Lmsi) != 4 {
+			return nil, fmt.Errorf("UpdateLocation: LMSI must be exactly 4 octets, got %d", len(*arg.Lmsi))
+		}
+		u.LMSI = HexBytes(*arg.Lmsi)
+	}
+
+	u.InformPreviousNetworkEntity = nullPtrToBool(arg.InformPreviousNetworkEntity)
+	u.CsLCSNotSupportedByUE = nullPtrToBool(arg.CsLCSNotSupportedByUE)
+
+	if arg.VGmlcAddress != nil {
+		addr, err := gsn.Parse(*arg.VGmlcAddress)
+		if err != nil {
+			return nil, fmt.Errorf("decoding VGmlcAddress: %w", err)
+		}
+		u.VGmlcAddress = addr
+	}
+
+	if arg.AddInfo != nil {
+		ai, err := convertWireToAddInfo(arg.AddInfo)
+		if err != nil {
+			return nil, fmt.Errorf("AddInfo: %w", err)
+		}
+		u.AddInfo = ai
+	}
+
+	if len(arg.PagingArea) > 0 {
+		pa := make([]HexBytes, len(arg.PagingArea))
+		for i, la := range arg.PagingArea {
+			encoded, err := la.MarshalDER()
+			if err != nil {
+				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
+			}
+			pa[i] = HexBytes(encoded)
+		}
+		u.PagingArea = pa
+	}
+
+	u.SkipSubscriberDataUpdate = nullPtrToBool(arg.SkipSubscriberDataUpdate)
+	u.RestorationIndicator = nullPtrToBool(arg.RestorationIndicator)
+
+	if len(arg.EplmnList) > 0 {
+		list := make([]HexBytes, len(arg.EplmnList))
+		for i, plmn := range arg.EplmnList {
+			if len(plmn) != 3 {
+				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
+			}
+			list[i] = HexBytes(plmn)
+		}
+		u.EplmnList = list
+	}
+
+	if arg.MmeDiameterAddress != nil {
+		u.MmeDiameterAddress = convertWireToNetworkNodeDiameterAddress(arg.MmeDiameterAddress)
 	}
 
 	return u, nil
@@ -1114,9 +1293,12 @@ func convertUpdateLocationResToRes(u *UpdateLocationRes) (*gsm_map.UpdateLocatio
 		return nil, fmt.Errorf("encoding HLRNumber: %w", err)
 	}
 
-	return &gsm_map.UpdateLocationRes{
-		HlrNumber: gsm_map.ISDNAddressString(hlr),
-	}, nil
+	res := &gsm_map.UpdateLocationRes{
+		HlrNumber:            gsm_map.ISDNAddressString(hlr),
+		AddCapability:        boolToNullPtr(u.AddCapability),
+		PagingAreaCapability: boolToNullPtr(u.PagingAreaCapability),
+	}
+	return res, nil
 }
 
 func convertResToUpdateLocationRes(res *gsm_map.UpdateLocationRes) (*UpdateLocationRes, error) {
@@ -1126,9 +1308,11 @@ func convertResToUpdateLocationRes(res *gsm_map.UpdateLocationRes) (*UpdateLocat
 	}
 
 	return &UpdateLocationRes{
-		HLRNumber:       hlr,
-		HLRNumberNature: nature,
-		HLRNumberPlan:   plan,
+		HLRNumber:            hlr,
+		HLRNumberNature:      nature,
+		HLRNumberPlan:        plan,
+		AddCapability:        nullPtrToBool(res.AddCapability),
+		PagingAreaCapability: nullPtrToBool(res.PagingAreaCapability),
 	}, nil
 }
 
@@ -1991,6 +2175,104 @@ func convertBitStringToOfferedCamel4CSIs(bs runtime.BitString) *OfferedCamel4CSI
 		o.PsiEnhancements = bs.Has(6)
 	}
 	return o
+}
+
+// --- UpdateLocation helpers ---
+
+// SupportedRATTypes: bit 0=utran, 1=geran, 2=gan, 3=i-hspa-evolution, 4=e-utran.
+func convertSupportedRATTypesToBitString(r *SupportedRATTypes) runtime.BitString {
+	var b byte
+	if r.UTRAN {
+		b |= 0x80
+	}
+	if r.GERAN {
+		b |= 0x40
+	}
+	if r.GAN {
+		b |= 0x20
+	}
+	if r.IHSPAEvolution {
+		b |= 0x10
+	}
+	if r.EUTRAN {
+		b |= 0x08
+	}
+	return runtime.BitString{Bytes: []byte{b}, BitLength: 5}
+}
+
+func convertBitStringToSupportedRATTypes(bs runtime.BitString) *SupportedRATTypes {
+	r := &SupportedRATTypes{}
+	if bs.BitLength > 0 {
+		r.UTRAN = bs.Has(0)
+	}
+	if bs.BitLength > 1 {
+		r.GERAN = bs.Has(1)
+	}
+	if bs.BitLength > 2 {
+		r.GAN = bs.Has(2)
+	}
+	if bs.BitLength > 3 {
+		r.IHSPAEvolution = bs.Has(3)
+	}
+	if bs.BitLength > 4 {
+		r.EUTRAN = bs.Has(4)
+	}
+	return r
+}
+
+func convertSuperChargerInfoToWire(s *SuperChargerInfo) (*gsm_map.SuperChargerInfo, error) {
+	hasSend := s.SendSubscriberData
+	hasStored := len(s.SubscriberDataStored) > 0
+	if hasSend && hasStored {
+		return nil, ErrSuperChargerInfoMultipleAlternatives
+	}
+	if !hasSend && !hasStored {
+		return nil, ErrSuperChargerInfoNoAlternative
+	}
+	if hasSend {
+		v := gsm_map.NewSuperChargerInfoSendSubscriberData(struct{}{})
+		return &v, nil
+	}
+	v := gsm_map.NewSuperChargerInfoSubscriberDataStored(gsm_map.AgeIndicator(s.SubscriberDataStored))
+	return &v, nil
+}
+
+func convertWireToSuperChargerInfo(w *gsm_map.SuperChargerInfo) (*SuperChargerInfo, error) {
+	if w.SendSubscriberData != nil && w.SubscriberDataStored != nil {
+		return nil, ErrSuperChargerInfoMultipleAlternatives
+	}
+	out := &SuperChargerInfo{}
+	if w.SendSubscriberData != nil {
+		out.SendSubscriberData = true
+	} else if w.SubscriberDataStored != nil {
+		out.SubscriberDataStored = HexBytes(*w.SubscriberDataStored)
+	} else {
+		return nil, ErrSuperChargerInfoNoAlternative
+	}
+	return out, nil
+}
+
+func convertAddInfoToWire(a *AddInfo) (*gsm_map.ADDInfo, error) {
+	imeisvBytes, err := tbcd.Encode(a.IMEISV)
+	if err != nil {
+		return nil, fmt.Errorf("encoding IMEISV: %w", err)
+	}
+	out := &gsm_map.ADDInfo{
+		Imeisv:                   gsm_map.IMEI(imeisvBytes),
+		SkipSubscriberDataUpdate: boolToNullPtr(a.SkipSubscriberDataUpdate),
+	}
+	return out, nil
+}
+
+func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
+	imeisv, err := tbcd.Decode(w.Imeisv)
+	if err != nil {
+		return nil, fmt.Errorf("decoding IMEISV: %w", err)
+	}
+	return &AddInfo{
+		IMEISV:                   imeisv,
+		SkipSubscriberDataUpdate: nullPtrToBool(w.SkipSubscriberDataUpdate),
+	}, nil
 }
 
 // --- SRI nested SEQUENCE helpers ---

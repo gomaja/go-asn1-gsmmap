@@ -1630,3 +1630,274 @@ func TestMoFsmChoiceValidation(t *testing.T) {
 		}
 	})
 }
+
+func TestUpdateLocationFullStressRoundTrip(t *testing.T) {
+	istVal := 1 // istCommandSupported
+	in := &UpdateLocation{
+		IMSI:      "310260123456789",
+		MSCNumber: "31612345678",
+		VLRNumber: "31699887766",
+
+		VlrCapability: &VlrCapability{
+			SupportedCamelPhases: &SupportedCamelPhases{
+				Phase1: true,
+				Phase2: true,
+				Phase3: true,
+				Phase4: true,
+			},
+			SupportedLCSCapabilitySets: &SupportedLCSCapabilitySets{
+				LcsCapabilitySet1: true,
+				LcsCapabilitySet2: true,
+				LcsCapabilitySet3: true,
+				LcsCapabilitySet4: true,
+				LcsCapabilitySet5: true,
+			},
+			SolsaSupportIndicator: true,
+			IstSupportIndicator:   &istVal,
+			SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
+				SendSubscriberData: true,
+			},
+			LongFTNSupported: true,
+			OfferedCamel4CSIs: &OfferedCamel4CSIs{
+				OCSI:            true,
+				DCSI:            true,
+				VTCSI:           true,
+				TCSI:            true,
+				MTSMSCSI:        true,
+				MGCSI:           true,
+				PsiEnhancements: true,
+			},
+			SupportedRATTypesIndicator: &SupportedRATTypes{
+				UTRAN:          true,
+				GERAN:          true,
+				GAN:            true,
+				IHSPAEvolution: true,
+				EUTRAN:         true,
+			},
+			LongGroupIDSupported:         true,
+			MtRoamingForwardingSupported: true,
+			MsisdnLessOperationSupported: true,
+			ResetIdsSupported:            true,
+		},
+
+		LMSI:                        HexBytes{0x01, 0x02, 0x03, 0x04},
+		InformPreviousNetworkEntity: true,
+		CsLCSNotSupportedByUE:       true,
+		VGmlcAddress:                "192.168.1.1",
+		AddInfo: &AddInfo{
+			IMEISV:                   "3534567890123456",
+			SkipSubscriberDataUpdate: true,
+		},
+		SkipSubscriberDataUpdate: true,
+		RestorationIndicator:     true,
+		EplmnList: []HexBytes{
+			{0x13, 0x00, 0x26},
+			{0x62, 0xf2, 0x20},
+		},
+		MmeDiameterAddress: &NetworkNodeDiameterAddress{
+			DiameterName:  HexBytes("mme.example.com"),
+			DiameterRealm: HexBytes("example.com"),
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseUpdateLocation(data)
+	if err != nil {
+		t.Fatalf("ParseUpdateLocation: %v", err)
+	}
+
+	// Normalize natures/plans to defaults.
+	in.MSCNature = address.NatureInternational
+	in.MSCPlan = address.PlanISDN
+	in.VLRNature = address.NatureInternational
+	in.VLRPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestUpdateLocationResFullRoundTrip(t *testing.T) {
+	in := &UpdateLocationRes{
+		HLRNumber:            "31612345678",
+		AddCapability:        true,
+		PagingAreaCapability: true,
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseUpdateLocationRes(data)
+	if err != nil {
+		t.Fatalf("ParseUpdateLocationRes: %v", err)
+	}
+
+	// Normalize nature/plan.
+	in.HLRNumberNature = address.NatureInternational
+	in.HLRNumberPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestSuperChargerInfoRoundTrip(t *testing.T) {
+	t.Run("SendSubscriberData", func(t *testing.T) {
+		in := &UpdateLocation{
+			IMSI:      "310260123456789",
+			MSCNumber: "31612345678",
+			VLRNumber: "31699887766",
+			VlrCapability: &VlrCapability{
+				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
+					SendSubscriberData: true,
+				},
+			},
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseUpdateLocation(data)
+		if err != nil {
+			t.Fatalf("ParseUpdateLocation: %v", err)
+		}
+		if got.VlrCapability == nil || got.VlrCapability.SuperChargerSupportedInServingNetworkEntity == nil {
+			t.Fatal("SuperChargerInfo is nil")
+		}
+		sc := got.VlrCapability.SuperChargerSupportedInServingNetworkEntity
+		if !sc.SendSubscriberData {
+			t.Error("SendSubscriberData should be true")
+		}
+		if len(sc.SubscriberDataStored) > 0 {
+			t.Errorf("SubscriberDataStored should be nil, got %x", sc.SubscriberDataStored)
+		}
+	})
+
+	t.Run("SubscriberDataStored", func(t *testing.T) {
+		in := &UpdateLocation{
+			IMSI:      "310260123456789",
+			MSCNumber: "31612345678",
+			VLRNumber: "31699887766",
+			VlrCapability: &VlrCapability{
+				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
+					SubscriberDataStored: HexBytes{0x01, 0x02, 0x03},
+				},
+			},
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseUpdateLocation(data)
+		if err != nil {
+			t.Fatalf("ParseUpdateLocation: %v", err)
+		}
+		if got.VlrCapability == nil || got.VlrCapability.SuperChargerSupportedInServingNetworkEntity == nil {
+			t.Fatal("SuperChargerInfo is nil")
+		}
+		sc := got.VlrCapability.SuperChargerSupportedInServingNetworkEntity
+		if sc.SendSubscriberData {
+			t.Error("SendSubscriberData should be false")
+		}
+		if !bytes.Equal(sc.SubscriberDataStored, HexBytes{0x01, 0x02, 0x03}) {
+			t.Errorf("SubscriberDataStored: got %x, want 010203", sc.SubscriberDataStored)
+		}
+	})
+
+	t.Run("BothSet", func(t *testing.T) {
+		in := &UpdateLocation{
+			IMSI:      "310260123456789",
+			MSCNumber: "31612345678",
+			VLRNumber: "31699887766",
+			VlrCapability: &VlrCapability{
+				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
+					SendSubscriberData:   true,
+					SubscriberDataStored: HexBytes{0x01},
+				},
+			},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for both-set SuperChargerInfo CHOICE")
+		}
+		if !errors.Is(err, ErrSuperChargerInfoMultipleAlternatives) {
+			t.Errorf("expected ErrSuperChargerInfoMultipleAlternatives, got: %v", err)
+		}
+	})
+
+	t.Run("NoneSet", func(t *testing.T) {
+		in := &UpdateLocation{
+			IMSI:      "310260123456789",
+			MSCNumber: "31612345678",
+			VLRNumber: "31699887766",
+			VlrCapability: &VlrCapability{
+				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{},
+			},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for empty SuperChargerInfo CHOICE")
+		}
+		if !errors.Is(err, ErrSuperChargerInfoNoAlternative) {
+			t.Errorf("expected ErrSuperChargerInfoNoAlternative, got: %v", err)
+		}
+	})
+}
+
+func TestSupportedRATTypesRoundTrip(t *testing.T) {
+	// Exhaustive 32-case coverage for 5 bits.
+	for mask := 0; mask < 32; mask++ {
+		rats := &SupportedRATTypes{
+			UTRAN:          mask&1 != 0,
+			GERAN:          mask&2 != 0,
+			GAN:            mask&4 != 0,
+			IHSPAEvolution: mask&8 != 0,
+			EUTRAN:         mask&16 != 0,
+		}
+
+		// Skip the all-zero case since SupportedRATTypesIndicator would be nil on parse.
+		if mask == 0 {
+			continue
+		}
+
+		in := &UpdateLocation{
+			IMSI:      "310260123456789",
+			MSCNumber: "31612345678",
+			VLRNumber: "31699887766",
+			VlrCapability: &VlrCapability{
+				SupportedRATTypesIndicator: rats,
+			},
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("mask=%d Marshal: %v", mask, err)
+		}
+		got, err := ParseUpdateLocation(data)
+		if err != nil {
+			t.Fatalf("mask=%d ParseUpdateLocation: %v", mask, err)
+		}
+		if got.VlrCapability == nil || got.VlrCapability.SupportedRATTypesIndicator == nil {
+			t.Fatalf("mask=%d SupportedRATTypesIndicator is nil", mask)
+		}
+		r := got.VlrCapability.SupportedRATTypesIndicator
+		if r.UTRAN != rats.UTRAN {
+			t.Errorf("mask=%d UTRAN: got %v, want %v", mask, r.UTRAN, rats.UTRAN)
+		}
+		if r.GERAN != rats.GERAN {
+			t.Errorf("mask=%d GERAN: got %v, want %v", mask, r.GERAN, rats.GERAN)
+		}
+		if r.GAN != rats.GAN {
+			t.Errorf("mask=%d GAN: got %v, want %v", mask, r.GAN, rats.GAN)
+		}
+		if r.IHSPAEvolution != rats.IHSPAEvolution {
+			t.Errorf("mask=%d IHSPAEvolution: got %v, want %v", mask, r.IHSPAEvolution, rats.IHSPAEvolution)
+		}
+		if r.EUTRAN != rats.EUTRAN {
+			t.Errorf("mask=%d EUTRAN: got %v, want %v", mask, r.EUTRAN, rats.EUTRAN)
+		}
+	}
+}
