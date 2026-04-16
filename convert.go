@@ -4213,10 +4213,13 @@ func convertWireToGprsMSClass(w *gsm_map.GPRSMSClass) *GprsMSClass {
 
 func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInformation, error) {
 	if u.CsgIDBits < 0 {
-		return nil, fmt.Errorf("UserCSGInformation: CsgIDBits (%d) must be non-negative", u.CsgIDBits)
+		return nil, fmt.Errorf("CsgIDBits (%d) must be non-negative", u.CsgIDBits)
 	}
-	if u.CsgIDBits > 0 && u.CsgIDBits > len(u.CsgID)*8 {
-		return nil, fmt.Errorf("UserCSGInformation: CsgIDBits (%d) exceeds len(CsgID)*8 (%d)", u.CsgIDBits, len(u.CsgID)*8)
+	if len(u.CsgID) > 0 && u.CsgIDBits == 0 {
+		return nil, fmt.Errorf("CsgIDBits must be set when CsgID has bytes (got len %d)", len(u.CsgID))
+	}
+	if u.CsgIDBits > len(u.CsgID)*8 {
+		return nil, fmt.Errorf("CsgIDBits (%d) exceeds len(CsgID)*8 (%d)", u.CsgIDBits, len(u.CsgID)*8)
 	}
 	out := &gsm_map.UserCSGInformation{
 		CsgId: runtime.BitString{
