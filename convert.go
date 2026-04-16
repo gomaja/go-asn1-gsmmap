@@ -1137,6 +1137,9 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	if len(u.EplmnList) > 0 {
 		list := make(gsm_map.EPLMNList, len(u.EplmnList))
 		for i, raw := range u.EplmnList {
+			if len(raw) != 3 {
+				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
+			}
 			list[i] = gsm_map.PLMNId(raw)
 		}
 		arg.EplmnList = list
@@ -1208,6 +1211,9 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		}
 
 		if arg.VlrCapability.SupportedRATTypesIndicator != nil && arg.VlrCapability.SupportedRATTypesIndicator.BitLength > 0 {
+			if arg.VlrCapability.SupportedRATTypesIndicator.BitLength < 2 || arg.VlrCapability.SupportedRATTypesIndicator.BitLength > 8 {
+				return nil, fmt.Errorf("UpdateLocation: SupportedRATTypes BitLength must be 2..8, got %d", arg.VlrCapability.SupportedRATTypesIndicator.BitLength)
+			}
 			vlrCap.SupportedRATTypesIndicator = convertBitStringToSupportedRATTypes(*arg.VlrCapability.SupportedRATTypesIndicator)
 		}
 
@@ -1221,6 +1227,9 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 	// Optional fields.
 	if arg.Lmsi != nil {
+		if len(*arg.Lmsi) != 4 {
+			return nil, fmt.Errorf("UpdateLocation: LMSI must be exactly 4 octets, got %d", len(*arg.Lmsi))
+		}
 		u.LMSI = HexBytes(*arg.Lmsi)
 	}
 
@@ -1261,6 +1270,9 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 	if len(arg.EplmnList) > 0 {
 		list := make([]HexBytes, len(arg.EplmnList))
 		for i, plmn := range arg.EplmnList {
+			if len(plmn) != 3 {
+				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
+			}
 			list[i] = HexBytes(plmn)
 		}
 		u.EplmnList = list
