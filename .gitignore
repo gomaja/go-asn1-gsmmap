@@ -11,3 +11,8 @@ docs/
 
 # Local dev
 local_test*/
+
+# Local-only tshark validation harness (not committed per project policy)
+/tshark_harness/
+/testdata/sri_fixtures/
+/testdata/go_asn1_bugs/

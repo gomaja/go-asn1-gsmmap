@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/warthog618/sms/encoding/tpdu"
@@ -283,3 +284,238 @@ type GPRSLocationInformation struct {
 	CurrentLocationRetrieved bool
 	SAIPresent               bool
 }
+
+// --- SendRoutingInfo (opCode 22) supporting types ---
+
+// InterrogationType per 3GPP TS 29.002 clause 17.6.2.
+type InterrogationType int
+
+const (
+	InterrogationBasicCall  InterrogationType = 0
+	InterrogationForwarding InterrogationType = 1
+)
+
+// ForwardingReason per 3GPP TS 29.002.
+type ForwardingReason int
+
+const (
+	ForwardingNotReachable ForwardingReason = 0
+	ForwardingBusy         ForwardingReason = 1
+	ForwardingNoReply      ForwardingReason = 2
+)
+
+// NumberPortabilityStatus per 3GPP TS 29.002.
+type NumberPortabilityStatus int
+
+const (
+	MnpNotKnownToBePorted                  NumberPortabilityStatus = 0
+	MnpOwnNumberPortedOut                  NumberPortabilityStatus = 1
+	MnpForeignNumberPortedToForeignNetwork NumberPortabilityStatus = 2
+	MnpOwnNumberNotPortedOut               NumberPortabilityStatus = 4
+	MnpForeignNumberPortedIn               NumberPortabilityStatus = 5
+)
+
+// UnavailabilityCause per 3GPP TS 29.002.
+type UnavailabilityCause int
+
+const (
+	UnavailBearerServiceNotProvisioned UnavailabilityCause = 1
+	UnavailTeleserviceNotProvisioned   UnavailabilityCause = 2
+	UnavailAbsentSubscriber            UnavailabilityCause = 3
+	UnavailBusySubscriber              UnavailabilityCause = 4
+	UnavailCallBarred                  UnavailabilityCause = 5
+	UnavailCugReject                   UnavailabilityCause = 6
+)
+
+// SuppressMTSSFlags is the SuppressMTSS BIT STRING (bits 0..1 defined).
+type SuppressMTSSFlags struct {
+	SuppressCUG  bool
+	SuppressCCBS bool
+}
+
+// AllowedServicesFlags is the AllowedServices BIT STRING.
+type AllowedServicesFlags struct {
+	FirstServiceAllowed  bool
+	SecondServiceAllowed bool
+}
+
+// CugCheckInfo corresponds to CUG-CheckInfo SEQUENCE.
+type CugCheckInfo struct {
+	CugInterlock      HexBytes // CUG-Interlock, 4 octets
+	CugOutgoingAccess bool
+}
+
+// ExtBasicServiceCode is the Ext-BasicServiceCode CHOICE.
+// Set exactly one of ExtBearerService or ExtTeleservice.
+type ExtBasicServiceCode struct {
+	ExtBearerService HexBytes // Ext-BearerServiceCode, 1..5 octets
+	ExtTeleservice   HexBytes // Ext-TeleserviceCode,   1..5 octets
+}
+
+// ExternalSignalInfo per ASN.1 SEQUENCE.
+type ExternalSignalInfo struct {
+	ProtocolID int      // ProtocolId (ENUMERATED: 0=gsm-0408, 1=gsm-0806, 2=gsm-BSSMAP, 3=ets-300102-1)
+	SignalInfo HexBytes // octet string
+}
+
+// ExtExternalSignalInfo per ASN.1 SEQUENCE.
+type ExtExternalSignalInfo struct {
+	ExtProtocolID int // Ext-ProtocolId (1=ets-300356)
+	SignalInfo    HexBytes
+}
+
+// SriCamelInfo mirrors the CamelInfo SEQUENCE used in SRI.
+type SriCamelInfo struct {
+	SupportedCamelPhases SupportedCamelPhases // reuses existing type
+	SuppressTCSI         bool
+	OfferedCamel4CSIs    *OfferedCamel4CSIs
+}
+
+// ExtendedRoutingInfo is the CHOICE ExtendedRoutingInfo.
+// Set exactly one of RoutingInfo or CamelRoutingInfo.
+type ExtendedRoutingInfo struct {
+	RoutingInfo      *RoutingInfo
+	CamelRoutingInfo *CamelRoutingInfo
+}
+
+// RoutingInfo is the CHOICE RoutingInfo.
+// Set exactly one of RoamingNumber (non-empty) or ForwardingData (non-nil).
+type RoutingInfo struct {
+	RoamingNumber       string
+	RoamingNumberNature uint8
+	RoamingNumberPlan   uint8
+	ForwardingData      *ForwardingData
+}
+
+// ForwardingData SEQUENCE.
+type ForwardingData struct {
+	ForwardedToNumber       string
+	ForwardedToNumberNature uint8
+	ForwardedToNumberPlan   uint8
+	ForwardedToSubaddress   HexBytes
+	ForwardingOptions       HexBytes // 1 octet
+	LongForwardedToNumber   HexBytes // FTN-AddressString, opaque
+}
+
+// CamelRoutingInfo SEQUENCE.
+type CamelRoutingInfo struct {
+	ForwardingData            *ForwardingData
+	GmscCamelSubscriptionInfo GmscCamelSubscriptionInfo
+}
+
+// GmscCamelSubscriptionInfo SEQUENCE.
+// Nested CAMEL SEQUENCEs are kept opaque (HexBytes) for now; future work may decompose.
+type GmscCamelSubscriptionInfo struct {
+	TCSI                      HexBytes
+	OCSI                      HexBytes
+	DCSI                      HexBytes
+	OBcsmCamelTDPCriteriaList HexBytes
+	TBcsmCamelTDPCriteriaList HexBytes
+}
+
+// CcbsIndicators SEQUENCE.
+type CcbsIndicators struct {
+	CcbsPossible          bool
+	KeepCCBSCallIndicator bool
+}
+
+// NaeaPreferredCI SEQUENCE (simplified: opaque CIC).
+type NaeaPreferredCI struct {
+	NaeaPreferredCIC HexBytes
+}
+
+// OfferedCamel4CSIs BIT STRING (7 bits defined).
+type OfferedCamel4CSIs struct {
+	OCSI            bool
+	DCSI            bool
+	VTCSI           bool
+	TCSI            bool
+	MTSMSCSI        bool
+	MGCSI           bool
+	PsiEnhancements bool
+}
+
+// SsCode is an SS-Code (single octet).
+type SsCode uint8
+
+// Sri represents a SendRoutingInfo (opCode 22) request.
+type Sri struct {
+	MSISDN       string
+	MSISDNNature uint8
+	MSISDNPlan   uint8
+
+	InterrogationType   InterrogationType
+	GmscOrGsmSCFAddress string
+	GmscNature          uint8
+	GmscPlan            uint8
+
+	CugCheckInfo                    *CugCheckInfo
+	NumberOfForwarding              *int
+	OrInterrogation                 bool
+	OrCapability                    *int
+	CallReferenceNumber             HexBytes
+	ForwardingReason                *ForwardingReason
+	BasicServiceGroup               *ExtBasicServiceCode
+	BasicServiceGroup2              *ExtBasicServiceCode
+	NetworkSignalInfo               *ExternalSignalInfo
+	NetworkSignalInfo2              *ExternalSignalInfo
+	CamelInfo                       *SriCamelInfo
+	SuppressionOfAnnouncement       bool
+	AlertingPattern                 HexBytes
+	CcbsCall                        bool
+	SupportedCCBSPhase              *int
+	AdditionalSignalInfo            *ExtExternalSignalInfo
+	IstSupportIndicator             *int
+	PrePagingSupported              bool
+	CallDiversionTreatmentIndicator HexBytes
+	LongFTNSupported                bool
+	SuppressVTCSI                   bool
+	SuppressIncomingCallBarring     bool
+	GsmSCFInitiatedCall             bool
+	SuppressMTSS                    *SuppressMTSSFlags
+	MtRoamingRetrySupported         bool
+	CallPriority                    *int
+}
+
+// SriResp represents a SendRoutingInfo response.
+type SriResp struct {
+	IMSI                            string
+	ExtendedRoutingInfo             *ExtendedRoutingInfo
+	CugCheckInfo                    *CugCheckInfo
+	CugSubscriptionFlag             bool
+	SubscriberInfo                  *SubscriberInfo // reuses existing ATI type
+	SsList                          []SsCode
+	BasicService                    *ExtBasicServiceCode
+	BasicService2                   *ExtBasicServiceCode
+	ForwardingInterrogationRequired bool
+	VmscAddress                     string
+	VmscNature                      uint8
+	VmscPlan                        uint8
+	NaeaPreferredCI                 *NaeaPreferredCI
+	CcbsIndicators                  *CcbsIndicators
+	MSISDN                          string
+	MSISDNNature                    uint8
+	MSISDNPlan                      uint8
+	NumberPortabilityStatus         *NumberPortabilityStatus
+	IstAlertTimer                   *int
+	SupportedCamelPhasesInVMSC      *SupportedCamelPhases // reuses existing type
+	OfferedCamel4CSIsInVMSC         *OfferedCamel4CSIs
+	RoutingInfo2                    *RoutingInfo
+	SsList2                         []SsCode
+	AllowedServices                 *AllowedServicesFlags
+	UnavailabilityCause             *UnavailabilityCause
+	ReleaseResourcesSupported       bool
+	GsmBearerCapability             *ExternalSignalInfo
+}
+
+// SRI sentinel errors.
+var (
+	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
+	ErrSriMissingGmsc                = errors.New("sri: GmscOrGsmSCFAddress is empty")
+	ErrSriInvalidInterrogationType   = errors.New("sri: InterrogationType must be 0 or 1")
+	ErrSriInvalidNumberOfForwarding  = errors.New("sri: NumberOfForwarding must be 1..5")
+	ErrSriInvalidOrCapability        = errors.New("sri: OrCapability must be 1..127")
+	ErrSriInvalidCallReferenceNumber = errors.New("sri: CallReferenceNumber, if set, must be 1..8 octets")
+	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
+	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
+)

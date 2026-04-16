@@ -675,135 +675,19 @@ func convertArgToATI(arg *gsm_map.AnyTimeInterrogationArg) (*AnyTimeInterrogatio
 // --- AnyTimeInterrogation Response ---
 
 func convertATIResToRes(atiRes *AnyTimeInterrogationRes) (*gsm_map.AnyTimeInterrogationRes, error) {
-	res := &gsm_map.AnyTimeInterrogationRes{}
-
-	si := &res.SubscriberInfo
-
-	// LocationInformation (CS)
-	if atiRes.SubscriberInfo.LocationInformation != nil {
-		locInfo, err := convertCSLocationToAsn1(atiRes.SubscriberInfo.LocationInformation)
-		if err != nil {
-			return nil, fmt.Errorf("converting LocationInformation: %w", err)
-		}
-		si.LocationInformation = locInfo
+	si, err := convertSubscriberInfoToWire(&atiRes.SubscriberInfo)
+	if err != nil {
+		return nil, err
 	}
-
-	// SubscriberState
-	if atiRes.SubscriberInfo.SubscriberState != nil {
-		si.SubscriberState = convertSubscriberStateToAsn1(atiRes.SubscriberInfo.SubscriberState)
-	}
-
-	// LocationInformationEPS
-	if atiRes.SubscriberInfo.LocationInformationEPS != nil {
-		locEPS, err := convertEPSLocationToAsn1(atiRes.SubscriberInfo.LocationInformationEPS)
-		if err != nil {
-			return nil, fmt.Errorf("converting LocationInformationEPS: %w", err)
-		}
-		si.LocationInformationEPS = locEPS
-	}
-
-	// LocationInformationGPRS
-	if atiRes.SubscriberInfo.LocationInformationGPRS != nil {
-		locGPRS, err := convertGPRSLocationToAsn1(atiRes.SubscriberInfo.LocationInformationGPRS)
-		if err != nil {
-			return nil, fmt.Errorf("converting LocationInformationGPRS: %w", err)
-		}
-		si.LocationInformationGPRS = locGPRS
-	}
-
-	// IMEI
-	if atiRes.SubscriberInfo.IMEI != "" {
-		imeiBytes, err := tbcd.Encode(atiRes.SubscriberInfo.IMEI)
-		if err != nil {
-			return nil, fmt.Errorf("encoding IMEI: %w", err)
-		}
-		imei := gsm_map.IMEI(imeiBytes)
-		si.Imei = &imei
-	}
-
-	// MsClassmark2
-	if atiRes.SubscriberInfo.MsClassmark2 != nil {
-		mc := gsm_map.MSClassmark2(atiRes.SubscriberInfo.MsClassmark2)
-		si.MsClassmark2 = &mc
-	}
-
-	// TimeZone
-	if atiRes.SubscriberInfo.TimeZone != nil {
-		tz := gsm_map.TimeZone(atiRes.SubscriberInfo.TimeZone)
-		si.TimeZone = &tz
-	}
-
-	// DaylightSavingTime
-	if atiRes.SubscriberInfo.DaylightSavingTime != nil {
-		dst := gsm_map.DaylightSavingTime(*atiRes.SubscriberInfo.DaylightSavingTime)
-		si.DaylightSavingTime = &dst
-	}
-
-	return res, nil
+	return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: *si}, nil
 }
 
 func convertResToATIRes(res *gsm_map.AnyTimeInterrogationRes) (*AnyTimeInterrogationRes, error) {
-	atiRes := &AnyTimeInterrogationRes{}
-	si := &res.SubscriberInfo
-
-	// LocationInformation (CS)
-	if si.LocationInformation != nil {
-		locInfo, err := convertAsn1ToCSLocation(si.LocationInformation)
-		if err != nil {
-			return nil, fmt.Errorf("converting LocationInformation: %w", err)
-		}
-		atiRes.SubscriberInfo.LocationInformation = locInfo
+	si, err := convertWireToSubscriberInfo(&res.SubscriberInfo)
+	if err != nil {
+		return nil, err
 	}
-
-	// SubscriberState
-	if si.SubscriberState != nil {
-		atiRes.SubscriberInfo.SubscriberState = convertAsn1ToSubscriberState(si.SubscriberState)
-	}
-
-	// LocationInformationEPS
-	if si.LocationInformationEPS != nil {
-		locEPS, err := convertAsn1ToEPSLocation(si.LocationInformationEPS)
-		if err != nil {
-			return nil, fmt.Errorf("converting LocationInformationEPS: %w", err)
-		}
-		atiRes.SubscriberInfo.LocationInformationEPS = locEPS
-	}
-
-	// LocationInformationGPRS
-	if si.LocationInformationGPRS != nil {
-		locGPRS, err := convertAsn1ToGPRSLocation(si.LocationInformationGPRS)
-		if err != nil {
-			return nil, fmt.Errorf("converting LocationInformationGPRS: %w", err)
-		}
-		atiRes.SubscriberInfo.LocationInformationGPRS = locGPRS
-	}
-
-	// IMEI
-	if si.Imei != nil && len(*si.Imei) > 0 {
-		imei, err := tbcd.Decode(*si.Imei)
-		if err != nil {
-			return nil, fmt.Errorf("decoding IMEI: %w", err)
-		}
-		atiRes.SubscriberInfo.IMEI = imei
-	}
-
-	// MsClassmark2
-	if si.MsClassmark2 != nil {
-		atiRes.SubscriberInfo.MsClassmark2 = []byte(*si.MsClassmark2)
-	}
-
-	// TimeZone
-	if si.TimeZone != nil {
-		atiRes.SubscriberInfo.TimeZone = []byte(*si.TimeZone)
-	}
-
-	// DaylightSavingTime
-	if si.DaylightSavingTime != nil {
-		v := int(*si.DaylightSavingTime)
-		atiRes.SubscriberInfo.DaylightSavingTime = &v
-	}
-
-	return atiRes, nil
+	return &AnyTimeInterrogationRes{SubscriberInfo: *si}, nil
 }
 
 // --- CS Location conversion ---
@@ -1284,4 +1168,1215 @@ func convertBitStringToRequestedNodes(bs runtime.BitString) *RequestedNodes {
 		rn.SGSN = bs.Has(1)
 	}
 	return rn
+}
+
+// --- SRI BitString helpers ---
+
+// AllowedServices: 2 bits (bit 0 = first, bit 1 = second).
+func convertAllowedServicesToBitString(a *AllowedServicesFlags) runtime.BitString {
+	var b byte
+	if a.FirstServiceAllowed {
+		b |= 0x80
+	}
+	if a.SecondServiceAllowed {
+		b |= 0x40
+	}
+	return runtime.BitString{Bytes: []byte{b}, BitLength: 2}
+}
+
+func convertBitStringToAllowedServices(bs runtime.BitString) *AllowedServicesFlags {
+	a := &AllowedServicesFlags{}
+	if bs.BitLength > 0 {
+		a.FirstServiceAllowed = bs.Has(0)
+	}
+	if bs.BitLength > 1 {
+		a.SecondServiceAllowed = bs.Has(1)
+	}
+	return a
+}
+
+// SuppressMTSS: 2 bits (bit 0 = suppressCUG, bit 1 = suppressCCBS), min size 2.
+func convertSuppressMTSSToBitString(s *SuppressMTSSFlags) runtime.BitString {
+	var b byte
+	if s.SuppressCUG {
+		b |= 0x80
+	}
+	if s.SuppressCCBS {
+		b |= 0x40
+	}
+	return runtime.BitString{Bytes: []byte{b}, BitLength: 2}
+}
+
+func convertBitStringToSuppressMTSS(bs runtime.BitString) *SuppressMTSSFlags {
+	s := &SuppressMTSSFlags{}
+	if bs.BitLength > 0 {
+		s.SuppressCUG = bs.Has(0)
+	}
+	if bs.BitLength > 1 {
+		s.SuppressCCBS = bs.Has(1)
+	}
+	return s
+}
+
+// OfferedCamel4CSIs: 7 bits per 3GPP TS 29.002.
+// Bit order: 0=o-CSI, 1=d-CSI, 2=vt-CSI, 3=t-CSI, 4=mt-sms-CSI, 5=mg-CSI, 6=psi-enhancements.
+func convertOfferedCamel4CSIsToBitString(o *OfferedCamel4CSIs) runtime.BitString {
+	var b byte
+	if o.OCSI {
+		b |= 1 << 7
+	}
+	if o.DCSI {
+		b |= 1 << 6
+	}
+	if o.VTCSI {
+		b |= 1 << 5
+	}
+	if o.TCSI {
+		b |= 1 << 4
+	}
+	if o.MTSMSCSI {
+		b |= 1 << 3
+	}
+	if o.MGCSI {
+		b |= 1 << 2
+	}
+	if o.PsiEnhancements {
+		b |= 1 << 1
+	}
+	return runtime.BitString{Bytes: []byte{b}, BitLength: 7}
+}
+
+func convertBitStringToOfferedCamel4CSIs(bs runtime.BitString) *OfferedCamel4CSIs {
+	o := &OfferedCamel4CSIs{}
+	if bs.BitLength > 0 {
+		o.OCSI = bs.Has(0)
+	}
+	if bs.BitLength > 1 {
+		o.DCSI = bs.Has(1)
+	}
+	if bs.BitLength > 2 {
+		o.VTCSI = bs.Has(2)
+	}
+	if bs.BitLength > 3 {
+		o.TCSI = bs.Has(3)
+	}
+	if bs.BitLength > 4 {
+		o.MTSMSCSI = bs.Has(4)
+	}
+	if bs.BitLength > 5 {
+		o.MGCSI = bs.Has(5)
+	}
+	if bs.BitLength > 6 {
+		o.PsiEnhancements = bs.Has(6)
+	}
+	return o
+}
+
+// --- SRI nested SEQUENCE helpers ---
+
+func boolToNullPtr(b bool) *struct{} {
+	if !b {
+		return nil
+	}
+	v := struct{}{}
+	return &v
+}
+
+func nullPtrToBool(p *struct{}) bool { return p != nil }
+
+func intPtrTo64(p *int) *int64 {
+	if p == nil {
+		return nil
+	}
+	v := int64(*p)
+	return &v
+}
+
+func int64PtrTo(p *int64) *int {
+	if p == nil {
+		return nil
+	}
+	v := int(*p)
+	return &v
+}
+
+func convertForwardingDataToWire(f *ForwardingData) (*gsm_map.ForwardingData, error) {
+	out := &gsm_map.ForwardingData{}
+	if f.ForwardedToNumber != "" {
+		enc, err := encodeAddressField(f.ForwardedToNumber, f.ForwardedToNumberNature, f.ForwardedToNumberPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ForwardedToNumber: %w", err)
+		}
+		as := gsm_map.ISDNAddressString(enc)
+		out.ForwardedToNumber = &as
+	}
+	if len(f.ForwardedToSubaddress) > 0 {
+		sa := gsm_map.ISDNSubaddressString(f.ForwardedToSubaddress)
+		out.ForwardedToSubaddress = &sa
+	}
+	if len(f.ForwardingOptions) > 0 {
+		fo := gsm_map.ForwardingOptions(f.ForwardingOptions)
+		out.ForwardingOptions = &fo
+	}
+	if len(f.LongForwardedToNumber) > 0 {
+		ln := gsm_map.FTNAddressString(f.LongForwardedToNumber)
+		out.LongForwardedToNumber = &ln
+	}
+	return out, nil
+}
+
+func convertWireToForwardingData(w *gsm_map.ForwardingData) (*ForwardingData, error) {
+	out := &ForwardingData{}
+	if w.ForwardedToNumber != nil {
+		digits, nat, pl, err := decodeAddressField(*w.ForwardedToNumber)
+		if err != nil {
+			return nil, fmt.Errorf("decoding ForwardedToNumber: %w", err)
+		}
+		out.ForwardedToNumber = digits
+		out.ForwardedToNumberNature = nat
+		out.ForwardedToNumberPlan = pl
+	}
+	if w.ForwardedToSubaddress != nil {
+		out.ForwardedToSubaddress = HexBytes(*w.ForwardedToSubaddress)
+	}
+	if w.ForwardingOptions != nil {
+		out.ForwardingOptions = HexBytes(*w.ForwardingOptions)
+	}
+	if w.LongForwardedToNumber != nil {
+		out.LongForwardedToNumber = HexBytes(*w.LongForwardedToNumber)
+	}
+	return out, nil
+}
+
+func convertCcbsIndicatorsToWire(c *CcbsIndicators) *gsm_map.CCBSIndicators {
+	return &gsm_map.CCBSIndicators{
+		CcbsPossible:          boolToNullPtr(c.CcbsPossible),
+		KeepCCBSCallIndicator: boolToNullPtr(c.KeepCCBSCallIndicator),
+	}
+}
+
+func convertWireToCcbsIndicators(w *gsm_map.CCBSIndicators) *CcbsIndicators {
+	return &CcbsIndicators{
+		CcbsPossible:          nullPtrToBool(w.CcbsPossible),
+		KeepCCBSCallIndicator: nullPtrToBool(w.KeepCCBSCallIndicator),
+	}
+}
+
+func convertCugCheckInfoToWire(c *CugCheckInfo) *gsm_map.CUGCheckInfo {
+	return &gsm_map.CUGCheckInfo{
+		CugInterlock:      gsm_map.CUGInterlock(c.CugInterlock),
+		CugOutgoingAccess: boolToNullPtr(c.CugOutgoingAccess),
+	}
+}
+
+func convertWireToCugCheckInfo(w *gsm_map.CUGCheckInfo) *CugCheckInfo {
+	return &CugCheckInfo{
+		CugInterlock:      HexBytes(w.CugInterlock),
+		CugOutgoingAccess: nullPtrToBool(w.CugOutgoingAccess),
+	}
+}
+
+// --- SRI CHOICE helpers ---
+
+func convertExtBasicServiceCodeToWire(e *ExtBasicServiceCode) (*gsm_map.ExtBasicServiceCode, error) {
+	hasBearer := len(e.ExtBearerService) > 0
+	hasTele := len(e.ExtTeleservice) > 0
+	switch {
+	case hasBearer && hasTele:
+		return nil, ErrSriChoiceMultipleAlternatives
+	case hasBearer:
+		v := gsm_map.NewExtBasicServiceCodeExtBearerService(gsm_map.ExtBearerServiceCode(e.ExtBearerService))
+		return &v, nil
+	case hasTele:
+		v := gsm_map.NewExtBasicServiceCodeExtTeleservice(gsm_map.ExtTeleserviceCode(e.ExtTeleservice))
+		return &v, nil
+	default:
+		return nil, ErrSriChoiceNoAlternative
+	}
+}
+
+func convertWireToExtBasicServiceCode(w *gsm_map.ExtBasicServiceCode) (*ExtBasicServiceCode, error) {
+	switch w.Choice {
+	case gsm_map.ExtBasicServiceCodeChoiceExtBearerService:
+		if w.ExtBearerService == nil {
+			return nil, ErrSriChoiceNoAlternative
+		}
+		return &ExtBasicServiceCode{ExtBearerService: HexBytes(*w.ExtBearerService)}, nil
+	case gsm_map.ExtBasicServiceCodeChoiceExtTeleservice:
+		if w.ExtTeleservice == nil {
+			return nil, ErrSriChoiceNoAlternative
+		}
+		return &ExtBasicServiceCode{ExtTeleservice: HexBytes(*w.ExtTeleservice)}, nil
+	default:
+		return nil, ErrSriChoiceNoAlternative
+	}
+}
+
+func convertRoutingInfoToWire(r *RoutingInfo) (*gsm_map.RoutingInfo, error) {
+	hasRoaming := r.RoamingNumber != ""
+	hasFwd := r.ForwardingData != nil
+	switch {
+	case hasRoaming && hasFwd:
+		return nil, ErrSriChoiceMultipleAlternatives
+	case hasRoaming:
+		enc, err := encodeAddressField(r.RoamingNumber, r.RoamingNumberNature, r.RoamingNumberPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding RoamingNumber: %w", err)
+		}
+		v := gsm_map.NewRoutingInfoRoamingNumber(gsm_map.ISDNAddressString(enc))
+		return &v, nil
+	case hasFwd:
+		fw, err := convertForwardingDataToWire(r.ForwardingData)
+		if err != nil {
+			return nil, err
+		}
+		v := gsm_map.NewRoutingInfoForwardingData(*fw)
+		return &v, nil
+	default:
+		return nil, ErrSriChoiceNoAlternative
+	}
+}
+
+func convertWireToRoutingInfo(w *gsm_map.RoutingInfo) (*RoutingInfo, error) {
+	switch w.Choice {
+	case gsm_map.RoutingInfoChoiceRoamingNumber:
+		if w.RoamingNumber == nil {
+			return nil, ErrSriChoiceNoAlternative
+		}
+		digits, nat, pl, err := decodeAddressField(*w.RoamingNumber)
+		if err != nil {
+			return nil, fmt.Errorf("decoding RoamingNumber: %w", err)
+		}
+		return &RoutingInfo{RoamingNumber: digits, RoamingNumberNature: nat, RoamingNumberPlan: pl}, nil
+	case gsm_map.RoutingInfoChoiceForwardingData:
+		if w.ForwardingData == nil {
+			return nil, ErrSriChoiceNoAlternative
+		}
+		fd, err := convertWireToForwardingData(w.ForwardingData)
+		if err != nil {
+			return nil, err
+		}
+		return &RoutingInfo{ForwardingData: fd}, nil
+	default:
+		return nil, ErrSriChoiceNoAlternative
+	}
+}
+
+func convertExtendedRoutingInfoToWire(e *ExtendedRoutingInfo) (*gsm_map.ExtendedRoutingInfo, error) {
+	hasRI := e.RoutingInfo != nil
+	hasCamel := e.CamelRoutingInfo != nil
+	switch {
+	case hasRI && hasCamel:
+		return nil, ErrSriChoiceMultipleAlternatives
+	case hasRI:
+		ri, err := convertRoutingInfoToWire(e.RoutingInfo)
+		if err != nil {
+			return nil, err
+		}
+		v := gsm_map.NewExtendedRoutingInfoRoutingInfo(*ri)
+		return &v, nil
+	case hasCamel:
+		cri, err := convertCamelRoutingInfoToWire(e.CamelRoutingInfo)
+		if err != nil {
+			return nil, err
+		}
+		v := gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(*cri)
+		return &v, nil
+	default:
+		return nil, ErrSriChoiceNoAlternative
+	}
+}
+
+func convertWireToExtendedRoutingInfo(w *gsm_map.ExtendedRoutingInfo) (*ExtendedRoutingInfo, error) {
+	switch w.Choice {
+	case gsm_map.ExtendedRoutingInfoChoiceRoutingInfo:
+		if w.RoutingInfo == nil {
+			return nil, ErrSriChoiceNoAlternative
+		}
+		ri, err := convertWireToRoutingInfo(w.RoutingInfo)
+		if err != nil {
+			return nil, err
+		}
+		return &ExtendedRoutingInfo{RoutingInfo: ri}, nil
+	case gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo:
+		if w.CamelRoutingInfo == nil {
+			return nil, ErrSriChoiceNoAlternative
+		}
+		cri, err := convertWireToCamelRoutingInfo(w.CamelRoutingInfo)
+		if err != nil {
+			return nil, err
+		}
+		return &ExtendedRoutingInfo{CamelRoutingInfo: cri}, nil
+	default:
+		return nil, ErrSriChoiceNoAlternative
+	}
+}
+
+func convertCamelRoutingInfoToWire(c *CamelRoutingInfo) (*gsm_map.CamelRoutingInfo, error) {
+	out := &gsm_map.CamelRoutingInfo{
+		GmscCamelSubscriptionInfo: convertGmscCamelSubInfoToWire(&c.GmscCamelSubscriptionInfo),
+	}
+	if c.ForwardingData != nil {
+		fd, err := convertForwardingDataToWire(c.ForwardingData)
+		if err != nil {
+			return nil, err
+		}
+		out.ForwardingData = fd
+	}
+	return out, nil
+}
+
+func convertWireToCamelRoutingInfo(w *gsm_map.CamelRoutingInfo) (*CamelRoutingInfo, error) {
+	out := &CamelRoutingInfo{
+		GmscCamelSubscriptionInfo: convertWireToGmscCamelSubInfo(&w.GmscCamelSubscriptionInfo),
+	}
+	if w.ForwardingData != nil {
+		fd, err := convertWireToForwardingData(w.ForwardingData)
+		if err != nil {
+			return nil, err
+		}
+		out.ForwardingData = fd
+	}
+	return out, nil
+}
+
+// GmscCamelSubscriptionInfo: nested CAMEL SEQUENCEs (T-CSI, O-CSI, D-CSI,
+// criteria lists) are not yet decomposed. These stubs silently drop CAMEL
+// subscription data on round-trip. Full CAMEL support is deferred to future work.
+// TODO: implement field mappings for GmscCamelSubscriptionInfo.
+func convertGmscCamelSubInfoToWire(_ *GmscCamelSubscriptionInfo) gsm_map.GmscCamelSubscriptionInfo {
+	return gsm_map.GmscCamelSubscriptionInfo{}
+}
+
+func convertWireToGmscCamelSubInfo(_ *gsm_map.GmscCamelSubscriptionInfo) GmscCamelSubscriptionInfo {
+	return GmscCamelSubscriptionInfo{}
+}
+
+// --- SRI remaining helpers ---
+
+func convertExternalSignalInfoToWire(e *ExternalSignalInfo) *gsm_map.ExternalSignalInfo {
+	return &gsm_map.ExternalSignalInfo{
+		ProtocolId: gsm_map.ProtocolId(int64(e.ProtocolID)),
+		SignalInfo:  gsm_map.SignalInfo(e.SignalInfo),
+	}
+}
+
+func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) *ExternalSignalInfo {
+	return &ExternalSignalInfo{
+		ProtocolID: int(w.ProtocolId),
+		SignalInfo:  HexBytes(w.SignalInfo),
+	}
+}
+
+func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) *gsm_map.ExtExternalSignalInfo {
+	return &gsm_map.ExtExternalSignalInfo{
+		ExtProtocolId: gsm_map.ExtProtocolId(int64(e.ExtProtocolID)),
+		SignalInfo:    gsm_map.SignalInfo(e.SignalInfo),
+	}
+}
+
+func convertWireToExtExternalSignalInfo(w *gsm_map.ExtExternalSignalInfo) *ExtExternalSignalInfo {
+	return &ExtExternalSignalInfo{
+		ExtProtocolID: int(w.ExtProtocolId),
+		SignalInfo:    HexBytes(w.SignalInfo),
+	}
+}
+
+func convertSriCamelInfoToWire(c *SriCamelInfo) *gsm_map.CamelInfo {
+	out := &gsm_map.CamelInfo{
+		SupportedCamelPhases: convertCamelPhasesToBitString(&c.SupportedCamelPhases),
+		SuppressTCSI:         boolToNullPtr(c.SuppressTCSI),
+	}
+	if c.OfferedCamel4CSIs != nil {
+		bs := convertOfferedCamel4CSIsToBitString(c.OfferedCamel4CSIs)
+		out.OfferedCamel4CSIs = &bs
+	}
+	return out
+}
+
+func convertWireToSriCamelInfo(w *gsm_map.CamelInfo) *SriCamelInfo {
+	out := &SriCamelInfo{
+		SupportedCamelPhases: *convertBitStringToCamelPhases(w.SupportedCamelPhases),
+		SuppressTCSI:         nullPtrToBool(w.SuppressTCSI),
+	}
+	if w.OfferedCamel4CSIs != nil {
+		out.OfferedCamel4CSIs = convertBitStringToOfferedCamel4CSIs(*w.OfferedCamel4CSIs)
+	}
+	return out
+}
+
+func convertNaeaPreferredCIToWire(n *NaeaPreferredCI) *gsm_map.NAEAPreferredCI {
+	return &gsm_map.NAEAPreferredCI{NaeaPreferredCIC: gsm_map.NAEACIC(n.NaeaPreferredCIC)}
+}
+
+func convertWireToNaeaPreferredCI(w *gsm_map.NAEAPreferredCI) *NaeaPreferredCI {
+	return &NaeaPreferredCI{NaeaPreferredCIC: HexBytes(w.NaeaPreferredCIC)}
+}
+
+// --- SRI (SendRoutingInfo) full converters ---
+
+func validateSri(s *Sri) error {
+	if s.MSISDN == "" {
+		return ErrSriMissingMSISDN
+	}
+	if s.GmscOrGsmSCFAddress == "" {
+		return ErrSriMissingGmsc
+	}
+	if s.InterrogationType != InterrogationBasicCall && s.InterrogationType != InterrogationForwarding {
+		return ErrSriInvalidInterrogationType
+	}
+	if s.NumberOfForwarding != nil {
+		if *s.NumberOfForwarding < 1 || *s.NumberOfForwarding > 5 {
+			return ErrSriInvalidNumberOfForwarding
+		}
+	}
+	if s.OrCapability != nil {
+		if *s.OrCapability < 1 || *s.OrCapability > 127 {
+			return ErrSriInvalidOrCapability
+		}
+	}
+	if len(s.CallReferenceNumber) > 8 {
+		return ErrSriInvalidCallReferenceNumber
+	}
+	return nil
+}
+
+func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
+	if err := validateSri(s); err != nil {
+		return nil, err
+	}
+
+	msisdn, err := encodeAddressField(s.MSISDN, s.MSISDNNature, s.MSISDNPlan)
+	if err != nil {
+		return nil, fmt.Errorf("encoding MSISDN: %w", err)
+	}
+	gmsc, err := encodeAddressField(s.GmscOrGsmSCFAddress, s.GmscNature, s.GmscPlan)
+	if err != nil {
+		return nil, fmt.Errorf("encoding GmscOrGsmSCFAddress: %w", err)
+	}
+
+	arg := &gsm_map.SendRoutingInfoArg{
+		Msisdn:              gsm_map.ISDNAddressString(msisdn),
+		InterrogationType:   gsm_map.InterrogationType(int64(s.InterrogationType)),
+		GmscOrGsmSCFAddress: gsm_map.ISDNAddressString(gmsc),
+	}
+
+	// CugCheckInfo
+	if s.CugCheckInfo != nil {
+		arg.CugCheckInfo = convertCugCheckInfoToWire(s.CugCheckInfo)
+	}
+
+	// NumberOfForwarding
+	if s.NumberOfForwarding != nil {
+		v := int64(*s.NumberOfForwarding)
+		arg.NumberOfForwarding = &v
+	}
+
+	// OrInterrogation
+	arg.OrInterrogation = boolToNullPtr(s.OrInterrogation)
+
+	// OrCapability
+	if s.OrCapability != nil {
+		v := int64(*s.OrCapability)
+		arg.OrCapability = &v
+	}
+
+	// CallReferenceNumber
+	if len(s.CallReferenceNumber) > 0 {
+		v := gsm_map.CallReferenceNumber(s.CallReferenceNumber)
+		arg.CallReferenceNumber = &v
+	}
+
+	// ForwardingReason
+	if s.ForwardingReason != nil {
+		v := gsm_map.ForwardingReason(int64(*s.ForwardingReason))
+		arg.ForwardingReason = &v
+	}
+
+	// BasicServiceGroup
+	if s.BasicServiceGroup != nil {
+		bsg, err := convertExtBasicServiceCodeToWire(s.BasicServiceGroup)
+		if err != nil {
+			return nil, fmt.Errorf("encoding BasicServiceGroup: %w", err)
+		}
+		arg.BasicServiceGroup = bsg
+	}
+
+	// BasicServiceGroup2
+	if s.BasicServiceGroup2 != nil {
+		bsg2, err := convertExtBasicServiceCodeToWire(s.BasicServiceGroup2)
+		if err != nil {
+			return nil, fmt.Errorf("encoding BasicServiceGroup2: %w", err)
+		}
+		arg.BasicServiceGroup2 = bsg2
+	}
+
+	// NetworkSignalInfo
+	if s.NetworkSignalInfo != nil {
+		arg.NetworkSignalInfo = convertExternalSignalInfoToWire(s.NetworkSignalInfo)
+	}
+
+	// NetworkSignalInfo2
+	if s.NetworkSignalInfo2 != nil {
+		arg.NetworkSignalInfo2 = convertExternalSignalInfoToWire(s.NetworkSignalInfo2)
+	}
+
+	// CamelInfo
+	if s.CamelInfo != nil {
+		arg.CamelInfo = convertSriCamelInfoToWire(s.CamelInfo)
+	}
+
+	// SuppressionOfAnnouncement
+	if s.SuppressionOfAnnouncement {
+		v := gsm_map.SuppressionOfAnnouncement{}
+		arg.SuppressionOfAnnouncement = &v
+	}
+
+	// AlertingPattern
+	if len(s.AlertingPattern) > 0 {
+		v := gsm_map.AlertingPattern(s.AlertingPattern)
+		arg.AlertingPattern = &v
+	}
+
+	// CcbsCall
+	arg.CcbsCall = boolToNullPtr(s.CcbsCall)
+
+	// SupportedCCBSPhase
+	if s.SupportedCCBSPhase != nil {
+		v := int64(*s.SupportedCCBSPhase)
+		arg.SupportedCCBSPhase = &v
+	}
+
+	// AdditionalSignalInfo
+	if s.AdditionalSignalInfo != nil {
+		arg.AdditionalSignalInfo = convertExtExternalSignalInfoToWire(s.AdditionalSignalInfo)
+	}
+
+	// IstSupportIndicator
+	if s.IstSupportIndicator != nil {
+		v := gsm_map.ISTSupportIndicator(int64(*s.IstSupportIndicator))
+		arg.IstSupportIndicator = &v
+	}
+
+	// PrePagingSupported
+	arg.PrePagingSupported = boolToNullPtr(s.PrePagingSupported)
+
+	// CallDiversionTreatmentIndicator
+	if len(s.CallDiversionTreatmentIndicator) > 0 {
+		v := gsm_map.CallDiversionTreatmentIndicator(s.CallDiversionTreatmentIndicator)
+		arg.CallDiversionTreatmentIndicator = &v
+	}
+
+	// LongFTNSupported
+	arg.LongFTNSupported = boolToNullPtr(s.LongFTNSupported)
+
+	// SuppressVTCSI
+	arg.SuppressVTCSI = boolToNullPtr(s.SuppressVTCSI)
+
+	// SuppressIncomingCallBarring
+	arg.SuppressIncomingCallBarring = boolToNullPtr(s.SuppressIncomingCallBarring)
+
+	// GsmSCFInitiatedCall
+	arg.GsmSCFInitiatedCall = boolToNullPtr(s.GsmSCFInitiatedCall)
+
+	// SuppressMTSS
+	if s.SuppressMTSS != nil {
+		v := convertSuppressMTSSToBitString(s.SuppressMTSS)
+		arg.SuppressMTSS = &v
+	}
+
+	// MtRoamingRetrySupported
+	arg.MtRoamingRetrySupported = boolToNullPtr(s.MtRoamingRetrySupported)
+
+	// CallPriority
+	if s.CallPriority != nil {
+		v := int64(*s.CallPriority)
+		arg.CallPriority = &v
+	}
+
+	return arg, nil
+}
+
+func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
+	msisdn, msisdnNature, msisdnPlan, err := decodeAddressField(arg.Msisdn)
+	if err != nil {
+		return nil, fmt.Errorf("decoding MSISDN: %w", err)
+	}
+
+	gmsc, gmscNature, gmscPlan, err := decodeAddressField(arg.GmscOrGsmSCFAddress)
+	if err != nil {
+		return nil, fmt.Errorf("decoding GmscOrGsmSCFAddress: %w", err)
+	}
+
+	s := &Sri{
+		MSISDN:              msisdn,
+		MSISDNNature:        msisdnNature,
+		MSISDNPlan:          msisdnPlan,
+		InterrogationType:   InterrogationType(int(arg.InterrogationType)),
+		GmscOrGsmSCFAddress: gmsc,
+		GmscNature:          gmscNature,
+		GmscPlan:            gmscPlan,
+	}
+
+	// CugCheckInfo
+	if arg.CugCheckInfo != nil {
+		s.CugCheckInfo = convertWireToCugCheckInfo(arg.CugCheckInfo)
+	}
+
+	// NumberOfForwarding
+	if arg.NumberOfForwarding != nil {
+		v := int(*arg.NumberOfForwarding)
+		s.NumberOfForwarding = &v
+	}
+
+	// OrInterrogation
+	s.OrInterrogation = nullPtrToBool(arg.OrInterrogation)
+
+	// OrCapability
+	if arg.OrCapability != nil {
+		v := int(*arg.OrCapability)
+		s.OrCapability = &v
+	}
+
+	// CallReferenceNumber
+	if arg.CallReferenceNumber != nil {
+		s.CallReferenceNumber = HexBytes(*arg.CallReferenceNumber)
+	}
+
+	// ForwardingReason
+	if arg.ForwardingReason != nil {
+		v := ForwardingReason(int(*arg.ForwardingReason))
+		s.ForwardingReason = &v
+	}
+
+	// BasicServiceGroup
+	if arg.BasicServiceGroup != nil {
+		bsg, err := convertWireToExtBasicServiceCode(arg.BasicServiceGroup)
+		if err != nil {
+			return nil, fmt.Errorf("decoding BasicServiceGroup: %w", err)
+		}
+		s.BasicServiceGroup = bsg
+	}
+
+	// BasicServiceGroup2
+	if arg.BasicServiceGroup2 != nil {
+		bsg2, err := convertWireToExtBasicServiceCode(arg.BasicServiceGroup2)
+		if err != nil {
+			return nil, fmt.Errorf("decoding BasicServiceGroup2: %w", err)
+		}
+		s.BasicServiceGroup2 = bsg2
+	}
+
+	// NetworkSignalInfo
+	if arg.NetworkSignalInfo != nil {
+		s.NetworkSignalInfo = convertWireToExternalSignalInfo(arg.NetworkSignalInfo)
+	}
+
+	// NetworkSignalInfo2
+	if arg.NetworkSignalInfo2 != nil {
+		s.NetworkSignalInfo2 = convertWireToExternalSignalInfo(arg.NetworkSignalInfo2)
+	}
+
+	// CamelInfo
+	if arg.CamelInfo != nil {
+		s.CamelInfo = convertWireToSriCamelInfo(arg.CamelInfo)
+	}
+
+	// SuppressionOfAnnouncement
+	s.SuppressionOfAnnouncement = arg.SuppressionOfAnnouncement != nil
+
+	// AlertingPattern
+	if arg.AlertingPattern != nil {
+		s.AlertingPattern = HexBytes(*arg.AlertingPattern)
+	}
+
+	// CcbsCall
+	s.CcbsCall = nullPtrToBool(arg.CcbsCall)
+
+	// SupportedCCBSPhase
+	if arg.SupportedCCBSPhase != nil {
+		v := int(*arg.SupportedCCBSPhase)
+		s.SupportedCCBSPhase = &v
+	}
+
+	// AdditionalSignalInfo
+	if arg.AdditionalSignalInfo != nil {
+		s.AdditionalSignalInfo = convertWireToExtExternalSignalInfo(arg.AdditionalSignalInfo)
+	}
+
+	// IstSupportIndicator
+	if arg.IstSupportIndicator != nil {
+		v := int(*arg.IstSupportIndicator)
+		s.IstSupportIndicator = &v
+	}
+
+	// PrePagingSupported
+	s.PrePagingSupported = nullPtrToBool(arg.PrePagingSupported)
+
+	// CallDiversionTreatmentIndicator
+	if arg.CallDiversionTreatmentIndicator != nil {
+		s.CallDiversionTreatmentIndicator = HexBytes(*arg.CallDiversionTreatmentIndicator)
+	}
+
+	// LongFTNSupported
+	s.LongFTNSupported = nullPtrToBool(arg.LongFTNSupported)
+
+	// SuppressVTCSI
+	s.SuppressVTCSI = nullPtrToBool(arg.SuppressVTCSI)
+
+	// SuppressIncomingCallBarring
+	s.SuppressIncomingCallBarring = nullPtrToBool(arg.SuppressIncomingCallBarring)
+
+	// GsmSCFInitiatedCall
+	s.GsmSCFInitiatedCall = nullPtrToBool(arg.GsmSCFInitiatedCall)
+
+	// SuppressMTSS
+	if arg.SuppressMTSS != nil && arg.SuppressMTSS.BitLength > 0 {
+		s.SuppressMTSS = convertBitStringToSuppressMTSS(*arg.SuppressMTSS)
+	}
+
+	// MtRoamingRetrySupported
+	s.MtRoamingRetrySupported = nullPtrToBool(arg.MtRoamingRetrySupported)
+
+	// CallPriority
+	if arg.CallPriority != nil {
+		v := int(*arg.CallPriority)
+		s.CallPriority = &v
+	}
+
+	return s, nil
+}
+
+// --- SRI Response (SendRoutingInfoRes) full converters ---
+
+func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
+	imsiBytes, err := tbcd.Encode(s.IMSI)
+	if err != nil {
+		return nil, fmt.Errorf(errEncodingIMSI, err)
+	}
+
+	out := &gsm_map.SendRoutingInfoRes{
+		Imsi: (*gsm_map.IMSI)(&imsiBytes),
+	}
+
+	// ExtendedRoutingInfo
+	if s.ExtendedRoutingInfo != nil {
+		eri, err := convertExtendedRoutingInfoToWire(s.ExtendedRoutingInfo)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ExtendedRoutingInfo: %w", err)
+		}
+		out.ExtendedRoutingInfo = eri
+	}
+
+	// CugCheckInfo
+	if s.CugCheckInfo != nil {
+		out.CugCheckInfo = convertCugCheckInfoToWire(s.CugCheckInfo)
+	}
+
+	// CugSubscriptionFlag
+	out.CugSubscriptionFlag = boolToNullPtr(s.CugSubscriptionFlag)
+
+	// SubscriberInfo
+	if s.SubscriberInfo != nil {
+		si, err := convertSubscriberInfoToWire(s.SubscriberInfo)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SubscriberInfo: %w", err)
+		}
+		out.SubscriberInfo = si
+	}
+
+	// SsList
+	if len(s.SsList) > 0 {
+		out.SsList = make(gsm_map.SSList, len(s.SsList))
+		for i, c := range s.SsList {
+			out.SsList[i] = gsm_map.SSCode{byte(c)}
+		}
+	}
+
+	// BasicService
+	if s.BasicService != nil {
+		bs, err := convertExtBasicServiceCodeToWire(s.BasicService)
+		if err != nil {
+			return nil, fmt.Errorf("encoding BasicService: %w", err)
+		}
+		out.BasicService = bs
+	}
+
+	// ForwardingInterrogationRequired
+	out.ForwardingInterrogationRequired = boolToNullPtr(s.ForwardingInterrogationRequired)
+
+	// VmscAddress
+	if s.VmscAddress != "" {
+		enc, err := encodeAddressField(s.VmscAddress, s.VmscNature, s.VmscPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding VmscAddress: %w", err)
+		}
+		v := gsm_map.ISDNAddressString(enc)
+		out.VmscAddress = &v
+	}
+
+	// NaeaPreferredCI
+	if s.NaeaPreferredCI != nil {
+		out.NaeaPreferredCI = convertNaeaPreferredCIToWire(s.NaeaPreferredCI)
+	}
+
+	// CcbsIndicators
+	if s.CcbsIndicators != nil {
+		out.CcbsIndicators = convertCcbsIndicatorsToWire(s.CcbsIndicators)
+	}
+
+	// Msisdn
+	if s.MSISDN != "" {
+		enc, err := encodeAddressField(s.MSISDN, s.MSISDNNature, s.MSISDNPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding MSISDN: %w", err)
+		}
+		v := gsm_map.ISDNAddressString(enc)
+		out.Msisdn = &v
+	}
+
+	// NumberPortabilityStatus
+	if s.NumberPortabilityStatus != nil {
+		v := gsm_map.NumberPortabilityStatus(int64(*s.NumberPortabilityStatus))
+		out.NumberPortabilityStatus = &v
+	}
+
+	// IstAlertTimer
+	out.IstAlertTimer = intPtrTo64(s.IstAlertTimer)
+
+	// SupportedCamelPhasesInVMSC
+	if s.SupportedCamelPhasesInVMSC != nil {
+		bs := convertCamelPhasesToBitString(s.SupportedCamelPhasesInVMSC)
+		out.SupportedCamelPhasesInVMSC = &bs
+	}
+
+	// OfferedCamel4CSIsInVMSC
+	if s.OfferedCamel4CSIsInVMSC != nil {
+		bs := convertOfferedCamel4CSIsToBitString(s.OfferedCamel4CSIsInVMSC)
+		out.OfferedCamel4CSIsInVMSC = &bs
+	}
+
+	// RoutingInfo2
+	if s.RoutingInfo2 != nil {
+		ri, err := convertRoutingInfoToWire(s.RoutingInfo2)
+		if err != nil {
+			return nil, fmt.Errorf("encoding RoutingInfo2: %w", err)
+		}
+		out.RoutingInfo2 = ri
+	}
+
+	// SsList2
+	if len(s.SsList2) > 0 {
+		out.SsList2 = make(gsm_map.SSList, len(s.SsList2))
+		for i, c := range s.SsList2 {
+			out.SsList2[i] = gsm_map.SSCode{byte(c)}
+		}
+	}
+
+	// BasicService2
+	if s.BasicService2 != nil {
+		bs2, err := convertExtBasicServiceCodeToWire(s.BasicService2)
+		if err != nil {
+			return nil, fmt.Errorf("encoding BasicService2: %w", err)
+		}
+		out.BasicService2 = bs2
+	}
+
+	// AllowedServices
+	if s.AllowedServices != nil {
+		bs := convertAllowedServicesToBitString(s.AllowedServices)
+		out.AllowedServices = &bs
+	}
+
+	// UnavailabilityCause
+	if s.UnavailabilityCause != nil {
+		v := gsm_map.UnavailabilityCause(int64(*s.UnavailabilityCause))
+		out.UnavailabilityCause = &v
+	}
+
+	// ReleaseResourcesSupported
+	out.ReleaseResourcesSupported = boolToNullPtr(s.ReleaseResourcesSupported)
+
+	// GsmBearerCapability
+	if s.GsmBearerCapability != nil {
+		out.GsmBearerCapability = convertExternalSignalInfoToWire(s.GsmBearerCapability)
+	}
+
+	return out, nil
+}
+
+func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
+	out := &SriResp{}
+
+	// Imsi
+	if res.Imsi != nil {
+		imsi, err := tbcd.Decode(*res.Imsi)
+		if err != nil {
+			return nil, fmt.Errorf("decoding IMSI: %w", err)
+		}
+		out.IMSI = imsi
+	}
+
+	// ExtendedRoutingInfo
+	if res.ExtendedRoutingInfo != nil {
+		eri, err := convertWireToExtendedRoutingInfo(res.ExtendedRoutingInfo)
+		if err != nil {
+			return nil, fmt.Errorf("decoding ExtendedRoutingInfo: %w", err)
+		}
+		out.ExtendedRoutingInfo = eri
+	}
+
+	// CugCheckInfo
+	if res.CugCheckInfo != nil {
+		out.CugCheckInfo = convertWireToCugCheckInfo(res.CugCheckInfo)
+	}
+
+	// CugSubscriptionFlag
+	out.CugSubscriptionFlag = nullPtrToBool(res.CugSubscriptionFlag)
+
+	// SubscriberInfo
+	if res.SubscriberInfo != nil {
+		si, err := convertWireToSubscriberInfo(res.SubscriberInfo)
+		if err != nil {
+			return nil, fmt.Errorf("decoding SubscriberInfo: %w", err)
+		}
+		out.SubscriberInfo = si
+	}
+
+	// SsList
+	if len(res.SsList) > 0 {
+		out.SsList = make([]SsCode, len(res.SsList))
+		for i, c := range res.SsList {
+			if len(c) > 0 {
+				out.SsList[i] = SsCode(c[0])
+			}
+		}
+	}
+
+	// BasicService
+	if res.BasicService != nil {
+		bs, err := convertWireToExtBasicServiceCode(res.BasicService)
+		if err != nil {
+			return nil, fmt.Errorf("decoding BasicService: %w", err)
+		}
+		out.BasicService = bs
+	}
+
+	// ForwardingInterrogationRequired
+	out.ForwardingInterrogationRequired = nullPtrToBool(res.ForwardingInterrogationRequired)
+
+	// VmscAddress
+	if res.VmscAddress != nil {
+		digits, nat, pl, err := decodeAddressField(*res.VmscAddress)
+		if err != nil {
+			return nil, fmt.Errorf("decoding VmscAddress: %w", err)
+		}
+		out.VmscAddress = digits
+		out.VmscNature = nat
+		out.VmscPlan = pl
+	}
+
+	// NaeaPreferredCI
+	if res.NaeaPreferredCI != nil {
+		out.NaeaPreferredCI = convertWireToNaeaPreferredCI(res.NaeaPreferredCI)
+	}
+
+	// CcbsIndicators
+	if res.CcbsIndicators != nil {
+		out.CcbsIndicators = convertWireToCcbsIndicators(res.CcbsIndicators)
+	}
+
+	// Msisdn
+	if res.Msisdn != nil {
+		digits, nat, pl, err := decodeAddressField(*res.Msisdn)
+		if err != nil {
+			return nil, fmt.Errorf("decoding MSISDN: %w", err)
+		}
+		out.MSISDN = digits
+		out.MSISDNNature = nat
+		out.MSISDNPlan = pl
+	}
+
+	// NumberPortabilityStatus
+	if res.NumberPortabilityStatus != nil {
+		v := NumberPortabilityStatus(int(*res.NumberPortabilityStatus))
+		out.NumberPortabilityStatus = &v
+	}
+
+	// IstAlertTimer
+	out.IstAlertTimer = int64PtrTo(res.IstAlertTimer)
+
+	// SupportedCamelPhasesInVMSC
+	if res.SupportedCamelPhasesInVMSC != nil && res.SupportedCamelPhasesInVMSC.BitLength > 0 {
+		out.SupportedCamelPhasesInVMSC = convertBitStringToCamelPhases(*res.SupportedCamelPhasesInVMSC)
+	}
+
+	// OfferedCamel4CSIsInVMSC
+	if res.OfferedCamel4CSIsInVMSC != nil && res.OfferedCamel4CSIsInVMSC.BitLength > 0 {
+		out.OfferedCamel4CSIsInVMSC = convertBitStringToOfferedCamel4CSIs(*res.OfferedCamel4CSIsInVMSC)
+	}
+
+	// RoutingInfo2
+	if res.RoutingInfo2 != nil {
+		ri, err := convertWireToRoutingInfo(res.RoutingInfo2)
+		if err != nil {
+			return nil, fmt.Errorf("decoding RoutingInfo2: %w", err)
+		}
+		out.RoutingInfo2 = ri
+	}
+
+	// SsList2
+	if len(res.SsList2) > 0 {
+		out.SsList2 = make([]SsCode, len(res.SsList2))
+		for i, c := range res.SsList2 {
+			if len(c) > 0 {
+				out.SsList2[i] = SsCode(c[0])
+			}
+		}
+	}
+
+	// BasicService2
+	if res.BasicService2 != nil {
+		bs2, err := convertWireToExtBasicServiceCode(res.BasicService2)
+		if err != nil {
+			return nil, fmt.Errorf("decoding BasicService2: %w", err)
+		}
+		out.BasicService2 = bs2
+	}
+
+	// AllowedServices
+	if res.AllowedServices != nil && res.AllowedServices.BitLength > 0 {
+		out.AllowedServices = convertBitStringToAllowedServices(*res.AllowedServices)
+	}
+
+	// UnavailabilityCause
+	if res.UnavailabilityCause != nil {
+		v := UnavailabilityCause(int(*res.UnavailabilityCause))
+		out.UnavailabilityCause = &v
+	}
+
+	// ReleaseResourcesSupported
+	out.ReleaseResourcesSupported = nullPtrToBool(res.ReleaseResourcesSupported)
+
+	// GsmBearerCapability
+	if res.GsmBearerCapability != nil {
+		out.GsmBearerCapability = convertWireToExternalSignalInfo(res.GsmBearerCapability)
+	}
+
+	return out, nil
+}
+
+// --- SubscriberInfo helpers (shared between ATI and SRI response) ---
+
+func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, error) {
+	si := &gsm_map.SubscriberInfo{}
+
+	if s.LocationInformation != nil {
+		locInfo, err := convertCSLocationToAsn1(s.LocationInformation)
+		if err != nil {
+			return nil, fmt.Errorf("converting LocationInformation: %w", err)
+		}
+		si.LocationInformation = locInfo
+	}
+
+	if s.SubscriberState != nil {
+		si.SubscriberState = convertSubscriberStateToAsn1(s.SubscriberState)
+	}
+
+	if s.LocationInformationEPS != nil {
+		locEPS, err := convertEPSLocationToAsn1(s.LocationInformationEPS)
+		if err != nil {
+			return nil, fmt.Errorf("converting LocationInformationEPS: %w", err)
+		}
+		si.LocationInformationEPS = locEPS
+	}
+
+	if s.LocationInformationGPRS != nil {
+		locGPRS, err := convertGPRSLocationToAsn1(s.LocationInformationGPRS)
+		if err != nil {
+			return nil, fmt.Errorf("converting LocationInformationGPRS: %w", err)
+		}
+		si.LocationInformationGPRS = locGPRS
+	}
+
+	if s.IMEI != "" {
+		imeiBytes, err := tbcd.Encode(s.IMEI)
+		if err != nil {
+			return nil, fmt.Errorf("encoding IMEI: %w", err)
+		}
+		imei := gsm_map.IMEI(imeiBytes)
+		si.Imei = &imei
+	}
+
+	if s.MsClassmark2 != nil {
+		mc := gsm_map.MSClassmark2(s.MsClassmark2)
+		si.MsClassmark2 = &mc
+	}
+
+	if s.TimeZone != nil {
+		tz := gsm_map.TimeZone(s.TimeZone)
+		si.TimeZone = &tz
+	}
+
+	if s.DaylightSavingTime != nil {
+		dst := gsm_map.DaylightSavingTime(*s.DaylightSavingTime)
+		si.DaylightSavingTime = &dst
+	}
+
+	return si, nil
+}
+
+func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, error) {
+	out := &SubscriberInfo{}
+
+	if si.LocationInformation != nil {
+		locInfo, err := convertAsn1ToCSLocation(si.LocationInformation)
+		if err != nil {
+			return nil, fmt.Errorf("converting LocationInformation: %w", err)
+		}
+		out.LocationInformation = locInfo
+	}
+
+	if si.SubscriberState != nil {
+		out.SubscriberState = convertAsn1ToSubscriberState(si.SubscriberState)
+	}
+
+	if si.LocationInformationEPS != nil {
+		locEPS, err := convertAsn1ToEPSLocation(si.LocationInformationEPS)
+		if err != nil {
+			return nil, fmt.Errorf("converting LocationInformationEPS: %w", err)
+		}
+		out.LocationInformationEPS = locEPS
+	}
+
+	if si.LocationInformationGPRS != nil {
+		locGPRS, err := convertAsn1ToGPRSLocation(si.LocationInformationGPRS)
+		if err != nil {
+			return nil, fmt.Errorf("converting LocationInformationGPRS: %w", err)
+		}
+		out.LocationInformationGPRS = locGPRS
+	}
+
+	if si.Imei != nil && len(*si.Imei) > 0 {
+		imei, err := tbcd.Decode(*si.Imei)
+		if err != nil {
+			return nil, fmt.Errorf("decoding IMEI: %w", err)
+		}
+		out.IMEI = imei
+	}
+
+	if si.MsClassmark2 != nil {
+		out.MsClassmark2 = []byte(*si.MsClassmark2)
+	}
+
+	if si.TimeZone != nil {
+		out.TimeZone = []byte(*si.TimeZone)
+	}
+
+	if si.DaylightSavingTime != nil {
+		v := int(*si.DaylightSavingTime)
+		out.DaylightSavingTime = &v
+	}
+
+	return out, nil
 }
