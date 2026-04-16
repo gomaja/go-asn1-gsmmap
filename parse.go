@@ -33,6 +33,15 @@ func ParseMtFsm(data []byte) (*MtFsm, error) {
 	return convertArgToMtFsm(&arg)
 }
 
+// ParseMtFsmResp decodes BER-encoded bytes into an MtFsmResp.
+func ParseMtFsmResp(data []byte) (*MtFsmResp, error) {
+	var res gsm_map.MTForwardSMRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding MTForwardSMRes: %w", err)
+	}
+	return convertResToMtFsmResp(&res), nil
+}
+
 // ParseMoFsm decodes BER-encoded bytes into an MoFsm.
 func ParseMoFsm(data []byte) (*MoFsm, error) {
 	var arg gsm_map.MOForwardSMArg

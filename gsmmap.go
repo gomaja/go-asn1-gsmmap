@@ -135,7 +135,7 @@ type LocationInfoWithLMSI struct {
 	SmsfNon3gppAddressIndicator bool // [17] NULL
 }
 
-// MtFsm represents a Mobile Terminated Forward Short Message.
+// MtFsm represents a Mobile Terminated Forward Short Message (opCode 44).
 type MtFsm struct {
 	IMSI                   string
 	ServiceCentreAddressOA string
@@ -143,6 +143,22 @@ type MtFsm struct {
 	SCAOAPlan              uint8 // numbering plan indicator (default: ISDN)
 	TPDU                   tpdu.TPDU
 	MoreMessagesToSend     bool
+
+	// Optional fields (post-extension marker).
+	SmDeliveryTimer           *int                        // SM-DeliveryTimerValue: MinSmDeliveryTimer..MaxSmDeliveryTimer seconds
+	SmDeliveryStartTime       HexBytes                    // Time octet string; nil if absent
+	SmsOverIPOnlyIndicator    bool                        // [0] NULL
+	CorrelationID             *SriSmCorrelationID         // [1] reuse SRI-SM type
+	MaximumRetransmissionTime HexBytes                    // [2] Time octet string; nil if absent
+	SmsGmscAddress            string                      // [3] ISDN-AddressString
+	SmsGmscAddressNature      uint8
+	SmsGmscAddressPlan        uint8
+	SmsGmscDiameterAddress    *NetworkNodeDiameterAddress // [4]
+}
+
+// MtFsmResp represents a Mobile Terminated Forward Short Message response.
+type MtFsmResp struct {
+	SmRpUI HexBytes // optional SM-RP-UI (SignalInfo); nil if absent
 }
 
 // MoFsm represents a Mobile Originated Forward Short Message.
@@ -577,7 +593,13 @@ type SriResp struct {
 	GsmBearerCapability             *ExternalSignalInfo
 }
 
-// SRI sentinel errors.
+// SM-DeliveryTimerValue range per 3GPP TS 29.002.
+const (
+	MinSmDeliveryTimer = 30
+	MaxSmDeliveryTimer = 600
+)
+
+// MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
 	ErrSriMissingGmsc                = errors.New("sri: GmscOrGsmSCFAddress is empty")
@@ -590,4 +612,6 @@ var (
 
 	ErrSriSmMissingSipUriB             = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
 	ErrSriSmInvalidDeliveryTimerValue  = errors.New("sriSm: SM-DeliveryTimerValue must be 30..600")
+
+	ErrMtFsmInvalidDeliveryTimer = errors.New("mtFsm: SmDeliveryTimer must be 30..600")
 )

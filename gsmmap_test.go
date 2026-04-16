@@ -1109,6 +1109,137 @@ func TestAdditionalNumberRoundTrip(t *testing.T) {
 	})
 }
 
+func TestMtFsmFullStressRoundTrip(t *testing.T) {
+	// Parse a known valid MT-FSM to get a valid TPDU.
+	knownHex := "3077800832140080803138f684069169318488880463040b916971101174f40000422182612464805bd2e2b1252d467ff6de6c47efd96eb6a1d056cb0d69b49a10269c098537586e96931965b260d15613da72c29b91261bde72c6a1ad2623d682b5996d58331271375a0d1733eee4bd98ec768bd966b41c0d"
+	knownBytes, err := hex.DecodeString(knownHex)
+	if err != nil {
+		t.Fatalf("hex decode: %v", err)
+	}
+	base, err := ParseMtFsm(knownBytes)
+	if err != nil {
+		t.Fatalf("ParseMtFsm: %v", err)
+	}
+
+	timer := 120
+	in := &MtFsm{
+		IMSI:                   base.IMSI,
+		ServiceCentreAddressOA: base.ServiceCentreAddressOA,
+		SCAOANature:            base.SCAOANature,
+		SCAOAPlan:              base.SCAOAPlan,
+		TPDU:                   base.TPDU,
+		MoreMessagesToSend:     true,
+
+		SmDeliveryTimer:        &timer,
+		SmDeliveryStartTime:    HexBytes{0x01, 0x02, 0x03, 0x04},
+		SmsOverIPOnlyIndicator: true,
+		CorrelationID: &SriSmCorrelationID{
+			HlrID:   HexBytes{0xAA, 0xBB},
+			SipUriA: HexBytes{0xCC, 0xDD},
+			SipUriB: HexBytes{0xEE, 0xFF},
+		},
+		MaximumRetransmissionTime: HexBytes{0x05, 0x06, 0x07, 0x08},
+		SmsGmscAddress:            "31612345678",
+		SmsGmscDiameterAddress: &NetworkNodeDiameterAddress{
+			DiameterName:  HexBytes("gmsc.example.com"),
+			DiameterRealm: HexBytes("example.com"),
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseMtFsm(data)
+	if err != nil {
+		t.Fatalf("ParseMtFsm: %v", err)
+	}
+
+	// Normalize default natures/plans.
+	in.SmsGmscAddressNature = address.NatureInternational
+	in.SmsGmscAddressPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestMtFsmRespRoundTrip(t *testing.T) {
+	t.Run("WithSmRpUI", func(t *testing.T) {
+		in := &MtFsmResp{
+			SmRpUI: HexBytes{0x01, 0x02, 0x03},
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMtFsmResp(data)
+		if err != nil {
+			t.Fatalf("ParseMtFsmResp: %v", err)
+		}
+		if !bytes.Equal(in.SmRpUI, got.SmRpUI) {
+			t.Errorf("SmRpUI: got %x, want %x", got.SmRpUI, in.SmRpUI)
+		}
+	})
+
+	t.Run("Empty", func(t *testing.T) {
+		in := &MtFsmResp{}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMtFsmResp(data)
+		if err != nil {
+			t.Fatalf("ParseMtFsmResp: %v", err)
+		}
+		if got.SmRpUI != nil {
+			t.Errorf("SmRpUI should be nil, got %x", got.SmRpUI)
+		}
+	})
+}
+
+func TestMtFsmDeliveryTimerValidation(t *testing.T) {
+	// Parse a known valid MT-FSM to get a valid TPDU.
+	knownHex := "3077800832140080803138f684069169318488880463040b916971101174f40000422182612464805bd2e2b1252d467ff6de6c47efd96eb6a1d056cb0d69b49a10269c098537586e96931965b260d15613da72c29b91261bde72c6a1ad2623d682b5996d58331271375a0d1733eee4bd98ec768bd966b41c0d"
+	knownBytes, err := hex.DecodeString(knownHex)
+	if err != nil {
+		t.Fatalf("hex decode: %v", err)
+	}
+	base, err := ParseMtFsm(knownBytes)
+	if err != nil {
+		t.Fatalf("ParseMtFsm: %v", err)
+	}
+
+	tests := []struct {
+		name  string
+		timer int
+	}{
+		{"TooLow", 29},
+		{"TooHigh", 601},
+		{"Zero", 0},
+		{"Negative", -1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &MtFsm{
+				IMSI:                   base.IMSI,
+				ServiceCentreAddressOA: base.ServiceCentreAddressOA,
+				SCAOANature:            base.SCAOANature,
+				SCAOAPlan:              base.SCAOAPlan,
+				TPDU:                   base.TPDU,
+				SmDeliveryTimer:        &tt.timer,
+			}
+			_, err := m.Marshal()
+			if err == nil {
+				t.Fatal("expected error for invalid SmDeliveryTimer")
+			}
+			if !errors.Is(err, ErrMtFsmInvalidDeliveryTimer) {
+				t.Errorf("expected ErrMtFsmInvalidDeliveryTimer, got: %v", err)
+			}
+		})
+	}
+}
+
 func TestAdditionalNumberChoiceValidation(t *testing.T) {
 	t.Run("BothSet", func(t *testing.T) {
 		in := &SriSmResp{
