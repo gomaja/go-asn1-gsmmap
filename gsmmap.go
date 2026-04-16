@@ -316,7 +316,60 @@ type UpdateLocationRes struct {
 	PagingAreaCapability bool  // [0] NULL
 }
 
-// UpdateGprsLocation represents an UpdateGprsLocation request.
+// UsedRatType per 3GPP TS 29.002 (opCode 23).
+type UsedRatType int
+
+const (
+	UsedRatUTRAN          UsedRatType = 0
+	UsedRatGERAN          UsedRatType = 1
+	UsedRatGAN            UsedRatType = 2
+	UsedRatIHSPAEvolution UsedRatType = 3
+	UsedRatEUTRAN         UsedRatType = 4
+	UsedRatNBIOT          UsedRatType = 5
+)
+
+// UeSrvccCapability per 3GPP TS 29.002 (opCode 23).
+type UeSrvccCapability int
+
+const (
+	UeSrvccNotSupported UeSrvccCapability = 0
+	UeSrvccSupported    UeSrvccCapability = 1
+)
+
+// SmsRegisterRequest per 3GPP TS 29.002 (opCode 23).
+type SmsRegisterRequest int
+
+const (
+	SmsRegistrationRequired     SmsRegisterRequest = 0
+	SmsRegistrationNotPreferred SmsRegisterRequest = 1
+	SmsRegistrationNoPreference SmsRegisterRequest = 2
+)
+
+// EpsInfo is the EPS-Info CHOICE (opCode 23).
+// Set exactly one alternative: either PdnGwUpdate (non-nil) or
+// IsrInformationBits > 0 (IsrInformation carries the BIT STRING bytes).
+type EpsInfo struct {
+	PdnGwUpdate        *PdnGwUpdate
+	IsrInformation     HexBytes // BIT STRING content
+	IsrInformationBits int      // BitLength; 0 means unset
+}
+
+// PdnGwUpdate SEQUENCE (opCode 23).
+type PdnGwUpdate struct {
+	APN           HexBytes       // [0] optional
+	PdnGwIdentity *PdnGwIdentity // [1] optional
+	ContextID     *int           // [2] optional
+}
+
+// PdnGwIdentity SEQUENCE (opCode 23).
+// Per spec at least one of the address variants (or PdnGwName) should be set.
+type PdnGwIdentity struct {
+	IPv4Address HexBytes // [0] 4 octets
+	IPv6Address HexBytes // [1] 16 octets
+	Name        HexBytes // [2] FQDN
+}
+
+// UpdateGprsLocation represents an UpdateGprsLocation request (opCode 23).
 type UpdateGprsLocation struct {
 	IMSI        string
 	SGSNNumber  string
@@ -325,19 +378,66 @@ type UpdateGprsLocation struct {
 	SGSNAddress string
 
 	SGSNCapability *SGSNCapability
+
+	// Optional fields (post-extension marker).
+	InformPreviousNetworkEntity    bool               // [1] NULL
+	PsLCSNotSupportedByUE          bool               // [2] NULL
+	VGmlcAddress                   string             // [3] GSN-Address (IP string)
+	AddInfo                        *AddInfo           // [4]
+	EpsInfo                        *EpsInfo           // [5] CHOICE
+	ServingNodeTypeIndicator       bool               // [6] NULL
+	SkipSubscriberDataUpdate       bool               // [7] NULL
+	UsedRatType                    *UsedRatType       // [8]
+	GprsSubscriptionDataNotNeeded  bool               // [9] NULL
+	NodeTypeIndicator              bool               // [10] NULL
+	AreaRestricted                 bool               // [11] NULL
+	UeReachableIndicator           bool               // [12] NULL
+	EpsSubscriptionDataNotNeeded   bool               // [13] NULL
+	UeSrvccCapability              *UeSrvccCapability // [14]
+	EplmnList                      []HexBytes         // [15] list of 3-octet PLMNIds
+	MmeNumberForMTSMS              string             // [16] ISDN-AddressString
+	MmeNumberForMTSMSNature        uint8
+	MmeNumberForMTSMSPlan          uint8
+	SmsRegisterRequest             *SmsRegisterRequest // [17]
+	SmsOnly                        bool                // [18] NULL
+	SgsnName                       HexBytes            // [19] DiameterIdentity
+	SgsnRealm                      HexBytes            // [20] DiameterIdentity
+	LgdSupportIndicator            bool                // [21] NULL
+	RemovalofMMERegistrationforSMS bool                // [22] NULL
+	AdjacentPLMNList               []HexBytes          // [23] list of 3-octet PLMNIds
 }
 
-// SGSNCapability contains SGSN capability information.
+// SGSNCapability indicates SGSN capabilities per 3GPP TS 29.002 (opCode 23).
 type SGSNCapability struct {
-	GprsEnhancementsSupportIndicator bool
-	SupportedLCSCapabilitySets       *SupportedLCSCapabilitySets
+	SolsaSupportIndicator                       bool              // untagged (first field) NULL
+	SuperChargerSupportedInServingNetworkEntity *SuperChargerInfo // [2] CHOICE
+	GprsEnhancementsSupportIndicator            bool              // [3] NULL
+	SupportedCamelPhases                        *SupportedCamelPhases
+	SupportedLCSCapabilitySets                  *SupportedLCSCapabilitySets
+	OfferedCamel4CSIs                           *OfferedCamel4CSIs
+	SmsCallBarringSupportIndicator              bool // [7] NULL
+	SupportedRATTypesIndicator                  *SupportedRATTypes
+	SupportedFeatures                           HexBytes // raw BIT STRING bytes [9]
+	SupportedFeaturesBits                       int      // BitLength; 0 means unset
+	TAdsDataRetrieval                           bool     // [10] NULL
+	HomogeneousSupportOfIMSVoiceOverPSSessions  *bool    // [11] 3-state
+	CancellationTypeInitialAttach               bool     // [12] NULL
+	MsisdnLessOperationSupported                bool     // [14] NULL
+	UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions bool // [15] NULL
+	ResetIdsSupported                           bool     // [16] NULL
+	ExtSupportedFeatures                        HexBytes // raw BIT STRING bytes [17]
+	ExtSupportedFeaturesBits                    int      // BitLength; 0 means unset
 }
 
-// UpdateGprsLocationRes represents an UpdateGprsLocation response.
+// UpdateGprsLocationRes represents an UpdateGprsLocation response (opCode 23).
 type UpdateGprsLocationRes struct {
 	HLRNumber       string
 	HLRNumberNature uint8 // address nature indicator
 	HLRNumberPlan   uint8 // numbering plan indicator
+
+	AddCapability              bool // untagged NULL
+	SgsnMmeSeparationSupported bool // [0] NULL
+	MmeRegisteredforSMS        bool // [1] NULL
 }
 
 // DomainType represents the requested domain.
