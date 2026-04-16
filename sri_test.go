@@ -117,9 +117,9 @@ func TestOfferedCamel4CSIsBitStringRoundTrip(t *testing.T) {
 
 func TestForwardingDataRoundTrip(t *testing.T) {
 	in := &ForwardingData{
-		ForwardedToNumber:       "972501234567",
-		ForwardedToNumberNature: 4,
-		ForwardedToNumberPlan:   1,
+		ForwardedToNumber:       "31612345678",
+		ForwardedToNumberNature: address.NatureInternational,
+		ForwardedToNumberPlan:   address.PlanISDN,
 		ForwardingOptions:       HexBytes{0x05},
 	}
 	wire, err := convertForwardingDataToWire(in)
@@ -195,7 +195,7 @@ func TestExtBasicServiceCodeChoiceValidation(t *testing.T) {
 }
 
 func TestRoutingInfoRoundTrip(t *testing.T) {
-	rn := &RoutingInfo{RoamingNumber: "972501111111"}
+	rn := &RoutingInfo{RoamingNumber: "31611111111"}
 	wire, err := convertRoutingInfoToWire(rn)
 	if err != nil {
 		t.Fatal(err)
@@ -208,7 +208,7 @@ func TestRoutingInfoRoundTrip(t *testing.T) {
 		t.Errorf("RoamingNumber round-trip: got %q want %q", got.RoamingNumber, rn.RoamingNumber)
 	}
 
-	fd := &RoutingInfo{ForwardingData: &ForwardingData{ForwardedToNumber: "972502222222"}}
+	fd := &RoutingInfo{ForwardingData: &ForwardingData{ForwardedToNumber: "31622222222"}}
 	wire2, err := convertRoutingInfoToWire(fd)
 	if err != nil {
 		t.Fatal(err)
@@ -217,7 +217,7 @@ func TestRoutingInfoRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got2.ForwardingData == nil || got2.ForwardingData.ForwardedToNumber != "972502222222" {
+	if got2.ForwardingData == nil || got2.ForwardingData.ForwardedToNumber != "31622222222" {
 		t.Errorf("ForwardingData round-trip failed: got %+v", got2)
 	}
 }
@@ -254,9 +254,9 @@ func TestSriCamelInfoRoundTrip(t *testing.T) {
 
 func TestSriMandatoryRoundTrip(t *testing.T) {
 	in := &Sri{
-		MSISDN:              "972501234567",
+		MSISDN:              "31612345678",
 		InterrogationType:   InterrogationBasicCall,
-		GmscOrGsmSCFAddress: "972531111111",
+		GmscOrGsmSCFAddress: "31201111111",
 	}
 	data, err := in.Marshal()
 	if err != nil {
@@ -304,7 +304,7 @@ func TestSriRespMandatoryRoundTrip(t *testing.T) {
 	mnp := MnpForeignNumberPortedIn
 	in := &SriResp{
 		IMSI:                    "425010123456789",
-		ExtendedRoutingInfo:     &ExtendedRoutingInfo{RoutingInfo: &RoutingInfo{RoamingNumber: "972501111111"}},
+		ExtendedRoutingInfo:     &ExtendedRoutingInfo{RoutingInfo: &RoutingInfo{RoamingNumber: "31611111111"}},
 		NumberPortabilityStatus: &mnp,
 	}
 	data, err := in.Marshal()
@@ -319,7 +319,7 @@ func TestSriRespMandatoryRoundTrip(t *testing.T) {
 		t.Errorf("IMSI: got %q want %q", got.IMSI, in.IMSI)
 	}
 	if got.ExtendedRoutingInfo == nil || got.ExtendedRoutingInfo.RoutingInfo == nil ||
-		got.ExtendedRoutingInfo.RoutingInfo.RoamingNumber != "972501111111" {
+		got.ExtendedRoutingInfo.RoutingInfo.RoamingNumber != "31611111111" {
 		t.Errorf("RoamingNumber round-trip failed: %+v", got.ExtendedRoutingInfo)
 	}
 	if got.NumberPortabilityStatus == nil || *got.NumberPortabilityStatus != MnpForeignNumberPortedIn {
@@ -332,7 +332,7 @@ func TestSriRespForwardingDataRoundTrip(t *testing.T) {
 		IMSI: "425010123456789",
 		ExtendedRoutingInfo: &ExtendedRoutingInfo{
 			RoutingInfo: &RoutingInfo{
-				ForwardingData: &ForwardingData{ForwardedToNumber: "972502222222"},
+				ForwardingData: &ForwardingData{ForwardedToNumber: "31622222222"},
 			},
 		},
 	}
@@ -345,7 +345,7 @@ func TestSriRespForwardingDataRoundTrip(t *testing.T) {
 		t.Fatalf("ParseSriResp: %v", err)
 	}
 	if got.ExtendedRoutingInfo.RoutingInfo.ForwardingData == nil ||
-		got.ExtendedRoutingInfo.RoutingInfo.ForwardingData.ForwardedToNumber != "972502222222" {
+		got.ExtendedRoutingInfo.RoutingInfo.ForwardingData.ForwardedToNumber != "31622222222" {
 		t.Errorf("ForwardingData round-trip failed: %+v", got.ExtendedRoutingInfo.RoutingInfo)
 	}
 }
@@ -363,7 +363,7 @@ func TestSriRespFullStressRoundTrip(t *testing.T) {
 		ExtendedRoutingInfo: &ExtendedRoutingInfo{
 			RoutingInfo: &RoutingInfo{
 				ForwardingData: &ForwardingData{
-					ForwardedToNumber: "972502222222",
+					ForwardedToNumber: "31622222222",
 					ForwardingOptions: HexBytes{0x05},
 				},
 			},
@@ -374,14 +374,14 @@ func TestSriRespFullStressRoundTrip(t *testing.T) {
 		BasicService:                    &ExtBasicServiceCode{ExtTeleservice: HexBytes{0x11}},
 		BasicService2:                   &ExtBasicServiceCode{ExtBearerService: HexBytes{0x21}},
 		ForwardingInterrogationRequired: true,
-		VmscAddress:                     "972533333333",
+		VmscAddress:                     "31633333333",
 		CcbsIndicators:                  &CcbsIndicators{CcbsPossible: true, KeepCCBSCallIndicator: true},
-		MSISDN:                          "972501234567",
+		MSISDN:                          "31612345678",
 		NumberPortabilityStatus:         &mnp,
 		IstAlertTimer:                   &timer,
 		SupportedCamelPhasesInVMSC:      &SupportedCamelPhases{Phase1: true, Phase2: true, Phase3: true, Phase4: true},
 		OfferedCamel4CSIsInVMSC:         camel4,
-		RoutingInfo2:                    &RoutingInfo{RoamingNumber: "972544444444"},
+		RoutingInfo2:                    &RoutingInfo{RoamingNumber: "31644444444"},
 		SsList2:                         []SsCode{0x44},
 		AllowedServices:                 &AllowedServicesFlags{FirstServiceAllowed: true, SecondServiceAllowed: true},
 		UnavailabilityCause:             &ua,
@@ -423,9 +423,9 @@ func TestSriFullStressRoundTrip(t *testing.T) {
 	fr := ForwardingBusy
 
 	in := &Sri{
-		MSISDN:              "972501234567",
+		MSISDN:              "31612345678",
 		InterrogationType:   InterrogationForwarding,
-		GmscOrGsmSCFAddress: "972531111111",
+		GmscOrGsmSCFAddress: "31201111111",
 
 		CugCheckInfo:       &CugCheckInfo{CugInterlock: HexBytes{0x01, 0x02, 0x03, 0x04}, CugOutgoingAccess: true},
 		NumberOfForwarding: &nof,

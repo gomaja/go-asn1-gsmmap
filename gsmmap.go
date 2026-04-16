@@ -515,7 +515,7 @@ var (
 	ErrSriInvalidInterrogationType   = errors.New("sri: InterrogationType must be 0 or 1")
 	ErrSriInvalidNumberOfForwarding  = errors.New("sri: NumberOfForwarding must be 1..5")
 	ErrSriInvalidOrCapability        = errors.New("sri: OrCapability must be 1..127")
-	ErrSriInvalidCallReferenceNumber = errors.New("sri: CallReferenceNumber must be 1..8 octets")
+	ErrSriInvalidCallReferenceNumber = errors.New("sri: CallReferenceNumber, if set, must be 1..8 octets")
 	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
 	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
 )

@@ -94,14 +94,14 @@ if atiRes.SubscriberInfo.SubscriberState != nil {
 ```go
 // Build an SRI request
 sri := &gsmmap.Sri{
-    MSISDN:              "972501234567",
+    MSISDN:              "31612345678",
     InterrogationType:   gsmmap.InterrogationBasicCall,
-    GmscOrGsmSCFAddress: "972531111111",
+    GmscOrGsmSCFAddress: "31201111111",
 }
 data, err := sri.Marshal()
 
-// Parse an SRI response
-resp, err := gsmmap.ParseSriResp(data)
+// Parse an SRI response received from the network
+resp, err := gsmmap.ParseSriResp(respBytes)
 if resp.NumberPortabilityStatus != nil {
     fmt.Println(*resp.NumberPortabilityStatus) // e.g. MnpOwnNumberPortedOut
 }

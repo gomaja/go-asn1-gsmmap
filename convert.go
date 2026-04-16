@@ -1540,7 +1540,10 @@ func convertWireToCamelRoutingInfo(w *gsm_map.CamelRoutingInfo) (*CamelRoutingIn
 	return out, nil
 }
 
-// GmscCamelSubscriptionInfo: nested CAMEL types kept opaque for now.
+// GmscCamelSubscriptionInfo: nested CAMEL SEQUENCEs (T-CSI, O-CSI, D-CSI,
+// criteria lists) are not yet decomposed. These stubs silently drop CAMEL
+// subscription data on round-trip. Full CAMEL support is deferred to future work.
+// TODO: implement field mappings for GmscCamelSubscriptionInfo.
 func convertGmscCamelSubInfoToWire(_ *GmscCamelSubscriptionInfo) gsm_map.GmscCamelSubscriptionInfo {
 	return gsm_map.GmscCamelSubscriptionInfo{}
 }
