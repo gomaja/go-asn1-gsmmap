@@ -1683,7 +1683,7 @@ func TestUpdateLocationFullStressRoundTrip(t *testing.T) {
 		LMSI:                        HexBytes{0x01, 0x02, 0x03, 0x04},
 		InformPreviousNetworkEntity: true,
 		CsLCSNotSupportedByUE:       true,
-		VGmlcAddress:                HexBytes{0x04, 0xC0, 0xA8, 0x01, 0x01},
+		VGmlcAddress:                "192.168.1.1",
 		AddInfo: &AddInfo{
 			IMEISV:                   "3534567890123456",
 			SkipSubscriberDataUpdate: true,

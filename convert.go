@@ -1091,6 +1091,9 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 
 	// Optional fields.
 	if len(u.LMSI) > 0 {
+		if len(u.LMSI) != 4 {
+			return nil, fmt.Errorf("UpdateLocation: LMSI must be exactly 4 octets, got %d", len(u.LMSI))
+		}
 		v := gsm_map.LMSI(u.LMSI)
 		arg.Lmsi = &v
 	}
@@ -1098,8 +1101,12 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	arg.InformPreviousNetworkEntity = boolToNullPtr(u.InformPreviousNetworkEntity)
 	arg.CsLCSNotSupportedByUE = boolToNullPtr(u.CsLCSNotSupportedByUE)
 
-	if len(u.VGmlcAddress) > 0 {
-		v := gsm_map.GSNAddress(u.VGmlcAddress)
+	if u.VGmlcAddress != "" {
+		gsnAddr, err := gsn.Build(u.VGmlcAddress)
+		if err != nil {
+			return nil, fmt.Errorf("encoding VGmlcAddress: %w", err)
+		}
+		v := gsm_map.GSNAddress(gsnAddr)
 		arg.VGmlcAddress = &v
 	}
 
@@ -1221,7 +1228,11 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 	u.CsLCSNotSupportedByUE = nullPtrToBool(arg.CsLCSNotSupportedByUE)
 
 	if arg.VGmlcAddress != nil {
-		u.VGmlcAddress = HexBytes(*arg.VGmlcAddress)
+		addr, err := gsn.Parse(*arg.VGmlcAddress)
+		if err != nil {
+			return nil, fmt.Errorf("decoding VGmlcAddress: %w", err)
+		}
+		u.VGmlcAddress = addr
 	}
 
 	if arg.AddInfo != nil {
@@ -2159,27 +2170,22 @@ func convertBitStringToOfferedCamel4CSIs(bs runtime.BitString) *OfferedCamel4CSI
 // SupportedRATTypes: bit 0=utran, 1=geran, 2=gan, 3=i-hspa-evolution, 4=e-utran.
 func convertSupportedRATTypesToBitString(r *SupportedRATTypes) runtime.BitString {
 	var b byte
-	bitLen := 1
 	if r.UTRAN {
 		b |= 0x80
 	}
 	if r.GERAN {
 		b |= 0x40
-		bitLen = 2
 	}
 	if r.GAN {
 		b |= 0x20
-		bitLen = 3
 	}
 	if r.IHSPAEvolution {
 		b |= 0x10
-		bitLen = 4
 	}
 	if r.EUTRAN {
 		b |= 0x08
-		bitLen = 5
 	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
+	return runtime.BitString{Bytes: []byte{b}, BitLength: 5}
 }
 
 func convertBitStringToSupportedRATTypes(bs runtime.BitString) *SupportedRATTypes {
@@ -2220,6 +2226,9 @@ func convertSuperChargerInfoToWire(s *SuperChargerInfo) (*gsm_map.SuperChargerIn
 }
 
 func convertWireToSuperChargerInfo(w *gsm_map.SuperChargerInfo) (*SuperChargerInfo, error) {
+	if w.SendSubscriberData != nil && w.SubscriberDataStored != nil {
+		return nil, ErrSuperChargerInfoMultipleAlternatives
+	}
 	out := &SuperChargerInfo{}
 	if w.SendSubscriberData != nil {
 		out.SendSubscriberData = true

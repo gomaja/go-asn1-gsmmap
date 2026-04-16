@@ -264,7 +264,7 @@ type UpdateLocation struct {
 	LMSI                        HexBytes                    // [10] 4 octets; nil if absent
 	InformPreviousNetworkEntity bool                        // [11] NULL
 	CsLCSNotSupportedByUE       bool                        // [12] NULL
-	VGmlcAddress                HexBytes                    // [2] GSN-Address; nil if absent
+	VGmlcAddress                string                      // [2] GSN-Address; empty if absent
 	AddInfo                     *AddInfo                    // [13]
 	PagingArea                  []HexBytes                  // [14] list of LocationArea (kept opaque)
 	SkipSubscriberDataUpdate    bool                        // [15] NULL
