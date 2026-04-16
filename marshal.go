@@ -43,6 +43,16 @@ func (m *MtFsm) Marshal() ([]byte, error) {
 	return data, nil
 }
 
+// Marshal encodes MtFsmResp into BER-encoded bytes.
+func (r *MtFsmResp) Marshal() ([]byte, error) {
+	res := convertMtFsmRespToRes(r)
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding MTForwardSMRes: %w", err)
+	}
+	return data, nil
+}
+
 // Marshal encodes MoFsm into BER-encoded bytes.
 func (m *MoFsm) Marshal() ([]byte, error) {
 	arg, err := convertMoFsmToArg(m)
