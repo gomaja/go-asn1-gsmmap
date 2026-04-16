@@ -1901,3 +1901,207 @@ func TestSupportedRATTypesRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
+	truthy := true
+	usedRat := UsedRatEUTRAN
+	ueSrvcc := UeSrvccSupported
+	smsReg := SmsRegistrationRequired
+	ctxID := 31
+
+	in := &UpdateGprsLocation{
+		IMSI:        "310260311111111",
+		SGSNNumber:  "31631000001",
+		SGSNAddress: "192.168.31.1",
+
+		SGSNCapability: &SGSNCapability{
+			SolsaSupportIndicator: true,
+			SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
+				SendSubscriberData: true,
+			},
+			GprsEnhancementsSupportIndicator: true,
+			SupportedCamelPhases: &SupportedCamelPhases{
+				Phase1: true, Phase2: true, Phase3: true, Phase4: true,
+			},
+			SupportedLCSCapabilitySets: &SupportedLCSCapabilitySets{
+				LcsCapabilitySet1: true, LcsCapabilitySet2: true,
+				LcsCapabilitySet3: true, LcsCapabilitySet4: true, LcsCapabilitySet5: true,
+			},
+			OfferedCamel4CSIs: &OfferedCamel4CSIs{
+				OCSI: true, DCSI: true, VTCSI: true, TCSI: true,
+				MTSMSCSI: true, MGCSI: true, PsiEnhancements: true,
+			},
+			SmsCallBarringSupportIndicator: true,
+			SupportedRATTypesIndicator: &SupportedRATTypes{
+				UTRAN: true, GERAN: true, GAN: true, IHSPAEvolution: true, EUTRAN: true,
+			},
+			SupportedFeatures:                                  HexBytes{0xA0},
+			SupportedFeaturesBits:                              4,
+			TAdsDataRetrieval:                                  true,
+			HomogeneousSupportOfIMSVoiceOverPSSessions:         &truthy,
+			CancellationTypeInitialAttach:                      true,
+			MsisdnLessOperationSupported:                       true,
+			UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions: true,
+			ResetIdsSupported:                                  true,
+			ExtSupportedFeatures:                               HexBytes{0x80},
+			ExtSupportedFeaturesBits:                           2,
+		},
+
+		InformPreviousNetworkEntity: true,
+		PsLCSNotSupportedByUE:       true,
+		VGmlcAddress:                "192.168.31.77",
+		AddInfo: &AddInfo{
+			IMEISV:                   "3534567890123456",
+			SkipSubscriberDataUpdate: true,
+		},
+		EpsInfo: &EpsInfo{
+			PdnGwUpdate: &PdnGwUpdate{
+				APN: HexBytes{0x03, 'a', 'p', 'n'},
+				PdnGwIdentity: &PdnGwIdentity{
+					IPv4Address: HexBytes{0xC0, 0xA8, 0x1F, 0x01},
+					Name:        HexBytes("pgw.example.com"),
+				},
+				ContextID: &ctxID,
+			},
+		},
+		ServingNodeTypeIndicator:      true,
+		SkipSubscriberDataUpdate:      true,
+		UsedRatType:                   &usedRat,
+		GprsSubscriptionDataNotNeeded: true,
+		NodeTypeIndicator:             true,
+		AreaRestricted:                true,
+		UeReachableIndicator:          true,
+		EpsSubscriptionDataNotNeeded:  true,
+		UeSrvccCapability:             &ueSrvcc,
+		EplmnList: []HexBytes{
+			{0x13, 0x00, 0x26},
+			{0x62, 0xf2, 0x20},
+		},
+		MmeNumberForMTSMS:              "31699900099",
+		SmsRegisterRequest:             &smsReg,
+		SmsOnly:                        true,
+		SgsnName:                       HexBytes("sgsn.example.com"),
+		SgsnRealm:                      HexBytes("example.com"),
+		LgdSupportIndicator:            true,
+		RemovalofMMERegistrationforSMS: true,
+		AdjacentPLMNList: []HexBytes{
+			{0x21, 0x43, 0x65},
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseUpdateGprsLocation(data)
+	if err != nil {
+		t.Fatalf("ParseUpdateGprsLocation: %v", err)
+	}
+
+	// Normalize natures/plans to defaults.
+	in.SGSNNature = address.NatureInternational
+	in.SGSNPlan = address.PlanISDN
+	in.MmeNumberForMTSMSNature = address.NatureInternational
+	in.MmeNumberForMTSMSPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestUpdateGprsLocationEpsInfoIsr(t *testing.T) {
+	in := &UpdateGprsLocation{
+		IMSI:        "310260311111111",
+		SGSNNumber:  "31631000001",
+		SGSNAddress: "192.168.31.1",
+		EpsInfo: &EpsInfo{
+			IsrInformation:     HexBytes{0xC0},
+			IsrInformationBits: 3,
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseUpdateGprsLocation(data)
+	if err != nil {
+		t.Fatalf("ParseUpdateGprsLocation: %v", err)
+	}
+	if got.EpsInfo == nil {
+		t.Fatal("EpsInfo is nil")
+	}
+	if got.EpsInfo.PdnGwUpdate != nil {
+		t.Error("PdnGwUpdate should be nil in IsrInformation alternative")
+	}
+	// NOTE: go-asn1 v0.1.7 has a known TODO in EPSInfo.UnmarshalBER that
+	// leaves IsrInformation data un-decoded. We still confirm the CHOICE
+	// alternative was recognised (PdnGwUpdate remains nil and EpsInfo is
+	// non-nil). Full bit-level round-trip is pending an upstream fix.
+}
+
+func TestUpdateGprsLocationResFullRoundTrip(t *testing.T) {
+	in := &UpdateGprsLocationRes{
+		HLRNumber:                  "31612345678",
+		AddCapability:              true,
+		SgsnMmeSeparationSupported: true,
+		MmeRegisteredforSMS:        true,
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseUpdateGprsLocationRes(data)
+	if err != nil {
+		t.Fatalf("ParseUpdateGprsLocationRes: %v", err)
+	}
+
+	in.HLRNumberNature = address.NatureInternational
+	in.HLRNumberPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestEpsInfoChoiceValidation(t *testing.T) {
+	t.Run("NoneSet", func(t *testing.T) {
+		in := &UpdateGprsLocation{
+			IMSI:        "310260311111111",
+			SGSNNumber:  "31631000001",
+			SGSNAddress: "192.168.31.1",
+			EpsInfo:     &EpsInfo{},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for empty EpsInfo CHOICE")
+		}
+		if !errors.Is(err, ErrSriChoiceNoAlternative) {
+			t.Errorf("expected ErrSriChoiceNoAlternative, got: %v", err)
+		}
+	})
+
+	t.Run("BothSet", func(t *testing.T) {
+		ctxID := 1
+		in := &UpdateGprsLocation{
+			IMSI:        "310260311111111",
+			SGSNNumber:  "31631000001",
+			SGSNAddress: "192.168.31.1",
+			EpsInfo: &EpsInfo{
+				PdnGwUpdate: &PdnGwUpdate{
+					ContextID: &ctxID,
+				},
+				IsrInformation:     HexBytes{0x80},
+				IsrInformationBits: 1,
+			},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for both-set EpsInfo CHOICE")
+		}
+		if !errors.Is(err, ErrSriChoiceMultipleAlternatives) {
+			t.Errorf("expected ErrSriChoiceMultipleAlternatives, got: %v", err)
+		}
+	})
+}
