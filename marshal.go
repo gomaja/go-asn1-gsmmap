@@ -133,3 +133,29 @@ func (a *AnyTimeInterrogationRes) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes SriResp into BER-encoded bytes.
+func (s *SriResp) Marshal() ([]byte, error) {
+	res, err := convertSriRespToRes(s)
+	if err != nil {
+		return nil, fmt.Errorf("converting SriResp: %w", err)
+	}
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding SendRoutingInfoRes: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes Sri into BER-encoded bytes.
+func (s *Sri) Marshal() ([]byte, error) {
+	arg, err := convertSriToArg(s)
+	if err != nil {
+		return nil, fmt.Errorf("converting Sri: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding SendRoutingInfoArg: %w", err)
+	}
+	return data, nil
+}

@@ -14,6 +14,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **UpdateLocation** | `UpdateLocation` | `UpdateLocationRes` |
 | **UpdateGprsLocation** | `UpdateGprsLocation` | `UpdateGprsLocationRes` |
 | **AnyTimeInterrogation** (ATI) | `AnyTimeInterrogation` | `AnyTimeInterrogationRes` |
+| **SendRoutingInfo** (SRI) | `Sri` | `SriResp` |
 
 ## Install
 
@@ -85,6 +86,32 @@ if atiRes.SubscriberInfo.LocationInformation != nil {
 }
 if atiRes.SubscriberInfo.SubscriberState != nil {
     fmt.Println(atiRes.SubscriberInfo.SubscriberState.State) // e.g. StateAssumedIdle
+}
+```
+
+### SendRoutingInfo (opCode 22)
+
+```go
+// Build an SRI request
+sri := &gsmmap.Sri{
+    MSISDN:              "972501234567",
+    InterrogationType:   gsmmap.InterrogationBasicCall,
+    GmscOrGsmSCFAddress: "972531111111",
+}
+data, err := sri.Marshal()
+
+// Parse an SRI response
+resp, err := gsmmap.ParseSriResp(data)
+if resp.NumberPortabilityStatus != nil {
+    fmt.Println(*resp.NumberPortabilityStatus) // e.g. MnpOwnNumberPortedOut
+}
+if resp.ExtendedRoutingInfo != nil && resp.ExtendedRoutingInfo.RoutingInfo != nil {
+    ri := resp.ExtendedRoutingInfo.RoutingInfo
+    if ri.RoamingNumber != "" {
+        fmt.Println("Roaming number:", ri.RoamingNumber)
+    } else if ri.ForwardingData != nil {
+        fmt.Println("Forwarded to:", ri.ForwardingData.ForwardedToNumber)
+    }
 }
 ```
 

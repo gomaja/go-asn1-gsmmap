@@ -95,3 +95,21 @@ func ParseAnyTimeInterrogationRes(data []byte) (*AnyTimeInterrogationRes, error)
 	}
 	return convertResToATIRes(&res)
 }
+
+// ParseSri decodes BER-encoded bytes into an Sri.
+func ParseSri(data []byte) (*Sri, error) {
+	var arg gsm_map.SendRoutingInfoArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding SendRoutingInfoArg: %w", err)
+	}
+	return convertArgToSri(&arg)
+}
+
+// ParseSriResp decodes BER-encoded bytes into an SriResp.
+func ParseSriResp(data []byte) (*SriResp, error) {
+	var res gsm_map.SendRoutingInfoRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding SendRoutingInfoRes: %w", err)
+	}
+	return convertResToSriResp(&res)
+}
