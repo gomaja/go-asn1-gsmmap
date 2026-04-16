@@ -3,8 +3,12 @@ package gsmmap
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"math"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/gomaja/go-asn1-gsmmap/address"
 )
 
 func TestSriSmRoundTrip(t *testing.T) {
@@ -925,4 +929,221 @@ func TestMarshalInvalidInputs(t *testing.T) {
 	if _, err := ugprs.Marshal(); err == nil {
 		t.Error("expected error for invalid SGSNAddress")
 	}
+}
+
+func TestSriSmFullStressRoundTrip(t *testing.T) {
+	smRpMti := 1
+	smDni := SmDeliveryOnlyMCCMNCRequested
+
+	in := &SriSm{
+		MSISDN:               "31612345678",
+		SmRpPri:              true,
+		ServiceCentreAddress: "31201111111",
+
+		GprsSupportIndicator:    true,
+		SmRpMti:                 &smRpMti,
+		SmRpSmea:                HexBytes{0x91, 0x13, 0x26, 0x09, 0x10},
+		SmDeliveryNotIntended:   &smDni,
+		IpSmGwGuidanceIndicator: true,
+		IMSI:                    "204080012345678",
+		SingleAttemptDelivery:   true,
+		T4TriggerIndicator:      true,
+		CorrelationID: &SriSmCorrelationID{
+			HlrID:   HexBytes{0xAA, 0xBB},
+			SipUriA: HexBytes{0xCC, 0xDD},
+			SipUriB: HexBytes{0xEE, 0xFF},
+		},
+		SmsfSupportIndicator: true,
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseSriSm(data)
+	if err != nil {
+		t.Fatalf("ParseSriSm: %v", err)
+	}
+
+	// Natures/plans normalize to International/ISDN when zero.
+	in.MSISDNNature, in.MSISDNPlan = address.NatureInternational, address.PlanISDN
+	in.SCANature, in.SCAPlan = address.NatureInternational, address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestSriSmRespFullStressRoundTrip(t *testing.T) {
+	in := &SriSmResp{
+		IMSI: "204080012345678",
+		LocationInfoWithLMSI: LocationInfoWithLMSI{
+			NetworkNodeNumber: "31612345678",
+			LMSI:              HexBytes{0x01, 0x02, 0x03, 0x04},
+			GprsNodeIndicator: true,
+			AdditionalNumber: &AdditionalNumber{
+				MscNumber: "31201111111",
+			},
+			NetworkNodeDiameterAddress: &NetworkNodeDiameterAddress{
+				DiameterName:  HexBytes("msc.example.com"),
+				DiameterRealm: HexBytes("example.com"),
+			},
+			AdditionalNetworkNodeDiameterAddress: &NetworkNodeDiameterAddress{
+				DiameterName:  HexBytes("sgsn.example.com"),
+				DiameterRealm: HexBytes("example.com"),
+			},
+			ThirdNumber: &AdditionalNumber{
+				SgsnNumber: "31699999999",
+			},
+			ThirdNetworkNodeDiameterAddress: &NetworkNodeDiameterAddress{
+				DiameterName:  HexBytes("third.example.com"),
+				DiameterRealm: HexBytes("example.com"),
+			},
+			ImsNodeIndicator: true,
+			Smsf3gppNumber:   "31688888888",
+			Smsf3gppDiameterAddress: &NetworkNodeDiameterAddress{
+				DiameterName:  HexBytes("smsf3gpp.example.com"),
+				DiameterRealm: HexBytes("example.com"),
+			},
+			SmsfNon3gppNumber: "31677777777",
+			SmsfNon3gppDiameterAddress: &NetworkNodeDiameterAddress{
+				DiameterName:  HexBytes("smsfnon.example.com"),
+				DiameterRealm: HexBytes("example.com"),
+			},
+			Smsf3gppAddressIndicator:    true,
+			SmsfNon3gppAddressIndicator: true,
+		},
+		IpSmGwGuidance: &IpSmGwGuidance{
+			MinimumDeliveryTimeValue:     60,
+			RecommendedDeliveryTimeValue: 120,
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseSriSmResp(data)
+	if err != nil {
+		t.Fatalf("ParseSriSmResp: %v", err)
+	}
+
+	// Normalize natures/plans.
+	in.LocationInfoWithLMSI.NetworkNodeNumberNature = address.NatureInternational
+	in.LocationInfoWithLMSI.NetworkNodeNumberPlan = address.PlanISDN
+	in.LocationInfoWithLMSI.AdditionalNumber.MscNumberNature = address.NatureInternational
+	in.LocationInfoWithLMSI.AdditionalNumber.MscNumberPlan = address.PlanISDN
+	in.LocationInfoWithLMSI.ThirdNumber.SgsnNumberNature = address.NatureInternational
+	in.LocationInfoWithLMSI.ThirdNumber.SgsnNumberPlan = address.PlanISDN
+	in.LocationInfoWithLMSI.Smsf3gppNumberNature = address.NatureInternational
+	in.LocationInfoWithLMSI.Smsf3gppNumberPlan = address.PlanISDN
+	in.LocationInfoWithLMSI.SmsfNon3gppNumberNature = address.NatureInternational
+	in.LocationInfoWithLMSI.SmsfNon3gppNumberPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestAdditionalNumberRoundTrip(t *testing.T) {
+	t.Run("MscNumber", func(t *testing.T) {
+		in := &SriSmResp{
+			IMSI: "204080012345678",
+			LocationInfoWithLMSI: LocationInfoWithLMSI{
+				NetworkNodeNumber: "31612345678",
+				AdditionalNumber: &AdditionalNumber{
+					MscNumber: "31201111111",
+				},
+			},
+		}
+
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseSriSmResp(data)
+		if err != nil {
+			t.Fatalf("ParseSriSmResp: %v", err)
+		}
+
+		if got.LocationInfoWithLMSI.AdditionalNumber == nil {
+			t.Fatal("AdditionalNumber is nil")
+		}
+		if got.LocationInfoWithLMSI.AdditionalNumber.MscNumber != "31201111111" {
+			t.Errorf("MscNumber: got %s, want 31201111111", got.LocationInfoWithLMSI.AdditionalNumber.MscNumber)
+		}
+		if got.LocationInfoWithLMSI.AdditionalNumber.SgsnNumber != "" {
+			t.Errorf("SgsnNumber should be empty, got %s", got.LocationInfoWithLMSI.AdditionalNumber.SgsnNumber)
+		}
+	})
+
+	t.Run("SgsnNumber", func(t *testing.T) {
+		in := &SriSmResp{
+			IMSI: "204080012345678",
+			LocationInfoWithLMSI: LocationInfoWithLMSI{
+				NetworkNodeNumber: "31612345678",
+				AdditionalNumber: &AdditionalNumber{
+					SgsnNumber: "31699999999",
+				},
+			},
+		}
+
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseSriSmResp(data)
+		if err != nil {
+			t.Fatalf("ParseSriSmResp: %v", err)
+		}
+
+		if got.LocationInfoWithLMSI.AdditionalNumber == nil {
+			t.Fatal("AdditionalNumber is nil")
+		}
+		if got.LocationInfoWithLMSI.AdditionalNumber.SgsnNumber != "31699999999" {
+			t.Errorf("SgsnNumber: got %s, want 31699999999", got.LocationInfoWithLMSI.AdditionalNumber.SgsnNumber)
+		}
+		if got.LocationInfoWithLMSI.AdditionalNumber.MscNumber != "" {
+			t.Errorf("MscNumber should be empty, got %s", got.LocationInfoWithLMSI.AdditionalNumber.MscNumber)
+		}
+	})
+}
+
+func TestAdditionalNumberChoiceValidation(t *testing.T) {
+	t.Run("BothSet", func(t *testing.T) {
+		in := &SriSmResp{
+			IMSI: "204080012345678",
+			LocationInfoWithLMSI: LocationInfoWithLMSI{
+				NetworkNodeNumber: "31612345678",
+				AdditionalNumber: &AdditionalNumber{
+					MscNumber:  "31201111111",
+					SgsnNumber: "31699999999",
+				},
+			},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for both-set AdditionalNumber CHOICE")
+		}
+		if !errors.Is(err, ErrSriChoiceMultipleAlternatives) {
+			t.Errorf("expected ErrSriChoiceMultipleAlternatives, got: %v", err)
+		}
+	})
+
+	t.Run("NoneSet", func(t *testing.T) {
+		in := &SriSmResp{
+			IMSI: "204080012345678",
+			LocationInfoWithLMSI: LocationInfoWithLMSI{
+				NetworkNodeNumber: "31612345678",
+				AdditionalNumber:  &AdditionalNumber{},
+			},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for empty AdditionalNumber CHOICE")
+		}
+		if !errors.Is(err, ErrSriChoiceNoAlternative) {
+			t.Errorf("expected ErrSriChoiceNoAlternative, got: %v", err)
+		}
+	})
 }
