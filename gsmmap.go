@@ -145,7 +145,7 @@ type MtFsm struct {
 	MoreMessagesToSend     bool
 
 	// Optional fields (post-extension marker).
-	SmDeliveryTimer           *int                        // SM-DeliveryTimerValue: 30..600 seconds
+	SmDeliveryTimer           *int                        // SM-DeliveryTimerValue: MinSmDeliveryTimer..MaxSmDeliveryTimer seconds
 	SmDeliveryStartTime       HexBytes                    // Time octet string; nil if absent
 	SmsOverIPOnlyIndicator    bool                        // [0] NULL
 	CorrelationID             *SriSmCorrelationID         // [1] reuse SRI-SM type
@@ -593,7 +593,13 @@ type SriResp struct {
 	GsmBearerCapability             *ExternalSignalInfo
 }
 
-// SRI sentinel errors.
+// SM-DeliveryTimerValue range per 3GPP TS 29.002.
+const (
+	MinSmDeliveryTimer = 30
+	MaxSmDeliveryTimer = 600
+)
+
+// MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
 	ErrSriMissingGmsc                = errors.New("sri: GmscOrGsmSCFAddress is empty")

@@ -509,8 +509,8 @@ func convertWireToCorrelationID(w *gsm_map.CorrelationID) *SriSmCorrelationID {
 }
 
 func convertIpSmGwGuidanceToWire(g *IpSmGwGuidance) (*gsm_map.IPSMGWGuidance, error) {
-	if g.MinimumDeliveryTimeValue < 30 || g.MinimumDeliveryTimeValue > 600 ||
-		g.RecommendedDeliveryTimeValue < 30 || g.RecommendedDeliveryTimeValue > 600 {
+	if g.MinimumDeliveryTimeValue < MinSmDeliveryTimer || g.MinimumDeliveryTimeValue > MaxSmDeliveryTimer ||
+		g.RecommendedDeliveryTimeValue < MinSmDeliveryTimer || g.RecommendedDeliveryTimeValue > MaxSmDeliveryTimer {
 		return nil, ErrSriSmInvalidDeliveryTimerValue
 	}
 	return &gsm_map.IPSMGWGuidance{
@@ -555,7 +555,7 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 	// Optional fields (post-extension marker).
 	if m.SmDeliveryTimer != nil {
 		v := *m.SmDeliveryTimer
-		if v < 30 || v > 600 {
+		if v < MinSmDeliveryTimer || v > MaxSmDeliveryTimer {
 			return nil, ErrMtFsmInvalidDeliveryTimer
 		}
 		val := gsm_map.SMDeliveryTimerValue(v)
@@ -643,6 +643,9 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 	// Optional fields (post-extension marker).
 	if arg.SmDeliveryTimer != nil {
 		v := int(*arg.SmDeliveryTimer)
+		if v < MinSmDeliveryTimer || v > MaxSmDeliveryTimer {
+			return nil, ErrMtFsmInvalidDeliveryTimer
+		}
 		mtFsm.SmDeliveryTimer = &v
 	}
 	if arg.SmDeliveryStartTime != nil {
