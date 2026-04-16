@@ -10,7 +10,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 |---|---|---|
 | **SendRoutingInfoForSM** (SRI-SM) | `SriSm` | `SriSmResp` |
 | **MT-ForwardSM** | `MtFsm` | `MtFsmResp` |
-| **MO-ForwardSM** | `MoFsm` | - |
+| **MO-ForwardSM** | `MoFsm` | `MoFsmResp` |
 | **UpdateLocation** | `UpdateLocation` | `UpdateLocationRes` |
 | **UpdateGprsLocation** | `UpdateGprsLocation` | `UpdateGprsLocationRes` |
 | **AnyTimeInterrogation** (ATI) | `AnyTimeInterrogation` | `AnyTimeInterrogationRes` |

@@ -66,6 +66,16 @@ func (m *MoFsm) Marshal() ([]byte, error) {
 	return data, nil
 }
 
+// Marshal encodes MoFsmResp into BER-encoded bytes.
+func (r *MoFsmResp) Marshal() ([]byte, error) {
+	res := convertMoFsmRespToRes(r)
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding MOForwardSMRes: %w", err)
+	}
+	return data, nil
+}
+
 // Marshal encodes UpdateLocation into BER-encoded bytes.
 func (u *UpdateLocation) Marshal() ([]byte, error) {
 	arg, err := convertUpdateLocationToArg(u)

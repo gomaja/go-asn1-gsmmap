@@ -161,15 +161,67 @@ type MtFsmResp struct {
 	SmRpUI HexBytes // optional SM-RP-UI (SignalInfo); nil if absent
 }
 
-// MoFsm represents a Mobile Originated Forward Short Message.
+// SmDeliveryOutcome per 3GPP TS 29.002.
+type SmDeliveryOutcome int
+
+const (
+	SmDeliveryMemoryCapacityExceeded SmDeliveryOutcome = 0
+	SmDeliveryAbsentSubscriber       SmDeliveryOutcome = 1
+	SmDeliverySuccessfulTransfer     SmDeliveryOutcome = 2
+)
+
+// SmRpDa represents the SM-RP-DA CHOICE (destination address).
+// Set exactly one field.
+type SmRpDa struct {
+	IMSI                   string   // [0] IMSI (TBCD)
+	LMSI                   HexBytes // [1] 4 octets
+	ServiceCentreAddressDA string   // [4] AddressString
+	SCADANature            uint8
+	SCADAPlan              uint8
+	NoSmRpDa               bool // [5] NULL
+}
+
+// SmRpOa represents the SM-RP-OA CHOICE (originator address).
+// Set exactly one field.
+type SmRpOa struct {
+	MSISDN                 string // ISDNAddressString
+	MSISDNNature           uint8
+	MSISDNPlan             uint8
+	ServiceCentreAddressOA string // [4] AddressString
+	SCAOANature            uint8
+	SCAOAPlan              uint8
+	NoSmRpOa               bool // [5] NULL
+}
+
+// MoFsm represents a Mobile Originated Forward Short Message (opCode 46).
 type MoFsm struct {
+	// SM-RP-DA: destination address CHOICE.
+	// For backward compatibility, ServiceCentreAddressDA/SCADANature/SCADAPlan
+	// are kept as top-level fields. For other DA variants, use SmRpDa.
 	ServiceCentreAddressDA string
 	SCADANature            uint8 // address nature indicator (default: International)
 	SCADAPlan              uint8 // numbering plan indicator (default: ISDN)
-	MSISDN                 string
-	MSISDNNature           uint8 // address nature indicator (default: International)
-	MSISDNPlan             uint8 // numbering plan indicator (default: ISDN)
-	TPDU                   tpdu.TPDU
+	SmRpDa                 *SmRpDa // set for IMSI/LMSI/noSM-RP-DA alternatives; overrides ServiceCentreAddressDA
+
+	// SM-RP-OA: originator address CHOICE.
+	// For backward compatibility, MSISDN/MSISDNNature/MSISDNPlan are kept.
+	// For other OA variants, use SmRpOa.
+	MSISDN       string
+	MSISDNNature uint8 // address nature indicator (default: International)
+	MSISDNPlan   uint8 // numbering plan indicator (default: ISDN)
+	SmRpOa       *SmRpOa // set for serviceCentreAddressOA/noSM-RP-OA alternatives; overrides MSISDN
+
+	TPDU tpdu.TPDU
+
+	// Optional fields (post-extension marker).
+	IMSI              string              // optional IMSI
+	CorrelationID     *SriSmCorrelationID // [0] reuse SRI-SM type
+	SmDeliveryOutcome *SmDeliveryOutcome  // [1]
+}
+
+// MoFsmResp represents a Mobile Originated Forward Short Message response.
+type MoFsmResp struct {
+	SmRpUI HexBytes // optional SM-RP-UI (SignalInfo); nil if absent
 }
 
 // UpdateLocation represents an UpdateLocation request.
@@ -614,4 +666,9 @@ var (
 	ErrSriSmInvalidDeliveryTimerValue  = errors.New("sriSm: SM-DeliveryTimerValue must be 30..600")
 
 	ErrMtFsmInvalidDeliveryTimer = errors.New("mtFsm: SmDeliveryTimer must be 30..600")
+
+	ErrMoFsmSmRpDaNoAlternative        = errors.New("moFsm: SmRpDa CHOICE has no alternative set")
+	ErrMoFsmSmRpDaMultipleAlternatives = errors.New("moFsm: SmRpDa CHOICE has multiple alternatives set")
+	ErrMoFsmSmRpOaNoAlternative        = errors.New("moFsm: SmRpOa CHOICE has no alternative set")
+	ErrMoFsmSmRpOaMultipleAlternatives = errors.New("moFsm: SmRpOa CHOICE has multiple alternatives set")
 )

@@ -1278,3 +1278,355 @@ func TestAdditionalNumberChoiceValidation(t *testing.T) {
 		}
 	})
 }
+
+func TestMoFsmFullStressRoundTrip(t *testing.T) {
+	// Parse a known valid MO-FSM to get a valid TPDU.
+	knownHex := "302d84069122609098998206912260539128041b01510a912260716622000011d972180d4a82eee13928cc7ebbcb20"
+	knownBytes, err := hex.DecodeString(knownHex)
+	if err != nil {
+		t.Fatalf("hex decode: %v", err)
+	}
+	base, err := ParseMoFsm(knownBytes)
+	if err != nil {
+		t.Fatalf("ParseMoFsm: %v", err)
+	}
+
+	outcome := SmDeliverySuccessfulTransfer
+	in := &MoFsm{
+		ServiceCentreAddressDA: base.ServiceCentreAddressDA,
+		SCADANature:            base.SCADANature,
+		SCADAPlan:              base.SCADAPlan,
+		MSISDN:                 base.MSISDN,
+		MSISDNNature:           base.MSISDNNature,
+		MSISDNPlan:             base.MSISDNPlan,
+		TPDU:                   base.TPDU,
+
+		IMSI: "310260123456789",
+		CorrelationID: &SriSmCorrelationID{
+			HlrID:   HexBytes{0xAA, 0xBB},
+			SipUriA: HexBytes{0xCC, 0xDD},
+			SipUriB: HexBytes{0xEE, 0xFF},
+		},
+		SmDeliveryOutcome: &outcome,
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseMoFsm(data)
+	if err != nil {
+		t.Fatalf("ParseMoFsm: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestMoFsmSmRpDaVariants(t *testing.T) {
+	knownHex := "302d84069122609098998206912260539128041b01510a912260716622000011d972180d4a82eee13928cc7ebbcb20"
+	knownBytes, err := hex.DecodeString(knownHex)
+	if err != nil {
+		t.Fatalf("hex decode: %v", err)
+	}
+	base, err := ParseMoFsm(knownBytes)
+	if err != nil {
+		t.Fatalf("ParseMoFsm: %v", err)
+	}
+
+	t.Run("IMSI", func(t *testing.T) {
+		in := &MoFsm{
+			SmRpDa:       &SmRpDa{IMSI: "310260123456789"},
+			MSISDN:       base.MSISDN,
+			MSISDNNature: base.MSISDNNature,
+			MSISDNPlan:   base.MSISDNPlan,
+			TPDU:         base.TPDU,
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMoFsm(data)
+		if err != nil {
+			t.Fatalf("ParseMoFsm: %v", err)
+		}
+		if got.SmRpDa == nil {
+			t.Fatal("expected SmRpDa to be set")
+		}
+		if got.SmRpDa.IMSI != "310260123456789" {
+			t.Errorf("IMSI: got %q, want %q", got.SmRpDa.IMSI, "310260123456789")
+		}
+	})
+
+	t.Run("LMSI", func(t *testing.T) {
+		in := &MoFsm{
+			SmRpDa:       &SmRpDa{LMSI: HexBytes{0x01, 0x02, 0x03, 0x04}},
+			MSISDN:       base.MSISDN,
+			MSISDNNature: base.MSISDNNature,
+			MSISDNPlan:   base.MSISDNPlan,
+			TPDU:         base.TPDU,
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMoFsm(data)
+		if err != nil {
+			t.Fatalf("ParseMoFsm: %v", err)
+		}
+		if got.SmRpDa == nil {
+			t.Fatal("expected SmRpDa to be set")
+		}
+		if !bytes.Equal(got.SmRpDa.LMSI, HexBytes{0x01, 0x02, 0x03, 0x04}) {
+			t.Errorf("LMSI: got %x, want 01020304", got.SmRpDa.LMSI)
+		}
+	})
+
+	t.Run("NoSmRpDa", func(t *testing.T) {
+		in := &MoFsm{
+			SmRpDa:       &SmRpDa{NoSmRpDa: true},
+			MSISDN:       base.MSISDN,
+			MSISDNNature: base.MSISDNNature,
+			MSISDNPlan:   base.MSISDNPlan,
+			TPDU:         base.TPDU,
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMoFsm(data)
+		if err != nil {
+			t.Fatalf("ParseMoFsm: %v", err)
+		}
+		if got.SmRpDa == nil {
+			t.Fatal("expected SmRpDa to be set")
+		}
+		if !got.SmRpDa.NoSmRpDa {
+			t.Error("expected NoSmRpDa to be true")
+		}
+	})
+
+	t.Run("ServiceCentreAddressDA_via_SmRpDa", func(t *testing.T) {
+		in := &MoFsm{
+			SmRpDa:       &SmRpDa{ServiceCentreAddressDA: "31612345678"},
+			MSISDN:       base.MSISDN,
+			MSISDNNature: base.MSISDNNature,
+			MSISDNPlan:   base.MSISDNPlan,
+			TPDU:         base.TPDU,
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMoFsm(data)
+		if err != nil {
+			t.Fatalf("ParseMoFsm: %v", err)
+		}
+		if got.ServiceCentreAddressDA != "31612345678" {
+			t.Errorf("ServiceCentreAddressDA: got %q, want %q", got.ServiceCentreAddressDA, "31612345678")
+		}
+		if got.SmRpDa != nil {
+			t.Error("SmRpDa should be nil for serviceCentreAddressDA variant")
+		}
+	})
+}
+
+func TestMoFsmSmRpOaVariants(t *testing.T) {
+	knownHex := "302d84069122609098998206912260539128041b01510a912260716622000011d972180d4a82eee13928cc7ebbcb20"
+	knownBytes, err := hex.DecodeString(knownHex)
+	if err != nil {
+		t.Fatalf("hex decode: %v", err)
+	}
+	base, err := ParseMoFsm(knownBytes)
+	if err != nil {
+		t.Fatalf("ParseMoFsm: %v", err)
+	}
+
+	t.Run("ServiceCentreAddressOA", func(t *testing.T) {
+		in := &MoFsm{
+			ServiceCentreAddressDA: base.ServiceCentreAddressDA,
+			SCADANature:            base.SCADANature,
+			SCADAPlan:              base.SCADAPlan,
+			SmRpOa:                 &SmRpOa{ServiceCentreAddressOA: "31699887766"},
+			TPDU:                   base.TPDU,
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMoFsm(data)
+		if err != nil {
+			t.Fatalf("ParseMoFsm: %v", err)
+		}
+		if got.SmRpOa == nil {
+			t.Fatal("expected SmRpOa to be set")
+		}
+		if got.SmRpOa.ServiceCentreAddressOA != "31699887766" {
+			t.Errorf("ServiceCentreAddressOA: got %q, want %q", got.SmRpOa.ServiceCentreAddressOA, "31699887766")
+		}
+		if got.MSISDN != "" {
+			t.Errorf("MSISDN should be empty, got %q", got.MSISDN)
+		}
+	})
+
+	t.Run("NoSmRpOa", func(t *testing.T) {
+		in := &MoFsm{
+			ServiceCentreAddressDA: base.ServiceCentreAddressDA,
+			SCADANature:            base.SCADANature,
+			SCADAPlan:              base.SCADAPlan,
+			SmRpOa:                 &SmRpOa{NoSmRpOa: true},
+			TPDU:                   base.TPDU,
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMoFsm(data)
+		if err != nil {
+			t.Fatalf("ParseMoFsm: %v", err)
+		}
+		if got.SmRpOa == nil {
+			t.Fatal("expected SmRpOa to be set")
+		}
+		if !got.SmRpOa.NoSmRpOa {
+			t.Error("expected NoSmRpOa to be true")
+		}
+	})
+
+	t.Run("MSISDN_via_SmRpOa", func(t *testing.T) {
+		in := &MoFsm{
+			ServiceCentreAddressDA: base.ServiceCentreAddressDA,
+			SCADANature:            base.SCADANature,
+			SCADAPlan:              base.SCADAPlan,
+			SmRpOa:                 &SmRpOa{MSISDN: "31612345678"},
+			TPDU:                   base.TPDU,
+		}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMoFsm(data)
+		if err != nil {
+			t.Fatalf("ParseMoFsm: %v", err)
+		}
+		if got.MSISDN != "31612345678" {
+			t.Errorf("MSISDN: got %q, want %q", got.MSISDN, "31612345678")
+		}
+		if got.SmRpOa != nil {
+			t.Error("SmRpOa should be nil for msisdn variant")
+		}
+	})
+}
+
+func TestMoFsmRespRoundTrip(t *testing.T) {
+	t.Run("WithSmRpUI", func(t *testing.T) {
+		in := &MoFsmResp{SmRpUI: HexBytes{0x01, 0x02, 0x03}}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMoFsmResp(data)
+		if err != nil {
+			t.Fatalf("ParseMoFsmResp: %v", err)
+		}
+		if !bytes.Equal(in.SmRpUI, got.SmRpUI) {
+			t.Errorf("SmRpUI: got %x, want %x", got.SmRpUI, in.SmRpUI)
+		}
+	})
+
+	t.Run("Empty", func(t *testing.T) {
+		in := &MoFsmResp{}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParseMoFsmResp(data)
+		if err != nil {
+			t.Fatalf("ParseMoFsmResp: %v", err)
+		}
+		if got.SmRpUI != nil {
+			t.Errorf("SmRpUI should be nil, got %x", got.SmRpUI)
+		}
+	})
+}
+
+func TestMoFsmSmRpDaChoiceValidation(t *testing.T) {
+	knownHex := "302d84069122609098998206912260539128041b01510a912260716622000011d972180d4a82eee13928cc7ebbcb20"
+	knownBytes, err := hex.DecodeString(knownHex)
+	if err != nil {
+		t.Fatalf("hex decode: %v", err)
+	}
+	base, err := ParseMoFsm(knownBytes)
+	if err != nil {
+		t.Fatalf("ParseMoFsm: %v", err)
+	}
+
+	t.Run("EmptySmRpDa", func(t *testing.T) {
+		in := &MoFsm{
+			SmRpDa:       &SmRpDa{},
+			MSISDN:       base.MSISDN,
+			MSISDNNature: base.MSISDNNature,
+			MSISDNPlan:   base.MSISDNPlan,
+			TPDU:         base.TPDU,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for empty SmRpDa CHOICE")
+		}
+		if !errors.Is(err, ErrMoFsmSmRpDaNoAlternative) {
+			t.Errorf("expected ErrMoFsmSmRpDaNoAlternative, got: %v", err)
+		}
+	})
+
+	t.Run("MultipleSmRpDa", func(t *testing.T) {
+		in := &MoFsm{
+			SmRpDa:       &SmRpDa{IMSI: "310260123456789", NoSmRpDa: true},
+			MSISDN:       base.MSISDN,
+			MSISDNNature: base.MSISDNNature,
+			MSISDNPlan:   base.MSISDNPlan,
+			TPDU:         base.TPDU,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for multiple SmRpDa CHOICE alternatives")
+		}
+		if !errors.Is(err, ErrMoFsmSmRpDaMultipleAlternatives) {
+			t.Errorf("expected ErrMoFsmSmRpDaMultipleAlternatives, got: %v", err)
+		}
+	})
+
+	t.Run("EmptySmRpOa", func(t *testing.T) {
+		in := &MoFsm{
+			ServiceCentreAddressDA: base.ServiceCentreAddressDA,
+			SCADANature:            base.SCADANature,
+			SCADAPlan:              base.SCADAPlan,
+			SmRpOa:                 &SmRpOa{},
+			TPDU:                   base.TPDU,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for empty SmRpOa CHOICE")
+		}
+		if !errors.Is(err, ErrMoFsmSmRpOaNoAlternative) {
+			t.Errorf("expected ErrMoFsmSmRpOaNoAlternative, got: %v", err)
+		}
+	})
+
+	t.Run("MultipleSmRpOa", func(t *testing.T) {
+		in := &MoFsm{
+			ServiceCentreAddressDA: base.ServiceCentreAddressDA,
+			SCADANature:            base.SCADANature,
+			SCADAPlan:              base.SCADAPlan,
+			SmRpOa:                 &SmRpOa{MSISDN: "31612345678", NoSmRpOa: true},
+			TPDU:                   base.TPDU,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for multiple SmRpOa CHOICE alternatives")
+		}
+		if !errors.Is(err, ErrMoFsmSmRpOaMultipleAlternatives) {
+			t.Errorf("expected ErrMoFsmSmRpOaMultipleAlternatives, got: %v", err)
+		}
+	})
+}
