@@ -2108,7 +2108,11 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 	}
 
 	if loc.UserCSGInformation != nil {
-		li.UserCSGInformation = convertUserCSGInformationToWire(loc.UserCSGInformation)
+		csg, err := convertUserCSGInformationToWire(loc.UserCSGInformation)
+		if err != nil {
+			return nil, fmt.Errorf("UserCSGInformation: %w", err)
+		}
+		li.UserCSGInformation = csg
 	}
 
 	if loc.CurrentLocationRetrieved {
@@ -2373,7 +2377,11 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	}
 
 	if loc.UserCSGInformation != nil {
-		li.UserCSGInformation = convertUserCSGInformationToWire(loc.UserCSGInformation)
+		csg, err := convertUserCSGInformationToWire(loc.UserCSGInformation)
+		if err != nil {
+			return nil, fmt.Errorf("UserCSGInformation: %w", err)
+		}
+		li.UserCSGInformation = csg
 	}
 
 	if loc.CurrentLocationRetrieved {
@@ -4063,13 +4071,13 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 		}
 		out.PsPDPActiveReachableForPaging = enc
 	case gsm_map.PSSubscriberStateChoiceNetDetNotReachable:
-		if w.NetDetNotReachable != nil {
-			v := int(*w.NetDetNotReachable)
-			out.NetDetNotReachable = &v
-		} else {
-			v := 0
-			out.NetDetNotReachable = &v
+		if w.NetDetNotReachable == nil {
+			return nil, fmt.Errorf("PsSubscriberState: NetDetNotReachable alternative selected but reason is nil")
 		}
+		v := int(*w.NetDetNotReachable)
+		out.NetDetNotReachable = &v
+	default:
+		return nil, fmt.Errorf("PsSubscriberState: unknown CHOICE value %d", w.Choice)
 	}
 	return out, nil
 }
@@ -4203,7 +4211,10 @@ func convertWireToGprsMSClass(w *gsm_map.GPRSMSClass) *GprsMSClass {
 
 // --- UserCSGInformation (opCode 71) ---
 
-func convertUserCSGInformationToWire(u *UserCSGInformation) *gsm_map.UserCSGInformation {
+func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInformation, error) {
+	if u.CsgIDBits > 0 && u.CsgIDBits > len(u.CsgID)*8 {
+		return nil, fmt.Errorf("UserCSGInformation: CsgIDBits (%d) exceeds len(CsgID)*8 (%d)", u.CsgIDBits, len(u.CsgID)*8)
+	}
 	out := &gsm_map.UserCSGInformation{
 		CsgId: runtime.BitString{
 			Bytes:     append([]byte(nil), u.CsgID...),
@@ -4216,7 +4227,7 @@ func convertUserCSGInformationToWire(u *UserCSGInformation) *gsm_map.UserCSGInfo
 	if u.CMI != nil {
 		out.Cmi = []byte(u.CMI)
 	}
-	return out
+	return out, nil
 }
 
 func convertWireToUserCSGInformation(w *gsm_map.UserCSGInformation) *UserCSGInformation {
@@ -4280,6 +4291,9 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.VplmnID != nil {
+		if len(l.VplmnID) != 3 {
+			return nil, fmt.Errorf("LocationInformation5GS: VplmnID must be exactly 3 octets, got %d", len(l.VplmnID))
+		}
 		p := gsm_map.PLMNId(l.VplmnID)
 		out.VplmnId = &p
 	}
