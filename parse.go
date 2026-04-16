@@ -51,6 +51,15 @@ func ParseMoFsm(data []byte) (*MoFsm, error) {
 	return convertArgToMoFsm(&arg)
 }
 
+// ParseMoFsmResp decodes BER-encoded bytes into an MoFsmResp.
+func ParseMoFsmResp(data []byte) (*MoFsmResp, error) {
+	var res gsm_map.MOForwardSMRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding MOForwardSMRes: %w", err)
+	}
+	return convertResToMoFsmResp(&res), nil
+}
+
 // ParseUpdateLocation decodes BER-encoded bytes into an UpdateLocation.
 func ParseUpdateLocation(data []byte) (*UpdateLocation, error) {
 	var arg gsm_map.UpdateLocationArg
