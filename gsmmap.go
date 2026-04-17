@@ -928,5 +928,5 @@ var (
 	ErrAtiPsSubscriberStateNoAlternative        = errors.New("ati: PsSubscriberState CHOICE has no alternative set")
 	ErrAtiPsSubscriberStateMultipleAlternatives = errors.New("ati: PsSubscriberState CHOICE has multiple alternatives set")
 
-	ErrIscInvalidAbsentSubscriberDiagnosticSM = errors.New("informServiceCentre: AbsentSubscriberDiagnosticSM must be 0..255")
+	ErrIscInvalidAbsentSubscriberDiagnosticSM = errors.New("informServiceCentre: value must be 0..255")
 )
