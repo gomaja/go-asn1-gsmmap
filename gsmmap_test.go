@@ -2909,3 +2909,305 @@ func TestPurgeMSValidationErrors(t *testing.T) {
 		}
 	})
 }
+
+// --- SendAuthenticationInfo (opCode 56) tests ---
+
+func TestSendAuthenticationInfoMandatoryRoundTrip(t *testing.T) {
+	in := &SendAuthenticationInfo{
+		IMSI:                     "204080012345678",
+		NumberOfRequestedVectors: 5,
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseSendAuthenticationInfo(data)
+	if err != nil {
+		t.Fatalf("ParseSendAuthenticationInfo: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestSendAuthenticationInfoFullStressRoundTrip(t *testing.T) {
+	node := RequestingNodeMme
+	addlVectors := 3
+
+	in := &SendAuthenticationInfo{
+		IMSI:                       "204080012345678",
+		NumberOfRequestedVectors:   5,
+		SegmentationProhibited:     true,
+		ImmediateResponsePreferred: true,
+		ReSynchronisationInfo: &ReSynchronisationInfo{
+			RAND: bytes.Repeat([]byte{0x55}, 16),
+			AUTS: bytes.Repeat([]byte{0x66}, 14),
+		},
+		RequestingNodeType:                 &node,
+		RequestingPLMNId:                   HexBytes{0x62, 0xf2, 0x20},
+		NumberOfRequestedAdditionalVectors: &addlVectors,
+		AdditionalVectorsAreForEPS:         true,
+		UeUsageTypeRequestIndication:       true,
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseSendAuthenticationInfo(data)
+	if err != nil {
+		t.Fatalf("ParseSendAuthenticationInfo: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestSendAuthenticationInfoResTripletsRoundTrip(t *testing.T) {
+	in := &SendAuthenticationInfoRes{
+		AuthenticationSetList: &AuthenticationSetList{
+			Triplets: []AuthenticationTriplet{
+				{
+					RAND: bytes.Repeat([]byte{0x11}, 16),
+					SRES: bytes.Repeat([]byte{0x22}, 4),
+					Kc:   bytes.Repeat([]byte{0x33}, 8),
+				},
+				{
+					RAND: bytes.Repeat([]byte{0xaa}, 16),
+					SRES: bytes.Repeat([]byte{0xbb}, 4),
+					Kc:   bytes.Repeat([]byte{0xcc}, 8),
+				},
+			},
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseSendAuthenticationInfoRes(data)
+	if err != nil {
+		t.Fatalf("ParseSendAuthenticationInfoRes: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestSendAuthenticationInfoResQuintupletsRoundTrip(t *testing.T) {
+	in := &SendAuthenticationInfoRes{
+		AuthenticationSetList: &AuthenticationSetList{
+			Quintuplets: []AuthenticationQuintuplet{
+				{
+					RAND: bytes.Repeat([]byte{0x11}, 16),
+					XRES: bytes.Repeat([]byte{0x22}, 8),
+					CK:   bytes.Repeat([]byte{0x33}, 16),
+					IK:   bytes.Repeat([]byte{0x44}, 16),
+					AUTN: bytes.Repeat([]byte{0x55}, 16),
+				},
+				{
+					RAND: bytes.Repeat([]byte{0xaa}, 16),
+					XRES: bytes.Repeat([]byte{0xbb}, 8),
+					CK:   bytes.Repeat([]byte{0xcc}, 16),
+					IK:   bytes.Repeat([]byte{0xdd}, 16),
+					AUTN: bytes.Repeat([]byte{0xee}, 16),
+				},
+			},
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseSendAuthenticationInfoRes(data)
+	if err != nil {
+		t.Fatalf("ParseSendAuthenticationInfoRes: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestSendAuthenticationInfoResEpsAVRoundTrip(t *testing.T) {
+	in := &SendAuthenticationInfoRes{
+		EpsAuthenticationSetList: []EpcAV{
+			{
+				RAND:  bytes.Repeat([]byte{0x11}, 16),
+				XRES:  bytes.Repeat([]byte{0x22}, 8),
+				AUTN:  bytes.Repeat([]byte{0x33}, 16),
+				KASME: bytes.Repeat([]byte{0x44}, 32),
+			},
+			{
+				RAND:  bytes.Repeat([]byte{0xaa}, 16),
+				XRES:  bytes.Repeat([]byte{0xbb}, 8),
+				AUTN:  bytes.Repeat([]byte{0xcc}, 16),
+				KASME: bytes.Repeat([]byte{0xdd}, 32),
+			},
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseSendAuthenticationInfoRes(data)
+	if err != nil {
+		t.Fatalf("ParseSendAuthenticationInfoRes: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestSendAuthenticationInfoResFullRoundTrip(t *testing.T) {
+	in := &SendAuthenticationInfoRes{
+		AuthenticationSetList: &AuthenticationSetList{
+			Triplets: []AuthenticationTriplet{
+				{
+					RAND: bytes.Repeat([]byte{0x11}, 16),
+					SRES: bytes.Repeat([]byte{0x22}, 4),
+					Kc:   bytes.Repeat([]byte{0x33}, 8),
+				},
+			},
+		},
+		EpsAuthenticationSetList: []EpcAV{
+			{
+				RAND:  bytes.Repeat([]byte{0x44}, 16),
+				XRES:  bytes.Repeat([]byte{0x55}, 8),
+				AUTN:  bytes.Repeat([]byte{0x66}, 16),
+				KASME: bytes.Repeat([]byte{0x77}, 32),
+			},
+		},
+		UeUsageType: HexBytes{0x01, 0x02, 0x03, 0x04},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseSendAuthenticationInfoRes(data)
+	if err != nil {
+		t.Fatalf("ParseSendAuthenticationInfoRes: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
+	t.Run("MissingIMSI", func(t *testing.T) {
+		in := &SendAuthenticationInfo{NumberOfRequestedVectors: 1}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for missing IMSI")
+		}
+		if !errors.Is(err, ErrSaiMissingIMSI) {
+			t.Errorf("expected ErrSaiMissingIMSI, got: %v", err)
+		}
+	})
+
+	t.Run("NumberOfRequestedVectorsZero", func(t *testing.T) {
+		in := &SendAuthenticationInfo{IMSI: "204080012345678", NumberOfRequestedVectors: 0}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for NumberOfRequestedVectors=0")
+		}
+		if !errors.Is(err, ErrSaiInvalidNumberOfRequestedVectors) {
+			t.Errorf("expected ErrSaiInvalidNumberOfRequestedVectors, got: %v", err)
+		}
+	})
+
+	t.Run("NumberOfRequestedVectorsTooHigh", func(t *testing.T) {
+		in := &SendAuthenticationInfo{IMSI: "204080012345678", NumberOfRequestedVectors: 6}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for NumberOfRequestedVectors=6")
+		}
+		if !errors.Is(err, ErrSaiInvalidNumberOfRequestedVectors) {
+			t.Errorf("expected ErrSaiInvalidNumberOfRequestedVectors, got: %v", err)
+		}
+	})
+
+	t.Run("NumberOfRequestedAdditionalVectorsOutOfRange", func(t *testing.T) {
+		v := 10
+		in := &SendAuthenticationInfo{
+			IMSI:                               "204080012345678",
+			NumberOfRequestedVectors:           1,
+			NumberOfRequestedAdditionalVectors: &v,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for NumberOfRequestedAdditionalVectors=10")
+		}
+		if !errors.Is(err, ErrSaiInvalidNumberOfRequestedAdditionalVectors) {
+			t.Errorf("expected ErrSaiInvalidNumberOfRequestedAdditionalVectors, got: %v", err)
+		}
+	})
+
+	t.Run("InvalidPLMNIdLength", func(t *testing.T) {
+		in := &SendAuthenticationInfo{
+			IMSI:                     "204080012345678",
+			NumberOfRequestedVectors: 1,
+			RequestingPLMNId:         HexBytes{0x62, 0xf2}, // 2 octets, invalid
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for invalid PLMN-Id length")
+		}
+		if !errors.Is(err, ErrSaiInvalidPLMNId) {
+			t.Errorf("expected ErrSaiInvalidPLMNId, got: %v", err)
+		}
+	})
+
+	t.Run("InvalidUeUsageTypeLength", func(t *testing.T) {
+		res := &SendAuthenticationInfoRes{
+			UeUsageType: HexBytes{0x01, 0x02, 0x03}, // 3 octets, invalid
+		}
+		_, err := res.Marshal()
+		if err == nil {
+			t.Fatal("expected error for invalid UeUsageType length")
+		}
+		if !errors.Is(err, ErrSaiInvalidUeUsageType) {
+			t.Errorf("expected ErrSaiInvalidUeUsageType, got: %v", err)
+		}
+	})
+}
+
+func TestAuthenticationSetListChoiceValidation(t *testing.T) {
+	t.Run("BothAlternativesSet", func(t *testing.T) {
+		res := &SendAuthenticationInfoRes{
+			AuthenticationSetList: &AuthenticationSetList{
+				Triplets:    []AuthenticationTriplet{{RAND: bytes.Repeat([]byte{0x11}, 16), SRES: bytes.Repeat([]byte{0x22}, 4), Kc: bytes.Repeat([]byte{0x33}, 8)}},
+				Quintuplets: []AuthenticationQuintuplet{{RAND: bytes.Repeat([]byte{0x11}, 16), XRES: bytes.Repeat([]byte{0x22}, 8), CK: bytes.Repeat([]byte{0x33}, 16), IK: bytes.Repeat([]byte{0x44}, 16), AUTN: bytes.Repeat([]byte{0x55}, 16)}},
+			},
+		}
+		_, err := res.Marshal()
+		if err == nil {
+			t.Fatal("expected error for both CHOICE alternatives set")
+		}
+		if !errors.Is(err, ErrSaiAuthSetListChoiceMultipleAlternatives) {
+			t.Errorf("expected ErrSaiAuthSetListChoiceMultipleAlternatives, got: %v", err)
+		}
+	})
+
+	t.Run("NoAlternativeSet", func(t *testing.T) {
+		res := &SendAuthenticationInfoRes{
+			AuthenticationSetList: &AuthenticationSetList{},
+		}
+		_, err := res.Marshal()
+		if err == nil {
+			t.Fatal("expected error for no CHOICE alternative set")
+		}
+		if !errors.Is(err, ErrSaiAuthSetListChoiceNoAlternative) {
+			t.Errorf("expected ErrSaiAuthSetListChoiceNoAlternative, got: %v", err)
+		}
+	})
+}
