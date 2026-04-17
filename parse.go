@@ -172,3 +172,23 @@ func ParsePurgeMSRes(data []byte) (*PurgeMSRes, error) {
 	}
 	return convertWireToPurgeMSRes(&res), nil
 }
+
+// ParseSendAuthenticationInfo decodes BER-encoded bytes into a
+// SendAuthenticationInfo (opCode 56).
+func ParseSendAuthenticationInfo(data []byte) (*SendAuthenticationInfo, error) {
+	var arg gsm_map.SendAuthenticationInfoArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding SendAuthenticationInfoArg: %w", err)
+	}
+	return convertArgToSendAuthenticationInfo(&arg)
+}
+
+// ParseSendAuthenticationInfoRes decodes BER-encoded bytes into a
+// SendAuthenticationInfoRes (opCode 56).
+func ParseSendAuthenticationInfoRes(data []byte) (*SendAuthenticationInfoRes, error) {
+	var res gsm_map.SendAuthenticationInfoRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding SendAuthenticationInfoRes: %w", err)
+	}
+	return convertResToSendAuthenticationInfoRes(&res)
+}

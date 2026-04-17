@@ -18,6 +18,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **InformServiceCentre** (ISC) | 63 | `InformServiceCentre` | — |
 | **AlertServiceCentre** (ASC) | 64 | `AlertServiceCentre` | — |
 | **PurgeMS** | 67 | `PurgeMS` | `PurgeMSRes` |
+| **SendAuthenticationInfo** (SAI) | 56 | `SendAuthenticationInfo` | `SendAuthenticationInfoRes` |
 
 ## Install
 
@@ -180,6 +181,53 @@ if resp.FreezePTMSI {
 }
 if resp.FreezeMTMSI {
     fmt.Println("MME asked HLR to freeze the M-TMSI")
+}
+```
+
+### SendAuthenticationInfo (opCode 56)
+
+```go
+// Build a SendAuthenticationInfo request. SAI is sent by the VLR/SGSN/MME
+// to the HLR/HSS to retrieve authentication vectors used for subscriber
+// authentication and key agreement.
+//
+// In this example an MME requests 2 EPS authentication vectors for LTE
+// authentication, identifying itself as an MME from a specific PLMN.
+node := gsmmap.RequestingNodeMme
+
+sai := &gsmmap.SendAuthenticationInfo{
+    IMSI:                       "204080012345678",
+    NumberOfRequestedVectors:   2,
+    ImmediateResponsePreferred: true,
+    AdditionalVectorsAreForEPS: true,
+    RequestingNodeType:         &node,
+    RequestingPLMNId:           gsmmap.HexBytes{0x62, 0xf2, 0x20}, // PLMN-Id, 3 octets
+}
+data, err := sai.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+
+// Parse a SendAuthenticationInfo response received from the HLR/HSS.
+respBytes := []byte{ /* SAI-Res BER bytes from the HLR/HSS */ }
+resp, err := gsmmap.ParseSendAuthenticationInfoRes(respBytes)
+if err != nil {
+    log.Fatal(err)
+}
+
+// Access the LTE/EPS authentication vectors.
+for i, av := range resp.EpsAuthenticationSetList {
+    fmt.Printf("EPS-AV[%d] RAND=%x KASME=%x\n", i, []byte(av.RAND), []byte(av.KASME))
+}
+
+// Or, if the HLR returned 2G/3G vectors:
+if resp.AuthenticationSetList != nil {
+    if len(resp.AuthenticationSetList.Quintuplets) > 0 {
+        fmt.Println("Got 3G UMTS quintuplets:", len(resp.AuthenticationSetList.Quintuplets))
+    }
+    if len(resp.AuthenticationSetList.Triplets) > 0 {
+        fmt.Println("Got 2G GSM triplets:", len(resp.AuthenticationSetList.Triplets))
+    }
 }
 ```
 

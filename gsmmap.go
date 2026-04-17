@@ -968,6 +968,90 @@ type PurgeMSRes struct {
 	FreezeMTMSI bool // [2] NULL (post-extension marker)
 }
 
+// RequestingNodeType per 3GPP TS 29.002 (opCode 56).
+type RequestingNodeType int
+
+const (
+	RequestingNodeVlr           RequestingNodeType = 0
+	RequestingNodeSgsn          RequestingNodeType = 1
+	RequestingNodeSCscf         RequestingNodeType = 2
+	RequestingNodeBsf           RequestingNodeType = 3
+	RequestingNodeGanAAAServer  RequestingNodeType = 4
+	RequestingNodeWlanAAAServer RequestingNodeType = 5
+	RequestingNodeMme           RequestingNodeType = 16
+	RequestingNodeMmeSgsn       RequestingNodeType = 17
+)
+
+// ReSynchronisationInfo per 3GPP TS 29.002 (opCode 56).
+// Carries re-synchronisation parameters produced by the USIM when a
+// previously issued authentication vector is out of sequence.
+type ReSynchronisationInfo struct {
+	RAND HexBytes // 16 octets
+	AUTS HexBytes // 14 octets
+}
+
+// AuthenticationTriplet is a 2G (GSM) authentication triplet (opCode 56).
+type AuthenticationTriplet struct {
+	RAND HexBytes // 16 octets
+	SRES HexBytes // 4 octets
+	Kc   HexBytes // 8 octets
+}
+
+// AuthenticationQuintuplet is a UMTS/3G authentication quintuplet (opCode 56).
+type AuthenticationQuintuplet struct {
+	RAND HexBytes // 16 octets
+	XRES HexBytes // 4..16 octets
+	CK   HexBytes // 16 octets
+	IK   HexBytes // 16 octets
+	AUTN HexBytes // 16 octets
+}
+
+// EpcAV is an LTE/EPS authentication vector (opCode 56).
+type EpcAV struct {
+	RAND  HexBytes // 16 octets
+	XRES  HexBytes // 4..16 octets
+	AUTN  HexBytes // 16 octets
+	KASME HexBytes // 32 octets
+}
+
+// AuthenticationSetList is a CHOICE between 2G triplets and 3G quintuplets
+// (opCode 56). Exactly one of Triplets or Quintuplets must be non-empty when
+// the list is set; both empty/nil is treated as "no alternative" and both
+// non-empty as "multiple alternatives" during encode. An explicitly-set
+// empty slice counts as absent.
+type AuthenticationSetList struct {
+	Triplets    []AuthenticationTriplet
+	Quintuplets []AuthenticationQuintuplet
+}
+
+// SendAuthenticationInfo represents a SendAuthenticationInfo request
+// (opCode 56) per 3GPP TS 29.002. Sent by the VLR/SGSN/MME to the HLR/HSS
+// to retrieve authentication vectors for subscriber authentication.
+type SendAuthenticationInfo struct {
+	IMSI                     string // mandatory (TBCD)
+	NumberOfRequestedVectors int    // mandatory 1..5
+
+	// Optional fields.
+	SegmentationProhibited     bool                   // NULL
+	ImmediateResponsePreferred bool                   // [1] NULL
+	ReSynchronisationInfo      *ReSynchronisationInfo // SEQUENCE
+
+	// Optional fields (post-extension marker).
+	RequestingNodeType                 *RequestingNodeType // [3]
+	RequestingPLMNId                   HexBytes            // [4] 3 octets
+	NumberOfRequestedAdditionalVectors *int                // [5] 1..5
+	AdditionalVectorsAreForEPS         bool                // [6] NULL
+	UeUsageTypeRequestIndication       bool                // [7] NULL
+}
+
+// SendAuthenticationInfoRes represents a SendAuthenticationInfo response
+// (opCode 56) per 3GPP TS 29.002.
+type SendAuthenticationInfoRes struct {
+	AuthenticationSetList    *AuthenticationSetList // CHOICE: Triplets | Quintuplets
+	EpsAuthenticationSetList []EpcAV                // [2] EPS-AuthenticationSetList
+	UeUsageType              HexBytes               // [3] UE-UsageType, exactly 4 octets
+}
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -1002,4 +1086,14 @@ var (
 	ErrAscInvalidSmsGmscAlertEvent    = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
 
 	ErrPurgeMSMissingIMSI = errors.New("purgeMS: IMSI is empty")
+
+	ErrSaiMissingIMSI                                = errors.New("sai: IMSI is empty")
+	ErrSaiInvalidNumberOfRequestedVectors            = errors.New("sai: NumberOfRequestedVectors must be 1..5")
+	ErrSaiInvalidNumberOfRequestedAdditionalVectors  = errors.New("sai: NumberOfRequestedAdditionalVectors must be 1..5")
+	ErrSaiInvalidUeUsageType                         = errors.New("sai: UeUsageType must be exactly 4 octets")
+	ErrSaiInvalidPLMNId                              = errors.New("sai: RequestingPLMNId must be exactly 3 octets")
+	ErrSaiAuthSetListChoiceMultipleAlternatives      = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
+	ErrSaiAuthSetListChoiceNoAlternative             = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
+	ErrSaiInvalidRequestingNodeType                  = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
+	ErrSaiInvalidEpsAuthSetListSize                  = errors.New("sai: EpsAuthenticationSetList size must be at most 5 entries when present")
 )

@@ -233,3 +233,29 @@ func (r *PurgeMSRes) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes SendAuthenticationInfo (opCode 56) into BER-encoded bytes.
+func (s *SendAuthenticationInfo) Marshal() ([]byte, error) {
+	arg, err := convertSendAuthenticationInfoToArg(s)
+	if err != nil {
+		return nil, fmt.Errorf("converting SendAuthenticationInfo: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding SendAuthenticationInfoArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes SendAuthenticationInfoRes (opCode 56) into BER-encoded bytes.
+func (s *SendAuthenticationInfoRes) Marshal() ([]byte, error) {
+	res, err := convertSendAuthenticationInfoResToRes(s)
+	if err != nil {
+		return nil, fmt.Errorf("converting SendAuthenticationInfoRes: %w", err)
+	}
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding SendAuthenticationInfoRes: %w", err)
+	}
+	return data, nil
+}
