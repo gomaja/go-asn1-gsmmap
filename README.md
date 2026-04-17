@@ -16,6 +16,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **AnyTimeInterrogation** (ATI) | 71 | `AnyTimeInterrogation` | `AnyTimeInterrogationRes` |
 | **SendRoutingInfo** (SRI) | 22 | `Sri` | `SriResp` |
 | **InformServiceCentre** (ISC) | 63 | `InformServiceCentre` | — |
+| **AlertServiceCentre** (ASC) | 64 | `AlertServiceCentre` | — |
 
 ## Install
 
@@ -118,6 +119,34 @@ if err != nil {
 if parsed.MwStatus != nil && parsed.MwStatus.McefSet {
     fmt.Println("MCEF flag set for stored MSISDN:", parsed.StoredMSISDN)
 }
+```
+
+### AlertServiceCentre (opCode 64)
+
+```go
+// Build an AlertServiceCentre notification. ASC is sent by the HLR to the
+// SMSC to trigger retry of pending short messages once the subscriber
+// becomes available again (e.g., after the MNRF flag is cleared). The
+// response is an empty acknowledgement — no response type is defined on
+// the public API.
+event := gsmmap.SmsGmscAlertMsAvailableForMtSms
+
+asc := &gsmmap.AlertServiceCentre{
+    MSISDN:               "31612345678",
+    ServiceCentreAddress: "31611111111",
+    SmsGmscAlertEvent:    &event,
+}
+data, err := asc.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+
+// Parse an AlertServiceCentre received from the network
+parsed, err := gsmmap.ParseAlertServiceCentre(data)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("SMS retry triggered for MSISDN:", parsed.MSISDN)
 ```
 
 ### SendRoutingInfo (opCode 22)

@@ -142,3 +142,15 @@ func ParseInformServiceCentre(data []byte) (*InformServiceCentre, error) {
 	}
 	return convertArgToInformServiceCentre(&arg)
 }
+
+// ParseAlertServiceCentre decodes BER-encoded bytes into an AlertServiceCentre.
+// AlertServiceCentre (opCode 64) returns an empty acknowledgement
+// (RETURN RESULT TRUE); no response parse function is defined because the
+// response carries no MAP payload.
+func ParseAlertServiceCentre(data []byte) (*AlertServiceCentre, error) {
+	var arg gsm_map.AlertServiceCentreArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding AlertServiceCentreArg: %w", err)
+	}
+	return convertArgToAlertServiceCentre(&arg)
+}
