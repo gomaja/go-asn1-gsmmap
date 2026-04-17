@@ -210,3 +210,26 @@ func (a *AlertServiceCentre) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes PurgeMS (opCode 67) into BER-encoded bytes.
+func (p *PurgeMS) Marshal() ([]byte, error) {
+	arg, err := convertPurgeMSToArg(p)
+	if err != nil {
+		return nil, fmt.Errorf("converting PurgeMS: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding PurgeMSArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes PurgeMSRes (opCode 67) into BER-encoded bytes.
+func (r *PurgeMSRes) Marshal() ([]byte, error) {
+	res := convertPurgeMSResToWire(r)
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding PurgeMSRes: %w", err)
+	}
+	return data, nil
+}

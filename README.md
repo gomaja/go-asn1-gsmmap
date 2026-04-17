@@ -17,6 +17,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **SendRoutingInfo** (SRI) | 22 | `Sri` | `SriResp` |
 | **InformServiceCentre** (ISC) | 63 | `InformServiceCentre` | — |
 | **AlertServiceCentre** (ASC) | 64 | `AlertServiceCentre` | — |
+| **PurgeMS** | 67 | `PurgeMS` | `PurgeMSRes` |
 
 ## Install
 
@@ -147,6 +148,38 @@ if err != nil {
     log.Fatal(err)
 }
 fmt.Println("SMS retry triggered for MSISDN:", parsed.MSISDN)
+```
+
+### PurgeMS (opCode 67)
+
+```go
+// Build a PurgeMS request. PurgeMS is sent by the HLR to the VLR/SGSN to
+// purge subscriber data when the subscriber has been deactivated or is
+// permanently unreachable. The VLR/SGSN may reply with freeze-TMSI flags
+// indicating which TMSIs should be blocked.
+purge := &gsmmap.PurgeMS{
+    IMSI:      "204080012345678",
+    VLRNumber: "31611111111",
+}
+data, err := purge.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+
+// Parse a PurgeMS response received from the network
+resp, err := gsmmap.ParsePurgeMSRes(respBytes)
+if err != nil {
+    log.Fatal(err)
+}
+if resp.FreezeTMSI {
+    fmt.Println("VLR asked HLR to freeze the TMSI")
+}
+if resp.FreezePTMSI {
+    fmt.Println("SGSN asked HLR to freeze the P-TMSI")
+}
+if resp.FreezeMTMSI {
+    fmt.Println("MME asked HLR to freeze the M-TMSI")
+}
 ```
 
 ### SendRoutingInfo (opCode 22)

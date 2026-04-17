@@ -2782,3 +2782,130 @@ func TestAlertServiceCentreValidationErrors(t *testing.T) {
 		}
 	})
 }
+
+func TestPurgeMSMandatoryRoundTrip(t *testing.T) {
+	in := &PurgeMS{
+		IMSI: "204080012345678",
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParsePurgeMS(data)
+	if err != nil {
+		t.Fatalf("ParsePurgeMS: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestPurgeMSFullStressRoundTrip(t *testing.T) {
+	csAge := 42
+	gprsAge := 60
+	epsAge := 30
+
+	in := &PurgeMS{
+		IMSI:       "204080012345678",
+		VLRNumber:  "31611111111",
+		SGSNNumber: "31622222222",
+		LocationInformation: &CSLocationInformation{
+			AgeOfLocationInformation: &csAge,
+			VlrNumber:                "31611111111",
+			MscNumber:                "31633333333",
+			CurrentLocationRetrieved: true,
+		},
+		LocationInformationGPRS: &GPRSLocationInformation{
+			AgeOfLocationInformation: &gprsAge,
+			SgsnNumber:               "31644444444",
+			RouteingAreaIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45},
+			CurrentLocationRetrieved: true,
+		},
+		LocationInformationEPS: &EPSLocationInformation{
+			AgeOfLocationInformation: &epsAge,
+			EUtranCellGlobalIdentity: HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45, 0x67},
+			TrackingAreaIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23},
+			CurrentLocationRetrieved: true,
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParsePurgeMS(data)
+	if err != nil {
+		t.Fatalf("ParsePurgeMS: %v", err)
+	}
+
+	// Normalize default natures/plans for all address fields.
+	in.VLRNature = address.NatureInternational
+	in.VLRPlan = address.PlanISDN
+	in.SGSNNature = address.NatureInternational
+	in.SGSNPlan = address.PlanISDN
+	in.LocationInformation.VlrNumberNature = address.NatureInternational
+	in.LocationInformation.VlrNumberPlan = address.PlanISDN
+	in.LocationInformation.MscNumberNature = address.NatureInternational
+	in.LocationInformation.MscNumberPlan = address.PlanISDN
+	in.LocationInformationGPRS.SgsnNumberNature = address.NatureInternational
+	in.LocationInformationGPRS.SgsnNumberPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestPurgeMSResRoundTrip(t *testing.T) {
+	t.Run("AllFreezeFlagsOn", func(t *testing.T) {
+		in := &PurgeMSRes{
+			FreezeTMSI:  true,
+			FreezePTMSI: true,
+			FreezeMTMSI: true,
+		}
+
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParsePurgeMSRes(data)
+		if err != nil {
+			t.Fatalf("ParsePurgeMSRes: %v", err)
+		}
+
+		if diff := cmp.Diff(in, got); diff != "" {
+			t.Errorf("round-trip diff (-want +got):\n%s", diff)
+		}
+	})
+
+	t.Run("AllFreezeFlagsOff", func(t *testing.T) {
+		in := &PurgeMSRes{}
+
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		got, err := ParsePurgeMSRes(data)
+		if err != nil {
+			t.Fatalf("ParsePurgeMSRes: %v", err)
+		}
+
+		if diff := cmp.Diff(in, got); diff != "" {
+			t.Errorf("round-trip diff (-want +got):\n%s", diff)
+		}
+	})
+}
+
+func TestPurgeMSValidationErrors(t *testing.T) {
+	t.Run("MissingIMSI", func(t *testing.T) {
+		in := &PurgeMS{}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for missing IMSI")
+		}
+		if !errors.Is(err, ErrPurgeMSMissingIMSI) {
+			t.Errorf("expected ErrPurgeMSMissingIMSI, got: %v", err)
+		}
+	})
+}
