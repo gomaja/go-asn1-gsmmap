@@ -194,3 +194,19 @@ func (i *InformServiceCentre) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes AlertServiceCentre into BER-encoded bytes.
+// AlertServiceCentre (opCode 64) per 3GPP TS 29.002: Invoke carries the
+// arg; the response is an empty RETURN RESULT (no parameters), so no
+// response Marshal is defined on the public API.
+func (a *AlertServiceCentre) Marshal() ([]byte, error) {
+	arg, err := convertAlertServiceCentreToArg(a)
+	if err != nil {
+		return nil, fmt.Errorf("converting AlertServiceCentre: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding AlertServiceCentreArg: %w", err)
+	}
+	return data, nil
+}

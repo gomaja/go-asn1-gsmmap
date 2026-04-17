@@ -886,6 +886,44 @@ type MwStatusFlags struct {
 	Mnr5gn3gSet          bool
 }
 
+// SmsGmscAlertEvent per 3GPP TS 29.002 (opCode 64).
+type SmsGmscAlertEvent int
+
+const (
+	SmsGmscAlertMsAvailableForMtSms   SmsGmscAlertEvent = 0
+	SmsGmscAlertMsUnderNewServingNode SmsGmscAlertEvent = 1
+)
+
+// AlertServiceCentre represents an AlertServiceCentre request (opCode 64)
+// per 3GPP TS 29.002. The response is an empty acknowledgement with no
+// parameters (RETURN RESULT TRUE), so no response type is defined here.
+type AlertServiceCentre struct {
+	MSISDN               string // mandatory
+	MSISDNNature         uint8  // default: International
+	MSISDNPlan           uint8  // default: ISDN
+	ServiceCentreAddress string // mandatory
+	SCANature            uint8  // default: International
+	SCAPlan              uint8  // default: ISDN
+
+	// Optional fields (post-extension marker).
+	IMSI                      string                      // optional IMSI (TBCD)
+	CorrelationID             *SriSmCorrelationID         // SEQUENCE (reuses SRI-SM type)
+	MaximumUeAvailabilityTime HexBytes                    // [0] Time octet string; nil if absent
+	SmsGmscAlertEvent         *SmsGmscAlertEvent          // [1] ENUMERATED
+	SmsGmscDiameterAddress    *NetworkNodeDiameterAddress // [2]
+	NewSGSNNumber             string                      // [3] ISDN-AddressString
+	NewSGSNNumberNature       uint8
+	NewSGSNNumberPlan         uint8
+	NewSGSNDiameterAddress    *NetworkNodeDiameterAddress // [4]
+	NewMMENumber              string                      // [5] ISDN-AddressString
+	NewMMENumberNature        uint8
+	NewMMENumberPlan          uint8
+	NewMMEDiameterAddress     *NetworkNodeDiameterAddress // [6]
+	NewMSCNumber              string                      // [7] ISDN-AddressString
+	NewMSCNumberNature        uint8
+	NewMSCNumberPlan          uint8
+}
+
 // InformServiceCentre represents an InformServiceCentre request (opCode 63).
 // This is a one-way MAP operation; no response is defined in 3GPP TS 29.002.
 type InformServiceCentre struct {
@@ -929,4 +967,8 @@ var (
 	ErrAtiPsSubscriberStateMultipleAlternatives = errors.New("ati: PsSubscriberState CHOICE has multiple alternatives set")
 
 	ErrIscInvalidAbsentSubscriberDiagnosticSM = errors.New("informServiceCentre: value must be 0..255")
+
+	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
+	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
+	ErrAscInvalidSmsGmscAlertEvent    = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
 )

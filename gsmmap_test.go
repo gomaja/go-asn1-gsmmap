@@ -2655,3 +2655,130 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestAlertServiceCentreMandatoryRoundTrip(t *testing.T) {
+	in := &AlertServiceCentre{
+		MSISDN:               "31612345678",
+		ServiceCentreAddress: "31611111111",
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseAlertServiceCentre(data)
+	if err != nil {
+		t.Fatalf("ParseAlertServiceCentre: %v", err)
+	}
+
+	// Normalize default natures/plans.
+	in.MSISDNNature = address.NatureInternational
+	in.MSISDNPlan = address.PlanISDN
+	in.SCANature = address.NatureInternational
+	in.SCAPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestAlertServiceCentreFullStressRoundTrip(t *testing.T) {
+	event := SmsGmscAlertMsUnderNewServingNode
+
+	in := &AlertServiceCentre{
+		MSISDN:               "31612345678",
+		ServiceCentreAddress: "31611111111",
+		IMSI:                 "204080012345678",
+		CorrelationID: &SriSmCorrelationID{
+			HlrID:   HexBytes{0xAA, 0xBB},
+			SipUriA: HexBytes{0xCC, 0xDD},
+			SipUriB: HexBytes{0xEE, 0xFF},
+		},
+		MaximumUeAvailabilityTime: HexBytes{0x01, 0x02, 0x03, 0x04},
+		SmsGmscAlertEvent:         &event,
+		SmsGmscDiameterAddress: &NetworkNodeDiameterAddress{
+			DiameterName:  HexBytes("gmsc.example.com"),
+			DiameterRealm: HexBytes("example.com"),
+		},
+		NewSGSNNumber: "31622222222",
+		NewSGSNDiameterAddress: &NetworkNodeDiameterAddress{
+			DiameterName:  HexBytes("sgsn.example.com"),
+			DiameterRealm: HexBytes("example.com"),
+		},
+		NewMMENumber: "31633333333",
+		NewMMEDiameterAddress: &NetworkNodeDiameterAddress{
+			DiameterName:  HexBytes("mme.example.com"),
+			DiameterRealm: HexBytes("example.com"),
+		},
+		NewMSCNumber: "31644444444",
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseAlertServiceCentre(data)
+	if err != nil {
+		t.Fatalf("ParseAlertServiceCentre: %v", err)
+	}
+
+	// Normalize default natures/plans for all address fields.
+	in.MSISDNNature = address.NatureInternational
+	in.MSISDNPlan = address.PlanISDN
+	in.SCANature = address.NatureInternational
+	in.SCAPlan = address.PlanISDN
+	in.NewSGSNNumberNature = address.NatureInternational
+	in.NewSGSNNumberPlan = address.PlanISDN
+	in.NewMMENumberNature = address.NatureInternational
+	in.NewMMENumberPlan = address.PlanISDN
+	in.NewMSCNumberNature = address.NatureInternational
+	in.NewMSCNumberPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestAlertServiceCentreValidationErrors(t *testing.T) {
+	t.Run("MissingMSISDN", func(t *testing.T) {
+		in := &AlertServiceCentre{
+			ServiceCentreAddress: "31611111111",
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for missing MSISDN")
+		}
+		if !errors.Is(err, ErrAscMissingMSISDN) {
+			t.Errorf("expected ErrAscMissingMSISDN, got: %v", err)
+		}
+	})
+
+	t.Run("MissingServiceCentreAddress", func(t *testing.T) {
+		in := &AlertServiceCentre{
+			MSISDN: "31612345678",
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for missing ServiceCentreAddress")
+		}
+		if !errors.Is(err, ErrAscMissingServiceCentreAddress) {
+			t.Errorf("expected ErrAscMissingServiceCentreAddress, got: %v", err)
+		}
+	})
+
+	t.Run("InvalidSmsGmscAlertEvent", func(t *testing.T) {
+		invalid := SmsGmscAlertEvent(42)
+		in := &AlertServiceCentre{
+			MSISDN:               "31612345678",
+			ServiceCentreAddress: "31611111111",
+			SmsGmscAlertEvent:    &invalid,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for invalid SmsGmscAlertEvent")
+		}
+		if !errors.Is(err, ErrAscInvalidSmsGmscAlertEvent) {
+			t.Errorf("expected ErrAscInvalidSmsGmscAlertEvent, got: %v", err)
+		}
+	})
+}
