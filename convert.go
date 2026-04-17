@@ -4898,16 +4898,41 @@ func convertWireToPurgeMSRes(res *gsm_map.PurgeMSRes) *PurgeMSRes {
 
 // --- SendAuthenticationInfo (opCode 56) converters ---
 
+// isValidRequestingNodeType reports whether v is one of the RequestingNodeType
+// values defined in 3GPP TS 29.002 (vlr=0, sgsn=1, s-cscf=2, bsf=3,
+// gan-aaa-server=4, wlan-aaa-server=5, mme=16, mme-sgsn=17).
+func isValidRequestingNodeType(v RequestingNodeType) bool {
+	switch v {
+	case RequestingNodeVlr,
+		RequestingNodeSgsn,
+		RequestingNodeSCscf,
+		RequestingNodeBsf,
+		RequestingNodeGanAAAServer,
+		RequestingNodeWlanAAAServer,
+		RequestingNodeMme,
+		RequestingNodeMmeSgsn:
+		return true
+	}
+	return false
+}
+
 // convertReSynchronisationInfoToWire converts the public ReSynchronisationInfo
-// into the wire-level gsm_map.ReSynchronisationInfo.
-func convertReSynchronisationInfoToWire(r *ReSynchronisationInfo) *gsm_map.ReSynchronisationInfo {
+// into the wire-level gsm_map.ReSynchronisationInfo. Validates RAND (16 octets)
+// and AUTS (14 octets) per 3GPP TS 29.002.
+func convertReSynchronisationInfoToWire(r *ReSynchronisationInfo) (*gsm_map.ReSynchronisationInfo, error) {
 	if r == nil {
-		return nil
+		return nil, nil
+	}
+	if len(r.RAND) != 16 {
+		return nil, fmt.Errorf("ReSynchronisationInfo: RAND must be exactly 16 octets, got %d", len(r.RAND))
+	}
+	if len(r.AUTS) != 14 {
+		return nil, fmt.Errorf("ReSynchronisationInfo: AUTS must be exactly 14 octets, got %d", len(r.AUTS))
 	}
 	return &gsm_map.ReSynchronisationInfo{
 		Rand: gsm_map.RAND(r.RAND),
 		Auts: gsm_map.AUTS(r.AUTS),
-	}
+	}, nil
 }
 
 // convertWireToReSynchronisationInfo converts a wire-level
@@ -4928,8 +4953,8 @@ func convertAuthenticationSetListToWire(a *AuthenticationSetList) (*gsm_map.Auth
 	if a == nil {
 		return nil, nil
 	}
-	hasTriplets := a.Triplets != nil
-	hasQuintuplets := a.Quintuplets != nil
+	hasTriplets := len(a.Triplets) > 0
+	hasQuintuplets := len(a.Quintuplets) > 0
 	if hasTriplets && hasQuintuplets {
 		return nil, ErrSaiAuthSetListChoiceMultipleAlternatives
 	}
@@ -5040,17 +5065,25 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
 
+	resync, err := convertReSynchronisationInfoToWire(s.ReSynchronisationInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	arg := &gsm_map.SendAuthenticationInfoArg{
 		Imsi:                         gsm_map.IMSI(imsiBytes),
 		NumberOfRequestedVectors:     int64(s.NumberOfRequestedVectors),
 		SegmentationProhibited:       boolToNullPtr(s.SegmentationProhibited),
 		ImmediateResponsePreferred:   boolToNullPtr(s.ImmediateResponsePreferred),
-		ReSynchronisationInfo:        convertReSynchronisationInfoToWire(s.ReSynchronisationInfo),
+		ReSynchronisationInfo:        resync,
 		AdditionalVectorsAreForEPS:   boolToNullPtr(s.AdditionalVectorsAreForEPS),
 		UeUsageTypeRequestIndication: boolToNullPtr(s.UeUsageTypeRequestIndication),
 	}
 
 	if s.RequestingNodeType != nil {
+		if !isValidRequestingNodeType(*s.RequestingNodeType) {
+			return nil, fmt.Errorf("%w: got %d", ErrSaiInvalidRequestingNodeType, *s.RequestingNodeType)
+		}
 		v := gsm_map.RequestingNodeType(*s.RequestingNodeType)
 		arg.RequestingNodeType = &v
 	}
@@ -5093,6 +5126,9 @@ func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) 
 
 	if arg.RequestingNodeType != nil {
 		v := RequestingNodeType(*arg.RequestingNodeType)
+		if !isValidRequestingNodeType(v) {
+			return nil, fmt.Errorf("%w: got %d", ErrSaiInvalidRequestingNodeType, v)
+		}
 		out.RequestingNodeType = &v
 	}
 	if arg.RequestingPLMNId != nil {
@@ -5132,6 +5168,9 @@ func convertSendAuthenticationInfoResToRes(s *SendAuthenticationInfoRes) (*gsm_m
 	}
 
 	if len(s.EpsAuthenticationSetList) > 0 {
+		if len(s.EpsAuthenticationSetList) > 5 {
+			return nil, ErrSaiInvalidEpsAuthSetListSize
+		}
 		list := make(gsm_map.EPSAuthenticationSetList, len(s.EpsAuthenticationSetList))
 		for i := range s.EpsAuthenticationSetList {
 			list[i] = convertEpcAVToWire(&s.EpsAuthenticationSetList[i])
@@ -5161,6 +5200,9 @@ func convertResToSendAuthenticationInfoRes(res *gsm_map.SendAuthenticationInfoRe
 	}
 
 	if len(res.EpsAuthenticationSetList) > 0 {
+		if len(res.EpsAuthenticationSetList) > 5 {
+			return nil, ErrSaiInvalidEpsAuthSetListSize
+		}
 		list := make([]EpcAV, len(res.EpsAuthenticationSetList))
 		for i := range res.EpsAuthenticationSetList {
 			list[i] = convertWireToEpcAV(&res.EpsAuthenticationSetList[i])

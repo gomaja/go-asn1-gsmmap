@@ -1093,4 +1093,6 @@ var (
 	ErrSaiInvalidPLMNId                              = errors.New("sai: RequestingPLMNId must be exactly 3 octets")
 	ErrSaiAuthSetListChoiceMultipleAlternatives      = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
 	ErrSaiAuthSetListChoiceNoAlternative             = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
+	ErrSaiInvalidRequestingNodeType                  = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
+	ErrSaiInvalidEpsAuthSetListSize                  = errors.New("sai: EpsAuthenticationSetList must have 1..5 entries")
 )
