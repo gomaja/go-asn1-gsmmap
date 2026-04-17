@@ -3247,3 +3247,147 @@ func TestAuthenticationSetListChoiceValidation(t *testing.T) {
 		}
 	})
 }
+
+// --- ProvideSubscriberInfo (opCode 70) tests ---
+
+func TestProvideSubscriberInfoMandatoryRoundTrip(t *testing.T) {
+	in := &ProvideSubscriberInfo{
+		IMSI: "310150123456789",
+		RequestedInfo: RequestedInfo{
+			LocationInformation: true,
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseProvideSubscriberInfo(data)
+	if err != nil {
+		t.Fatalf("ParseProvideSubscriberInfo: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestProvideSubscriberInfoFullStressRoundTrip(t *testing.T) {
+	domain := PsDomain
+	callPrio := 3
+
+	in := &ProvideSubscriberInfo{
+		IMSI: "310150123456789",
+		LMSI: HexBytes{0x01, 0x02, 0x03, 0x04},
+		RequestedInfo: RequestedInfo{
+			LocationInformation:             true,
+			SubscriberState:                 true,
+			CurrentLocation:                 true,
+			RequestedDomain:                 &domain,
+			IMEI:                            true,
+			MsClassmark:                     true,
+			MnpRequestedInfo:                true,
+			LocationInformationEPSSupported: true,
+			TAdsData:                        true,
+			RequestedNodes: &RequestedNodes{
+				MME:  true,
+				SGSN: true,
+			},
+			ServingNodeIndication: true,
+			LocalTimeZoneRequest:  true,
+		},
+		CallPriority: &callPrio,
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseProvideSubscriberInfo(data)
+	if err != nil {
+		t.Fatalf("ParseProvideSubscriberInfo: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestProvideSubscriberInfoResRoundTrip(t *testing.T) {
+	age := 45
+
+	in := &ProvideSubscriberInfoRes{
+		SubscriberInfo: SubscriberInfo{
+			LocationInformation: &CSLocationInformation{
+				AgeOfLocationInformation: &age,
+				VlrNumber:                "31611111111",
+			},
+			SubscriberState: &SubscriberStateInfo{
+				State: StateAssumedIdle,
+			},
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseProvideSubscriberInfoRes(data)
+	if err != nil {
+		t.Fatalf("ParseProvideSubscriberInfoRes: %v", err)
+	}
+
+	// Normalize default natures/plans for address fields.
+	in.SubscriberInfo.LocationInformation.VlrNumberNature = address.NatureInternational
+	in.SubscriberInfo.LocationInformation.VlrNumberPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
+	t.Run("MissingIMSI", func(t *testing.T) {
+		in := &ProvideSubscriberInfo{
+			RequestedInfo: RequestedInfo{LocationInformation: true},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for missing IMSI")
+		}
+		if !errors.Is(err, ErrPsiMissingIMSI) {
+			t.Errorf("expected ErrPsiMissingIMSI, got: %v", err)
+		}
+	})
+
+	t.Run("InvalidLMSILength", func(t *testing.T) {
+		in := &ProvideSubscriberInfo{
+			IMSI:          "310150123456789",
+			LMSI:          HexBytes{0x01, 0x02, 0x03}, // 3 octets, invalid
+			RequestedInfo: RequestedInfo{LocationInformation: true},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for invalid LMSI length")
+		}
+		if !errors.Is(err, ErrPsiInvalidLMSI) {
+			t.Errorf("expected ErrPsiInvalidLMSI, got: %v", err)
+		}
+	})
+
+	t.Run("CallPriorityOutOfRange", func(t *testing.T) {
+		prio := 16 // > 15
+		in := &ProvideSubscriberInfo{
+			IMSI:          "310150123456789",
+			RequestedInfo: RequestedInfo{LocationInformation: true},
+			CallPriority:  &prio,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for CallPriority=16")
+		}
+		if !errors.Is(err, ErrPsiInvalidCallPriority) {
+			t.Errorf("expected ErrPsiInvalidCallPriority, got: %v", err)
+		}
+	})
+}

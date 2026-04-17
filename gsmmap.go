@@ -491,6 +491,21 @@ type AnyTimeInterrogationRes struct {
 	SubscriberInfo SubscriberInfo
 }
 
+// ProvideSubscriberInfo represents a ProvideSubscriberInfo request (opCode 70).
+// PSI queries subscriber info (location, state, etc.) given an IMSI — similar
+// to ATI but keyed by IMSI+LMSI rather than by MSISDN/IMSI identity.
+type ProvideSubscriberInfo struct {
+	IMSI          string        // mandatory (TBCD)
+	LMSI          HexBytes      // [1] 4 octets; nil if absent
+	RequestedInfo RequestedInfo // mandatory (reuses ATI RequestedInfo)
+	CallPriority  *int          // [4] EMLPP-Priority 0..15; nil if absent
+}
+
+// ProvideSubscriberInfoRes represents a ProvideSubscriberInfo response (opCode 70).
+type ProvideSubscriberInfoRes struct {
+	SubscriberInfo SubscriberInfo // mandatory (reuses ATI SubscriberInfo)
+}
+
 // SubscriberInfo contains subscriber information returned by ATI (opCode 71).
 type SubscriberInfo struct {
 	LocationInformation     *CSLocationInformation  // [0]
@@ -1096,4 +1111,8 @@ var (
 	ErrSaiAuthSetListChoiceNoAlternative             = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
 	ErrSaiInvalidRequestingNodeType                  = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
 	ErrSaiInvalidEpsAuthSetListSize                  = errors.New("sai: EpsAuthenticationSetList size must be at most 5 entries when present")
+
+	ErrPsiMissingIMSI         = errors.New("psi: IMSI is empty")
+	ErrPsiInvalidLMSI         = errors.New("psi: LMSI, if set, must be exactly 4 octets")
+	ErrPsiInvalidCallPriority = errors.New("psi: CallPriority must be 0..15")
 )

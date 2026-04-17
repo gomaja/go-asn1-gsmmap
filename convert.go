@@ -1988,30 +1988,7 @@ func convertArgToATI(arg *gsm_map.AnyTimeInterrogationArg) (*AnyTimeInterrogatio
 	}
 
 	// RequestedInfo
-	ri := arg.RequestedInfo
-	ati.RequestedInfo.LocationInformation = ri.LocationInformation != nil
-	ati.RequestedInfo.SubscriberState = ri.SubscriberState != nil
-	ati.RequestedInfo.CurrentLocation = ri.CurrentLocation != nil
-	ati.RequestedInfo.MsClassmark = ri.MsClassmark != nil
-	ati.RequestedInfo.IMEI = ri.Imei != nil
-	ati.RequestedInfo.MnpRequestedInfo = ri.MnpRequestedInfo != nil
-	ati.RequestedInfo.LocationInformationEPSSupported = ri.LocationInformationEPSSupported != nil
-	ati.RequestedInfo.TAdsData = ri.TAdsData != nil
-	ati.RequestedInfo.ServingNodeIndication = ri.ServingNodeIndication != nil
-	ati.RequestedInfo.LocalTimeZoneRequest = ri.LocalTimeZoneRequest != nil
-
-	if ri.RequestedDomain != nil {
-		domain := DomainType(*ri.RequestedDomain)
-		// Per spec: values > 1 shall be mapped to cs-Domain
-		if domain > PsDomain {
-			domain = CsDomain
-		}
-		ati.RequestedInfo.RequestedDomain = &domain
-	}
-
-	if ri.RequestedNodes != nil && ri.RequestedNodes.BitLength > 0 {
-		ati.RequestedInfo.RequestedNodes = convertBitStringToRequestedNodes(*ri.RequestedNodes)
-	}
+	ati.RequestedInfo = buildRequestedInfoFromWire(&arg.RequestedInfo)
 
 	// GsmSCFAddress
 	scf, scfNature, scfPlan, err := decodeAddressField(arg.GsmSCFAddress)
@@ -2041,6 +2018,133 @@ func convertResToATIRes(res *gsm_map.AnyTimeInterrogationRes) (*AnyTimeInterroga
 		return nil, err
 	}
 	return &AnyTimeInterrogationRes{SubscriberInfo: *si}, nil
+}
+
+// buildRequestedInfoFromWire converts gsm_map.MSRequestedInfo to the public
+// RequestedInfo type. Shared between ATI (opCode 71) and PSI (opCode 70).
+func buildRequestedInfoFromWire(ri *gsm_map.MSRequestedInfo) RequestedInfo {
+	var out RequestedInfo
+	out.LocationInformation = ri.LocationInformation != nil
+	out.SubscriberState = ri.SubscriberState != nil
+	out.CurrentLocation = ri.CurrentLocation != nil
+	out.MsClassmark = ri.MsClassmark != nil
+	out.IMEI = ri.Imei != nil
+	out.MnpRequestedInfo = ri.MnpRequestedInfo != nil
+	out.LocationInformationEPSSupported = ri.LocationInformationEPSSupported != nil
+	out.TAdsData = ri.TAdsData != nil
+	out.ServingNodeIndication = ri.ServingNodeIndication != nil
+	out.LocalTimeZoneRequest = ri.LocalTimeZoneRequest != nil
+
+	if ri.RequestedDomain != nil {
+		domain := DomainType(*ri.RequestedDomain)
+		// Per spec: values > 1 shall be mapped to cs-Domain
+		if domain > PsDomain {
+			domain = CsDomain
+		}
+		out.RequestedDomain = &domain
+	}
+
+	if ri.RequestedNodes != nil && ri.RequestedNodes.BitLength > 0 {
+		out.RequestedNodes = convertBitStringToRequestedNodes(*ri.RequestedNodes)
+	}
+	return out
+}
+
+// --- ProvideSubscriberInfo (opCode 70) ---
+
+func validateProvideSubscriberInfo(p *ProvideSubscriberInfo) error {
+	if p.IMSI == "" {
+		return ErrPsiMissingIMSI
+	}
+	if len(p.LMSI) != 0 && len(p.LMSI) != 4 {
+		return ErrPsiInvalidLMSI
+	}
+	if p.CallPriority != nil {
+		v := *p.CallPriority
+		if v < 0 || v > 15 {
+			return ErrPsiInvalidCallPriority
+		}
+	}
+	return nil
+}
+
+func convertProvideSubscriberInfoToArg(p *ProvideSubscriberInfo) (*gsm_map.ProvideSubscriberInfoArg, error) {
+	if err := validateProvideSubscriberInfo(p); err != nil {
+		return nil, err
+	}
+
+	imsiBytes, err := tbcd.Encode(p.IMSI)
+	if err != nil {
+		return nil, fmt.Errorf(errEncodingIMSI, err)
+	}
+
+	arg := &gsm_map.ProvideSubscriberInfoArg{
+		Imsi:          gsm_map.IMSI(imsiBytes),
+		RequestedInfo: buildMSRequestedInfo(&p.RequestedInfo),
+	}
+
+	// LMSI (optional, 4 octets).
+	if len(p.LMSI) > 0 {
+		v := gsm_map.LMSI(p.LMSI)
+		arg.Lmsi = &v
+	}
+
+	// CallPriority (optional, 0..15).
+	if p.CallPriority != nil {
+		v := gsm_map.EMLPPPriority(int64(*p.CallPriority))
+		arg.CallPriority = &v
+	}
+
+	return arg, nil
+}
+
+func convertArgToProvideSubscriberInfo(arg *gsm_map.ProvideSubscriberInfoArg) (*ProvideSubscriberInfo, error) {
+	imsi, err := tbcd.Decode(arg.Imsi)
+	if err != nil {
+		return nil, fmt.Errorf("decoding IMSI: %w", err)
+	}
+
+	out := &ProvideSubscriberInfo{
+		IMSI:          imsi,
+		RequestedInfo: buildRequestedInfoFromWire(&arg.RequestedInfo),
+	}
+
+	// LMSI (optional, must be exactly 4 octets when present).
+	if arg.Lmsi != nil {
+		lmsi := []byte(*arg.Lmsi)
+		if len(lmsi) != 4 {
+			return nil, ErrPsiInvalidLMSI
+		}
+		out.LMSI = HexBytes(lmsi)
+	}
+
+	// CallPriority (optional, 0..15).
+	if arg.CallPriority != nil {
+		v := int64(*arg.CallPriority)
+		if v < 0 || v > 15 {
+			return nil, ErrPsiInvalidCallPriority
+		}
+		iv := int(v)
+		out.CallPriority = &iv
+	}
+
+	return out, nil
+}
+
+func convertProvideSubscriberInfoResToRes(p *ProvideSubscriberInfoRes) (*gsm_map.ProvideSubscriberInfoRes, error) {
+	si, err := convertSubscriberInfoToWire(&p.SubscriberInfo)
+	if err != nil {
+		return nil, err
+	}
+	return &gsm_map.ProvideSubscriberInfoRes{SubscriberInfo: *si}, nil
+}
+
+func convertResToProvideSubscriberInfoRes(res *gsm_map.ProvideSubscriberInfoRes) (*ProvideSubscriberInfoRes, error) {
+	si, err := convertWireToSubscriberInfo(&res.SubscriberInfo)
+	if err != nil {
+		return nil, err
+	}
+	return &ProvideSubscriberInfoRes{SubscriberInfo: *si}, nil
 }
 
 // --- CS Location conversion ---
