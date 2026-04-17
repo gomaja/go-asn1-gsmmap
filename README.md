@@ -167,6 +167,7 @@ if err != nil {
 }
 
 // Parse a PurgeMS response received from the network
+respBytes := []byte{ /* PurgeMS-Res BER bytes from the VLR/SGSN */ }
 resp, err := gsmmap.ParsePurgeMSRes(respBytes)
 if err != nil {
     log.Fatal(err)
