@@ -179,3 +179,18 @@ func (s *Sri) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes InformServiceCentre into BER-encoded bytes.
+// InformServiceCentre (opCode 63) is a one-way MAP operation; no response is
+// defined in 3GPP TS 29.002.
+func (i *InformServiceCentre) Marshal() ([]byte, error) {
+	arg, err := convertInformServiceCentreToArg(i)
+	if err != nil {
+		return nil, fmt.Errorf("converting InformServiceCentre: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding InformServiceCentreArg: %w", err)
+	}
+	return data, nil
+}

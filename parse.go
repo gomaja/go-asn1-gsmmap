@@ -131,3 +131,14 @@ func ParseSriResp(data []byte) (*SriResp, error) {
 	}
 	return convertResToSriResp(&res)
 }
+
+// ParseInformServiceCentre decodes BER-encoded bytes into an InformServiceCentre.
+// InformServiceCentre (opCode 63) is a one-way MAP operation; no response is
+// defined in 3GPP TS 29.002.
+func ParseInformServiceCentre(data []byte) (*InformServiceCentre, error) {
+	var arg gsm_map.InformServiceCentreArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding InformServiceCentreArg: %w", err)
+	}
+	return convertArgToInformServiceCentre(&arg)
+}

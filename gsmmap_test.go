@@ -2495,3 +2495,163 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 		}
 	})
 }
+
+// --- InformServiceCentre (opCode 63) tests ---
+
+func TestInformServiceCentreMinimalRoundTrip(t *testing.T) {
+	in := &InformServiceCentre{}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseInformServiceCentre(data)
+	if err != nil {
+		t.Fatalf("ParseInformServiceCentre: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestInformServiceCentreFullStressRoundTrip(t *testing.T) {
+	abs := 42
+	addAbs := 100
+	smsf3gpp := 200
+	smsfNon3gpp := 255
+
+	in := &InformServiceCentre{
+		StoredMSISDN: "31612345678",
+		MwStatus: &MwStatusFlags{
+			SCAddressNotIncluded: true,
+			MnrfSet:              true,
+			McefSet:              true,
+			MnrgSet:              true,
+			Mnr5gSet:             true,
+			Mnr5gn3gSet:          true,
+		},
+		AbsentSubscriberDiagnosticSM:            &abs,
+		AdditionalAbsentSubscriberDiagnosticSM:  &addAbs,
+		Smsf3gppAbsentSubscriberDiagnosticSM:    &smsf3gpp,
+		SmsfNon3gppAbsentSubscriberDiagnosticSM: &smsfNon3gpp,
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseInformServiceCentre(data)
+	if err != nil {
+		t.Fatalf("ParseInformServiceCentre: %v", err)
+	}
+
+	// Normalize defaults.
+	in.StoredMSISDNNature = address.NatureInternational
+	in.StoredMSISDNPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestMwStatusBitStringRoundTrip(t *testing.T) {
+	// Exhaustive 64-case coverage (6 bits = 2^6 combinations).
+	for combo := 0; combo < 64; combo++ {
+		m := &MwStatusFlags{
+			SCAddressNotIncluded: combo&(1<<0) != 0,
+			MnrfSet:              combo&(1<<1) != 0,
+			McefSet:              combo&(1<<2) != 0,
+			MnrgSet:              combo&(1<<3) != 0,
+			Mnr5gSet:             combo&(1<<4) != 0,
+			Mnr5gn3gSet:          combo&(1<<5) != 0,
+		}
+
+		bs := convertMwStatusToBitString(m)
+		if bs.BitLength != 6 {
+			t.Errorf("combo=%06b: BitLength=%d want 6", combo, bs.BitLength)
+		}
+
+		got := convertBitStringToMwStatus(bs)
+		if diff := cmp.Diff(m, got); diff != "" {
+			t.Errorf("combo=%06b: round-trip diff (-want +got):\n%s", combo, diff)
+		}
+
+		// Also verify a full round-trip through the full InformServiceCentre
+		// Marshal/Parse pipeline.
+		in := &InformServiceCentre{MwStatus: m}
+		data, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("combo=%06b: Marshal: %v", combo, err)
+		}
+		parsed, err := ParseInformServiceCentre(data)
+		if err != nil {
+			t.Fatalf("combo=%06b: Parse: %v", combo, err)
+		}
+		if parsed.MwStatus == nil {
+			t.Fatalf("combo=%06b: parsed MwStatus is nil", combo)
+		}
+		if diff := cmp.Diff(m, parsed.MwStatus); diff != "" {
+			t.Errorf("combo=%06b: pipeline diff (-want +got):\n%s", combo, diff)
+		}
+	}
+}
+
+func TestInformServiceCentreValidationErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		mutator func(i *InformServiceCentre)
+	}{
+		{
+			name: "AbsentSubscriberDiagnosticSM_negative",
+			mutator: func(i *InformServiceCentre) {
+				v := -1
+				i.AbsentSubscriberDiagnosticSM = &v
+			},
+		},
+		{
+			name: "AbsentSubscriberDiagnosticSM_overflow",
+			mutator: func(i *InformServiceCentre) {
+				v := 256
+				i.AbsentSubscriberDiagnosticSM = &v
+			},
+		},
+		{
+			name: "AdditionalAbsentSubscriberDiagnosticSM_overflow",
+			mutator: func(i *InformServiceCentre) {
+				v := 1000
+				i.AdditionalAbsentSubscriberDiagnosticSM = &v
+			},
+		},
+		{
+			name: "Smsf3gppAbsentSubscriberDiagnosticSM_negative",
+			mutator: func(i *InformServiceCentre) {
+				v := -100
+				i.Smsf3gppAbsentSubscriberDiagnosticSM = &v
+			},
+		},
+		{
+			name: "SmsfNon3gppAbsentSubscriberDiagnosticSM_overflow",
+			mutator: func(i *InformServiceCentre) {
+				v := math.MaxInt32
+				i.SmsfNon3gppAbsentSubscriberDiagnosticSM = &v
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			in := &InformServiceCentre{}
+			tc.mutator(in)
+
+			_, err := in.Marshal()
+			if err == nil {
+				t.Fatal("expected validation error, got nil")
+			}
+			if !errors.Is(err, ErrIscInvalidAbsentSubscriberDiagnosticSM) {
+				t.Errorf("expected ErrIscInvalidAbsentSubscriberDiagnosticSM, got: %v", err)
+			}
+		})
+	}
+}
