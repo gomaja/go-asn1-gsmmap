@@ -4440,21 +4440,35 @@ func validateAbsentSubscriberDiagnosticSM(p *int) error {
 	return nil
 }
 
-func convertInformServiceCentreToArg(i *InformServiceCentre) (*gsm_map.InformServiceCentreArg, error) {
-	// Validate AbsentSubscriberDiagnosticSM fields.
-	if err := validateAbsentSubscriberDiagnosticSM(i.AbsentSubscriberDiagnosticSM); err != nil {
-		return nil, fmt.Errorf("AbsentSubscriberDiagnosticSM: %w", err)
+// absentDiagToWire validates and converts a public *int AbsentSubscriberDiagnosticSM
+// to the go-asn1 wire type. Returns nil, nil when the input is nil.
+func absentDiagToWire(field string, p *int) (*gsm_map.AbsentSubscriberDiagnosticSM, error) {
+	if p == nil {
+		return nil, nil
 	}
-	if err := validateAbsentSubscriberDiagnosticSM(i.AdditionalAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, fmt.Errorf("AdditionalAbsentSubscriberDiagnosticSM: %w", err)
+	if err := validateAbsentSubscriberDiagnosticSM(p); err != nil {
+		return nil, fmt.Errorf("%s: %w", field, err)
 	}
-	if err := validateAbsentSubscriberDiagnosticSM(i.Smsf3gppAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, fmt.Errorf("Smsf3gppAbsentSubscriberDiagnosticSM: %w", err)
-	}
-	if err := validateAbsentSubscriberDiagnosticSM(i.SmsfNon3gppAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, fmt.Errorf("SmsfNon3gppAbsentSubscriberDiagnosticSM: %w", err)
-	}
+	v := gsm_map.AbsentSubscriberDiagnosticSM(int64(*p))
+	return &v, nil
+}
 
+// absentDiagFromWire validates and converts a wire AbsentSubscriberDiagnosticSM
+// back to *int. Range-checks on int64 so 32-bit builds cannot silently narrow
+// an oversized value into the 0..255 range.
+func absentDiagFromWire(field string, p *gsm_map.AbsentSubscriberDiagnosticSM) (*int, error) {
+	if p == nil {
+		return nil, nil
+	}
+	v := int64(*p)
+	if v < 0 || v > 255 {
+		return nil, fmt.Errorf("%s: %w", field, ErrIscInvalidAbsentSubscriberDiagnosticSM)
+	}
+	iv := int(v)
+	return &iv, nil
+}
+
+func convertInformServiceCentreToArg(i *InformServiceCentre) (*gsm_map.InformServiceCentreArg, error) {
 	arg := &gsm_map.InformServiceCentreArg{}
 
 	if i.StoredMSISDN != "" {
@@ -4471,21 +4485,22 @@ func convertInformServiceCentreToArg(i *InformServiceCentre) (*gsm_map.InformSer
 		arg.MwStatus = &bs
 	}
 
-	if i.AbsentSubscriberDiagnosticSM != nil {
-		v := gsm_map.AbsentSubscriberDiagnosticSM(int64(*i.AbsentSubscriberDiagnosticSM))
-		arg.AbsentSubscriberDiagnosticSM = &v
+	diagFields := []struct {
+		name string
+		src  *int
+		dst  **gsm_map.AbsentSubscriberDiagnosticSM
+	}{
+		{"AbsentSubscriberDiagnosticSM", i.AbsentSubscriberDiagnosticSM, &arg.AbsentSubscriberDiagnosticSM},
+		{"AdditionalAbsentSubscriberDiagnosticSM", i.AdditionalAbsentSubscriberDiagnosticSM, &arg.AdditionalAbsentSubscriberDiagnosticSM},
+		{"Smsf3gppAbsentSubscriberDiagnosticSM", i.Smsf3gppAbsentSubscriberDiagnosticSM, &arg.Smsf3gppAbsentSubscriberDiagnosticSM},
+		{"SmsfNon3gppAbsentSubscriberDiagnosticSM", i.SmsfNon3gppAbsentSubscriberDiagnosticSM, &arg.SmsfNon3gppAbsentSubscriberDiagnosticSM},
 	}
-	if i.AdditionalAbsentSubscriberDiagnosticSM != nil {
-		v := gsm_map.AbsentSubscriberDiagnosticSM(int64(*i.AdditionalAbsentSubscriberDiagnosticSM))
-		arg.AdditionalAbsentSubscriberDiagnosticSM = &v
-	}
-	if i.Smsf3gppAbsentSubscriberDiagnosticSM != nil {
-		v := gsm_map.AbsentSubscriberDiagnosticSM(int64(*i.Smsf3gppAbsentSubscriberDiagnosticSM))
-		arg.Smsf3gppAbsentSubscriberDiagnosticSM = &v
-	}
-	if i.SmsfNon3gppAbsentSubscriberDiagnosticSM != nil {
-		v := gsm_map.AbsentSubscriberDiagnosticSM(int64(*i.SmsfNon3gppAbsentSubscriberDiagnosticSM))
-		arg.SmsfNon3gppAbsentSubscriberDiagnosticSM = &v
+	for _, f := range diagFields {
+		w, err := absentDiagToWire(f.name, f.src)
+		if err != nil {
+			return nil, err
+		}
+		*f.dst = w
 	}
 
 	return arg, nil
@@ -4505,36 +4520,31 @@ func convertArgToInformServiceCentre(arg *gsm_map.InformServiceCentreArg) (*Info
 	}
 
 	if arg.MwStatus != nil {
+		// MW-Status per 3GPP TS 29.002 has SIZE (6..16). Reject malformed
+		// wire values outside this range to avoid silently normalizing a
+		// short BIT STRING into a valid-looking flag struct.
+		if arg.MwStatus.BitLength < 6 || arg.MwStatus.BitLength > 16 {
+			return nil, fmt.Errorf("MwStatus: BitLength must be 6..16, got %d", arg.MwStatus.BitLength)
+		}
 		out.MwStatus = convertBitStringToMwStatus(*arg.MwStatus)
 	}
 
-	if arg.AbsentSubscriberDiagnosticSM != nil {
-		v := int(*arg.AbsentSubscriberDiagnosticSM)
-		if v < 0 || v > 255 {
-			return nil, fmt.Errorf("AbsentSubscriberDiagnosticSM: %w", ErrIscInvalidAbsentSubscriberDiagnosticSM)
-		}
-		out.AbsentSubscriberDiagnosticSM = &v
+	diagFields := []struct {
+		name string
+		src  *gsm_map.AbsentSubscriberDiagnosticSM
+		dst  **int
+	}{
+		{"AbsentSubscriberDiagnosticSM", arg.AbsentSubscriberDiagnosticSM, &out.AbsentSubscriberDiagnosticSM},
+		{"AdditionalAbsentSubscriberDiagnosticSM", arg.AdditionalAbsentSubscriberDiagnosticSM, &out.AdditionalAbsentSubscriberDiagnosticSM},
+		{"Smsf3gppAbsentSubscriberDiagnosticSM", arg.Smsf3gppAbsentSubscriberDiagnosticSM, &out.Smsf3gppAbsentSubscriberDiagnosticSM},
+		{"SmsfNon3gppAbsentSubscriberDiagnosticSM", arg.SmsfNon3gppAbsentSubscriberDiagnosticSM, &out.SmsfNon3gppAbsentSubscriberDiagnosticSM},
 	}
-	if arg.AdditionalAbsentSubscriberDiagnosticSM != nil {
-		v := int(*arg.AdditionalAbsentSubscriberDiagnosticSM)
-		if v < 0 || v > 255 {
-			return nil, fmt.Errorf("AdditionalAbsentSubscriberDiagnosticSM: %w", ErrIscInvalidAbsentSubscriberDiagnosticSM)
+	for _, f := range diagFields {
+		v, err := absentDiagFromWire(f.name, f.src)
+		if err != nil {
+			return nil, err
 		}
-		out.AdditionalAbsentSubscriberDiagnosticSM = &v
-	}
-	if arg.Smsf3gppAbsentSubscriberDiagnosticSM != nil {
-		v := int(*arg.Smsf3gppAbsentSubscriberDiagnosticSM)
-		if v < 0 || v > 255 {
-			return nil, fmt.Errorf("Smsf3gppAbsentSubscriberDiagnosticSM: %w", ErrIscInvalidAbsentSubscriberDiagnosticSM)
-		}
-		out.Smsf3gppAbsentSubscriberDiagnosticSM = &v
-	}
-	if arg.SmsfNon3gppAbsentSubscriberDiagnosticSM != nil {
-		v := int(*arg.SmsfNon3gppAbsentSubscriberDiagnosticSM)
-		if v < 0 || v > 255 {
-			return nil, fmt.Errorf("SmsfNon3gppAbsentSubscriberDiagnosticSM: %w", ErrIscInvalidAbsentSubscriberDiagnosticSM)
-		}
-		out.SmsfNon3gppAbsentSubscriberDiagnosticSM = &v
+		*f.dst = v
 	}
 
 	return out, nil

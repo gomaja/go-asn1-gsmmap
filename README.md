@@ -106,9 +106,15 @@ isc := &gsmmap.InformServiceCentre{
     AbsentSubscriberDiagnosticSM: &absent,
 }
 data, err := isc.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
 
 // Parse an InformServiceCentre received from the network
 parsed, err := gsmmap.ParseInformServiceCentre(data)
+if err != nil {
+    log.Fatal(err)
+}
 if parsed.MwStatus != nil && parsed.MwStatus.McefSet {
     fmt.Println("MCEF flag set for stored MSISDN:", parsed.StoredMSISDN)
 }
