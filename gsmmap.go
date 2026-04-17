@@ -939,6 +939,35 @@ type InformServiceCentre struct {
 	SmsfNon3gppAbsentSubscriberDiagnosticSM *int // [2] 0..255
 }
 
+// PurgeMS represents a PurgeMS request (opCode 67) per 3GPP TS 29.002.
+// It is sent by the HLR to the VLR/SGSN to purge subscriber data when the
+// subscriber has been deactivated or is permanently unreachable.
+type PurgeMS struct {
+	IMSI string // mandatory (TBCD)
+
+	// Optional fields.
+	VLRNumber  string // [0] ISDN-AddressString
+	VLRNature  uint8  // address nature indicator (default: International)
+	VLRPlan    uint8  // numbering plan indicator (default: ISDN)
+	SGSNNumber string // [1] ISDN-AddressString
+	SGSNNature uint8  // address nature indicator (default: International)
+	SGSNPlan   uint8  // numbering plan indicator (default: ISDN)
+
+	// Optional fields (post-extension marker).
+	LocationInformation     *CSLocationInformation   // [2]
+	LocationInformationGPRS *GPRSLocationInformation // [3]
+	LocationInformationEPS  *EPSLocationInformation  // [4]
+}
+
+// PurgeMSRes represents a PurgeMS response (opCode 67) per 3GPP TS 29.002.
+// The VLR/SGSN may reply with freeze-TMSI flags indicating which TMSIs the
+// HLR should block.
+type PurgeMSRes struct {
+	FreezeTMSI  bool // [0] NULL
+	FreezePTMSI bool // [1] NULL
+	FreezeMTMSI bool // [2] NULL (post-extension marker)
+}
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -971,4 +1000,6 @@ var (
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
 	ErrAscInvalidSmsGmscAlertEvent    = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
+
+	ErrPurgeMSMissingIMSI = errors.New("purgeMS: IMSI is empty")
 )

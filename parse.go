@@ -154,3 +154,21 @@ func ParseAlertServiceCentre(data []byte) (*AlertServiceCentre, error) {
 	}
 	return convertArgToAlertServiceCentre(&arg)
 }
+
+// ParsePurgeMS decodes BER-encoded bytes into a PurgeMS (opCode 67).
+func ParsePurgeMS(data []byte) (*PurgeMS, error) {
+	var arg gsm_map.PurgeMSArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding PurgeMSArg: %w", err)
+	}
+	return convertArgToPurgeMS(&arg)
+}
+
+// ParsePurgeMSRes decodes BER-encoded bytes into a PurgeMSRes (opCode 67).
+func ParsePurgeMSRes(data []byte) (*PurgeMSRes, error) {
+	var res gsm_map.PurgeMSRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding PurgeMSRes: %w", err)
+	}
+	return convertWireToPurgeMSRes(&res), nil
+}
