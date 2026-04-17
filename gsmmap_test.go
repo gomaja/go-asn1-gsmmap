@@ -3179,6 +3179,42 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 			t.Errorf("expected ErrSaiInvalidUeUsageType, got: %v", err)
 		}
 	})
+
+	t.Run("InvalidRequestingNodeType", func(t *testing.T) {
+		rnt := RequestingNodeType(99) // not in spec
+		in := &SendAuthenticationInfo{
+			IMSI:                     "204080012345678",
+			NumberOfRequestedVectors: 1,
+			RequestingNodeType:       &rnt,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for invalid RequestingNodeType")
+		}
+		if !errors.Is(err, ErrSaiInvalidRequestingNodeType) {
+			t.Errorf("expected ErrSaiInvalidRequestingNodeType, got: %v", err)
+		}
+	})
+
+	t.Run("EpsAuthSetListTooLarge", func(t *testing.T) {
+		// 6 entries — exceeds spec max of 5
+		av := EpcAV{
+			RAND:  HexBytes(bytes.Repeat([]byte{0x11}, 16)),
+			XRES:  HexBytes(bytes.Repeat([]byte{0x22}, 4)),
+			AUTN:  HexBytes(bytes.Repeat([]byte{0x33}, 16)),
+			KASME: HexBytes(bytes.Repeat([]byte{0x44}, 32)),
+		}
+		res := &SendAuthenticationInfoRes{
+			EpsAuthenticationSetList: []EpcAV{av, av, av, av, av, av},
+		}
+		_, err := res.Marshal()
+		if err == nil {
+			t.Fatal("expected error for EpsAuthenticationSetList with 6 entries")
+		}
+		if !errors.Is(err, ErrSaiInvalidEpsAuthSetListSize) {
+			t.Errorf("expected ErrSaiInvalidEpsAuthSetListSize, got: %v", err)
+		}
+	})
 }
 
 func TestAuthenticationSetListChoiceValidation(t *testing.T) {

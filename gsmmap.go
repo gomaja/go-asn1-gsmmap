@@ -1015,9 +1015,10 @@ type EpcAV struct {
 }
 
 // AuthenticationSetList is a CHOICE between 2G triplets and 3G quintuplets
-// (opCode 56). Exactly one of Triplets or Quintuplets must be non-nil when
-// the list is set; both nil is treated as "no alternative" and both non-nil
-// as "multiple alternatives" during encode.
+// (opCode 56). Exactly one of Triplets or Quintuplets must be non-empty when
+// the list is set; both empty/nil is treated as "no alternative" and both
+// non-empty as "multiple alternatives" during encode. An explicitly-set
+// empty slice counts as absent.
 type AuthenticationSetList struct {
 	Triplets    []AuthenticationTriplet
 	Quintuplets []AuthenticationQuintuplet
@@ -1094,5 +1095,5 @@ var (
 	ErrSaiAuthSetListChoiceMultipleAlternatives      = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
 	ErrSaiAuthSetListChoiceNoAlternative             = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
 	ErrSaiInvalidRequestingNodeType                  = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
-	ErrSaiInvalidEpsAuthSetListSize                  = errors.New("sai: EpsAuthenticationSetList must have 1..5 entries")
+	ErrSaiInvalidEpsAuthSetListSize                  = errors.New("sai: EpsAuthenticationSetList size must be at most 5 entries when present")
 )
