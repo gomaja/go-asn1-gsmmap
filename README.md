@@ -6,15 +6,16 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 
 ## Supported Operations
 
-| Operation | Request | Response |
-|---|---|---|
-| **SendRoutingInfoForSM** (SRI-SM) | `SriSm` | `SriSmResp` |
-| **MT-ForwardSM** | `MtFsm` | `MtFsmResp` |
-| **MO-ForwardSM** | `MoFsm` | `MoFsmResp` |
-| **UpdateLocation** | `UpdateLocation` | `UpdateLocationRes` |
-| **UpdateGprsLocation** | `UpdateGprsLocation` | `UpdateGprsLocationRes` |
-| **AnyTimeInterrogation** (ATI) | `AnyTimeInterrogation` | `AnyTimeInterrogationRes` |
-| **SendRoutingInfo** (SRI) | `Sri` | `SriResp` |
+| Operation | OpCode | Request | Response |
+|---|---|---|---|
+| **SendRoutingInfoForSM** (SRI-SM) | 45 | `SriSm` | `SriSmResp` |
+| **MT-ForwardSM** | 44 | `MtFsm` | `MtFsmResp` |
+| **MO-ForwardSM** | 46 | `MoFsm` | `MoFsmResp` |
+| **UpdateLocation** | 2 | `UpdateLocation` | `UpdateLocationRes` |
+| **UpdateGprsLocation** | 23 | `UpdateGprsLocation` | `UpdateGprsLocationRes` |
+| **AnyTimeInterrogation** (ATI) | 71 | `AnyTimeInterrogation` | `AnyTimeInterrogationRes` |
+| **SendRoutingInfo** (SRI) | 22 | `Sri` | `SriResp` |
+| **InformServiceCentre** (ISC) | 63 | `InformServiceCentre` | — |
 
 ## Install
 
@@ -86,6 +87,36 @@ if atiRes.SubscriberInfo.LocationInformation != nil {
 }
 if atiRes.SubscriberInfo.SubscriberState != nil {
     fmt.Println(atiRes.SubscriberInfo.SubscriberState.State) // e.g. StateAssumedIdle
+}
+```
+
+### InformServiceCentre (opCode 63)
+
+```go
+// Build an InformServiceCentre notification. ISC is a one-way MAP operation
+// (no response is defined in 3GPP TS 29.002).
+absent := 5 // AbsentSubscriberDiagnosticSM (0..255)
+
+isc := &gsmmap.InformServiceCentre{
+    StoredMSISDN: "31612345678",
+    MwStatus: &gsmmap.MwStatusFlags{
+        MnrfSet: true,
+        McefSet: true,
+    },
+    AbsentSubscriberDiagnosticSM: &absent,
+}
+data, err := isc.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+
+// Parse an InformServiceCentre received from the network
+parsed, err := gsmmap.ParseInformServiceCentre(data)
+if err != nil {
+    log.Fatal(err)
+}
+if parsed.MwStatus != nil && parsed.MwStatus.McefSet {
+    fmt.Println("MCEF flag set for stored MSISDN:", parsed.StoredMSISDN)
 }
 ```
 

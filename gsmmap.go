@@ -874,6 +874,33 @@ const (
 	MaxSmDeliveryTimer = 600
 )
 
+// MwStatusFlags is the MW-Status BIT STRING (6 bits defined).
+// Bit 0=scAddressNotIncluded, 1=mnrfSet, 2=mcefSet, 3=mnrgSet, 4=mnr5gSet, 5=mnr5gn3gSet.
+// Per 3GPP TS 29.002, BIT STRING size is 6..16; bits 6-15 are reserved.
+type MwStatusFlags struct {
+	SCAddressNotIncluded bool
+	MnrfSet              bool
+	McefSet              bool
+	MnrgSet              bool
+	Mnr5gSet             bool
+	Mnr5gn3gSet          bool
+}
+
+// InformServiceCentre represents an InformServiceCentre request (opCode 63).
+// This is a one-way MAP operation; no response is defined in 3GPP TS 29.002.
+type InformServiceCentre struct {
+	StoredMSISDN       string
+	StoredMSISDNNature uint8 // address nature indicator (default: International)
+	StoredMSISDNPlan   uint8 // numbering plan indicator (default: ISDN)
+
+	MwStatus *MwStatusFlags // MW-Status BIT STRING (6 bits defined)
+
+	AbsentSubscriberDiagnosticSM            *int // 0..255
+	AdditionalAbsentSubscriberDiagnosticSM  *int // [0] 0..255
+	Smsf3gppAbsentSubscriberDiagnosticSM    *int // [1] 0..255
+	SmsfNon3gppAbsentSubscriberDiagnosticSM *int // [2] 0..255
+}
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -900,4 +927,6 @@ var (
 
 	ErrAtiPsSubscriberStateNoAlternative        = errors.New("ati: PsSubscriberState CHOICE has no alternative set")
 	ErrAtiPsSubscriberStateMultipleAlternatives = errors.New("ati: PsSubscriberState CHOICE has multiple alternatives set")
+
+	ErrIscInvalidAbsentSubscriberDiagnosticSM = errors.New("informServiceCentre: value must be 0..255")
 )
