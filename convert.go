@@ -5353,37 +5353,28 @@ func isValidTypeOfUpdate(v TypeOfUpdate) bool {
 	return false
 }
 
-// convertCancelLocationIdentityToWire encodes the Identity CHOICE, enforcing
-// the exactly-one-alternative rule.
+// convertCancelLocationIdentityToWire encodes the Identity CHOICE.
+// All field-level validation (exactly-one-alternative, non-empty nested IMSI,
+// LMSI length) is performed up-front by validateCancelLocation; this helper
+// assumes its input has been validated and focuses on conversion.
 func convertCancelLocationIdentityToWire(id *CancelLocationIdentity) (gsm_map.Identity, error) {
-	imsiSet := id.IMSI != ""
-	withLmsiSet := id.IMSIWithLMSI != nil
-
-	switch {
-	case imsiSet && withLmsiSet:
-		return gsm_map.Identity{}, ErrCancelLocIdentityChoiceMultiple
-	case !imsiSet && !withLmsiSet:
-		return gsm_map.Identity{}, ErrCancelLocIdentityChoiceNoAlternative
-	case imsiSet:
+	if id.IMSI != "" {
 		imsiBytes, err := tbcd.Encode(id.IMSI)
 		if err != nil {
 			return gsm_map.Identity{}, fmt.Errorf(errEncodingIMSI, err)
 		}
 		return gsm_map.NewIdentityImsi(gsm_map.IMSI(imsiBytes)), nil
-	default: // withLmsiSet
-		if len(id.IMSIWithLMSI.LMSI) != 4 {
-			return gsm_map.Identity{}, ErrCancelLocIdentityMissingLMSI
-		}
-		imsiBytes, err := tbcd.Encode(id.IMSIWithLMSI.IMSI)
-		if err != nil {
-			return gsm_map.Identity{}, fmt.Errorf(errEncodingIMSI, err)
-		}
-		iwl := gsm_map.IMSIWithLMSI{
-			Imsi: gsm_map.IMSI(imsiBytes),
-			Lmsi: gsm_map.LMSI(id.IMSIWithLMSI.LMSI),
-		}
-		return gsm_map.NewIdentityImsiWithLMSI(iwl), nil
 	}
+
+	imsiBytes, err := tbcd.Encode(id.IMSIWithLMSI.IMSI)
+	if err != nil {
+		return gsm_map.Identity{}, fmt.Errorf(errEncodingIMSI, err)
+	}
+	iwl := gsm_map.IMSIWithLMSI{
+		Imsi: gsm_map.IMSI(imsiBytes),
+		Lmsi: gsm_map.LMSI(id.IMSIWithLMSI.LMSI),
+	}
+	return gsm_map.NewIdentityImsiWithLMSI(iwl), nil
 }
 
 // convertWireToCancelLocationIdentity decodes the wire-level Identity CHOICE.
@@ -5418,17 +5409,43 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 	}
 }
 
-// validateCancelLocation enforces mandatory fields, enum ranges, and the
-// MTRF-authorized/not-authorized mutex per 3GPP TS 29.002 §8.1.1.6.
+// validateCancelLocation enforces every field-level and cross-field
+// constraint on a CancelLocation: the Identity CHOICE (exactly-one
+// alternative, non-empty nested IMSI, 4-octet LMSI), enum ranges, the
+// TypeOfUpdate applicability rule (only with updateProcedure or
+// initialAttachProcedure, per 3GPP TS 29.002), the MTRF mutex, and the
+// new-lmsi length. All identity-related errors funnel through the
+// CHOICE-specific sentinels for a consistent API.
 func validateCancelLocation(c *CancelLocation) error {
-	if c.Identity.IMSI == "" && c.Identity.IMSIWithLMSI == nil {
-		return ErrCancelLocMissingIdentity
+	imsiSet := c.Identity.IMSI != ""
+	withLmsiSet := c.Identity.IMSIWithLMSI != nil
+	switch {
+	case imsiSet && withLmsiSet:
+		return ErrCancelLocIdentityChoiceMultiple
+	case !imsiSet && !withLmsiSet:
+		return ErrCancelLocIdentityChoiceNoAlternative
+	case withLmsiSet:
+		if c.Identity.IMSIWithLMSI.IMSI == "" {
+			return ErrCancelLocIdentityMissingIMSI
+		}
+		if len(c.Identity.IMSIWithLMSI.LMSI) != 4 {
+			return ErrCancelLocIdentityMissingLMSI
+		}
 	}
 	if c.CancellationType != nil && !isValidCancellationType(*c.CancellationType) {
 		return ErrCancelLocInvalidCancellationType
 	}
-	if c.TypeOfUpdate != nil && !isValidTypeOfUpdate(*c.TypeOfUpdate) {
-		return ErrCancelLocInvalidTypeOfUpdate
+	if c.TypeOfUpdate != nil {
+		if !isValidTypeOfUpdate(*c.TypeOfUpdate) {
+			return ErrCancelLocInvalidTypeOfUpdate
+		}
+		// Per TS 29.002: TypeOfUpdate is only valid with updateProcedure
+		// or initialAttachProcedure.
+		if c.CancellationType == nil ||
+			(*c.CancellationType != CancellationTypeUpdateProcedure &&
+				*c.CancellationType != CancellationTypeInitialAttachProcedure) {
+			return ErrCancelLocTypeOfUpdateNotApplicable
+		}
 	}
 	if c.MtrfSupportedAndAuthorized && c.MtrfSupportedAndNotAuthorized {
 		return ErrCancelLocMtrfBothSet
@@ -5519,6 +5536,12 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 		t := TypeOfUpdate(*arg.TypeOfUpdate)
 		if !isValidTypeOfUpdate(t) {
 			return nil, ErrCancelLocInvalidTypeOfUpdate
+		}
+		// TS 29.002: TypeOfUpdate only valid with updateProcedure/initialAttachProcedure.
+		if out.CancellationType == nil ||
+			(*out.CancellationType != CancellationTypeUpdateProcedure &&
+				*out.CancellationType != CancellationTypeInitialAttachProcedure) {
+			return nil, ErrCancelLocTypeOfUpdateNotApplicable
 		}
 		out.TypeOfUpdate = &t
 	}

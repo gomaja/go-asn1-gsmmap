@@ -3513,19 +3513,27 @@ func TestCancelLocationCancellationTypes(t *testing.T) {
 }
 
 func TestCancelLocationTypeOfUpdates(t *testing.T) {
+	// TypeOfUpdate is only valid with updateProcedure or
+	// initialAttachProcedure per TS 29.002; exercise both enum values
+	// paired with a compatible CancellationType.
 	cases := []struct {
 		name string
+		ct   CancellationType
 		tu   TypeOfUpdate
 	}{
-		{"SgsnChange", TypeOfUpdateSgsnChange},
-		{"MmeChange", TypeOfUpdateMmeChange},
+		{"UpdateProcedure_SgsnChange", CancellationTypeUpdateProcedure, TypeOfUpdateSgsnChange},
+		{"UpdateProcedure_MmeChange", CancellationTypeUpdateProcedure, TypeOfUpdateMmeChange},
+		{"InitialAttach_SgsnChange", CancellationTypeInitialAttachProcedure, TypeOfUpdateSgsnChange},
+		{"InitialAttach_MmeChange", CancellationTypeInitialAttachProcedure, TypeOfUpdateMmeChange},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			ct := tc.ct
 			tu := tc.tu
 			in := &CancelLocation{
-				Identity:     CancelLocationIdentity{IMSI: "204080012345678"},
-				TypeOfUpdate: &tu,
+				Identity:         CancelLocationIdentity{IMSI: "204080012345678"},
+				CancellationType: &ct,
+				TypeOfUpdate:     &tu,
 			}
 			data, err := in.Marshal()
 			if err != nil {
@@ -3558,14 +3566,14 @@ func TestCancelLocationResRoundTrip(t *testing.T) {
 }
 
 func TestCancelLocationValidationErrors(t *testing.T) {
-	t.Run("MissingIdentity", func(t *testing.T) {
+	t.Run("IdentityChoiceNoAlternative", func(t *testing.T) {
 		in := &CancelLocation{}
 		_, err := in.Marshal()
 		if err == nil {
 			t.Fatal("expected error for missing Identity")
 		}
-		if !errors.Is(err, ErrCancelLocMissingIdentity) {
-			t.Errorf("expected ErrCancelLocMissingIdentity, got: %v", err)
+		if !errors.Is(err, ErrCancelLocIdentityChoiceNoAlternative) {
+			t.Errorf("expected ErrCancelLocIdentityChoiceNoAlternative, got: %v", err)
 		}
 	})
 
@@ -3585,6 +3593,24 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		}
 		if !errors.Is(err, ErrCancelLocIdentityChoiceMultiple) {
 			t.Errorf("expected ErrCancelLocIdentityChoiceMultiple, got: %v", err)
+		}
+	})
+
+	t.Run("IMSIWithLMSI_EmptyIMSI", func(t *testing.T) {
+		in := &CancelLocation{
+			Identity: CancelLocationIdentity{
+				IMSIWithLMSI: &CancelLocationIMSIWithLMSI{
+					IMSI: "", // empty — must be rejected
+					LMSI: HexBytes{0x01, 0x02, 0x03, 0x04},
+				},
+			},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for empty nested IMSI")
+		}
+		if !errors.Is(err, ErrCancelLocIdentityMissingIMSI) {
+			t.Errorf("expected ErrCancelLocIdentityMissingIMSI, got: %v", err)
 		}
 	})
 
@@ -3622,10 +3648,12 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 	})
 
 	t.Run("InvalidTypeOfUpdate", func(t *testing.T) {
+		ct := CancellationTypeUpdateProcedure
 		bad := TypeOfUpdate(99)
 		in := &CancelLocation{
-			Identity:     CancelLocationIdentity{IMSI: "204080012345678"},
-			TypeOfUpdate: &bad,
+			Identity:         CancelLocationIdentity{IMSI: "204080012345678"},
+			CancellationType: &ct,
+			TypeOfUpdate:     &bad,
 		}
 		_, err := in.Marshal()
 		if err == nil {
@@ -3633,6 +3661,38 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		}
 		if !errors.Is(err, ErrCancelLocInvalidTypeOfUpdate) {
 			t.Errorf("expected ErrCancelLocInvalidTypeOfUpdate, got: %v", err)
+		}
+	})
+
+	t.Run("TypeOfUpdateNotApplicable_NoCancellationType", func(t *testing.T) {
+		tu := TypeOfUpdateSgsnChange
+		in := &CancelLocation{
+			Identity:     CancelLocationIdentity{IMSI: "204080012345678"},
+			TypeOfUpdate: &tu,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for TypeOfUpdate without CancellationType")
+		}
+		if !errors.Is(err, ErrCancelLocTypeOfUpdateNotApplicable) {
+			t.Errorf("expected ErrCancelLocTypeOfUpdateNotApplicable, got: %v", err)
+		}
+	})
+
+	t.Run("TypeOfUpdateNotApplicable_SubscriptionWithdraw", func(t *testing.T) {
+		ct := CancellationTypeSubscriptionWithdraw
+		tu := TypeOfUpdateSgsnChange
+		in := &CancelLocation{
+			Identity:         CancelLocationIdentity{IMSI: "204080012345678"},
+			CancellationType: &ct,
+			TypeOfUpdate:     &tu,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for TypeOfUpdate with subscriptionWithdraw")
+		}
+		if !errors.Is(err, ErrCancelLocTypeOfUpdateNotApplicable) {
+			t.Errorf("expected ErrCancelLocTypeOfUpdateNotApplicable, got: %v", err)
 		}
 	})
 

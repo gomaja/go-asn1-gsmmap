@@ -1077,8 +1077,10 @@ const (
 	CancellationTypeInitialAttachProcedure CancellationType = 2
 )
 
-// TypeOfUpdate per 3GPP TS 29.002 (opCode 3). Present only when
-// CancellationType is updateProcedure or initialAttachProcedure.
+// TypeOfUpdate per 3GPP TS 29.002 (opCode 3). This field is only valid
+// when CancellationType is updateProcedure or initialAttachProcedure;
+// validateCancelLocation enforces this constraint on both encode and
+// decode and returns ErrCancelLocTypeOfUpdateNotApplicable otherwise.
 type TypeOfUpdate int
 
 const (
@@ -1176,12 +1178,13 @@ var (
 	ErrPsiInvalidLMSI         = errors.New("psi: LMSI, if set, must be exactly 4 octets")
 	ErrPsiInvalidCallPriority = errors.New("psi: CallPriority must be 0..15")
 
-	ErrCancelLocMissingIdentity             = errors.New("cancelLocation: Identity is empty")
 	ErrCancelLocIdentityChoiceNoAlternative = errors.New("cancelLocation: Identity CHOICE has no alternative set")
 	ErrCancelLocIdentityChoiceMultiple      = errors.New("cancelLocation: Identity CHOICE has multiple alternatives set")
+	ErrCancelLocIdentityMissingIMSI         = errors.New("cancelLocation: IMSIWithLMSI.IMSI is empty")
 	ErrCancelLocIdentityMissingLMSI         = errors.New("cancelLocation: IMSIWithLMSI.LMSI must be exactly 4 octets")
 	ErrCancelLocInvalidCancellationType     = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2)")
 	ErrCancelLocInvalidTypeOfUpdate         = errors.New("cancelLocation: TypeOfUpdate must be one of sgsn-change(0), mme-change(1)")
+	ErrCancelLocTypeOfUpdateNotApplicable   = errors.New("cancelLocation: TypeOfUpdate is only valid when CancellationType is updateProcedure or initialAttachProcedure")
 	ErrCancelLocMtrfBothSet                 = errors.New("cancelLocation: MtrfSupportedAndAuthorized and MtrfSupportedAndNotAuthorized are mutually exclusive")
 	ErrCancelLocInvalidNewLmsi              = errors.New("cancelLocation: NewLmsi, if set, must be exactly 4 octets")
 )

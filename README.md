@@ -303,6 +303,21 @@ if err != nil {
     log.Fatal(err)
 }
 
+// Build a CancelLocation using the IMSI-with-LMSI alternative of the
+// Identity CHOICE — often used when the HLR already knows the LMSI the
+// VLR previously assigned to the subscriber.
+clWithLmsi := &gsmmap.CancelLocation{
+    Identity: gsmmap.CancelLocationIdentity{
+        IMSIWithLMSI: &gsmmap.CancelLocationIMSIWithLMSI{
+            IMSI: "204080012345678",
+            LMSI: gsmmap.HexBytes{0xA1, 0xB2, 0xC3, 0xD4}, // 4 octets
+        },
+    },
+}
+if _, err := clWithLmsi.Marshal(); err != nil {
+    log.Fatal(err)
+}
+
 // Parse a CancelLocation response received from the VLR/SGSN/MME. The wire
 // response is effectively empty in practice — only an optional
 // ExtensionContainer is defined in 3GPP TS 29.002.
