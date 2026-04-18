@@ -778,14 +778,152 @@ type CamelRoutingInfo struct {
 	GmscCamelSubscriptionInfo GmscCamelSubscriptionInfo
 }
 
-// GmscCamelSubscriptionInfo SEQUENCE.
-// Nested CAMEL SEQUENCEs are kept opaque (HexBytes) for now; future work may decompose.
+// OBcsmTriggerDetectionPoint per 3GPP TS 29.002. Subset of values used in
+// the MAP CAMEL subscription info; additional TDPs exist in CAP itself.
+type OBcsmTriggerDetectionPoint int
+
+const (
+	OBcsmTriggerCollectedInfo      OBcsmTriggerDetectionPoint = 2
+	OBcsmTriggerRouteSelectFailure OBcsmTriggerDetectionPoint = 4
+)
+
+// TBcsmTriggerDetectionPoint per 3GPP TS 29.002.
+type TBcsmTriggerDetectionPoint int
+
+const (
+	TBcsmTriggerTermAttemptAuthorized TBcsmTriggerDetectionPoint = 12
+	TBcsmTriggerTBusy                 TBcsmTriggerDetectionPoint = 13
+	TBcsmTriggerTNoAnswer             TBcsmTriggerDetectionPoint = 14
+)
+
+// DefaultCallHandling per 3GPP TS 29.002.
+type DefaultCallHandling int
+
+const (
+	DefaultCallHandlingContinueCall DefaultCallHandling = 0
+	DefaultCallHandlingReleaseCall  DefaultCallHandling = 1
+)
+
+// CallTypeCriteria per 3GPP TS 29.002 (O-BcsmCamelTDP-Criteria).
+type CallTypeCriteria int
+
+const (
+	CallTypeCriteriaForwarded    CallTypeCriteria = 0
+	CallTypeCriteriaNotForwarded CallTypeCriteria = 1
+)
+
+// MatchType per 3GPP TS 29.002 (DestinationNumberCriteria).
+type MatchType int
+
+const (
+	MatchTypeInhibiting MatchType = 0
+	MatchTypeEnabling   MatchType = 1
+)
+
+// DestinationNumberCriteria per 3GPP TS 29.002.
+// At least one of DestinationNumberList or DestinationNumberLengthList must
+// be present when this criteria SEQUENCE is set.
+type DestinationNumberCriteria struct {
+	MatchType                   MatchType    // mandatory
+	DestinationNumberList       []ISDNNumber // [1] list of destination numbers
+	DestinationNumberLengthList []int        // [2] list of number lengths (1..15)
+}
+
+// ISDNNumber represents an ISDN-AddressString with its nature/plan indicators.
+// Reused for DestinationNumberList entries in CAMEL criteria.
+type ISDNNumber struct {
+	Digits string
+	Nature uint8 // default: International
+	Plan   uint8 // default: ISDN
+}
+
+// OBcsmCamelTDPData per 3GPP TS 29.002. Originating BCSM CAMEL Trigger
+// Detection Point descriptor — each entry pairs a trigger with the gsmSCF
+// address to notify and a default call-handling action.
+type OBcsmCamelTDPData struct {
+	OBcsmTriggerDetectionPoint OBcsmTriggerDetectionPoint // mandatory
+	ServiceKey                 int64                      // mandatory (0..2147483647)
+	GsmSCFAddress              string                     // mandatory ISDN-AddressString
+	GsmSCFAddressNature        uint8                      // default: International
+	GsmSCFAddressPlan          uint8                      // default: ISDN
+	DefaultCallHandling        DefaultCallHandling        // mandatory
+}
+
+// OCSI (O-CSI) per 3GPP TS 29.002. Originating CAMEL Subscription Info.
+type OCSI struct {
+	OBcsmCamelTDPDataList   []OBcsmCamelTDPData // mandatory, 1..10 entries
+	CamelCapabilityHandling *int                // [0] phase (1..4); nil if absent
+	NotificationToCSE       bool                // [1] NULL
+	CsiActive               bool                // [2] NULL
+}
+
+// OBcsmCamelTDPCriteria per 3GPP TS 29.002. Selection criteria for an
+// O-BcsmCamelTDP invocation. Empty optional fields are omitted on the wire.
+type OBcsmCamelTDPCriteria struct {
+	OBcsmTriggerDetectionPoint OBcsmTriggerDetectionPoint // mandatory
+	DestinationNumberCriteria  *DestinationNumberCriteria // [0]
+	BasicServiceCriteria       []ExtBasicServiceCode      // [1]
+	CallTypeCriteria           *CallTypeCriteria          // [2]
+	OCauseValueCriteria        []int                      // [3] list of CauseValue bytes (0..127)
+}
+
+// TBcsmCamelTDPData per 3GPP TS 29.002. Terminating BCSM CAMEL TDP descriptor.
+type TBcsmCamelTDPData struct {
+	TBcsmTriggerDetectionPoint TBcsmTriggerDetectionPoint // mandatory
+	ServiceKey                 int64                      // mandatory
+	GsmSCFAddress              string                     // mandatory ISDN-AddressString
+	GsmSCFAddressNature        uint8                      // default: International
+	GsmSCFAddressPlan          uint8                      // default: ISDN
+	DefaultCallHandling        DefaultCallHandling        // mandatory
+}
+
+// TCSI (T-CSI) per 3GPP TS 29.002. Terminating CAMEL Subscription Info.
+type TCSI struct {
+	TBcsmCamelTDPDataList   []TBcsmCamelTDPData // mandatory, 1..10 entries
+	CamelCapabilityHandling *int                // [0] phase (1..4); nil if absent
+	NotificationToCSE       bool                // [1] NULL
+	CsiActive               bool                // [2] NULL
+}
+
+// TBcsmCamelTDPCriteria per 3GPP TS 29.002. Selection criteria for a
+// T-BCSM CAMEL TDP invocation.
+type TBcsmCamelTDPCriteria struct {
+	TBcsmTriggerDetectionPoint TBcsmTriggerDetectionPoint // mandatory
+	BasicServiceCriteria       []ExtBasicServiceCode      // [0]
+	TCauseValueCriteria        []int                      // [1] list of CauseValue bytes (0..127)
+}
+
+// DPAnalysedInfoCriterium per 3GPP TS 29.002. Entry in DCSI's
+// DPAnalysedInfoCriteriaList — fires when a dialled number matches.
+type DPAnalysedInfoCriterium struct {
+	DialledNumber         string              // mandatory ISDN-AddressString
+	DialledNumberNature   uint8               // default: International
+	DialledNumberPlan     uint8               // default: ISDN
+	ServiceKey            int64               // mandatory
+	GsmSCFAddress         string              // mandatory
+	GsmSCFAddressNature   uint8               // default: International
+	GsmSCFAddressPlan     uint8               // default: ISDN
+	DefaultCallHandling   DefaultCallHandling // mandatory
+}
+
+// DCSI (D-CSI) per 3GPP TS 29.002. Dialled-number CAMEL Subscription Info.
+type DCSI struct {
+	DPAnalysedInfoCriteriaList []DPAnalysedInfoCriterium // [0] 1..10 entries
+	CamelCapabilityHandling    *int                      // [1] phase (1..4)
+	NotificationToCSE          bool                      // [3] NULL
+	CsiActive                  bool                      // [4] NULL
+}
+
+// GmscCamelSubscriptionInfo per 3GPP TS 29.002. Carries the CAMEL
+// subscription information reported to the GMSC for call routing.
+// Fields are typed SEQUENCEs with full field coverage; the lossy opaque
+// HexBytes representation used in earlier versions has been replaced.
 type GmscCamelSubscriptionInfo struct {
-	TCSI                      HexBytes
-	OCSI                      HexBytes
-	DCSI                      HexBytes
-	OBcsmCamelTDPCriteriaList HexBytes
-	TBcsmCamelTDPCriteriaList HexBytes
+	TCSI                      *TCSI                   // [0]
+	OCSI                      *OCSI                   // [1]
+	OBcsmCamelTDPCriteriaList []OBcsmCamelTDPCriteria // [3]
+	TBcsmCamelTDPCriteriaList []TBcsmCamelTDPCriteria // [4]
+	DCSI                      *DCSI                   // [5]
 }
 
 // CcbsIndicators SEQUENCE.
@@ -1187,4 +1325,19 @@ var (
 	ErrCancelLocTypeOfUpdateNotApplicable   = errors.New("cancelLocation: TypeOfUpdate is only valid when CancellationType is updateProcedure or initialAttachProcedure")
 	ErrCancelLocMtrfBothSet                 = errors.New("cancelLocation: MtrfSupportedAndAuthorized and MtrfSupportedAndNotAuthorized are mutually exclusive")
 	ErrCancelLocInvalidNewLMSI              = errors.New("cancelLocation: NewLMSI, if set, must be exactly 4 octets")
+
+	ErrCamelInvalidOTriggerPoint             = errors.New("camel: O-BcsmTriggerDetectionPoint must be collectedInfo(2) or routeSelectFailure(4)")
+	ErrCamelInvalidTTriggerPoint             = errors.New("camel: T-BcsmTriggerDetectionPoint must be termAttemptAuthorized(12), tBusy(13), or tNoAnswer(14)")
+	ErrCamelInvalidDefaultCallHandling       = errors.New("camel: DefaultCallHandling must be continueCall(0) or releaseCall(1)")
+	ErrCamelInvalidCallTypeCriteria          = errors.New("camel: CallTypeCriteria must be forwarded(0) or notForwarded(1)")
+	ErrCamelInvalidMatchType                 = errors.New("camel: MatchType must be inhibiting(0) or enabling(1)")
+	ErrCamelInvalidServiceKey                = errors.New("camel: ServiceKey must be 0..2147483647")
+	ErrCamelMissingGsmSCFAddress             = errors.New("camel: GsmSCFAddress is mandatory and must be non-empty")
+	ErrCamelMissingDialledNumber             = errors.New("camel: DialledNumber is mandatory on DPAnalysedInfoCriterium")
+	ErrCamelInvalidCamelCapabilityHandling   = errors.New("camel: CamelCapabilityHandling must be 1..4 when set")
+	ErrCamelInvalidTDPDataListSize           = errors.New("camel: TDP data list must contain 1..10 entries")
+	ErrCamelInvalidDPAnalysedInfoListSize    = errors.New("camel: DPAnalysedInfoCriteriaList must contain 1..10 entries when present")
+	ErrCamelInvalidCauseValue                = errors.New("camel: CauseValue must be 0..127")
+	ErrCamelInvalidDestinationNumberLength   = errors.New("camel: DestinationNumberLength must be 1..15")
+	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
 )

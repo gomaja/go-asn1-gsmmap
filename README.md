@@ -357,6 +357,40 @@ if resp.ExtendedRoutingInfo != nil && resp.ExtendedRoutingInfo.RoutingInfo != ni
 }
 ```
 
+#### CAMEL subscription info in SRI responses
+
+The `ExtendedRoutingInfo` CHOICE carries a `CamelRoutingInfo` alternative
+that exposes the GMSC's full CAMEL subscription information (T-CSI, O-CSI,
+D-CSI, and BCSM-CAMEL-TDP criteria lists) with field-level coverage. Every
+nested SEQUENCE, enum, and trigger-detection-point round-trips between Go
+and BER without data loss.
+
+```go
+phase := 2
+resp := &gsmmap.SriResp{
+    IMSI: "310260123456789",
+    ExtendedRoutingInfo: &gsmmap.ExtendedRoutingInfo{
+        CamelRoutingInfo: &gsmmap.CamelRoutingInfo{
+            GmscCamelSubscriptionInfo: gsmmap.GmscCamelSubscriptionInfo{
+                OCSI: &gsmmap.OCSI{
+                    OBcsmCamelTDPDataList: []gsmmap.OBcsmCamelTDPData{
+                        {
+                            OBcsmTriggerDetectionPoint: gsmmap.OBcsmTriggerCollectedInfo,
+                            ServiceKey:                 42,
+                            GsmSCFAddress:              "31611111111",
+                            DefaultCallHandling:        gsmmap.DefaultCallHandlingContinueCall,
+                        },
+                    },
+                    CamelCapabilityHandling: &phase,
+                    NotificationToCSE:       true,
+                },
+            },
+        },
+    },
+}
+data, err := resp.Marshal()
+```
+
 ## Design
 
 This library provides a **layered API**:
