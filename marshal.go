@@ -154,6 +154,32 @@ func (a *AnyTimeInterrogationRes) Marshal() ([]byte, error) {
 	return data, nil
 }
 
+// Marshal encodes ProvideSubscriberInfo (opCode 70) into BER-encoded bytes.
+func (p *ProvideSubscriberInfo) Marshal() ([]byte, error) {
+	arg, err := convertProvideSubscriberInfoToArg(p)
+	if err != nil {
+		return nil, fmt.Errorf("converting ProvideSubscriberInfo: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding ProvideSubscriberInfoArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes ProvideSubscriberInfoRes (opCode 70) into BER-encoded bytes.
+func (p *ProvideSubscriberInfoRes) Marshal() ([]byte, error) {
+	res, err := convertProvideSubscriberInfoResToRes(p)
+	if err != nil {
+		return nil, fmt.Errorf("converting ProvideSubscriberInfoRes: %w", err)
+	}
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding ProvideSubscriberInfoRes: %w", err)
+	}
+	return data, nil
+}
+
 // Marshal encodes SriResp into BER-encoded bytes.
 func (s *SriResp) Marshal() ([]byte, error) {
 	res, err := convertSriRespToRes(s)

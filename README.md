@@ -19,6 +19,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **AlertServiceCentre** (ASC) | 64 | `AlertServiceCentre` | — |
 | **PurgeMS** | 67 | `PurgeMS` | `PurgeMSRes` |
 | **SendAuthenticationInfo** (SAI) | 56 | `SendAuthenticationInfo` | `SendAuthenticationInfoRes` |
+| **ProvideSubscriberInfo** (PSI) | 70 | `ProvideSubscriberInfo` | `ProvideSubscriberInfoRes` |
 
 ## Install
 
@@ -228,6 +229,51 @@ if resp.AuthenticationSetList != nil {
     if len(resp.AuthenticationSetList.Triplets) > 0 {
         fmt.Println("Got 2G GSM triplets:", len(resp.AuthenticationSetList.Triplets))
     }
+}
+```
+
+### ProvideSubscriberInfo (opCode 70)
+
+```go
+// Build a ProvideSubscriberInfo request. PSI is sent by the HLR/gsmSCF to
+// the VLR/SGSN/MME to retrieve subscriber info (location, state, etc.)
+// given an IMSI (+optional LMSI). The set of fields returned is governed
+// by RequestedInfo — identical to the one used by ATI (opCode 71).
+domain := gsmmap.PsDomain
+prio := 3 // EMLPP-Priority (0..15)
+
+psi := &gsmmap.ProvideSubscriberInfo{
+    IMSI: "310150123456789",
+    LMSI: gsmmap.HexBytes{0x01, 0x02, 0x03, 0x04}, // 4 octets
+    RequestedInfo: gsmmap.RequestedInfo{
+        LocationInformation:             true,
+        SubscriberState:                 true,
+        CurrentLocation:                 true,
+        RequestedDomain:                 &domain,
+        LocationInformationEPSSupported: true,
+        RequestedNodes: &gsmmap.RequestedNodes{
+            MME:  true,
+            SGSN: true,
+        },
+    },
+    CallPriority: &prio,
+}
+data, err := psi.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+
+// Parse a ProvideSubscriberInfo response received from the VLR/SGSN/MME.
+respBytes := []byte{ /* PSI-Res BER bytes from the VLR/SGSN/MME */ }
+resp, err := gsmmap.ParseProvideSubscriberInfoRes(respBytes)
+if err != nil {
+    log.Fatal(err)
+}
+if resp.SubscriberInfo.LocationInformation != nil {
+    fmt.Println("VLR:", resp.SubscriberInfo.LocationInformation.VlrNumber)
+}
+if resp.SubscriberInfo.SubscriberState != nil {
+    fmt.Println("State:", resp.SubscriberInfo.SubscriberState.State)
 }
 ```
 

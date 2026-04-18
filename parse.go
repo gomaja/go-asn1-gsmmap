@@ -114,6 +114,26 @@ func ParseAnyTimeInterrogationRes(data []byte) (*AnyTimeInterrogationRes, error)
 	return convertResToATIRes(&res)
 }
 
+// ParseProvideSubscriberInfo decodes BER-encoded bytes into a ProvideSubscriberInfo
+// (opCode 70). PSI queries subscriber info given an IMSI (+optional LMSI).
+func ParseProvideSubscriberInfo(data []byte) (*ProvideSubscriberInfo, error) {
+	var arg gsm_map.ProvideSubscriberInfoArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ProvideSubscriberInfoArg: %w", err)
+	}
+	return convertArgToProvideSubscriberInfo(&arg)
+}
+
+// ParseProvideSubscriberInfoRes decodes BER-encoded bytes into a
+// ProvideSubscriberInfoRes (opCode 70).
+func ParseProvideSubscriberInfoRes(data []byte) (*ProvideSubscriberInfoRes, error) {
+	var res gsm_map.ProvideSubscriberInfoRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ProvideSubscriberInfoRes: %w", err)
+	}
+	return convertResToProvideSubscriberInfoRes(&res)
+}
+
 // ParseSri decodes BER-encoded bytes into an Sri.
 func ParseSri(data []byte) (*Sri, error) {
 	var arg gsm_map.SendRoutingInfoArg
