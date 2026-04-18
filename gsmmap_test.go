@@ -3727,27 +3727,50 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 	})
 }
 
-// TestCancelLocationDecodeRejectsEmptyNestedIMSI builds a wire
-// CancelLocationArg whose Identity uses the imsi-WithLMSI alternative
-// with an empty IMSI, marshals it via go-asn1 directly, and confirms
-// that ParseCancelLocation rejects it with ErrCancelLocIdentityMissingIMSI —
-// verifying decoder/encoder symmetry against crafted peer input.
-func TestCancelLocationDecodeRejectsEmptyNestedIMSI(t *testing.T) {
-	arg := gsm_map.CancelLocationArg{
-		Identity: gsm_map.NewIdentityImsiWithLMSI(gsm_map.IMSIWithLMSI{
-			Imsi: gsm_map.IMSI{}, // empty — not allowed by spec
-			Lmsi: gsm_map.LMSI{0x01, 0x02, 0x03, 0x04},
-		}),
-	}
-	data, err := arg.MarshalBER()
-	if err != nil {
-		t.Fatalf("MarshalBER: %v", err)
-	}
-	_, err = ParseCancelLocation(data)
-	if err == nil {
-		t.Fatal("expected error for empty nested IMSI on decode")
-	}
-	if !errors.Is(err, ErrCancelLocIdentityMissingIMSI) {
-		t.Errorf("expected ErrCancelLocIdentityMissingIMSI, got: %v", err)
-	}
+// TestCancelLocationDecodeRejectsEmptyIMSI builds wire CancelLocationArgs
+// whose Identity CHOICE carries an empty IMSI under each alternative,
+// marshals them via go-asn1 directly, and confirms ParseCancelLocation
+// rejects both — verifying decoder/encoder symmetry against crafted
+// peer input. The two alternatives use different sentinels: the top-level
+// imsi alternative is indistinguishable from "no alternative set" and
+// returns ErrCancelLocIdentityChoiceNoAlternative, while the nested
+// imsi-WithLMSI alternative returns ErrCancelLocIdentityMissingIMSI to
+// distinguish the mandatory-nested-field violation.
+func TestCancelLocationDecodeRejectsEmptyIMSI(t *testing.T) {
+	t.Run("ImsiAlternative", func(t *testing.T) {
+		arg := gsm_map.CancelLocationArg{
+			Identity: gsm_map.NewIdentityImsi(gsm_map.IMSI{}), // empty
+		}
+		data, err := arg.MarshalBER()
+		if err != nil {
+			t.Fatalf("MarshalBER: %v", err)
+		}
+		_, err = ParseCancelLocation(data)
+		if err == nil {
+			t.Fatal("expected error for empty IMSI on decode")
+		}
+		if !errors.Is(err, ErrCancelLocIdentityChoiceNoAlternative) {
+			t.Errorf("expected ErrCancelLocIdentityChoiceNoAlternative, got: %v", err)
+		}
+	})
+
+	t.Run("ImsiWithLMSIAlternative", func(t *testing.T) {
+		arg := gsm_map.CancelLocationArg{
+			Identity: gsm_map.NewIdentityImsiWithLMSI(gsm_map.IMSIWithLMSI{
+				Imsi: gsm_map.IMSI{}, // empty — not allowed by spec
+				Lmsi: gsm_map.LMSI{0x01, 0x02, 0x03, 0x04},
+			}),
+		}
+		data, err := arg.MarshalBER()
+		if err != nil {
+			t.Fatalf("MarshalBER: %v", err)
+		}
+		_, err = ParseCancelLocation(data)
+		if err == nil {
+			t.Fatal("expected error for empty nested IMSI on decode")
+		}
+		if !errors.Is(err, ErrCancelLocIdentityMissingIMSI) {
+			t.Errorf("expected ErrCancelLocIdentityMissingIMSI, got: %v", err)
+		}
+	})
 }

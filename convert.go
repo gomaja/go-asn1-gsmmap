@@ -5388,6 +5388,9 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}
+		if imsi == "" {
+			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
+		}
 		return CancelLocationIdentity{IMSI: imsi}, nil
 	case gsm_map.IdentityChoiceImsiWithLMSI:
 		if id.ImsiWithLMSI == nil {
