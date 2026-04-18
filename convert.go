@@ -3481,8 +3481,11 @@ func convertWireToOBcsmTDPCriteria(w *gsm_map.OBcsmCamelTDPCriteria) (OBcsmCamel
 		}
 		out.CallTypeCriteria = &ctc
 	}
-	if len(w.OCauseValueCriteria) > 0 {
-		if len(w.OCauseValueCriteria) > 5 {
+	if w.OCauseValueCriteria != nil {
+		// OCauseValueCriteria is SIZE(1..5) per maxNumOfCAMEL-O-CauseValueCriteria;
+		// a non-nil empty slice means the tag was on the wire with zero elements,
+		// which violates the lower bound.
+		if len(w.OCauseValueCriteria) < 1 || len(w.OCauseValueCriteria) > 5 {
 			return OBcsmCamelTDPCriteria{}, ErrCamelInvalidCauseValueListSize
 		}
 		list := make([]int, len(w.OCauseValueCriteria))
@@ -3556,8 +3559,8 @@ func convertWireToTBcsmTDPCriteria(w *gsm_map.TBCSMCAMELTDPCriteria) (TBcsmCamel
 		}
 		out.BasicServiceCriteria = bsc
 	}
-	if len(w.TCauseValueCriteria) > 0 {
-		if len(w.TCauseValueCriteria) > 5 {
+	if w.TCauseValueCriteria != nil {
+		if len(w.TCauseValueCriteria) < 1 || len(w.TCauseValueCriteria) > 5 {
 			return TBcsmCamelTDPCriteria{}, ErrCamelInvalidCauseValueListSize
 		}
 		list := make([]int, len(w.TCauseValueCriteria))
@@ -3618,10 +3621,14 @@ func convertWireToOCSI(w *gsm_map.OCSI) (*OCSI, error) {
 		out.OBcsmCamelTDPDataList[i] = d
 	}
 	if w.CamelCapabilityHandling != nil {
-		v := int(int64(*w.CamelCapabilityHandling))
-		if v < 1 || v > 4 {
+		// Range-check the wire int64 before narrowing to Go int so 32-bit
+		// builds can't truncate out-of-range values into the valid 1..4
+		// window.
+		v64 := int64(*w.CamelCapabilityHandling)
+		if v64 < 1 || v64 > 4 {
 			return nil, ErrCamelInvalidCamelCapabilityHandling
 		}
+		v := int(v64)
 		out.CamelCapabilityHandling = &v
 	}
 	out.NotificationToCSE = nullPtrToBool(w.NotificationToCSE)
@@ -3671,10 +3678,11 @@ func convertWireToTCSI(w *gsm_map.TCSI) (*TCSI, error) {
 		out.TBcsmCamelTDPDataList[i] = d
 	}
 	if w.CamelCapabilityHandling != nil {
-		v := int(int64(*w.CamelCapabilityHandling))
-		if v < 1 || v > 4 {
+		v64 := int64(*w.CamelCapabilityHandling)
+		if v64 < 1 || v64 > 4 {
 			return nil, ErrCamelInvalidCamelCapabilityHandling
 		}
+		v := int(v64)
 		out.CamelCapabilityHandling = &v
 	}
 	out.NotificationToCSE = nullPtrToBool(w.NotificationToCSE)
@@ -3780,8 +3788,8 @@ func convertDCSIToWire(d *DCSI) (*gsm_map.DCSI, error) {
 // convertWireToDCSI decodes a D-CSI.
 func convertWireToDCSI(w *gsm_map.DCSI) (*DCSI, error) {
 	out := &DCSI{}
-	if len(w.DpAnalysedInfoCriteriaList) > 0 {
-		if len(w.DpAnalysedInfoCriteriaList) > 10 {
+	if w.DpAnalysedInfoCriteriaList != nil {
+		if len(w.DpAnalysedInfoCriteriaList) < 1 || len(w.DpAnalysedInfoCriteriaList) > 10 {
 			return nil, ErrCamelInvalidDPAnalysedInfoListSize
 		}
 		out.DPAnalysedInfoCriteriaList = make([]DPAnalysedInfoCriterium, len(w.DpAnalysedInfoCriteriaList))
@@ -3794,10 +3802,11 @@ func convertWireToDCSI(w *gsm_map.DCSI) (*DCSI, error) {
 		}
 	}
 	if w.CamelCapabilityHandling != nil {
-		v := int(int64(*w.CamelCapabilityHandling))
-		if v < 1 || v > 4 {
+		v64 := int64(*w.CamelCapabilityHandling)
+		if v64 < 1 || v64 > 4 {
 			return nil, ErrCamelInvalidCamelCapabilityHandling
 		}
+		v := int(v64)
 		out.CamelCapabilityHandling = &v
 	}
 	out.NotificationToCSE = nullPtrToBool(w.NotificationToCSE)
@@ -3888,8 +3897,8 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 		}
 		out.DCSI = d
 	}
-	if len(w.OBcsmCamelTDPCriteriaList) > 0 {
-		if len(w.OBcsmCamelTDPCriteriaList) > 10 {
+	if w.OBcsmCamelTDPCriteriaList != nil {
+		if len(w.OBcsmCamelTDPCriteriaList) < 1 || len(w.OBcsmCamelTDPCriteriaList) > 10 {
 			return GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
 		}
 		list := make([]OBcsmCamelTDPCriteria, len(w.OBcsmCamelTDPCriteriaList))
@@ -3902,8 +3911,8 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 		}
 		out.OBcsmCamelTDPCriteriaList = list
 	}
-	if len(w.TBCSMCAMELTDPCriteriaList) > 0 {
-		if len(w.TBCSMCAMELTDPCriteriaList) > 10 {
+	if w.TBCSMCAMELTDPCriteriaList != nil {
+		if len(w.TBCSMCAMELTDPCriteriaList) < 1 || len(w.TBCSMCAMELTDPCriteriaList) > 10 {
 			return GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
 		}
 		list := make([]TBcsmCamelTDPCriteria, len(w.TBCSMCAMELTDPCriteriaList))
