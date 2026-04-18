@@ -5381,7 +5381,7 @@ func convertCancelLocationIdentityToWire(id *CancelLocationIdentity) (gsm_map.Id
 func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIdentity, error) {
 	switch id.Choice {
 	case gsm_map.IdentityChoiceImsi:
-		if id.Imsi == nil {
+		if id.Imsi == nil || len(*id.Imsi) == 0 {
 			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
 		}
 		imsi, err := tbcd.Decode(*id.Imsi)
@@ -5395,6 +5395,9 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 	case gsm_map.IdentityChoiceImsiWithLMSI:
 		if id.ImsiWithLMSI == nil {
 			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
+		}
+		if len(id.ImsiWithLMSI.Imsi) == 0 {
+			return CancelLocationIdentity{}, ErrCancelLocIdentityMissingIMSI
 		}
 		imsi, err := tbcd.Decode(id.ImsiWithLMSI.Imsi)
 		if err != nil {
