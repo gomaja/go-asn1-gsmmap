@@ -212,3 +212,24 @@ func ParseSendAuthenticationInfoRes(data []byte) (*SendAuthenticationInfoRes, er
 	}
 	return convertResToSendAuthenticationInfoRes(&res)
 }
+
+// ParseCancelLocation decodes BER-encoded bytes into a CancelLocation
+// (opCode 3). CancelLocation is sent by the HLR to the VLR/SGSN/MME.
+func ParseCancelLocation(data []byte) (*CancelLocation, error) {
+	var arg gsm_map.CancelLocationArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding CancelLocationArg: %w", err)
+	}
+	return convertArgToCancelLocation(&arg)
+}
+
+// ParseCancelLocationRes decodes BER-encoded bytes into a CancelLocationRes
+// (opCode 3). The response body is effectively empty in practice; only an
+// optional ExtensionContainer is defined in 3GPP TS 29.002.
+func ParseCancelLocationRes(data []byte) (*CancelLocationRes, error) {
+	var res gsm_map.CancelLocationRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding CancelLocationRes: %w", err)
+	}
+	return convertWireToCancelLocationRes(&res), nil
+}

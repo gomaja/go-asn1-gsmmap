@@ -285,3 +285,26 @@ func (s *SendAuthenticationInfoRes) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes CancelLocation (opCode 3) into BER-encoded bytes.
+func (c *CancelLocation) Marshal() ([]byte, error) {
+	arg, err := convertCancelLocationToArg(c)
+	if err != nil {
+		return nil, fmt.Errorf("converting CancelLocation: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding CancelLocationArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes CancelLocationRes (opCode 3) into BER-encoded bytes.
+func (r *CancelLocationRes) Marshal() ([]byte, error) {
+	res := convertCancelLocationResToWire(r)
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding CancelLocationRes: %w", err)
+	}
+	return data, nil
+}
