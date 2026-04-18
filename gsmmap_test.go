@@ -3774,3 +3774,628 @@ func TestCancelLocationDecodeRejectsEmptyIMSI(t *testing.T) {
 		}
 	})
 }
+
+// --- CAMEL subscription info tests (GmscCamelSubscriptionInfo) ---
+
+func TestCamelTypesCompile(t *testing.T) {
+	var _ GmscCamelSubscriptionInfo
+	var _ TCSI
+	var _ OCSI
+	var _ DCSI
+	var _ OBcsmCamelTDPData
+	var _ TBcsmCamelTDPData
+	var _ OBcsmCamelTDPCriteria
+	var _ TBcsmCamelTDPCriteria
+	var _ DestinationNumberCriteria
+	var _ DPAnalysedInfoCriterium
+	var _ ISDNNumber
+	var _ OBcsmTriggerDetectionPoint
+	var _ TBcsmTriggerDetectionPoint
+	var _ CallTypeCriteria
+	var _ DefaultCallHandling
+	var _ MatchType
+}
+
+// camelRoundTrip encodes the public CAMEL info to wire, decodes it back,
+// and returns the result — a focused helper for the CAMEL tests below.
+func camelRoundTrip(t *testing.T, in *GmscCamelSubscriptionInfo) *GmscCamelSubscriptionInfo {
+	t.Helper()
+	wire, err := convertGmscCamelSubInfoToWire(in)
+	if err != nil {
+		t.Fatalf("convertGmscCamelSubInfoToWire: %v", err)
+	}
+	got, err := convertWireToGmscCamelSubInfo(&wire)
+	if err != nil {
+		t.Fatalf("convertWireToGmscCamelSubInfo: %v", err)
+	}
+	return &got
+}
+
+func TestCamelEmptyRoundTrip(t *testing.T) {
+	in := &GmscCamelSubscriptionInfo{}
+	got := camelRoundTrip(t, in)
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("empty round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestCamelOCSIRoundTrip(t *testing.T) {
+	phase := 2
+	in := &GmscCamelSubscriptionInfo{
+		OCSI: &OCSI{
+			OBcsmCamelTDPDataList: []OBcsmCamelTDPData{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					ServiceKey:                 42,
+					GsmSCFAddress:              "31611111111",
+					DefaultCallHandling:        DefaultCallHandlingContinueCall,
+				},
+			},
+			CamelCapabilityHandling: &phase,
+			NotificationToCSE:       true,
+			CsiActive:               true,
+		},
+	}
+	got := camelRoundTrip(t, in)
+	// Normalize Nature/Plan defaults applied by encodeAddressField.
+	in.OCSI.OBcsmCamelTDPDataList[0].GsmSCFAddressNature = address.NatureInternational
+	in.OCSI.OBcsmCamelTDPDataList[0].GsmSCFAddressPlan = address.PlanISDN
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("OCSI round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestCamelTCSIRoundTrip(t *testing.T) {
+	phase := 3
+	in := &GmscCamelSubscriptionInfo{
+		TCSI: &TCSI{
+			TBcsmCamelTDPDataList: []TBcsmCamelTDPData{
+				{
+					TBcsmTriggerDetectionPoint: TBcsmTriggerTBusy,
+					ServiceKey:                 17,
+					GsmSCFAddress:              "31622222222",
+					DefaultCallHandling:        DefaultCallHandlingReleaseCall,
+				},
+				{
+					TBcsmTriggerDetectionPoint: TBcsmTriggerTNoAnswer,
+					ServiceKey:                 18,
+					GsmSCFAddress:              "31633333333",
+					DefaultCallHandling:        DefaultCallHandlingContinueCall,
+				},
+			},
+			CamelCapabilityHandling: &phase,
+		},
+	}
+	got := camelRoundTrip(t, in)
+	for i := range in.TCSI.TBcsmCamelTDPDataList {
+		in.TCSI.TBcsmCamelTDPDataList[i].GsmSCFAddressNature = address.NatureInternational
+		in.TCSI.TBcsmCamelTDPDataList[i].GsmSCFAddressPlan = address.PlanISDN
+	}
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("TCSI round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestCamelDCSIRoundTrip(t *testing.T) {
+	in := &GmscCamelSubscriptionInfo{
+		DCSI: &DCSI{
+			DPAnalysedInfoCriteriaList: []DPAnalysedInfoCriterium{
+				{
+					DialledNumber:       "31644444444",
+					ServiceKey:          99,
+					GsmSCFAddress:       "31655555555",
+					DefaultCallHandling: DefaultCallHandlingContinueCall,
+				},
+			},
+			NotificationToCSE: true,
+			CsiActive:         true,
+		},
+	}
+	got := camelRoundTrip(t, in)
+	in.DCSI.DPAnalysedInfoCriteriaList[0].DialledNumberNature = address.NatureInternational
+	in.DCSI.DPAnalysedInfoCriteriaList[0].DialledNumberPlan = address.PlanISDN
+	in.DCSI.DPAnalysedInfoCriteriaList[0].GsmSCFAddressNature = address.NatureInternational
+	in.DCSI.DPAnalysedInfoCriteriaList[0].GsmSCFAddressPlan = address.PlanISDN
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("DCSI round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestCamelOCriteriaRoundTrip(t *testing.T) {
+	ctc := CallTypeCriteriaForwarded
+	in := &GmscCamelSubscriptionInfo{
+		OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+			{
+				OBcsmTriggerDetectionPoint: OBcsmTriggerRouteSelectFailure,
+				DestinationNumberCriteria: &DestinationNumberCriteria{
+					MatchType: MatchTypeEnabling,
+					DestinationNumberList: []ISDNNumber{
+						{Digits: "31666666666"},
+					},
+					DestinationNumberLengthList: []int{11, 12},
+				},
+				BasicServiceCriteria: []ExtBasicServiceCode{
+					{ExtBearerService: HexBytes{0x11}},
+				},
+				CallTypeCriteria:    &ctc,
+				OCauseValueCriteria: []int{1, 16, 127},
+			},
+		},
+	}
+	got := camelRoundTrip(t, in)
+	for i := range in.OBcsmCamelTDPCriteriaList[0].DestinationNumberCriteria.DestinationNumberList {
+		in.OBcsmCamelTDPCriteriaList[0].DestinationNumberCriteria.DestinationNumberList[i].Nature = address.NatureInternational
+		in.OBcsmCamelTDPCriteriaList[0].DestinationNumberCriteria.DestinationNumberList[i].Plan = address.PlanISDN
+	}
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("OBcsmCamelTDPCriteria round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestCamelTCriteriaRoundTrip(t *testing.T) {
+	in := &GmscCamelSubscriptionInfo{
+		TBcsmCamelTDPCriteriaList: []TBcsmCamelTDPCriteria{
+			{
+				TBcsmTriggerDetectionPoint: TBcsmTriggerTermAttemptAuthorized,
+				BasicServiceCriteria: []ExtBasicServiceCode{
+					{ExtTeleservice: HexBytes{0x22}},
+				},
+				TCauseValueCriteria: []int{17, 34},
+			},
+		},
+	}
+	got := camelRoundTrip(t, in)
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("TBcsmCamelTDPCriteria round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+// TestCamelDataNoLongerDroppedViaSri proves the pitfall is fixed: building
+// an SriResp with populated CAMEL data, marshaling, parsing, and checking
+// the CAMEL fields are preserved end-to-end (not silently dropped).
+func TestCamelDataNoLongerDroppedViaSri(t *testing.T) {
+	phase := 2
+	in := &SriResp{
+		IMSI: "204080012345678",
+		ExtendedRoutingInfo: &ExtendedRoutingInfo{
+			CamelRoutingInfo: &CamelRoutingInfo{
+				GmscCamelSubscriptionInfo: GmscCamelSubscriptionInfo{
+					OCSI: &OCSI{
+						OBcsmCamelTDPDataList: []OBcsmCamelTDPData{
+							{
+								OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+								ServiceKey:                 42,
+								GsmSCFAddress:              "31611111111",
+								DefaultCallHandling:        DefaultCallHandlingContinueCall,
+							},
+						},
+						CamelCapabilityHandling: &phase,
+					},
+				},
+			},
+		},
+	}
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseSriResp(data)
+	if err != nil {
+		t.Fatalf("ParseSriResp: %v", err)
+	}
+	if got.ExtendedRoutingInfo == nil || got.ExtendedRoutingInfo.CamelRoutingInfo == nil {
+		t.Fatal("CamelRoutingInfo was dropped on round-trip")
+	}
+	ocsi := got.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.OCSI
+	if ocsi == nil {
+		t.Fatal("OCSI was dropped on round-trip — pitfall not fixed")
+	}
+	if len(ocsi.OBcsmCamelTDPDataList) != 1 {
+		t.Fatalf("OBcsmCamelTDPDataList length: want 1, got %d", len(ocsi.OBcsmCamelTDPDataList))
+	}
+	d := ocsi.OBcsmCamelTDPDataList[0]
+	if d.OBcsmTriggerDetectionPoint != OBcsmTriggerCollectedInfo {
+		t.Errorf("trigger point: want %v, got %v", OBcsmTriggerCollectedInfo, d.OBcsmTriggerDetectionPoint)
+	}
+	if d.ServiceKey != 42 {
+		t.Errorf("ServiceKey: want 42, got %d", d.ServiceKey)
+	}
+	if d.GsmSCFAddress != "31611111111" {
+		t.Errorf("GsmSCFAddress: want 31611111111, got %q", d.GsmSCFAddress)
+	}
+	if d.DefaultCallHandling != DefaultCallHandlingContinueCall {
+		t.Errorf("DefaultCallHandling: want continueCall, got %v", d.DefaultCallHandling)
+	}
+	if ocsi.CamelCapabilityHandling == nil || *ocsi.CamelCapabilityHandling != 2 {
+		t.Errorf("CamelCapabilityHandling: want 2, got %v", ocsi.CamelCapabilityHandling)
+	}
+}
+
+func TestCamelValidationErrors(t *testing.T) {
+	t.Run("InvalidOTrigger", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OCSI: &OCSI{
+				OBcsmCamelTDPDataList: []OBcsmCamelTDPData{
+					{
+						OBcsmTriggerDetectionPoint: OBcsmTriggerDetectionPoint(99),
+						ServiceKey:                 1,
+						GsmSCFAddress:              "31611111111",
+						DefaultCallHandling:        DefaultCallHandlingContinueCall,
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidOTriggerPoint) {
+			t.Errorf("want ErrCamelInvalidOTriggerPoint, got %v", err)
+		}
+	})
+
+	t.Run("InvalidTTrigger", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			TCSI: &TCSI{
+				TBcsmCamelTDPDataList: []TBcsmCamelTDPData{
+					{
+						TBcsmTriggerDetectionPoint: TBcsmTriggerDetectionPoint(99),
+						ServiceKey:                 1,
+						GsmSCFAddress:              "31611111111",
+						DefaultCallHandling:        DefaultCallHandlingContinueCall,
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidTTriggerPoint) {
+			t.Errorf("want ErrCamelInvalidTTriggerPoint, got %v", err)
+		}
+	})
+
+	t.Run("InvalidDefaultCallHandling", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OCSI: &OCSI{
+				OBcsmCamelTDPDataList: []OBcsmCamelTDPData{
+					{
+						OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+						ServiceKey:                 1,
+						GsmSCFAddress:              "31611111111",
+						DefaultCallHandling:        DefaultCallHandling(99),
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidDefaultCallHandling) {
+			t.Errorf("want ErrCamelInvalidDefaultCallHandling, got %v", err)
+		}
+	})
+
+	t.Run("MissingGsmSCFAddress", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OCSI: &OCSI{
+				OBcsmCamelTDPDataList: []OBcsmCamelTDPData{
+					{
+						OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+						ServiceKey:                 1,
+						DefaultCallHandling:        DefaultCallHandlingContinueCall,
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelMissingGsmSCFAddress) {
+			t.Errorf("want ErrCamelMissingGsmSCFAddress, got %v", err)
+		}
+	})
+
+	t.Run("InvalidServiceKeyNegative", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OCSI: &OCSI{
+				OBcsmCamelTDPDataList: []OBcsmCamelTDPData{
+					{
+						OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+						ServiceKey:                 -1,
+						GsmSCFAddress:              "31611111111",
+						DefaultCallHandling:        DefaultCallHandlingContinueCall,
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidServiceKey) {
+			t.Errorf("want ErrCamelInvalidServiceKey, got %v", err)
+		}
+	})
+
+	t.Run("InvalidCamelCapabilityHandling", func(t *testing.T) {
+		bad := 5
+		in := &GmscCamelSubscriptionInfo{
+			OCSI: &OCSI{
+				OBcsmCamelTDPDataList: []OBcsmCamelTDPData{
+					{
+						OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+						ServiceKey:                 1,
+						GsmSCFAddress:              "31611111111",
+						DefaultCallHandling:        DefaultCallHandlingContinueCall,
+					},
+				},
+				CamelCapabilityHandling: &bad,
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidCamelCapabilityHandling) {
+			t.Errorf("want ErrCamelInvalidCamelCapabilityHandling, got %v", err)
+		}
+	})
+
+	t.Run("InvalidTDPDataListSize_Empty", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{OCSI: &OCSI{}}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidTDPDataListSize) {
+			t.Errorf("want ErrCamelInvalidTDPDataListSize, got %v", err)
+		}
+	})
+
+	t.Run("InvalidMatchType", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					DestinationNumberCriteria: &DestinationNumberCriteria{
+						MatchType:             MatchType(99),
+						DestinationNumberList: []ISDNNumber{{Digits: "31611111111"}},
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidMatchType) {
+			t.Errorf("want ErrCamelInvalidMatchType, got %v", err)
+		}
+	})
+
+	t.Run("InvalidCallTypeCriteria", func(t *testing.T) {
+		bad := CallTypeCriteria(99)
+		in := &GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					CallTypeCriteria:           &bad,
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidCallTypeCriteria) {
+			t.Errorf("want ErrCamelInvalidCallTypeCriteria, got %v", err)
+		}
+	})
+
+	t.Run("MissingDestinationNumberCriteria", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					DestinationNumberCriteria: &DestinationNumberCriteria{
+						MatchType: MatchTypeInhibiting,
+					}, // no DestinationNumberList nor DestinationNumberLengthList
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelMissingDestinationNumberCriteria) {
+			t.Errorf("want ErrCamelMissingDestinationNumberCriteria, got %v", err)
+		}
+	})
+
+	t.Run("InvalidDestinationNumberLength", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					DestinationNumberCriteria: &DestinationNumberCriteria{
+						MatchType:                   MatchTypeInhibiting,
+						DestinationNumberLengthList: []int{16}, // >15 invalid
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidDestinationNumberLength) {
+			t.Errorf("want ErrCamelInvalidDestinationNumberLength, got %v", err)
+		}
+	})
+
+	t.Run("InvalidCauseValue", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					OCauseValueCriteria:        []int{200}, // >127 invalid
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidCauseValue) {
+			t.Errorf("want ErrCamelInvalidCauseValue, got %v", err)
+		}
+	})
+
+	t.Run("MissingDialledNumberInDCSI", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			DCSI: &DCSI{
+				DPAnalysedInfoCriteriaList: []DPAnalysedInfoCriterium{
+					{
+						ServiceKey:          1,
+						GsmSCFAddress:       "31611111111",
+						DefaultCallHandling: DefaultCallHandlingContinueCall,
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelMissingDialledNumber) {
+			t.Errorf("want ErrCamelMissingDialledNumber, got %v", err)
+		}
+	})
+
+	t.Run("EmptyDigitsInDestinationNumberList", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					DestinationNumberCriteria: &DestinationNumberCriteria{
+						MatchType:             MatchTypeInhibiting,
+						DestinationNumberList: []ISDNNumber{{Digits: ""}}, // empty
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelMissingDestinationNumber) {
+			t.Errorf("want ErrCamelMissingDestinationNumber, got %v", err)
+		}
+	})
+
+	t.Run("CauseValueListTooLarge", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					OCauseValueCriteria:        []int{1, 2, 3, 4, 5, 6}, // 6 entries > max 5
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidCauseValueListSize) {
+			t.Errorf("want ErrCamelInvalidCauseValueListSize, got %v", err)
+		}
+	})
+
+	t.Run("CriteriaListTooLarge", func(t *testing.T) {
+		big := make([]OBcsmCamelTDPCriteria, 11)
+		for i := range big {
+			big[i] = OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo}
+		}
+		in := &GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
+			t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
+		}
+	})
+}
+
+// TestCamelDecodeRejectsMalformedCauseValue crafts a wire GmscCamelSubscriptionInfo
+// with an empty CauseValue octet string (violating the SIZE(1) spec) and confirms
+// the decoder rejects it rather than silently normalizing it to 0.
+func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
+	t.Run("OCauseValue_Empty", func(t *testing.T) {
+		wire := gsm_map.GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: gsm_map.OBcsmCamelTDPCriteriaList{
+				{
+					OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+					OCauseValueCriteria: gsm_map.OCauseValueCriteria{
+						gsm_map.CauseValue{}, // zero octets — violates SIZE(1)
+					},
+				},
+			},
+		}
+		_, err := convertWireToGmscCamelSubInfo(&wire)
+		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
+			t.Errorf("want ErrCamelInvalidCauseValueOctetLength, got %v", err)
+		}
+	})
+
+	t.Run("OCauseValue_MultiOctet", func(t *testing.T) {
+		wire := gsm_map.GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: gsm_map.OBcsmCamelTDPCriteriaList{
+				{
+					OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+					OCauseValueCriteria: gsm_map.OCauseValueCriteria{
+						gsm_map.CauseValue{0x10, 0x20}, // 2 octets — violates SIZE(1)
+					},
+				},
+			},
+		}
+		_, err := convertWireToGmscCamelSubInfo(&wire)
+		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
+			t.Errorf("want ErrCamelInvalidCauseValueOctetLength, got %v", err)
+		}
+	})
+
+	t.Run("TCauseValue_Empty", func(t *testing.T) {
+		wire := gsm_map.GmscCamelSubscriptionInfo{
+			TBCSMCAMELTDPCriteriaList: gsm_map.TBCSMCAMELTDPCriteriaList{
+				{
+					TBCSMTriggerDetectionPoint: gsm_map.TBcsmTriggerDetectionPointTBusy,
+					TCauseValueCriteria: gsm_map.TCauseValueCriteria{
+						gsm_map.CauseValue{}, // zero octets
+					},
+				},
+			},
+		}
+		_, err := convertWireToGmscCamelSubInfo(&wire)
+		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
+			t.Errorf("want ErrCamelInvalidCauseValueOctetLength, got %v", err)
+		}
+	})
+}
+
+// TestCamelDecodeEnforcesDestinationNumberCriteriaListRule ensures the decoder
+// rejects a DestinationNumberCriteria with neither list populated, mirroring
+// the encoder's at-least-one-list requirement.
+func TestCamelDecodeEnforcesDestinationNumberCriteriaListRule(t *testing.T) {
+	dnc := &gsm_map.DestinationNumberCriteria{
+		MatchType: gsm_map.MatchTypeInhibiting,
+		// No DestinationNumberList nor DestinationNumberLengthList
+	}
+	wire := gsm_map.GmscCamelSubscriptionInfo{
+		OBcsmCamelTDPCriteriaList: gsm_map.OBcsmCamelTDPCriteriaList{
+			{
+				OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+				DestinationNumberCriteria:  dnc,
+			},
+		},
+	}
+	_, err := convertWireToGmscCamelSubInfo(&wire)
+	if !errors.Is(err, ErrCamelMissingDestinationNumberCriteria) {
+		t.Errorf("want ErrCamelMissingDestinationNumberCriteria, got %v", err)
+	}
+}
+
+// TestCamelDecodeRejectsInvalidServiceKey proves the decoder enforces the
+// 0..2147483647 ServiceKey range that the encoder requires, catching malformed
+// peer input that would otherwise surface as an out-of-range Go int64.
+func TestCamelDecodeRejectsInvalidServiceKey(t *testing.T) {
+	wire := gsm_map.GmscCamelSubscriptionInfo{
+		OCSI: &gsm_map.OCSI{
+			OBcsmCamelTDPDataList: gsm_map.OBcsmCamelTDPDataList{
+				{
+					OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+					ServiceKey:                 -1, // out of range
+					GsmSCFAddress:              gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x11, 0x11, 0x11, 0xf1},
+					DefaultCallHandling:        gsm_map.DefaultCallHandlingContinueCall,
+				},
+			},
+		},
+	}
+	_, err := convertWireToGmscCamelSubInfo(&wire)
+	if !errors.Is(err, ErrCamelInvalidServiceKey) {
+		t.Errorf("want ErrCamelInvalidServiceKey, got %v", err)
+	}
+}
+
+// TestCamelDecodeRejectsOversizedCriteriaList verifies that the decoder rejects
+// O-BCSM/T-BCSM CAMEL TDP criteria lists with more than 10 entries, matching
+// the SIZE(1..maxNumOfCamelTDPData) constraint from TS 29.002.
+func TestCamelDecodeRejectsOversizedCriteriaList(t *testing.T) {
+	big := make(gsm_map.OBcsmCamelTDPCriteriaList, 11)
+	for i := range big {
+		big[i] = gsm_map.OBcsmCamelTDPCriteria{
+			OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+		}
+	}
+	wire := gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
+	_, err := convertWireToGmscCamelSubInfo(&wire)
+	if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
+		t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
+	}
+}
