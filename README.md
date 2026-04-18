@@ -20,6 +20,11 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **PurgeMS** | 67 | `PurgeMS` | `PurgeMSRes` |
 | **SendAuthenticationInfo** (SAI) | 56 | `SendAuthenticationInfo` | `SendAuthenticationInfoRes` |
 | **ProvideSubscriberInfo** (PSI) | 70 | `ProvideSubscriberInfo` | `ProvideSubscriberInfoRes` |
+| **CancelLocation** | 3 | `CancelLocation` | `CancelLocationRes` |
+| _InsertSubscriberData_ | 7 | _planned_ | _planned_ |
+| _SubscriberLocationReport_ | 83 | _planned_ | _planned_ |
+| _SendRoutingInfoForLCS_ | 85 | _planned_ | _planned_ |
+| _ProvideSubscriberLocation_ | 86 | _planned_ | _planned_ |
 
 ## Install
 
@@ -274,6 +279,55 @@ if resp.SubscriberInfo.LocationInformation != nil {
 }
 if resp.SubscriberInfo.SubscriberState != nil {
     fmt.Println("State:", resp.SubscriberInfo.SubscriberState.State)
+}
+```
+
+### CancelLocation (opCode 3)
+
+```go
+// Build a CancelLocation request. CancelLocation is sent by the HLR to the
+// VLR/SGSN/MME to remove a subscriber's location record — e.g. after a
+// successful location update in another VLR, on subscription withdrawal,
+// or on initial EPS attach. The Identity field is a CHOICE: either an IMSI
+// alone, or an IMSI paired with the LMSI previously assigned by the VLR.
+ct := gsmmap.CancellationTypeUpdateProcedure
+tu := gsmmap.TypeOfUpdateSgsnChange
+
+cl := &gsmmap.CancelLocation{
+    Identity:         gsmmap.CancelLocationIdentity{IMSI: "204080012345678"},
+    CancellationType: &ct,
+    TypeOfUpdate:     &tu,
+    NewMSCNumber:     "31611111111",
+    NewVLRNumber:     "31622222222",
+    NewLMSI:          gsmmap.HexBytes{0x11, 0x22, 0x33, 0x44},
+    ReattachRequired: true,
+}
+data, err := cl.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+
+// Build a CancelLocation using the IMSI-with-LMSI alternative of the
+// Identity CHOICE — often used when the HLR already knows the LMSI the
+// VLR previously assigned to the subscriber.
+clWithLmsi := &gsmmap.CancelLocation{
+    Identity: gsmmap.CancelLocationIdentity{
+        IMSIWithLMSI: &gsmmap.CancelLocationIMSIWithLMSI{
+            IMSI: "204080012345678",
+            LMSI: gsmmap.HexBytes{0xA1, 0xB2, 0xC3, 0xD4}, // 4 octets
+        },
+    },
+}
+if _, err := clWithLmsi.Marshal(); err != nil {
+    log.Fatal(err)
+}
+
+// Parse a CancelLocation response received from the VLR/SGSN/MME. The wire
+// response is effectively empty in practice — only an optional
+// ExtensionContainer is defined in 3GPP TS 29.002.
+respBytes := []byte{ /* CancelLocation-Res BER bytes */ }
+if _, err := gsmmap.ParseCancelLocationRes(respBytes); err != nil {
+    log.Fatal(err)
 }
 ```
 

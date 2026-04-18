@@ -1067,6 +1067,68 @@ type SendAuthenticationInfoRes struct {
 	UeUsageType              HexBytes               // [3] UE-UsageType, exactly 4 octets
 }
 
+// CancellationType per 3GPP TS 29.002 (opCode 3). Indicates why the HLR
+// is asking the VLR/SGSN to cancel the subscriber's location record.
+type CancellationType int
+
+const (
+	CancellationTypeUpdateProcedure        CancellationType = 0
+	CancellationTypeSubscriptionWithdraw   CancellationType = 1
+	CancellationTypeInitialAttachProcedure CancellationType = 2
+)
+
+// TypeOfUpdate per 3GPP TS 29.002 (opCode 3). This field is only valid
+// when CancellationType is updateProcedure or initialAttachProcedure.
+// The constraint is enforced on both the encode and decode paths and
+// returns ErrCancelLocTypeOfUpdateNotApplicable when violated.
+type TypeOfUpdate int
+
+const (
+	TypeOfUpdateSgsnChange TypeOfUpdate = 0
+	TypeOfUpdateMmeChange  TypeOfUpdate = 1
+)
+
+// CancelLocationIdentity is the CHOICE between IMSI alone and IMSI+LMSI.
+// Exactly one of IMSI or IMSIWithLMSI must be set when encoding.
+type CancelLocationIdentity struct {
+	IMSI         string                   // alternative: imsi (TBCD)
+	IMSIWithLMSI *CancelLocationIMSIWithLMSI // alternative: imsi-WithLMSI
+}
+
+// CancelLocationIMSIWithLMSI carries both an IMSI and the LMSI assigned
+// by the VLR for that subscriber.
+type CancelLocationIMSIWithLMSI struct {
+	IMSI string   // mandatory (TBCD)
+	LMSI HexBytes // mandatory, 4 octets
+}
+
+// CancelLocation represents a CancelLocation request (opCode 3) per
+// 3GPP TS 29.002. It is sent by the HLR to the VLR/SGSN to remove the
+// subscriber's location record — e.g. after a successful location update
+// in another VLR, on subscription withdrawal, or on initial EPS attach.
+type CancelLocation struct {
+	Identity         CancelLocationIdentity // mandatory CHOICE
+	CancellationType *CancellationType      // optional ENUMERATED
+
+	// Optional fields (post-extension marker).
+	TypeOfUpdate                  *TypeOfUpdate // [0] ENUMERATED
+	MtrfSupportedAndAuthorized    bool          // [1] NULL
+	MtrfSupportedAndNotAuthorized bool          // [2] NULL (mutually exclusive with the above)
+	NewMSCNumber                  string        // [3] ISDN-AddressString
+	NewMSCNumberNature            uint8         // address nature indicator (default: International)
+	NewMSCNumberPlan              uint8         // numbering plan indicator (default: ISDN)
+	NewVLRNumber                  string        // [4] ISDN-AddressString
+	NewVLRNumberNature            uint8         // address nature indicator (default: International)
+	NewVLRNumberPlan              uint8         // numbering plan indicator (default: ISDN)
+	NewLMSI                       HexBytes      // [5] LMSI, 4 octets when present
+	ReattachRequired              bool          // [6] NULL
+}
+
+// CancelLocationRes represents a CancelLocation response (opCode 3) per
+// 3GPP TS 29.002. The response body carries only an optional
+// ExtensionContainer; the wire response is effectively empty in practice.
+type CancelLocationRes struct{}
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -1115,4 +1177,14 @@ var (
 	ErrPsiMissingIMSI         = errors.New("psi: IMSI is empty")
 	ErrPsiInvalidLMSI         = errors.New("psi: LMSI, if set, must be exactly 4 octets")
 	ErrPsiInvalidCallPriority = errors.New("psi: CallPriority must be 0..15")
+
+	ErrCancelLocIdentityChoiceNoAlternative = errors.New("cancelLocation: Identity CHOICE has no alternative set")
+	ErrCancelLocIdentityChoiceMultiple      = errors.New("cancelLocation: Identity CHOICE has multiple alternatives set")
+	ErrCancelLocIdentityMissingIMSI         = errors.New("cancelLocation: IMSIWithLMSI.IMSI is empty")
+	ErrCancelLocIdentityInvalidLMSI         = errors.New("cancelLocation: IMSIWithLMSI.LMSI must be exactly 4 octets")
+	ErrCancelLocInvalidCancellationType     = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2)")
+	ErrCancelLocInvalidTypeOfUpdate         = errors.New("cancelLocation: TypeOfUpdate must be one of sgsn-change(0), mme-change(1)")
+	ErrCancelLocTypeOfUpdateNotApplicable   = errors.New("cancelLocation: TypeOfUpdate is only valid when CancellationType is updateProcedure or initialAttachProcedure")
+	ErrCancelLocMtrfBothSet                 = errors.New("cancelLocation: MtrfSupportedAndAuthorized and MtrfSupportedAndNotAuthorized are mutually exclusive")
+	ErrCancelLocInvalidNewLMSI              = errors.New("cancelLocation: NewLMSI, if set, must be exactly 4 octets")
 )

@@ -7,6 +7,7 @@ import (
 	"math"
 	"testing"
 
+	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/google/go-cmp/cmp"
 	"github.com/gomaja/go-asn1-gsmmap/address"
 )
@@ -3388,6 +3389,388 @@ func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
 		}
 		if !errors.Is(err, ErrPsiInvalidCallPriority) {
 			t.Errorf("expected ErrPsiInvalidCallPriority, got: %v", err)
+		}
+	})
+}
+
+// --- CancelLocation (opCode 3) tests ---
+
+func TestCancelLocationTypesCompile(t *testing.T) {
+	var _ CancelLocation
+	var _ CancelLocationRes
+	var _ CancelLocationIdentity
+	var _ CancelLocationIMSIWithLMSI
+	var _ CancellationType
+	var _ TypeOfUpdate
+}
+
+func TestCancelLocationMandatoryRoundTrip(t *testing.T) {
+	in := &CancelLocation{
+		Identity: CancelLocationIdentity{IMSI: "204080012345678"},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseCancelLocation(data)
+	if err != nil {
+		t.Fatalf("ParseCancelLocation: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestCancelLocationIdentityCHOICE_IMSIWithLMSI(t *testing.T) {
+	in := &CancelLocation{
+		Identity: CancelLocationIdentity{
+			IMSIWithLMSI: &CancelLocationIMSIWithLMSI{
+				IMSI: "204080012345678",
+				LMSI: HexBytes{0xAA, 0xBB, 0xCC, 0xDD},
+			},
+		},
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseCancelLocation(data)
+	if err != nil {
+		t.Fatalf("ParseCancelLocation: %v", err)
+	}
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestCancelLocationFullStressRoundTrip(t *testing.T) {
+	ct := CancellationTypeUpdateProcedure
+	tu := TypeOfUpdateMmeChange
+
+	in := &CancelLocation{
+		Identity:                      CancelLocationIdentity{IMSI: "204080012345678"},
+		CancellationType:              &ct,
+		TypeOfUpdate:                  &tu,
+		MtrfSupportedAndAuthorized:    true,
+		MtrfSupportedAndNotAuthorized: false,
+		NewMSCNumber:                  "31611111111",
+		NewVLRNumber:                  "31622222222",
+		NewLMSI:                       HexBytes{0x11, 0x22, 0x33, 0x44},
+		ReattachRequired:              true,
+	}
+
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseCancelLocation(data)
+	if err != nil {
+		t.Fatalf("ParseCancelLocation: %v", err)
+	}
+
+	in.NewMSCNumberNature = address.NatureInternational
+	in.NewMSCNumberPlan = address.PlanISDN
+	in.NewVLRNumberNature = address.NatureInternational
+	in.NewVLRNumberPlan = address.PlanISDN
+
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestCancelLocationCancellationTypes(t *testing.T) {
+	cases := []struct {
+		name string
+		ct   CancellationType
+	}{
+		{"UpdateProcedure", CancellationTypeUpdateProcedure},
+		{"SubscriptionWithdraw", CancellationTypeSubscriptionWithdraw},
+		{"InitialAttachProcedure", CancellationTypeInitialAttachProcedure},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ct := tc.ct
+			in := &CancelLocation{
+				Identity:         CancelLocationIdentity{IMSI: "204080012345678"},
+				CancellationType: &ct,
+			}
+			data, err := in.Marshal()
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			got, err := ParseCancelLocation(data)
+			if err != nil {
+				t.Fatalf("ParseCancelLocation: %v", err)
+			}
+			if got.CancellationType == nil || *got.CancellationType != tc.ct {
+				t.Errorf("CancellationType round-trip mismatch: want %v, got %v", tc.ct, got.CancellationType)
+			}
+		})
+	}
+}
+
+func TestCancelLocationTypeOfUpdates(t *testing.T) {
+	// TypeOfUpdate is only valid with updateProcedure or
+	// initialAttachProcedure per TS 29.002; exercise both enum values
+	// paired with a compatible CancellationType.
+	cases := []struct {
+		name string
+		ct   CancellationType
+		tu   TypeOfUpdate
+	}{
+		{"UpdateProcedure_SgsnChange", CancellationTypeUpdateProcedure, TypeOfUpdateSgsnChange},
+		{"UpdateProcedure_MmeChange", CancellationTypeUpdateProcedure, TypeOfUpdateMmeChange},
+		{"InitialAttach_SgsnChange", CancellationTypeInitialAttachProcedure, TypeOfUpdateSgsnChange},
+		{"InitialAttach_MmeChange", CancellationTypeInitialAttachProcedure, TypeOfUpdateMmeChange},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ct := tc.ct
+			tu := tc.tu
+			in := &CancelLocation{
+				Identity:         CancelLocationIdentity{IMSI: "204080012345678"},
+				CancellationType: &ct,
+				TypeOfUpdate:     &tu,
+			}
+			data, err := in.Marshal()
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			got, err := ParseCancelLocation(data)
+			if err != nil {
+				t.Fatalf("ParseCancelLocation: %v", err)
+			}
+			if got.TypeOfUpdate == nil || *got.TypeOfUpdate != tc.tu {
+				t.Errorf("TypeOfUpdate round-trip mismatch: want %v, got %v", tc.tu, got.TypeOfUpdate)
+			}
+		})
+	}
+}
+
+func TestCancelLocationResRoundTrip(t *testing.T) {
+	in := &CancelLocationRes{}
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	got, err := ParseCancelLocationRes(data)
+	if err != nil {
+		t.Fatalf("ParseCancelLocationRes: %v", err)
+	}
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round-trip diff (-want +got):\n%s", diff)
+	}
+}
+
+func TestCancelLocationValidationErrors(t *testing.T) {
+	t.Run("IdentityChoiceNoAlternative", func(t *testing.T) {
+		in := &CancelLocation{}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for missing Identity")
+		}
+		if !errors.Is(err, ErrCancelLocIdentityChoiceNoAlternative) {
+			t.Errorf("expected ErrCancelLocIdentityChoiceNoAlternative, got: %v", err)
+		}
+	})
+
+	t.Run("IdentityChoiceMultiple", func(t *testing.T) {
+		in := &CancelLocation{
+			Identity: CancelLocationIdentity{
+				IMSI: "204080012345678",
+				IMSIWithLMSI: &CancelLocationIMSIWithLMSI{
+					IMSI: "204080012345678",
+					LMSI: HexBytes{0x01, 0x02, 0x03, 0x04},
+				},
+			},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for multiple Identity alternatives")
+		}
+		if !errors.Is(err, ErrCancelLocIdentityChoiceMultiple) {
+			t.Errorf("expected ErrCancelLocIdentityChoiceMultiple, got: %v", err)
+		}
+	})
+
+	t.Run("IMSIWithLMSI_EmptyIMSI", func(t *testing.T) {
+		in := &CancelLocation{
+			Identity: CancelLocationIdentity{
+				IMSIWithLMSI: &CancelLocationIMSIWithLMSI{
+					IMSI: "", // empty — must be rejected
+					LMSI: HexBytes{0x01, 0x02, 0x03, 0x04},
+				},
+			},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for empty nested IMSI")
+		}
+		if !errors.Is(err, ErrCancelLocIdentityMissingIMSI) {
+			t.Errorf("expected ErrCancelLocIdentityMissingIMSI, got: %v", err)
+		}
+	})
+
+	t.Run("IMSIWithLMSI_WrongLMSILength", func(t *testing.T) {
+		in := &CancelLocation{
+			Identity: CancelLocationIdentity{
+				IMSIWithLMSI: &CancelLocationIMSIWithLMSI{
+					IMSI: "204080012345678",
+					LMSI: HexBytes{0x01, 0x02, 0x03}, // 3 octets, invalid
+				},
+			},
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for wrong LMSI length")
+		}
+		if !errors.Is(err, ErrCancelLocIdentityInvalidLMSI) {
+			t.Errorf("expected ErrCancelLocIdentityInvalidLMSI, got: %v", err)
+		}
+	})
+
+	t.Run("InvalidCancellationType", func(t *testing.T) {
+		bad := CancellationType(99)
+		in := &CancelLocation{
+			Identity:         CancelLocationIdentity{IMSI: "204080012345678"},
+			CancellationType: &bad,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for invalid CancellationType")
+		}
+		if !errors.Is(err, ErrCancelLocInvalidCancellationType) {
+			t.Errorf("expected ErrCancelLocInvalidCancellationType, got: %v", err)
+		}
+	})
+
+	t.Run("InvalidTypeOfUpdate", func(t *testing.T) {
+		ct := CancellationTypeUpdateProcedure
+		bad := TypeOfUpdate(99)
+		in := &CancelLocation{
+			Identity:         CancelLocationIdentity{IMSI: "204080012345678"},
+			CancellationType: &ct,
+			TypeOfUpdate:     &bad,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for invalid TypeOfUpdate")
+		}
+		if !errors.Is(err, ErrCancelLocInvalidTypeOfUpdate) {
+			t.Errorf("expected ErrCancelLocInvalidTypeOfUpdate, got: %v", err)
+		}
+	})
+
+	t.Run("TypeOfUpdateNotApplicable_NoCancellationType", func(t *testing.T) {
+		tu := TypeOfUpdateSgsnChange
+		in := &CancelLocation{
+			Identity:     CancelLocationIdentity{IMSI: "204080012345678"},
+			TypeOfUpdate: &tu,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for TypeOfUpdate without CancellationType")
+		}
+		if !errors.Is(err, ErrCancelLocTypeOfUpdateNotApplicable) {
+			t.Errorf("expected ErrCancelLocTypeOfUpdateNotApplicable, got: %v", err)
+		}
+	})
+
+	t.Run("TypeOfUpdateNotApplicable_SubscriptionWithdraw", func(t *testing.T) {
+		ct := CancellationTypeSubscriptionWithdraw
+		tu := TypeOfUpdateSgsnChange
+		in := &CancelLocation{
+			Identity:         CancelLocationIdentity{IMSI: "204080012345678"},
+			CancellationType: &ct,
+			TypeOfUpdate:     &tu,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for TypeOfUpdate with subscriptionWithdraw")
+		}
+		if !errors.Is(err, ErrCancelLocTypeOfUpdateNotApplicable) {
+			t.Errorf("expected ErrCancelLocTypeOfUpdateNotApplicable, got: %v", err)
+		}
+	})
+
+	t.Run("MtrfBothSet", func(t *testing.T) {
+		in := &CancelLocation{
+			Identity:                      CancelLocationIdentity{IMSI: "204080012345678"},
+			MtrfSupportedAndAuthorized:    true,
+			MtrfSupportedAndNotAuthorized: true,
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for both MTRF flags set")
+		}
+		if !errors.Is(err, ErrCancelLocMtrfBothSet) {
+			t.Errorf("expected ErrCancelLocMtrfBothSet, got: %v", err)
+		}
+	})
+
+	t.Run("InvalidNewLMSI", func(t *testing.T) {
+		in := &CancelLocation{
+			Identity: CancelLocationIdentity{IMSI: "204080012345678"},
+			NewLMSI:  HexBytes{0x01, 0x02, 0x03}, // 3 octets
+		}
+		_, err := in.Marshal()
+		if err == nil {
+			t.Fatal("expected error for invalid NewLMSI length")
+		}
+		if !errors.Is(err, ErrCancelLocInvalidNewLMSI) {
+			t.Errorf("expected ErrCancelLocInvalidNewLMSI, got: %v", err)
+		}
+	})
+}
+
+// TestCancelLocationDecodeRejectsEmptyIMSI builds wire CancelLocationArgs
+// whose Identity CHOICE carries an empty IMSI under each alternative,
+// marshals them via go-asn1 directly, and confirms ParseCancelLocation
+// rejects both — verifying decoder/encoder symmetry against crafted
+// peer input. The two alternatives use different sentinels: the top-level
+// imsi alternative is indistinguishable from "no alternative set" and
+// returns ErrCancelLocIdentityChoiceNoAlternative, while the nested
+// imsi-WithLMSI alternative returns ErrCancelLocIdentityMissingIMSI to
+// distinguish the mandatory-nested-field violation.
+func TestCancelLocationDecodeRejectsEmptyIMSI(t *testing.T) {
+	t.Run("ImsiAlternative", func(t *testing.T) {
+		arg := gsm_map.CancelLocationArg{
+			Identity: gsm_map.NewIdentityImsi(gsm_map.IMSI{}), // empty
+		}
+		data, err := arg.MarshalBER()
+		if err != nil {
+			t.Fatalf("MarshalBER: %v", err)
+		}
+		_, err = ParseCancelLocation(data)
+		if err == nil {
+			t.Fatal("expected error for empty IMSI on decode")
+		}
+		if !errors.Is(err, ErrCancelLocIdentityChoiceNoAlternative) {
+			t.Errorf("expected ErrCancelLocIdentityChoiceNoAlternative, got: %v", err)
+		}
+	})
+
+	t.Run("ImsiWithLMSIAlternative", func(t *testing.T) {
+		arg := gsm_map.CancelLocationArg{
+			Identity: gsm_map.NewIdentityImsiWithLMSI(gsm_map.IMSIWithLMSI{
+				Imsi: gsm_map.IMSI{}, // empty — not allowed by spec
+				Lmsi: gsm_map.LMSI{0x01, 0x02, 0x03, 0x04},
+			}),
+		}
+		data, err := arg.MarshalBER()
+		if err != nil {
+			t.Fatalf("MarshalBER: %v", err)
+		}
+		_, err = ParseCancelLocation(data)
+		if err == nil {
+			t.Fatal("expected error for empty nested IMSI on decode")
+		}
+		if !errors.Is(err, ErrCancelLocIdentityMissingIMSI) {
+			t.Errorf("expected ErrCancelLocIdentityMissingIMSI, got: %v", err)
 		}
 	})
 }
