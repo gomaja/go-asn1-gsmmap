@@ -1078,9 +1078,9 @@ const (
 )
 
 // TypeOfUpdate per 3GPP TS 29.002 (opCode 3). This field is only valid
-// when CancellationType is updateProcedure or initialAttachProcedure;
-// validateCancelLocation enforces this constraint on both encode and
-// decode and returns ErrCancelLocTypeOfUpdateNotApplicable otherwise.
+// when CancellationType is updateProcedure or initialAttachProcedure.
+// The constraint is enforced on both the encode and decode paths and
+// returns ErrCancelLocTypeOfUpdateNotApplicable when violated.
 type TypeOfUpdate int
 
 const (
