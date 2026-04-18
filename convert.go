@@ -5397,6 +5397,9 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}
+		if imsi == "" {
+			return CancelLocationIdentity{}, ErrCancelLocIdentityMissingIMSI
+		}
 		lmsi := []byte(id.ImsiWithLMSI.Lmsi)
 		if len(lmsi) != 4 {
 			return CancelLocationIdentity{}, ErrCancelLocIdentityMissingLMSI
