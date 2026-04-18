@@ -3796,7 +3796,7 @@ func TestCamelTypesCompile(t *testing.T) {
 	var _ MatchType
 }
 
-// cameRoundTrip encodes the public CAMEL info to wire, decodes it back,
+// camelRoundTrip encodes the public CAMEL info to wire, decodes it back,
 // and returns the result — a focused helper for the CAMEL tests below.
 func camelRoundTrip(t *testing.T, in *GmscCamelSubscriptionInfo) *GmscCamelSubscriptionInfo {
 	t.Helper()
@@ -4236,4 +4236,166 @@ func TestCamelValidationErrors(t *testing.T) {
 			t.Errorf("want ErrCamelMissingDialledNumber, got %v", err)
 		}
 	})
+
+	t.Run("EmptyDigitsInDestinationNumberList", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					DestinationNumberCriteria: &DestinationNumberCriteria{
+						MatchType:             MatchTypeInhibiting,
+						DestinationNumberList: []ISDNNumber{{Digits: ""}}, // empty
+					},
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelMissingDestinationNumber) {
+			t.Errorf("want ErrCamelMissingDestinationNumber, got %v", err)
+		}
+	})
+
+	t.Run("CauseValueListTooLarge", func(t *testing.T) {
+		in := &GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{
+				{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					OCauseValueCriteria:        []int{1, 2, 3, 4, 5, 6}, // 6 entries > max 5
+				},
+			},
+		}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidCauseValueListSize) {
+			t.Errorf("want ErrCamelInvalidCauseValueListSize, got %v", err)
+		}
+	})
+
+	t.Run("CriteriaListTooLarge", func(t *testing.T) {
+		big := make([]OBcsmCamelTDPCriteria, 11)
+		for i := range big {
+			big[i] = OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo}
+		}
+		in := &GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
+		_, err := convertGmscCamelSubInfoToWire(in)
+		if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
+			t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
+		}
+	})
+}
+
+// TestCamelDecodeRejectsMalformedCauseValue crafts a wire GmscCamelSubscriptionInfo
+// with an empty CauseValue octet string (violating the SIZE(1) spec) and confirms
+// the decoder rejects it rather than silently normalizing it to 0.
+func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
+	t.Run("OCauseValue_Empty", func(t *testing.T) {
+		wire := gsm_map.GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: gsm_map.OBcsmCamelTDPCriteriaList{
+				{
+					OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+					OCauseValueCriteria: gsm_map.OCauseValueCriteria{
+						gsm_map.CauseValue{}, // zero octets — violates SIZE(1)
+					},
+				},
+			},
+		}
+		_, err := convertWireToGmscCamelSubInfo(&wire)
+		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
+			t.Errorf("want ErrCamelInvalidCauseValueOctetLength, got %v", err)
+		}
+	})
+
+	t.Run("OCauseValue_MultiOctet", func(t *testing.T) {
+		wire := gsm_map.GmscCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: gsm_map.OBcsmCamelTDPCriteriaList{
+				{
+					OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+					OCauseValueCriteria: gsm_map.OCauseValueCriteria{
+						gsm_map.CauseValue{0x10, 0x20}, // 2 octets — violates SIZE(1)
+					},
+				},
+			},
+		}
+		_, err := convertWireToGmscCamelSubInfo(&wire)
+		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
+			t.Errorf("want ErrCamelInvalidCauseValueOctetLength, got %v", err)
+		}
+	})
+
+	t.Run("TCauseValue_Empty", func(t *testing.T) {
+		wire := gsm_map.GmscCamelSubscriptionInfo{
+			TBCSMCAMELTDPCriteriaList: gsm_map.TBCSMCAMELTDPCriteriaList{
+				{
+					TBCSMTriggerDetectionPoint: gsm_map.TBcsmTriggerDetectionPointTBusy,
+					TCauseValueCriteria: gsm_map.TCauseValueCriteria{
+						gsm_map.CauseValue{}, // zero octets
+					},
+				},
+			},
+		}
+		_, err := convertWireToGmscCamelSubInfo(&wire)
+		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
+			t.Errorf("want ErrCamelInvalidCauseValueOctetLength, got %v", err)
+		}
+	})
+}
+
+// TestCamelDecodeEnforcesDestinationNumberCriteriaListRule ensures the decoder
+// rejects a DestinationNumberCriteria with neither list populated, mirroring
+// the encoder's at-least-one-list requirement.
+func TestCamelDecodeEnforcesDestinationNumberCriteriaListRule(t *testing.T) {
+	dnc := &gsm_map.DestinationNumberCriteria{
+		MatchType: gsm_map.MatchTypeInhibiting,
+		// No DestinationNumberList nor DestinationNumberLengthList
+	}
+	wire := gsm_map.GmscCamelSubscriptionInfo{
+		OBcsmCamelTDPCriteriaList: gsm_map.OBcsmCamelTDPCriteriaList{
+			{
+				OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+				DestinationNumberCriteria:  dnc,
+			},
+		},
+	}
+	_, err := convertWireToGmscCamelSubInfo(&wire)
+	if !errors.Is(err, ErrCamelMissingDestinationNumberCriteria) {
+		t.Errorf("want ErrCamelMissingDestinationNumberCriteria, got %v", err)
+	}
+}
+
+// TestCamelDecodeRejectsInvalidServiceKey proves the decoder enforces the
+// 0..2147483647 ServiceKey range that the encoder requires, catching malformed
+// peer input that would otherwise surface as an out-of-range Go int64.
+func TestCamelDecodeRejectsInvalidServiceKey(t *testing.T) {
+	wire := gsm_map.GmscCamelSubscriptionInfo{
+		OCSI: &gsm_map.OCSI{
+			OBcsmCamelTDPDataList: gsm_map.OBcsmCamelTDPDataList{
+				{
+					OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+					ServiceKey:                 -1, // out of range
+					GsmSCFAddress:              gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x11, 0x11, 0x11, 0xf1},
+					DefaultCallHandling:        gsm_map.DefaultCallHandlingContinueCall,
+				},
+			},
+		},
+	}
+	_, err := convertWireToGmscCamelSubInfo(&wire)
+	if !errors.Is(err, ErrCamelInvalidServiceKey) {
+		t.Errorf("want ErrCamelInvalidServiceKey, got %v", err)
+	}
+}
+
+// TestCamelDecodeRejectsOversizedCriteriaList verifies that the decoder rejects
+// O-BCSM/T-BCSM CAMEL TDP criteria lists with more than 10 entries, matching
+// the SIZE(1..maxNumOfCamelTDPData) constraint from TS 29.002.
+func TestCamelDecodeRejectsOversizedCriteriaList(t *testing.T) {
+	big := make(gsm_map.OBcsmCamelTDPCriteriaList, 11)
+	for i := range big {
+		big[i] = gsm_map.OBcsmCamelTDPCriteria{
+			OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+		}
+	}
+	wire := gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
+	_, err := convertWireToGmscCamelSubInfo(&wire)
+	if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
+		t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
+	}
 }

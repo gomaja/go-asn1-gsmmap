@@ -3233,10 +3233,16 @@ func convertOBcsmTDPDataToWire(d *OBcsmCamelTDPData) (gsm_map.OBcsmCamelTDPData,
 }
 
 // convertWireToOBcsmTDPData decodes a single wire O-BCSM TDP entry.
+// Mirrors the encoder's range/mandatory checks to reject malformed peer
+// input rather than silently surfacing an invalid struct to the caller.
 func convertWireToOBcsmTDPData(w *gsm_map.OBcsmCamelTDPData) (OBcsmCamelTDPData, error) {
 	tdp := OBcsmTriggerDetectionPoint(w.OBcsmTriggerDetectionPoint)
 	if !isValidOBcsmTDP(tdp) {
 		return OBcsmCamelTDPData{}, ErrCamelInvalidOTriggerPoint
+	}
+	sk := int64(w.ServiceKey)
+	if sk < 0 || sk > 2147483647 {
+		return OBcsmCamelTDPData{}, ErrCamelInvalidServiceKey
 	}
 	dch := DefaultCallHandling(w.DefaultCallHandling)
 	if !isValidDefaultCallHandling(dch) {
@@ -3246,9 +3252,12 @@ func convertWireToOBcsmTDPData(w *gsm_map.OBcsmCamelTDPData) (OBcsmCamelTDPData,
 	if err != nil {
 		return OBcsmCamelTDPData{}, fmt.Errorf("decoding GsmSCFAddress: %w", err)
 	}
+	if digits == "" {
+		return OBcsmCamelTDPData{}, ErrCamelMissingGsmSCFAddress
+	}
 	return OBcsmCamelTDPData{
 		OBcsmTriggerDetectionPoint: tdp,
-		ServiceKey:                 int64(w.ServiceKey),
+		ServiceKey:                 sk,
 		GsmSCFAddress:              digits,
 		GsmSCFAddressNature:        nature,
 		GsmSCFAddressPlan:          plan,
@@ -3288,6 +3297,10 @@ func convertWireToTBcsmTDPData(w *gsm_map.TBcsmCamelTDPData) (TBcsmCamelTDPData,
 	if !isValidTBcsmTDP(tdp) {
 		return TBcsmCamelTDPData{}, ErrCamelInvalidTTriggerPoint
 	}
+	sk := int64(w.ServiceKey)
+	if sk < 0 || sk > 2147483647 {
+		return TBcsmCamelTDPData{}, ErrCamelInvalidServiceKey
+	}
 	dch := DefaultCallHandling(w.DefaultCallHandling)
 	if !isValidDefaultCallHandling(dch) {
 		return TBcsmCamelTDPData{}, ErrCamelInvalidDefaultCallHandling
@@ -3296,9 +3309,12 @@ func convertWireToTBcsmTDPData(w *gsm_map.TBcsmCamelTDPData) (TBcsmCamelTDPData,
 	if err != nil {
 		return TBcsmCamelTDPData{}, fmt.Errorf("decoding GsmSCFAddress: %w", err)
 	}
+	if digits == "" {
+		return TBcsmCamelTDPData{}, ErrCamelMissingGsmSCFAddress
+	}
 	return TBcsmCamelTDPData{
 		TBcsmTriggerDetectionPoint: tdp,
-		ServiceKey:                 int64(w.ServiceKey),
+		ServiceKey:                 sk,
 		GsmSCFAddress:              digits,
 		GsmSCFAddressNature:        nature,
 		GsmSCFAddressPlan:          plan,
@@ -3322,7 +3338,7 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 		list := make(gsm_map.DestinationNumberList, len(c.DestinationNumberList))
 		for i, n := range c.DestinationNumberList {
 			if n.Digits == "" {
-				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, ErrCamelMissingDialledNumber)
+				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, ErrCamelMissingDestinationNumber)
 			}
 			enc, err := encodeAddressField(n.Digits, n.Nature, n.Plan)
 			if err != nil {
@@ -3346,10 +3362,15 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 }
 
 // convertWireToDestinationNumberCriteria decodes the criteria SEQUENCE.
+// Mirrors the encoder's "at least one list" rule so malformed peer input
+// can't produce a criteria SEQUENCE with neither list populated.
 func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria) (*DestinationNumberCriteria, error) {
 	mt := MatchType(w.MatchType)
 	if !isValidMatchType(mt) {
 		return nil, ErrCamelInvalidMatchType
+	}
+	if len(w.DestinationNumberList) == 0 && len(w.DestinationNumberLengthList) == 0 {
+		return nil, ErrCamelMissingDestinationNumberCriteria
 	}
 	out := &DestinationNumberCriteria{MatchType: mt}
 	if len(w.DestinationNumberList) > 0 {
@@ -3358,6 +3379,9 @@ func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria
 			digits, nature, plan, err := decodeAddressField(n)
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
+			}
+			if digits == "" {
+				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, ErrCamelMissingDestinationNumber)
 			}
 			list[i] = ISDNNumber{Digits: digits, Nature: nature, Plan: plan}
 		}
@@ -3410,6 +3434,9 @@ func convertOBcsmTDPCriteriaToWire(c *OBcsmCamelTDPCriteria) (gsm_map.OBcsmCamel
 		out.CallTypeCriteria = &ctc
 	}
 	if len(c.OCauseValueCriteria) > 0 {
+		if len(c.OCauseValueCriteria) > 5 {
+			return gsm_map.OBcsmCamelTDPCriteria{}, ErrCamelInvalidCauseValueListSize
+		}
 		list := make(gsm_map.OCauseValueCriteria, len(c.OCauseValueCriteria))
 		for i, v := range c.OCauseValueCriteria {
 			if v < 0 || v > 127 {
@@ -3455,13 +3482,18 @@ func convertWireToOBcsmTDPCriteria(w *gsm_map.OBcsmCamelTDPCriteria) (OBcsmCamel
 		out.CallTypeCriteria = &ctc
 	}
 	if len(w.OCauseValueCriteria) > 0 {
+		if len(w.OCauseValueCriteria) > 5 {
+			return OBcsmCamelTDPCriteria{}, ErrCamelInvalidCauseValueListSize
+		}
 		list := make([]int, len(w.OCauseValueCriteria))
 		for i, b := range w.OCauseValueCriteria {
-			if len(b) == 0 {
-				continue
+			// CauseValue is OCTET STRING (SIZE(1)); reject any other length
+			// rather than silently normalising missing/extra octets.
+			if len(b) != 1 {
+				return OBcsmCamelTDPCriteria{}, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValueOctetLength)
 			}
 			v := int(b[0])
-			if v < 0 || v > 127 {
+			if v > 127 {
 				return OBcsmCamelTDPCriteria{}, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list[i] = v
@@ -3491,6 +3523,9 @@ func convertTBcsmTDPCriteriaToWire(c *TBcsmCamelTDPCriteria) (gsm_map.TBCSMCAMEL
 		out.BasicServiceCriteria = bsc
 	}
 	if len(c.TCauseValueCriteria) > 0 {
+		if len(c.TCauseValueCriteria) > 5 {
+			return gsm_map.TBCSMCAMELTDPCriteria{}, ErrCamelInvalidCauseValueListSize
+		}
 		list := make(gsm_map.TCauseValueCriteria, len(c.TCauseValueCriteria))
 		for i, v := range c.TCauseValueCriteria {
 			if v < 0 || v > 127 {
@@ -3522,13 +3557,16 @@ func convertWireToTBcsmTDPCriteria(w *gsm_map.TBCSMCAMELTDPCriteria) (TBcsmCamel
 		out.BasicServiceCriteria = bsc
 	}
 	if len(w.TCauseValueCriteria) > 0 {
+		if len(w.TCauseValueCriteria) > 5 {
+			return TBcsmCamelTDPCriteria{}, ErrCamelInvalidCauseValueListSize
+		}
 		list := make([]int, len(w.TCauseValueCriteria))
 		for i, b := range w.TCauseValueCriteria {
-			if len(b) == 0 {
-				continue
+			if len(b) != 1 {
+				return TBcsmCamelTDPCriteria{}, fmt.Errorf("TCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValueOctetLength)
 			}
 			v := int(b[0])
-			if v < 0 || v > 127 {
+			if v > 127 {
 				return TBcsmCamelTDPCriteria{}, fmt.Errorf("TCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list[i] = v
@@ -3676,6 +3714,10 @@ func convertDPAnalysedInfoCriteriumToWire(c *DPAnalysedInfoCriterium) (gsm_map.D
 
 // convertWireToDPAnalysedInfoCriterium decodes a single D-CSI entry.
 func convertWireToDPAnalysedInfoCriterium(w *gsm_map.DPAnalysedInfoCriterium) (DPAnalysedInfoCriterium, error) {
+	sk := int64(w.ServiceKey)
+	if sk < 0 || sk > 2147483647 {
+		return DPAnalysedInfoCriterium{}, ErrCamelInvalidServiceKey
+	}
 	dch := DefaultCallHandling(w.DefaultCallHandling)
 	if !isValidDefaultCallHandling(dch) {
 		return DPAnalysedInfoCriterium{}, ErrCamelInvalidDefaultCallHandling
@@ -3684,15 +3726,21 @@ func convertWireToDPAnalysedInfoCriterium(w *gsm_map.DPAnalysedInfoCriterium) (D
 	if err != nil {
 		return DPAnalysedInfoCriterium{}, fmt.Errorf("decoding DialledNumber: %w", err)
 	}
+	if dnDigits == "" {
+		return DPAnalysedInfoCriterium{}, ErrCamelMissingDialledNumber
+	}
 	scDigits, scNature, scPlan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
 		return DPAnalysedInfoCriterium{}, fmt.Errorf("decoding GsmSCFAddress: %w", err)
+	}
+	if scDigits == "" {
+		return DPAnalysedInfoCriterium{}, ErrCamelMissingGsmSCFAddress
 	}
 	return DPAnalysedInfoCriterium{
 		DialledNumber:       dnDigits,
 		DialledNumberNature: dnNature,
 		DialledNumberPlan:   dnPlan,
-		ServiceKey:          int64(w.ServiceKey),
+		ServiceKey:          sk,
 		GsmSCFAddress:       scDigits,
 		GsmSCFAddressNature: scNature,
 		GsmSCFAddressPlan:   scPlan,
@@ -3784,6 +3832,9 @@ func convertGmscCamelSubInfoToWire(g *GmscCamelSubscriptionInfo) (gsm_map.GmscCa
 		out.DCsi = d
 	}
 	if len(g.OBcsmCamelTDPCriteriaList) > 0 {
+		if len(g.OBcsmCamelTDPCriteriaList) > 10 {
+			return gsm_map.GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
+		}
 		list := make(gsm_map.OBcsmCamelTDPCriteriaList, len(g.OBcsmCamelTDPCriteriaList))
 		for i := range g.OBcsmCamelTDPCriteriaList {
 			w, err := convertOBcsmTDPCriteriaToWire(&g.OBcsmCamelTDPCriteriaList[i])
@@ -3795,6 +3846,9 @@ func convertGmscCamelSubInfoToWire(g *GmscCamelSubscriptionInfo) (gsm_map.GmscCa
 		out.OBcsmCamelTDPCriteriaList = list
 	}
 	if len(g.TBcsmCamelTDPCriteriaList) > 0 {
+		if len(g.TBcsmCamelTDPCriteriaList) > 10 {
+			return gsm_map.GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
+		}
 		list := make(gsm_map.TBCSMCAMELTDPCriteriaList, len(g.TBcsmCamelTDPCriteriaList))
 		for i := range g.TBcsmCamelTDPCriteriaList {
 			w, err := convertTBcsmTDPCriteriaToWire(&g.TBcsmCamelTDPCriteriaList[i])
@@ -3835,6 +3889,9 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 		out.DCSI = d
 	}
 	if len(w.OBcsmCamelTDPCriteriaList) > 0 {
+		if len(w.OBcsmCamelTDPCriteriaList) > 10 {
+			return GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
+		}
 		list := make([]OBcsmCamelTDPCriteria, len(w.OBcsmCamelTDPCriteriaList))
 		for i := range w.OBcsmCamelTDPCriteriaList {
 			c, err := convertWireToOBcsmTDPCriteria(&w.OBcsmCamelTDPCriteriaList[i])
@@ -3846,6 +3903,9 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 		out.OBcsmCamelTDPCriteriaList = list
 	}
 	if len(w.TBCSMCAMELTDPCriteriaList) > 0 {
+		if len(w.TBCSMCAMELTDPCriteriaList) > 10 {
+			return GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
+		}
 		list := make([]TBcsmCamelTDPCriteria, len(w.TBCSMCAMELTDPCriteriaList))
 		for i := range w.TBCSMCAMELTDPCriteriaList {
 			c, err := convertWireToTBcsmTDPCriteria(&w.TBCSMCAMELTDPCriteriaList[i])
