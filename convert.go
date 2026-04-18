@@ -2103,6 +2103,9 @@ func convertArgToProvideSubscriberInfo(arg *gsm_map.ProvideSubscriberInfoArg) (*
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
+	if imsi == "" {
+		return nil, ErrPsiMissingIMSI
+	}
 
 	out := &ProvideSubscriberInfo{
 		IMSI:          imsi,
