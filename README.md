@@ -299,7 +299,7 @@ cl := &gsmmap.CancelLocation{
     TypeOfUpdate:     &tu,
     NewMSCNumber:     "31611111111",
     NewVLRNumber:     "31622222222",
-    NewLmsi:          gsmmap.HexBytes{0x11, 0x22, 0x33, 0x44},
+    NewLMSI:          gsmmap.HexBytes{0x11, 0x22, 0x33, 0x44},
     ReattachRequired: true,
 }
 data, err := cl.Marshal()

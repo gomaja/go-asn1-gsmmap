@@ -1120,7 +1120,7 @@ type CancelLocation struct {
 	NewVLRNumber                  string        // [4] ISDN-AddressString
 	NewVLRNumberNature            uint8         // address nature indicator (default: International)
 	NewVLRNumberPlan              uint8         // numbering plan indicator (default: ISDN)
-	NewLmsi                       HexBytes      // [5] LMSI, 4 octets when present
+	NewLMSI                       HexBytes      // [5] LMSI, 4 octets when present
 	ReattachRequired              bool          // [6] NULL
 }
 
@@ -1181,10 +1181,10 @@ var (
 	ErrCancelLocIdentityChoiceNoAlternative = errors.New("cancelLocation: Identity CHOICE has no alternative set")
 	ErrCancelLocIdentityChoiceMultiple      = errors.New("cancelLocation: Identity CHOICE has multiple alternatives set")
 	ErrCancelLocIdentityMissingIMSI         = errors.New("cancelLocation: IMSIWithLMSI.IMSI is empty")
-	ErrCancelLocIdentityMissingLMSI         = errors.New("cancelLocation: IMSIWithLMSI.LMSI must be exactly 4 octets")
+	ErrCancelLocIdentityInvalidLMSI         = errors.New("cancelLocation: IMSIWithLMSI.LMSI must be exactly 4 octets")
 	ErrCancelLocInvalidCancellationType     = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2)")
 	ErrCancelLocInvalidTypeOfUpdate         = errors.New("cancelLocation: TypeOfUpdate must be one of sgsn-change(0), mme-change(1)")
 	ErrCancelLocTypeOfUpdateNotApplicable   = errors.New("cancelLocation: TypeOfUpdate is only valid when CancellationType is updateProcedure or initialAttachProcedure")
 	ErrCancelLocMtrfBothSet                 = errors.New("cancelLocation: MtrfSupportedAndAuthorized and MtrfSupportedAndNotAuthorized are mutually exclusive")
-	ErrCancelLocInvalidNewLmsi              = errors.New("cancelLocation: NewLmsi, if set, must be exactly 4 octets")
+	ErrCancelLocInvalidNewLMSI              = errors.New("cancelLocation: NewLMSI, if set, must be exactly 4 octets")
 )

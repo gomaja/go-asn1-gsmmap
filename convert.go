@@ -5408,7 +5408,7 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 		}
 		lmsi := []byte(id.ImsiWithLMSI.Lmsi)
 		if len(lmsi) != 4 {
-			return CancelLocationIdentity{}, ErrCancelLocIdentityMissingLMSI
+			return CancelLocationIdentity{}, ErrCancelLocIdentityInvalidLMSI
 		}
 		return CancelLocationIdentity{
 			IMSIWithLMSI: &CancelLocationIMSIWithLMSI{IMSI: imsi, LMSI: HexBytes(lmsi)},
@@ -5438,7 +5438,7 @@ func validateCancelLocation(c *CancelLocation) error {
 			return ErrCancelLocIdentityMissingIMSI
 		}
 		if len(c.Identity.IMSIWithLMSI.LMSI) != 4 {
-			return ErrCancelLocIdentityMissingLMSI
+			return ErrCancelLocIdentityInvalidLMSI
 		}
 	}
 	if c.CancellationType != nil && !isValidCancellationType(*c.CancellationType) {
@@ -5459,8 +5459,8 @@ func validateCancelLocation(c *CancelLocation) error {
 	if c.MtrfSupportedAndAuthorized && c.MtrfSupportedAndNotAuthorized {
 		return ErrCancelLocMtrfBothSet
 	}
-	if len(c.NewLmsi) > 0 && len(c.NewLmsi) != 4 {
-		return ErrCancelLocInvalidNewLmsi
+	if len(c.NewLMSI) > 0 && len(c.NewLMSI) != 4 {
+		return ErrCancelLocInvalidNewLMSI
 	}
 	return nil
 }
@@ -5513,8 +5513,8 @@ func convertCancelLocationToArg(c *CancelLocation) (*gsm_map.CancelLocationArg, 
 	}
 
 	// [5] new-lmsi
-	if len(c.NewLmsi) > 0 {
-		v := gsm_map.LMSI(c.NewLmsi)
+	if len(c.NewLMSI) > 0 {
+		v := gsm_map.LMSI(c.NewLMSI)
 		arg.NewLmsi = &v
 	}
 
@@ -5584,9 +5584,9 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 	if arg.NewLmsi != nil {
 		lmsi := []byte(*arg.NewLmsi)
 		if len(lmsi) != 4 {
-			return nil, ErrCancelLocInvalidNewLmsi
+			return nil, ErrCancelLocInvalidNewLMSI
 		}
-		out.NewLmsi = HexBytes(lmsi)
+		out.NewLMSI = HexBytes(lmsi)
 	}
 
 	out.ReattachRequired = nullPtrToBool(arg.ReattachRequired)

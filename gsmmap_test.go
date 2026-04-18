@@ -3459,7 +3459,7 @@ func TestCancelLocationFullStressRoundTrip(t *testing.T) {
 		MtrfSupportedAndNotAuthorized: false,
 		NewMSCNumber:                  "31611111111",
 		NewVLRNumber:                  "31622222222",
-		NewLmsi:                       HexBytes{0x11, 0x22, 0x33, 0x44},
+		NewLMSI:                       HexBytes{0x11, 0x22, 0x33, 0x44},
 		ReattachRequired:              true,
 	}
 
@@ -3628,8 +3628,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for wrong LMSI length")
 		}
-		if !errors.Is(err, ErrCancelLocIdentityMissingLMSI) {
-			t.Errorf("expected ErrCancelLocIdentityMissingLMSI, got: %v", err)
+		if !errors.Is(err, ErrCancelLocIdentityInvalidLMSI) {
+			t.Errorf("expected ErrCancelLocIdentityInvalidLMSI, got: %v", err)
 		}
 	})
 
@@ -3712,17 +3712,17 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("InvalidNewLmsi", func(t *testing.T) {
+	t.Run("InvalidNewLMSI", func(t *testing.T) {
 		in := &CancelLocation{
 			Identity: CancelLocationIdentity{IMSI: "204080012345678"},
-			NewLmsi:  HexBytes{0x01, 0x02, 0x03}, // 3 octets
+			NewLMSI:  HexBytes{0x01, 0x02, 0x03}, // 3 octets
 		}
 		_, err := in.Marshal()
 		if err == nil {
-			t.Fatal("expected error for invalid NewLmsi length")
+			t.Fatal("expected error for invalid NewLMSI length")
 		}
-		if !errors.Is(err, ErrCancelLocInvalidNewLmsi) {
-			t.Errorf("expected ErrCancelLocInvalidNewLmsi, got: %v", err)
+		if !errors.Is(err, ErrCancelLocInvalidNewLMSI) {
+			t.Errorf("expected ErrCancelLocInvalidNewLMSI, got: %v", err)
 		}
 	})
 }
