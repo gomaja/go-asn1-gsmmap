@@ -93,10 +93,12 @@ func narrowInt64(v int64) (int, error) {
 
 // narrowInt64Range is like narrowInt64 but additionally enforces an
 // application-defined inclusive range [lo, hi]. Callers pass a field
-// name for inclusion in the error message.
+// name for inclusion in the error message. Delegates to narrowInt64
+// after the range check so callers passing a [lo, hi] that exceeds the
+// platform int bounds still get the overflow safeguard.
 func narrowInt64Range(v int64, lo, hi int64, field string) (int, error) {
 	if v < lo || v > hi {
 		return 0, fmt.Errorf("%s out of range %d..%d: %d", field, lo, hi, v)
 	}
-	return int(v), nil
+	return narrowInt64(v)
 }

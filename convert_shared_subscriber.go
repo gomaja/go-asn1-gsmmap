@@ -158,8 +158,10 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 		out.PsSubscriberState = ps
 	}
 
-	// IMEI is TBCD-STRING (SIZE(8)) per 3GPP TS 29.002.
-	if si.Imei != nil && len(*si.Imei) > 0 {
+	// IMEI is TBCD-STRING (SIZE(8)) per 3GPP TS 29.002. When present on
+	// the wire it must be exactly 8 octets — empty/non-8-octet IMEI is
+	// a spec violation, not "absent".
+	if si.Imei != nil {
 		if len(*si.Imei) != 8 {
 			return nil, fmt.Errorf("IMEI: TBCD-STRING must be exactly 8 octets, got %d", len(*si.Imei))
 		}
@@ -349,7 +351,8 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 		if w.NetDetNotReachable == nil {
 			return nil, fmt.Errorf("PsSubscriberState: NetDetNotReachable alternative selected but reason is nil")
 		}
-		// NotReachableReason — 0..1 per TS 29.002.
+		// NotReachableReason — 0..3 per TS 29.002 (msPurged / imsiDetached /
+		// restrictedArea / notRegistered).
 		v, err := narrowInt64Range(int64(*w.NetDetNotReachable), 0, 3, "PsSubscriberState.NetDetNotReachable")
 		if err != nil {
 			return nil, err
@@ -465,14 +468,19 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	}
 
 	if w.NumberPortabilityStatus != nil {
-		v64 := int64(*w.NumberPortabilityStatus)
-		switch NumberPortabilityStatus(v64) {
+		// Narrow safely first so a 32-bit truncation can't land the value
+		// inside the defined set by coincidence.
+		iv, err := narrowInt64(int64(*w.NumberPortabilityStatus))
+		if err != nil {
+			return nil, fmt.Errorf("MnpInfoRes: NumberPortabilityStatus: %w", err)
+		}
+		v := NumberPortabilityStatus(iv)
+		switch v {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
 		default:
-			return nil, fmt.Errorf("MnpInfoRes: NumberPortabilityStatus has undefined value %d", v64)
+			return nil, fmt.Errorf("MnpInfoRes: NumberPortabilityStatus has undefined value %d", iv)
 		}
-		v := NumberPortabilityStatus(v64)
 		out.NumberPortabilityStatus = &v
 	}
 

@@ -249,7 +249,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// CallReferenceNumber — OCTET STRING (SIZE(1..8)) per TS 29.002.
 	if arg.CallReferenceNumber != nil {
-		if len(*arg.CallReferenceNumber) > 8 {
+		if len(*arg.CallReferenceNumber) < 1 || len(*arg.CallReferenceNumber) > 8 {
 			return nil, fmt.Errorf("CallReferenceNumber must be 1..8 octets, got %d", len(*arg.CallReferenceNumber))
 		}
 		s.CallReferenceNumber = HexBytes(*arg.CallReferenceNumber)
@@ -625,14 +625,17 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if res.NumberPortabilityStatus != nil {
-		v64 := int64(*res.NumberPortabilityStatus)
-		switch NumberPortabilityStatus(v64) {
+		iv, err := narrowInt64(int64(*res.NumberPortabilityStatus))
+		if err != nil {
+			return nil, fmt.Errorf("NumberPortabilityStatus: %w", err)
+		}
+		v := NumberPortabilityStatus(iv)
+		switch v {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
 		default:
-			return nil, fmt.Errorf("NumberPortabilityStatus has undefined value %d", v64)
+			return nil, fmt.Errorf("NumberPortabilityStatus has undefined value %d", iv)
 		}
-		v := NumberPortabilityStatus(v64)
 		out.NumberPortabilityStatus = &v
 	}
 
