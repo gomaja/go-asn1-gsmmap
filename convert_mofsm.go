@@ -306,7 +306,11 @@ func convertArgToMoFsm(arg *gsm_map.MOForwardSMArg) (*MoFsm, error) {
 		moFsm.IMSI = imsi
 	}
 	if arg.CorrelationID != nil {
-		moFsm.CorrelationID = convertWireToCorrelationID(arg.CorrelationID)
+		cid, err := convertWireToCorrelationID(arg.CorrelationID)
+		if err != nil {
+			return nil, fmt.Errorf("decoding CorrelationID: %w", err)
+		}
+		moFsm.CorrelationID = cid
 	}
 	if arg.SmDeliveryOutcome != nil {
 		v := SmDeliveryOutcome(*arg.SmDeliveryOutcome)

@@ -95,8 +95,12 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 	// Optional fields (post-extension marker).
 	s.GprsSupportIndicator = nullPtrToBool(arg.GprsSupportIndicator)
 
+	// SmRPMTI — 0..10 per TS 29.002.
 	if arg.SmRPMTI != nil {
-		v := int(*arg.SmRPMTI)
+		v, err := narrowInt64Range(int64(*arg.SmRPMTI), 0, 10, "SmRPMTI")
+		if err != nil {
+			return nil, err
+		}
 		s.SmRpMti = &v
 	}
 
@@ -123,7 +127,11 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 	s.T4TriggerIndicator = nullPtrToBool(arg.T4TriggerIndicator)
 
 	if arg.CorrelationID != nil {
-		s.CorrelationID = convertWireToCorrelationID(arg.CorrelationID)
+		cid, err := convertWireToCorrelationID(arg.CorrelationID)
+		if err != nil {
+			return nil, fmt.Errorf("decoding CorrelationID: %w", err)
+		}
+		s.CorrelationID = cid
 	}
 
 	s.SmsfSupportIndicator = nullPtrToBool(arg.SmsfSupportIndicator)
@@ -152,8 +160,11 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 		NetworkNodeNumber: gsm_map.ISDNAddressString(nnn),
 	}
 
-	// LMSI
+	// LMSI must be exactly 4 octets when present (3GPP TS 29.002).
 	if len(s.LocationInfoWithLMSI.LMSI) > 0 {
+		if len(s.LocationInfoWithLMSI.LMSI) != 4 {
+			return nil, fmt.Errorf("LocationInfoWithLMSI.LMSI must be exactly 4 octets, got %d", len(s.LocationInfoWithLMSI.LMSI))
+		}
 		v := gsm_map.LMSI(s.LocationInfoWithLMSI.LMSI)
 		li.Lmsi = &v
 	}
@@ -359,7 +370,11 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 
 	// IpSmGwGuidance
 	if res.IpSmGwGuidance != nil {
-		resp.IpSmGwGuidance = convertWireToIpSmGwGuidance(res.IpSmGwGuidance)
+		gw, err := convertWireToIpSmGwGuidance(res.IpSmGwGuidance)
+		if err != nil {
+			return nil, fmt.Errorf("decoding IpSmGwGuidance: %w", err)
+		}
+		resp.IpSmGwGuidance = gw
 	}
 
 	return resp, nil

@@ -153,6 +153,11 @@ func convertArgToInformServiceCentre(arg *gsm_map.InformServiceCentreArg) (*Info
 		if arg.MwStatus.BitLength < 6 || arg.MwStatus.BitLength > 16 {
 			return nil, fmt.Errorf("MwStatus: BitLength must be 6..16, got %d", arg.MwStatus.BitLength)
 		}
+		// Capacity check: BitLength must fit within the provided byte slice.
+		if int64(arg.MwStatus.BitLength) > int64(len(arg.MwStatus.Bytes))*8 {
+			return nil, fmt.Errorf("MwStatus: BitLength %d exceeds len(Bytes)*8 = %d",
+				arg.MwStatus.BitLength, len(arg.MwStatus.Bytes)*8)
+		}
 		out.MwStatus = convertBitStringToMwStatus(*arg.MwStatus)
 	}
 

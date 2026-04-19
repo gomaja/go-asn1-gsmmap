@@ -48,6 +48,9 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		vlrCap.SolsaSupportIndicator = boolToNullPtr(u.VlrCapability.SolsaSupportIndicator)
 
 		if u.VlrCapability.IstSupportIndicator != nil {
+			if *u.VlrCapability.IstSupportIndicator < 0 || *u.VlrCapability.IstSupportIndicator > 1 {
+				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator out of range 0..1: %d", *u.VlrCapability.IstSupportIndicator)
+			}
 			v := gsm_map.ISTSupportIndicator(int64(*u.VlrCapability.IstSupportIndicator))
 			vlrCap.IstSupportIndicator = &v
 		}
@@ -182,8 +185,12 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 		vlrCap.SolsaSupportIndicator = nullPtrToBool(arg.VlrCapability.SolsaSupportIndicator)
 
+		// IstSupportIndicator — 0 (basicISTSupported) or 1 (istCommandSupported).
 		if arg.VlrCapability.IstSupportIndicator != nil {
-			v := int(int64(*arg.VlrCapability.IstSupportIndicator))
+			v, err := narrowInt64Range(int64(*arg.VlrCapability.IstSupportIndicator), 0, 1, "VlrCapability.IstSupportIndicator")
+			if err != nil {
+				return nil, err
+			}
 			vlrCap.IstSupportIndicator = &v
 		}
 

@@ -1,6 +1,9 @@
 package gsmmap
 
 import (
+	"fmt"
+	"math"
+
 	"github.com/gomaja/go-asn1-gsmmap/address"
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
@@ -65,10 +68,38 @@ func intPtrTo64(p *int) *int64 {
 }
 
 // int64PtrTo narrows a *int64 wire-type field to the *int public-type form.
-func int64PtrTo(p *int64) *int {
+// Rejects values outside [math.MinInt, math.MaxInt] (which collapses to
+// [math.MinInt32, math.MaxInt32] on 32-bit platforms and is a no-op on
+// 64-bit) rather than silently truncating.
+func int64PtrTo(p *int64) (*int, error) {
 	if p == nil {
-		return nil
+		return nil, nil
 	}
-	v := int(*p)
-	return &v
+	v, err := narrowInt64(*p)
+	if err != nil {
+		return nil, err
+	}
+	return &v, nil
+}
+
+// narrowInt64 narrows an int64 to Go's platform int, rejecting values that
+// would truncate on 32-bit builds. On 64-bit platforms the bounds are a
+// no-op because int == int64.
+func narrowInt64(v int64) (int, error) {
+	if v < math.MinInt || v > math.MaxInt {
+		return 0, fmt.Errorf("value %d does not fit in Go int on this platform", v)
+	}
+	return int(v), nil
+}
+
+// narrowInt64Range is like narrowInt64 but additionally enforces an
+// application-defined inclusive range [lo, hi]. Callers pass a field
+// name for inclusion in the error message. Delegates to narrowInt64
+// after the range check so callers passing a [lo, hi] that exceeds the
+// platform int bounds still get the overflow safeguard.
+func narrowInt64Range(v int64, lo, hi int64, field string) (int, error) {
+	if v < lo || v > hi {
+		return 0, fmt.Errorf("%s out of range %d..%d: %d", field, lo, hi, v)
+	}
+	return narrowInt64(v)
 }

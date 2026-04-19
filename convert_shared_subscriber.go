@@ -71,7 +71,11 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 		si.MnpInfoRes = mnp
 	}
 
+	// ImsVoiceOverPSSessionsIndication — 0..2 per TS 29.002.
 	if s.ImsVoiceOverPSSessionsIndication != nil {
+		if *s.ImsVoiceOverPSSessionsIndication < 0 || *s.ImsVoiceOverPSSessionsIndication > 2 {
+			return nil, fmt.Errorf("ImsVoiceOverPSSessionsIndication out of range 0..2: %d", *s.ImsVoiceOverPSSessionsIndication)
+		}
 		v := gsm_map.IMSVoiceOverPSSessionsInd(int64(*s.ImsVoiceOverPSSessionsIndication))
 		si.ImsVoiceOverPSSessionsIndication = &v
 	}
@@ -81,7 +85,11 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 		si.LastUEActivityTime = &t
 	}
 
+	// LastRATType — Used-RAT-Type 0..5 per TS 29.002.
 	if s.LastRATType != nil {
+		if *s.LastRATType < 0 || *s.LastRATType > 5 {
+			return nil, fmt.Errorf("LastRATType out of range 0..5: %d", *s.LastRATType)
+		}
 		v := gsm_map.UsedRATType(int64(*s.LastRATType))
 		si.LastRATType = &v
 	}
@@ -107,7 +115,11 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 		si.TimeZone = &tz
 	}
 
+	// DaylightSavingTime — 0..2 per TS 29.002.
 	if s.DaylightSavingTime != nil {
+		if *s.DaylightSavingTime < 0 || *s.DaylightSavingTime > 2 {
+			return nil, fmt.Errorf("DaylightSavingTime out of range 0..2: %d", *s.DaylightSavingTime)
+		}
 		dst := gsm_map.DaylightSavingTime(*s.DaylightSavingTime)
 		si.DaylightSavingTime = &dst
 	}
@@ -158,7 +170,13 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 		out.PsSubscriberState = ps
 	}
 
-	if si.Imei != nil && len(*si.Imei) > 0 {
+	// IMEI is TBCD-STRING (SIZE(8)) per 3GPP TS 29.002. When present on
+	// the wire it must be exactly 8 octets — empty/non-8-octet IMEI is
+	// a spec violation, not "absent".
+	if si.Imei != nil {
+		if len(*si.Imei) != 8 {
+			return nil, fmt.Errorf("IMEI: TBCD-STRING must be exactly 8 octets, got %d", len(*si.Imei))
+		}
 		imei, err := tbcd.Decode(*si.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMEI: %w", err)
@@ -182,18 +200,28 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 		out.MnpInfoRes = mnp
 	}
 
+	// ImsVoiceOverPSSessionsIndication — 0..2 per TS 29.002.
 	if si.ImsVoiceOverPSSessionsIndication != nil {
-		v := ImsVoiceOverPSSessionsIndication(int(*si.ImsVoiceOverPSSessionsIndication))
-		out.ImsVoiceOverPSSessionsIndication = &v
+		v, err := narrowInt64Range(int64(*si.ImsVoiceOverPSSessionsIndication), 0, 2, "ImsVoiceOverPSSessionsIndication")
+		if err != nil {
+			return nil, err
+		}
+		iv := ImsVoiceOverPSSessionsIndication(v)
+		out.ImsVoiceOverPSSessionsIndication = &iv
 	}
 
 	if si.LastUEActivityTime != nil {
 		out.LastUEActivityTime = []byte(*si.LastUEActivityTime)
 	}
 
+	// LastRATType — Used-RAT-Type 0..5 per TS 29.002.
 	if si.LastRATType != nil {
-		v := UsedRatType(int(*si.LastRATType))
-		out.LastRATType = &v
+		v, err := narrowInt64Range(int64(*si.LastRATType), 0, 5, "LastRATType")
+		if err != nil {
+			return nil, err
+		}
+		ur := UsedRatType(v)
+		out.LastRATType = &ur
 	}
 
 	if si.EpsSubscriberState != nil {
@@ -216,8 +244,12 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 		out.TimeZone = []byte(*si.TimeZone)
 	}
 
+	// DaylightSavingTime — 0..2 per TS 29.002.
 	if si.DaylightSavingTime != nil {
-		v := int(*si.DaylightSavingTime)
+		v, err := narrowInt64Range(int64(*si.DaylightSavingTime), 0, 2, "DaylightSavingTime")
+		if err != nil {
+			return nil, err
+		}
 		out.DaylightSavingTime = &v
 	}
 
@@ -298,6 +330,10 @@ func convertPsSubscriberStateToWire(p *PsSubscriberState) (*gsm_map.PSSubscriber
 		v := gsm_map.NewPSSubscriberStatePsPDPActiveReachableForPaging(list)
 		return &v, nil
 	case p.NetDetNotReachable != nil:
+		// NotReachableReason — 0..3 per TS 29.002.
+		if *p.NetDetNotReachable < 0 || *p.NetDetNotReachable > 3 {
+			return nil, fmt.Errorf("PsSubscriberState.NetDetNotReachable out of range 0..3: %d", *p.NetDetNotReachable)
+		}
 		v := gsm_map.NewPSSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(int64(*p.NetDetNotReachable)))
 		return &v, nil
 	}
@@ -331,7 +367,12 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 		if w.NetDetNotReachable == nil {
 			return nil, fmt.Errorf("PsSubscriberState: NetDetNotReachable alternative selected but reason is nil")
 		}
-		v := int(*w.NetDetNotReachable)
+		// NotReachableReason — 0..3 per TS 29.002 (msPurged / imsiDetached /
+		// restrictedArea / notRegistered).
+		v, err := narrowInt64Range(int64(*w.NetDetNotReachable), 0, 3, "PsSubscriberState.NetDetNotReachable")
+		if err != nil {
+			return nil, err
+		}
 		out.NetDetNotReachable = &v
 	default:
 		return nil, fmt.Errorf("PsSubscriberState: unknown CHOICE value %d", w.Choice)
@@ -341,9 +382,12 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 
 // encodePDPContextInfoList serializes each gsm_map.PDPContextInfo entry to
 // its BER-encoded bytes, keeping them opaque from the caller's perspective.
+// Enforces PDP-ContextInfoList SIZE(1..50) strictly — callers only invoke
+// this when the list CHOICE alternative is selected, so an empty list is
+// a spec violation, not "absent".
 func encodePDPContextInfoList(list gsm_map.PDPContextInfoList) ([]HexBytes, error) {
-	if len(list) == 0 {
-		return nil, nil
+	if len(list) < 1 || len(list) > 50 {
+		return nil, fmt.Errorf("PDPContextInfoList: must contain 1..50 entries when present, got %d", len(list))
 	}
 	out := make([]HexBytes, len(list))
 	for i := range list {
@@ -358,10 +402,11 @@ func encodePDPContextInfoList(list gsm_map.PDPContextInfoList) ([]HexBytes, erro
 }
 
 // decodePDPContextInfoList deserializes each opaque PDPContextInfo entry
-// back into its gsm_map.PDPContextInfo struct.
+// back into its gsm_map.PDPContextInfo struct. Enforces SIZE(1..50) strictly
+// (callers only invoke this when the list CHOICE alternative is selected).
 func decodePDPContextInfoList(list []HexBytes) (gsm_map.PDPContextInfoList, error) {
-	if len(list) == 0 {
-		return nil, nil
+	if len(list) < 1 || len(list) > 50 {
+		return nil, fmt.Errorf("PDPContextInfoList: must contain 1..50 entries when present, got %d", len(list))
 	}
 	out := make(gsm_map.PDPContextInfoList, len(list))
 	for i, b := range list {
@@ -402,7 +447,14 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 		out.Msisdn = &as
 	}
 
+	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if m.NumberPortabilityStatus != nil {
+		switch *m.NumberPortabilityStatus {
+		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
+			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
+		default:
+			return nil, fmt.Errorf("MnpInfoRes: NumberPortabilityStatus has undefined value %d", *m.NumberPortabilityStatus)
+		}
 		v := gsm_map.NumberPortabilityStatus(int64(*m.NumberPortabilityStatus))
 		out.NumberPortabilityStatus = &v
 	}
@@ -436,7 +488,19 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	}
 
 	if w.NumberPortabilityStatus != nil {
-		v := NumberPortabilityStatus(int(*w.NumberPortabilityStatus))
+		// Narrow safely first so a 32-bit truncation can't land the value
+		// inside the defined set by coincidence.
+		iv, err := narrowInt64(int64(*w.NumberPortabilityStatus))
+		if err != nil {
+			return nil, fmt.Errorf("MnpInfoRes: NumberPortabilityStatus: %w", err)
+		}
+		v := NumberPortabilityStatus(iv)
+		switch v {
+		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
+			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
+		default:
+			return nil, fmt.Errorf("MnpInfoRes: NumberPortabilityStatus has undefined value %d", iv)
+		}
 		out.NumberPortabilityStatus = &v
 	}
 
@@ -566,7 +630,11 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 		out.LocaltimeZone = &tz
 	}
 
+	// RatType — Used-RAT-Type 0..5 per TS 29.002.
 	if l.RatType != nil {
+		if *l.RatType < 0 || *l.RatType > 5 {
+			return nil, fmt.Errorf("LocationInformation5GS.RatType out of range 0..5: %d", *l.RatType)
+		}
 		v := gsm_map.UsedRATType(int64(*l.RatType))
 		out.RatType = &v
 	}
@@ -629,9 +697,14 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 		out.LocalTimeZone = []byte(*w.LocaltimeZone)
 	}
 
+	// RatType — Used-RAT-Type 0..5 per TS 29.002.
 	if w.RatType != nil {
-		v := UsedRatType(int(*w.RatType))
-		out.RatType = &v
+		v, err := narrowInt64Range(int64(*w.RatType), 0, 5, "RatType")
+		if err != nil {
+			return nil, err
+		}
+		ur := UsedRatType(v)
+		out.RatType = &ur
 	}
 
 	if w.NrTrackingAreaIdentity != nil {

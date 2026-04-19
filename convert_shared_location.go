@@ -49,11 +49,17 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 	}
 
 	if loc.CellGlobalId != nil {
+		if len(loc.CellGlobalId) != 7 {
+			return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(loc.CellGlobalId))
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
 			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId),
 		)
 		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
 	} else if loc.LAI != nil {
+		if len(loc.LAI) != 5 {
+			return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(loc.LAI))
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAILaiFixedLength(
 			gsm_map.LAIFixedLength(loc.LAI),
 		)
@@ -133,21 +139,25 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 		choice := li.CellGlobalIdOrServiceAreaIdOrLAI
 		switch choice.Choice {
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength:
-			if choice.CellGlobalIdOrServiceAreaIdFixedLength != nil {
-				b := []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
-				if len(b) != 7 {
-					return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(b))
-				}
-				loc.CellGlobalId = b
+			if choice.CellGlobalIdOrServiceAreaIdFixedLength == nil {
+				return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: cellGlobalId alternative selected but payload is nil")
 			}
+			b := []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
+			if len(b) != 7 {
+				return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(b))
+			}
+			loc.CellGlobalId = b
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
-			if choice.LaiFixedLength != nil {
-				b := []byte(*choice.LaiFixedLength)
-				if len(b) != 5 {
-					return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(b))
-				}
-				loc.LAI = b
+			if choice.LaiFixedLength == nil {
+				return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: LAI alternative selected but payload is nil")
 			}
+			b := []byte(*choice.LaiFixedLength)
+			if len(b) != 5 {
+				return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(b))
+			}
+			loc.LAI = b
+		default:
+			return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: unknown CHOICE %d", choice.Choice)
 		}
 	}
 
@@ -183,11 +193,15 @@ func convertSubscriberStateToAsn1(ss *SubscriberStateInfo) (*gsm_map.SubscriberS
 	case StateCamelBusy:
 		s = gsm_map.NewSubscriberStateCamelBusy(struct{}{})
 	case StateNetDetNotReachable:
-		if ss.NotReachableReason != nil {
-			s = gsm_map.NewSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(*ss.NotReachableReason))
-		} else {
-			s = gsm_map.NewSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(0))
+		// NotReachableReason is mandatory when this alternative is chosen;
+		// reject nil rather than silently encoding msPurged(0).
+		if ss.NotReachableReason == nil {
+			return nil, fmt.Errorf("SubscriberState: StateNetDetNotReachable requires a non-nil NotReachableReason")
 		}
+		if *ss.NotReachableReason < 0 || *ss.NotReachableReason > 3 {
+			return nil, fmt.Errorf("SubscriberState.NotReachableReason out of range 0..3: %d", *ss.NotReachableReason)
+		}
+		s = gsm_map.NewSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(*ss.NotReachableReason))
 	case StateNotProvidedFromVLR:
 		s = gsm_map.NewSubscriberStateNotProvidedFromVLR(struct{}{})
 	default:
@@ -208,10 +222,14 @@ func convertAsn1ToSubscriberState(ss *gsm_map.SubscriberState) (*SubscriberState
 		info.State = StateCamelBusy
 	case gsm_map.SubscriberStateChoiceNetDetNotReachable:
 		info.State = StateNetDetNotReachable
-		if ss.NetDetNotReachable != nil {
-			reason := int(*ss.NetDetNotReachable)
-			info.NotReachableReason = &reason
+		if ss.NetDetNotReachable == nil {
+			return nil, fmt.Errorf("SubscriberState: netDetNotReachable alternative selected but reason is nil")
 		}
+		reason, err := narrowInt64Range(int64(*ss.NetDetNotReachable), 0, 3, "NotReachableReason")
+		if err != nil {
+			return nil, err
+		}
+		info.NotReachableReason = &reason
 	case gsm_map.SubscriberStateChoiceNotProvidedFromVLR:
 		info.State = StateNotProvidedFromVLR
 	default:
@@ -231,11 +249,17 @@ func convertEPSLocationToAsn1(loc *EPSLocationInformation) (*gsm_map.LocationInf
 	}
 
 	if loc.EUtranCellGlobalIdentity != nil {
+		if len(loc.EUtranCellGlobalIdentity) != 7 {
+			return nil, fmt.Errorf("EUtranCellGlobalIdentity must be exactly 7 octets, got %d", len(loc.EUtranCellGlobalIdentity))
+		}
 		cgi := gsm_map.EUTRANCGI(loc.EUtranCellGlobalIdentity)
 		li.EUtranCellGlobalIdentity = &cgi
 	}
 
 	if loc.TrackingAreaIdentity != nil {
+		if len(loc.TrackingAreaIdentity) != 5 {
+			return nil, fmt.Errorf("TrackingAreaIdentity must be exactly 5 octets, got %d", len(loc.TrackingAreaIdentity))
+		}
 		ta := gsm_map.TAId(loc.TrackingAreaIdentity)
 		li.TrackingAreaIdentity = &ta
 	}
@@ -322,11 +346,17 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	}
 
 	if loc.CellGlobalId != nil {
+		if len(loc.CellGlobalId) != 7 {
+			return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(loc.CellGlobalId))
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
 			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId),
 		)
 		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
 	} else if loc.LAI != nil {
+		if len(loc.LAI) != 5 {
+			return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(loc.LAI))
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAILaiFixedLength(
 			gsm_map.LAIFixedLength(loc.LAI),
 		)
@@ -334,6 +364,9 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	}
 
 	if loc.RouteingAreaIdentity != nil {
+		if len(loc.RouteingAreaIdentity) != 6 {
+			return nil, fmt.Errorf("RouteingAreaIdentity must be exactly 6 octets, got %d", len(loc.RouteingAreaIdentity))
+		}
 		ra := gsm_map.RAIdentity(loc.RouteingAreaIdentity)
 		li.RouteingAreaIdentity = &ra
 	}
@@ -397,21 +430,25 @@ func convertAsn1ToGPRSLocation(li *gsm_map.LocationInformationGPRS) (*GPRSLocati
 		choice := li.CellGlobalIdOrServiceAreaIdOrLAI
 		switch choice.Choice {
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength:
-			if choice.CellGlobalIdOrServiceAreaIdFixedLength != nil {
-				b := []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
-				if len(b) != 7 {
-					return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(b))
-				}
-				loc.CellGlobalId = b
+			if choice.CellGlobalIdOrServiceAreaIdFixedLength == nil {
+				return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: cellGlobalId alternative selected but payload is nil")
 			}
+			b := []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
+			if len(b) != 7 {
+				return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(b))
+			}
+			loc.CellGlobalId = b
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
-			if choice.LaiFixedLength != nil {
-				b := []byte(*choice.LaiFixedLength)
-				if len(b) != 5 {
-					return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(b))
-				}
-				loc.LAI = b
+			if choice.LaiFixedLength == nil {
+				return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: LAI alternative selected but payload is nil")
 			}
+			b := []byte(*choice.LaiFixedLength)
+			if len(b) != 5 {
+				return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(b))
+			}
+			loc.LAI = b
+		default:
+			return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: unknown CHOICE %d", choice.Choice)
 		}
 	}
 

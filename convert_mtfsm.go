@@ -135,7 +135,11 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 	}
 	mtFsm.SmsOverIPOnlyIndicator = nullPtrToBool(arg.SmsOverIPOnlyIndicator)
 	if arg.CorrelationID != nil {
-		mtFsm.CorrelationID = convertWireToCorrelationID(arg.CorrelationID)
+		cid, err := convertWireToCorrelationID(arg.CorrelationID)
+		if err != nil {
+			return nil, fmt.Errorf("decoding CorrelationID: %w", err)
+		}
+		mtFsm.CorrelationID = cid
 	}
 	if arg.MaximumRetransmissionTime != nil {
 		mtFsm.MaximumRetransmissionTime = HexBytes(*arg.MaximumRetransmissionTime)
