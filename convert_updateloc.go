@@ -185,11 +185,20 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 		vlrCap.SolsaSupportIndicator = nullPtrToBool(arg.VlrCapability.SolsaSupportIndicator)
 
-		// IstSupportIndicator — 0 (basicISTSupported) or 1 (istCommandSupported).
+		// IstSupportIndicator — ENUMERATED { basicISTSupported(0),
+		// istCommandSupported(1), ... } per TS 29.002. Spec exception:
+		// "reception of values > 1 shall be mapped to 'istCommandSupported'".
 		if arg.VlrCapability.IstSupportIndicator != nil {
-			v, err := narrowInt64Range(int64(*arg.VlrCapability.IstSupportIndicator), 0, 1, "VlrCapability.IstSupportIndicator")
+			v64 := int64(*arg.VlrCapability.IstSupportIndicator)
+			if v64 < 0 {
+				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator cannot be negative: %d", v64)
+			}
+			v, err := narrowInt64(v64)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w", err)
+			}
+			if v > 1 {
+				v = 1 // per TS 29.002 exception handling
 			}
 			vlrCap.IstSupportIndicator = &v
 		}

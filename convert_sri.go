@@ -36,9 +36,11 @@ func validateSri(s *Sri) error {
 	if s.ForwardingReason != nil && (*s.ForwardingReason < 0 || *s.ForwardingReason > 2) {
 		return fmt.Errorf("ForwardingReason out of range 0..2: %d", *s.ForwardingReason)
 	}
-	// SupportedCCBSPhase — 1..5 per TS 29.002.
-	if s.SupportedCCBSPhase != nil && (*s.SupportedCCBSPhase < 1 || *s.SupportedCCBSPhase > 5) {
-		return fmt.Errorf("SupportedCCBSPhase out of range 1..5: %d", *s.SupportedCCBSPhase)
+	// SupportedCCBSPhase — INTEGER (1..127) per TS 29.002 MAP-CH-DataTypes.
+	// "Only value 1 is used; values 2-127 are reserved for future use" —
+	// syntactic constraint is 1..127, semantic guidance is 1.
+	if s.SupportedCCBSPhase != nil && (*s.SupportedCCBSPhase < 1 || *s.SupportedCCBSPhase > 127) {
+		return fmt.Errorf("SupportedCCBSPhase out of range 1..127: %d", *s.SupportedCCBSPhase)
 	}
 	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
 	if s.CallPriority != nil && (*s.CallPriority < 0 || *s.CallPriority > 15) {
@@ -321,9 +323,12 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	// CcbsCall
 	s.CcbsCall = nullPtrToBool(arg.CcbsCall)
 
-	// SupportedCCBSPhase — 1..5 per TS 29.002 (CCBS phase 1..5).
+	// SupportedCCBSPhase — INTEGER (1..127) per TS 29.002 MAP-CH-DataTypes.
+	// Exception handling: "If received values 2-127 shall be mapped on to
+	// value 1." We surface the received value as-is to the caller; mapping
+	// is a semantic/application-layer concern, not a protocol-decode one.
 	if arg.SupportedCCBSPhase != nil {
-		v, err := narrowInt64Range(*arg.SupportedCCBSPhase, 1, 5, "SupportedCCBSPhase")
+		v, err := narrowInt64Range(*arg.SupportedCCBSPhase, 1, 127, "SupportedCCBSPhase")
 		if err != nil {
 			return nil, err
 		}
@@ -335,11 +340,20 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 		s.AdditionalSignalInfo = convertWireToExtExternalSignalInfo(arg.AdditionalSignalInfo)
 	}
 
-	// IstSupportIndicator — 0..1 per TS 29.002.
+	// IstSupportIndicator — ENUMERATED { basicISTSupported(0),
+	// istCommandSupported(1), ... } per TS 29.002. Spec exception:
+	// "reception of values > 1 shall be mapped to istCommandSupported".
 	if arg.IstSupportIndicator != nil {
-		v, err := narrowInt64Range(int64(*arg.IstSupportIndicator), 0, 1, "IstSupportIndicator")
+		v64 := int64(*arg.IstSupportIndicator)
+		if v64 < 0 {
+			return nil, fmt.Errorf("IstSupportIndicator cannot be negative: %d", v64)
+		}
+		v, err := narrowInt64(v64)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("IstSupportIndicator: %w", err)
+		}
+		if v > 1 {
+			v = 1 // per TS 29.002 exception handling
 		}
 		s.IstSupportIndicator = &v
 	}
@@ -644,7 +658,9 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 		out.MSISDNPlan = pl
 	}
 
-	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
+	// NumberPortabilityStatus — ENUMERATED { 0, 1, 2, 4, 5 } per TS 29.002.
+	// Spec exception: "reception of other values than the ones listed the
+	// receiver shall ignore the whole NumberPortabilityStatus parameter".
 	if res.NumberPortabilityStatus != nil {
 		iv, err := narrowInt64(int64(*res.NumberPortabilityStatus))
 		if err != nil {
@@ -654,10 +670,9 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 		switch v {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
-		default:
-			return nil, fmt.Errorf("NumberPortabilityStatus has undefined value %d", iv)
+			out.NumberPortabilityStatus = &v
 		}
-		out.NumberPortabilityStatus = &v
+		// Unknown value: leave field nil per spec.
 	}
 
 	// IstAlertTimer
@@ -711,11 +726,19 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 		out.AllowedServices = convertBitStringToAllowedServices(*res.AllowedServices)
 	}
 
-	// UnavailabilityCause — 1..6 per TS 29.002.
+	// UnavailabilityCause — ENUMERATED 1..6 (extensible) per TS 29.002.
+	// Spec exception: "Reception of other values than the ones listed shall
+	// result in the service being unavailable for that call." The protocol
+	// decode surfaces the raw value; treating unknown causes as
+	// service-unavailable is an application-layer concern.
 	if res.UnavailabilityCause != nil {
-		v, err := narrowInt64Range(int64(*res.UnavailabilityCause), 1, 6, "UnavailabilityCause")
+		v64 := int64(*res.UnavailabilityCause)
+		if v64 < 0 {
+			return nil, fmt.Errorf("UnavailabilityCause cannot be negative: %d", v64)
+		}
+		v, err := narrowInt64(v64)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("UnavailabilityCause: %w", err)
 		}
 		uc := UnavailabilityCause(v)
 		out.UnavailabilityCause = &uc
