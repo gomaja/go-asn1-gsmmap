@@ -660,15 +660,15 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	// NumberPortabilityStatus — ENUMERATED { 0, 1, 2, 4, 5 } per TS 29.002.
 	// Spec exception: "reception of other values than the ones listed the
 	// receiver shall ignore the whole NumberPortabilityStatus parameter".
+	// Match against the defined set in int64 space so wire values that
+	// exceed platform int are also treated as unknown (ignored), not as
+	// decode errors — consistent with the spec's "ignore" mandate.
 	if res.NumberPortabilityStatus != nil {
-		iv, err := narrowInt64(int64(*res.NumberPortabilityStatus))
-		if err != nil {
-			return nil, fmt.Errorf("NumberPortabilityStatus: %w", err)
-		}
-		v := NumberPortabilityStatus(iv)
-		switch v {
-		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
-			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
+		switch int64(*res.NumberPortabilityStatus) {
+		case int64(MnpNotKnownToBePorted), int64(MnpOwnNumberPortedOut),
+			int64(MnpForeignNumberPortedToForeignNetwork),
+			int64(MnpOwnNumberNotPortedOut), int64(MnpForeignNumberPortedIn):
+			v := NumberPortabilityStatus(int64(*res.NumberPortabilityStatus))
 			out.NumberPortabilityStatus = &v
 		}
 		// Unknown value: leave field nil per spec.

@@ -157,6 +157,10 @@ func TestSriRespDecodeNumberPortabilityStatus_IgnoresUnknown(t *testing.T) {
 		{"undefined 3 → ignored", 3, true, 0},
 		{"undefined 6 → ignored", 6, true, 0},
 		{"undefined 99 → ignored", 99, true, 0},
+		// Spec mandate: out-of-set values are ignored. Apply this to wire
+		// values that exceed platform int on 32-bit builds too — the spec
+		// says "ignore", not "error".
+		{"undefined MaxInt32+1 → ignored", math.MaxInt32 + 1, true, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -193,6 +197,9 @@ func TestMnpInfoResDecodeNumberPortabilityStatus_IgnoresUnknown(t *testing.T) {
 		{"defined 5 → kept", 5, false},
 		{"undefined 3 → ignored", 3, true},
 		{"undefined 99 → ignored", 99, true},
+		// Spec mandate: out-of-set values are ignored even when they exceed
+		// platform int on 32-bit builds.
+		{"undefined MaxInt32+1 → ignored", math.MaxInt32 + 1, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

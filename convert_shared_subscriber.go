@@ -491,16 +491,14 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 		// NumberPortabilityStatus — ENUMERATED { 0, 1, 2, 4, 5 } per TS 29.002.
 		// Spec exception: "reception of other values than the ones listed the
 		// receiver shall ignore the whole NumberPortabilityStatus parameter".
-		// Narrow first so a 32-bit truncation can't land the value inside the
-		// defined set by coincidence.
-		iv, err := narrowInt64(int64(*w.NumberPortabilityStatus))
-		if err != nil {
-			return nil, fmt.Errorf("MnpInfoRes: NumberPortabilityStatus: %w", err)
-		}
-		v := NumberPortabilityStatus(iv)
-		switch v {
-		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
-			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
+		// Match against the defined set in int64 space so wire values that
+		// exceed platform int are also treated as unknown (ignored), not as
+		// decode errors — consistent with the spec's "ignore" mandate.
+		switch int64(*w.NumberPortabilityStatus) {
+		case int64(MnpNotKnownToBePorted), int64(MnpOwnNumberPortedOut),
+			int64(MnpForeignNumberPortedToForeignNetwork),
+			int64(MnpOwnNumberNotPortedOut), int64(MnpForeignNumberPortedIn):
+			v := NumberPortabilityStatus(int64(*w.NumberPortabilityStatus))
 			out.NumberPortabilityStatus = &v
 		}
 		// Unknown value: leave field nil per spec.
