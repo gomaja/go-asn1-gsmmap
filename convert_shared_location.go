@@ -49,11 +49,17 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 	}
 
 	if loc.CellGlobalId != nil {
+		if len(loc.CellGlobalId) != 7 {
+			return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(loc.CellGlobalId))
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
 			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId),
 		)
 		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
 	} else if loc.LAI != nil {
+		if len(loc.LAI) != 5 {
+			return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(loc.LAI))
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAILaiFixedLength(
 			gsm_map.LAIFixedLength(loc.LAI),
 		)
@@ -243,11 +249,17 @@ func convertEPSLocationToAsn1(loc *EPSLocationInformation) (*gsm_map.LocationInf
 	}
 
 	if loc.EUtranCellGlobalIdentity != nil {
+		if len(loc.EUtranCellGlobalIdentity) != 7 {
+			return nil, fmt.Errorf("EUtranCellGlobalIdentity must be exactly 7 octets, got %d", len(loc.EUtranCellGlobalIdentity))
+		}
 		cgi := gsm_map.EUTRANCGI(loc.EUtranCellGlobalIdentity)
 		li.EUtranCellGlobalIdentity = &cgi
 	}
 
 	if loc.TrackingAreaIdentity != nil {
+		if len(loc.TrackingAreaIdentity) != 5 {
+			return nil, fmt.Errorf("TrackingAreaIdentity must be exactly 5 octets, got %d", len(loc.TrackingAreaIdentity))
+		}
 		ta := gsm_map.TAId(loc.TrackingAreaIdentity)
 		li.TrackingAreaIdentity = &ta
 	}
@@ -334,11 +346,17 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	}
 
 	if loc.CellGlobalId != nil {
+		if len(loc.CellGlobalId) != 7 {
+			return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(loc.CellGlobalId))
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
 			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId),
 		)
 		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
 	} else if loc.LAI != nil {
+		if len(loc.LAI) != 5 {
+			return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(loc.LAI))
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAILaiFixedLength(
 			gsm_map.LAIFixedLength(loc.LAI),
 		)
@@ -346,6 +364,9 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	}
 
 	if loc.RouteingAreaIdentity != nil {
+		if len(loc.RouteingAreaIdentity) != 6 {
+			return nil, fmt.Errorf("RouteingAreaIdentity must be exactly 6 octets, got %d", len(loc.RouteingAreaIdentity))
+		}
 		ra := gsm_map.RAIdentity(loc.RouteingAreaIdentity)
 		li.RouteingAreaIdentity = &ra
 	}

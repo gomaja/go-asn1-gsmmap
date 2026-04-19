@@ -32,6 +32,18 @@ func validateSri(s *Sri) error {
 	if len(s.CallReferenceNumber) > 8 {
 		return ErrSriInvalidCallReferenceNumber
 	}
+	// ForwardingReason — 0..2 per TS 29.002.
+	if s.ForwardingReason != nil && (*s.ForwardingReason < 0 || *s.ForwardingReason > 2) {
+		return fmt.Errorf("ForwardingReason out of range 0..2: %d", *s.ForwardingReason)
+	}
+	// SupportedCCBSPhase — 1..5 per TS 29.002.
+	if s.SupportedCCBSPhase != nil && (*s.SupportedCCBSPhase < 1 || *s.SupportedCCBSPhase > 5) {
+		return fmt.Errorf("SupportedCCBSPhase out of range 1..5: %d", *s.SupportedCCBSPhase)
+	}
+	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
+	if s.CallPriority != nil && (*s.CallPriority < 0 || *s.CallPriority > 15) {
+		return fmt.Errorf("CallPriority out of range 0..15: %d", *s.CallPriority)
+	}
 	return nil
 }
 
@@ -460,8 +472,14 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 		out.Msisdn = &v
 	}
 
-	// NumberPortabilityStatus
+	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if s.NumberPortabilityStatus != nil {
+		switch *s.NumberPortabilityStatus {
+		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
+			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
+		default:
+			return nil, fmt.Errorf("NumberPortabilityStatus has undefined value %d", *s.NumberPortabilityStatus)
+		}
 		v := gsm_map.NumberPortabilityStatus(int64(*s.NumberPortabilityStatus))
 		out.NumberPortabilityStatus = &v
 	}
@@ -513,8 +531,11 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 		out.AllowedServices = &bs
 	}
 
-	// UnavailabilityCause
+	// UnavailabilityCause — 1..6 per TS 29.002.
 	if s.UnavailabilityCause != nil {
+		if *s.UnavailabilityCause < 1 || *s.UnavailabilityCause > 6 {
+			return nil, fmt.Errorf("UnavailabilityCause out of range 1..6: %d", *s.UnavailabilityCause)
+		}
 		v := gsm_map.UnavailabilityCause(int64(*s.UnavailabilityCause))
 		out.UnavailabilityCause = &v
 	}

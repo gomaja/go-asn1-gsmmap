@@ -83,8 +83,11 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	arg.ServingNodeTypeIndicator = boolToNullPtr(u.ServingNodeTypeIndicator)
 	arg.SkipSubscriberDataUpdate = boolToNullPtr(u.SkipSubscriberDataUpdate)
 
-	// [8] usedRatType
+	// [8] usedRatType — Used-RAT-Type 0..5 per TS 29.002.
 	if u.UsedRatType != nil {
+		if *u.UsedRatType < 0 || *u.UsedRatType > 5 {
+			return nil, fmt.Errorf("UsedRATType out of range 0..5: %d", *u.UsedRatType)
+		}
 		v := gsm_map.UsedRATType(int64(*u.UsedRatType))
 		arg.UsedRATType = &v
 	}
@@ -95,8 +98,11 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	arg.UeReachableIndicator = boolToNullPtr(u.UeReachableIndicator)
 	arg.EpsSubscriptionDataNotNeeded = boolToNullPtr(u.EpsSubscriptionDataNotNeeded)
 
-	// [14] ue-SRVCC-Capability
+	// [14] ue-SRVCC-Capability — 0..1 per TS 29.002.
 	if u.UeSrvccCapability != nil {
+		if *u.UeSrvccCapability < 0 || *u.UeSrvccCapability > 1 {
+			return nil, fmt.Errorf("UeSrvccCapability out of range 0..1: %d", *u.UeSrvccCapability)
+		}
 		v := gsm_map.UESRVCCCapability(int64(*u.UeSrvccCapability))
 		arg.UeSrvccCapability = &v
 	}
@@ -123,8 +129,11 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		arg.MmeNumberforMTSMS = &v
 	}
 
-	// [17] smsRegisterRequest
+	// [17] smsRegisterRequest — 0..2 per TS 29.002.
 	if u.SmsRegisterRequest != nil {
+		if *u.SmsRegisterRequest < 0 || *u.SmsRegisterRequest > 2 {
+			return nil, fmt.Errorf("SmsRegisterRequest out of range 0..2: %d", *u.SmsRegisterRequest)
+		}
 		v := gsm_map.SMSRegisterRequest(int64(*u.SmsRegisterRequest))
 		arg.SmsRegisterRequest = &v
 	}
@@ -472,6 +481,10 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 		v := gsm_map.NewEPSInfoPdnGwUpdate(*pgu)
 		return &v, nil
 	}
+	// IsrInformation is BIT STRING (SIZE(1..8)) per TS 29.002.
+	if e.IsrInformationBits < 1 || e.IsrInformationBits > 8 {
+		return nil, fmt.Errorf("EpsInfo: IsrInformationBits must be 1..8, got %d", e.IsrInformationBits)
+	}
 	if len(e.IsrInformation) == 0 || e.IsrInformationBits > len(e.IsrInformation)*8 {
 		return nil, fmt.Errorf("EpsInfo: IsrInformationBits (%d) inconsistent with bytes (%d)", e.IsrInformationBits, len(e.IsrInformation))
 	}
@@ -526,6 +539,9 @@ func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 		out.PdnGwIdentity = id
 	}
 	if p.ContextID != nil {
+		if *p.ContextID < 1 || *p.ContextID > 50 {
+			return nil, fmt.Errorf("ContextId out of range 1..50: %d", *p.ContextID)
+		}
 		v := gsm_map.ContextId(int64(*p.ContextID))
 		out.ContextId = &v
 	}
