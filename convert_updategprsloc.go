@@ -606,14 +606,14 @@ func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error
 	if w.PdnGwIpv4Address != nil {
 		ip4 := append([]byte(nil), (*w.PdnGwIpv4Address)...)
 		if len(ip4) != 4 {
-			return nil, fmt.Errorf("PDNGWIdentity: PdnGwIpv4Address must be exactly 4 octets, got %d", len(ip4))
+			return nil, fmt.Errorf("PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", len(ip4))
 		}
 		out.IPv4Address = HexBytes(ip4)
 	}
 	if w.PdnGwIpv6Address != nil {
 		ip6 := append([]byte(nil), (*w.PdnGwIpv6Address)...)
 		if len(ip6) != 16 {
-			return nil, fmt.Errorf("PDNGWIdentity: PdnGwIpv6Address must be exactly 16 octets, got %d", len(ip6))
+			return nil, fmt.Errorf("PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", len(ip6))
 		}
 		out.IPv6Address = HexBytes(ip6)
 	}
@@ -621,7 +621,7 @@ func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error
 		out.Name = HexBytes(append([]byte(nil), (*w.PdnGwName)...))
 	}
 	if len(out.IPv4Address) == 0 && len(out.IPv6Address) == 0 && len(out.Name) == 0 {
-		return nil, fmt.Errorf("PDNGWIdentity: at least one of IPv4Address, IPv6Address, or Name must be present")
+		return nil, fmt.Errorf("PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be present")
 	}
 	return out, nil
 }
