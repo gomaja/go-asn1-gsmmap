@@ -144,7 +144,11 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	if arg.CorrelationID != nil {
-		out.CorrelationID = convertWireToCorrelationID(arg.CorrelationID)
+		cid, err := convertWireToCorrelationID(arg.CorrelationID)
+		if err != nil {
+			return nil, fmt.Errorf("decoding CorrelationID: %w", err)
+		}
+		out.CorrelationID = cid
 	}
 
 	if arg.MaximumUeAvailabilityTime != nil {

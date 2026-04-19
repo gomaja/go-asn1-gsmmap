@@ -12,6 +12,12 @@ import (
 // --- UpdateGprsLocation ---
 
 func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsLocationArg, error) {
+	if u.IMSI == "" {
+		return nil, fmt.Errorf("UpdateGprsLocation: IMSI is mandatory and must be non-empty")
+	}
+	if u.SGSNNumber == "" {
+		return nil, fmt.Errorf("UpdateGprsLocation: SGSNNumber is mandatory and must be non-empty")
+	}
 	imsiBytes, err := tbcd.Encode(u.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
@@ -154,14 +160,23 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 }
 
 func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*UpdateGprsLocation, error) {
+	if len(arg.Imsi) == 0 {
+		return nil, fmt.Errorf("UpdateGprsLocation: IMSI is mandatory and must be non-empty")
+	}
 	imsi, err := tbcd.Decode(arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
+	}
+	if imsi == "" {
+		return nil, fmt.Errorf("UpdateGprsLocation: IMSI decoded to empty string")
 	}
 
 	sgsnNum, sgsnNature, sgsnPlan, err := decodeAddressField(arg.SgsnNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SGSNNumber: %w", err)
+	}
+	if sgsnNum == "" {
+		return nil, fmt.Errorf("UpdateGprsLocation: SGSNNumber decoded to empty string")
 	}
 
 	sgsnAddr, err := gsn.Parse(arg.SgsnAddress)
@@ -405,6 +420,11 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 	}
 
 	if w.SupportedFeatures != nil && w.SupportedFeatures.BitLength > 0 {
+		// BitString capacity must be consistent with Bytes length.
+		if int64(w.SupportedFeatures.BitLength) > int64(len(w.SupportedFeatures.Bytes))*8 {
+			return nil, fmt.Errorf("SGSNCapability: SupportedFeatures BitLength %d exceeds len(Bytes)*8 = %d",
+				w.SupportedFeatures.BitLength, len(w.SupportedFeatures.Bytes)*8)
+		}
 		out.SupportedFeatures = HexBytes(append([]byte(nil), w.SupportedFeatures.Bytes...))
 		out.SupportedFeaturesBits = w.SupportedFeatures.BitLength
 	}
@@ -422,6 +442,10 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 	out.ResetIdsSupported = nullPtrToBool(w.ResetIdsSupported)
 
 	if w.ExtSupportedFeatures != nil && w.ExtSupportedFeatures.BitLength > 0 {
+		if int64(w.ExtSupportedFeatures.BitLength) > int64(len(w.ExtSupportedFeatures.Bytes))*8 {
+			return nil, fmt.Errorf("SGSNCapability: ExtSupportedFeatures BitLength %d exceeds len(Bytes)*8 = %d",
+				w.ExtSupportedFeatures.BitLength, len(w.ExtSupportedFeatures.Bytes)*8)
+		}
 		out.ExtSupportedFeatures = HexBytes(append([]byte(nil), w.ExtSupportedFeatures.Bytes...))
 		out.ExtSupportedFeaturesBits = w.ExtSupportedFeatures.BitLength
 	}
@@ -462,14 +486,26 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 		if w.PdnGwUpdate == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		return &EpsInfo{PdnGwUpdate: convertWireToPdnGwUpdate(w.PdnGwUpdate)}, nil
+		pgw, err := convertWireToPdnGwUpdate(w.PdnGwUpdate)
+		if err != nil {
+			return nil, err
+		}
+		return &EpsInfo{PdnGwUpdate: pgw}, nil
 	case gsm_map.EPSInfoChoiceIsrInformation:
 		if w.IsrInformation == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
+		// IsrInformation is BIT STRING (SIZE(1..8)) per TS 29.002.
+		bits := w.IsrInformation.BitLength
+		if bits < 1 || bits > 8 {
+			return nil, fmt.Errorf("IsrInformation BitLength must be 1..8, got %d", bits)
+		}
+		if int64(bits) > int64(len(w.IsrInformation.Bytes))*8 {
+			return nil, fmt.Errorf("IsrInformation BitLength %d exceeds len(Bytes)*8 = %d", bits, len(w.IsrInformation.Bytes)*8)
+		}
 		return &EpsInfo{
 			IsrInformation:     HexBytes(append([]byte(nil), w.IsrInformation.Bytes...)),
-			IsrInformationBits: w.IsrInformation.BitLength,
+			IsrInformationBits: bits,
 		}, nil
 	default:
 		return nil, ErrSriChoiceNoAlternative
@@ -496,19 +532,28 @@ func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 	return out, nil
 }
 
-func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) *PdnGwUpdate {
+// convertWireToPdnGwUpdate decodes a wire PDNGWUpdate, validating
+// ContextId per TS 29.272 (1..50 context range).
+func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) (*PdnGwUpdate, error) {
 	out := &PdnGwUpdate{}
 	if w.Apn != nil {
 		out.APN = HexBytes(append([]byte(nil), (*w.Apn)...))
 	}
 	if w.PdnGwIdentity != nil {
-		out.PdnGwIdentity = convertWireToPdnGwIdentity(w.PdnGwIdentity)
+		pid, err := convertWireToPdnGwIdentity(w.PdnGwIdentity)
+		if err != nil {
+			return nil, err
+		}
+		out.PdnGwIdentity = pid
 	}
 	if w.ContextId != nil {
-		v := int(*w.ContextId)
+		v, err := narrowInt64Range(*w.ContextId, 1, 50, "ContextId")
+		if err != nil {
+			return nil, err
+		}
 		out.ContextID = &v
 	}
-	return out
+	return out, nil
 }
 
 func convertPdnGwIdentityToWire(p *PdnGwIdentity) (*gsm_map.PDNGWIdentity, error) {
@@ -537,23 +582,40 @@ func convertPdnGwIdentityToWire(p *PdnGwIdentity) (*gsm_map.PDNGWIdentity, error
 	return out, nil
 }
 
-func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) *PdnGwIdentity {
+// convertWireToPdnGwIdentity decodes a wire PDNGWIdentity, mirroring the
+// encoder's validation: IPv4=4 octets, IPv6=16 octets, and at least one
+// of the three identity fields must be present.
+func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error) {
 	out := &PdnGwIdentity{}
 	if w.PdnGwIpv4Address != nil {
-		out.IPv4Address = HexBytes(append([]byte(nil), (*w.PdnGwIpv4Address)...))
+		ip4 := append([]byte(nil), (*w.PdnGwIpv4Address)...)
+		if len(ip4) != 4 {
+			return nil, fmt.Errorf("PDNGWIdentity: PdnGwIpv4Address must be exactly 4 octets, got %d", len(ip4))
+		}
+		out.IPv4Address = HexBytes(ip4)
 	}
 	if w.PdnGwIpv6Address != nil {
-		out.IPv6Address = HexBytes(append([]byte(nil), (*w.PdnGwIpv6Address)...))
+		ip6 := append([]byte(nil), (*w.PdnGwIpv6Address)...)
+		if len(ip6) != 16 {
+			return nil, fmt.Errorf("PDNGWIdentity: PdnGwIpv6Address must be exactly 16 octets, got %d", len(ip6))
+		}
+		out.IPv6Address = HexBytes(ip6)
 	}
 	if w.PdnGwName != nil {
 		out.Name = HexBytes(append([]byte(nil), (*w.PdnGwName)...))
 	}
-	return out
+	if len(out.IPv4Address) == 0 && len(out.IPv6Address) == 0 && len(out.Name) == 0 {
+		return nil, fmt.Errorf("PDNGWIdentity: at least one of IPv4Address, IPv6Address, or Name must be present")
+	}
+	return out, nil
 }
 
 // --- UpdateGprsLocationRes ---
 
 func convertUpdateGprsLocationResToRes(u *UpdateGprsLocationRes) (*gsm_map.UpdateGprsLocationRes, error) {
+	if u.HLRNumber == "" {
+		return nil, fmt.Errorf("UpdateGprsLocationRes: HLRNumber is mandatory and must be non-empty")
+	}
 	hlr, err := encodeAddressField(u.HLRNumber, u.HLRNumberNature, u.HLRNumberPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding HLRNumber: %w", err)
@@ -571,6 +633,9 @@ func convertResToUpdateGprsLocationRes(res *gsm_map.UpdateGprsLocationRes) (*Upd
 	hlr, nature, plan, err := decodeAddressField(res.HlrNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding HLRNumber: %w", err)
+	}
+	if hlr == "" {
+		return nil, fmt.Errorf("UpdateGprsLocationRes: HLRNumber is mandatory and must be non-empty")
 	}
 
 	return &UpdateGprsLocationRes{

@@ -98,7 +98,13 @@ func convertCorrelationIDToWire(c *SriSmCorrelationID) (*gsm_map.CorrelationID, 
 	return out, nil
 }
 
-func convertWireToCorrelationID(w *gsm_map.CorrelationID) *SriSmCorrelationID {
+// convertWireToCorrelationID decodes a CorrelationID, enforcing the
+// encoder's mandatory-SipUriB rule on decode so malformed peer input
+// fails to parse instead of later failing re-encode.
+func convertWireToCorrelationID(w *gsm_map.CorrelationID) (*SriSmCorrelationID, error) {
+	if len(w.SipUriB) == 0 {
+		return nil, ErrSriSmMissingSipUriB
+	}
 	c := &SriSmCorrelationID{
 		SipUriB: HexBytes(w.SipUriB),
 	}
@@ -108,7 +114,7 @@ func convertWireToCorrelationID(w *gsm_map.CorrelationID) *SriSmCorrelationID {
 	if w.SipUriA != nil {
 		c.SipUriA = HexBytes(*w.SipUriA)
 	}
-	return c
+	return c, nil
 }
 
 func convertIpSmGwGuidanceToWire(g *IpSmGwGuidance) (*gsm_map.IPSMGWGuidance, error) {
@@ -122,11 +128,21 @@ func convertIpSmGwGuidanceToWire(g *IpSmGwGuidance) (*gsm_map.IPSMGWGuidance, er
 	}, nil
 }
 
-func convertWireToIpSmGwGuidance(w *gsm_map.IPSMGWGuidance) *IpSmGwGuidance {
-	return &IpSmGwGuidance{
-		MinimumDeliveryTimeValue:     int(w.MinimumDeliveryTimeValue),
-		RecommendedDeliveryTimeValue: int(w.RecommendedDeliveryTimeValue),
+// convertWireToIpSmGwGuidance decodes IPSMGWGuidance, enforcing the same
+// MinSmDeliveryTimer..MaxSmDeliveryTimer range as the encoder on each timer.
+func convertWireToIpSmGwGuidance(w *gsm_map.IPSMGWGuidance) (*IpSmGwGuidance, error) {
+	mdt, err := narrowInt64Range(int64(w.MinimumDeliveryTimeValue), MinSmDeliveryTimer, MaxSmDeliveryTimer, "IpSmGwGuidance.MinimumDeliveryTimeValue")
+	if err != nil {
+		return nil, err
 	}
+	rdt, err := narrowInt64Range(int64(w.RecommendedDeliveryTimeValue), MinSmDeliveryTimer, MaxSmDeliveryTimer, "IpSmGwGuidance.RecommendedDeliveryTimeValue")
+	if err != nil {
+		return nil, err
+	}
+	return &IpSmGwGuidance{
+		MinimumDeliveryTimeValue:     mdt,
+		RecommendedDeliveryTimeValue: rdt,
+	}, nil
 }
 
 // --- UpdateLocation helpers ---

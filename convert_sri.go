@@ -148,6 +148,9 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// IstSupportIndicator
 	if s.IstSupportIndicator != nil {
+		if *s.IstSupportIndicator < 0 || *s.IstSupportIndicator > 1 {
+			return nil, fmt.Errorf("IstSupportIndicator out of range 0..1: %d", *s.IstSupportIndicator)
+		}
 		v := gsm_map.ISTSupportIndicator(int64(*s.IstSupportIndicator))
 		arg.IstSupportIndicator = &v
 	}
@@ -202,11 +205,17 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 		return nil, fmt.Errorf("decoding GmscOrGsmSCFAddress: %w", err)
 	}
 
+	// InterrogationType — 0 (basicCall) or 1 (forwarding) per TS 29.002.
+	it, err := narrowInt64Range(int64(arg.InterrogationType), 0, 1, "InterrogationType")
+	if err != nil {
+		return nil, err
+	}
+
 	s := &Sri{
 		MSISDN:              msisdn,
 		MSISDNNature:        msisdnNature,
 		MSISDNPlan:          msisdnPlan,
-		InterrogationType:   InterrogationType(int(arg.InterrogationType)),
+		InterrogationType:   InterrogationType(it),
 		GmscOrGsmSCFAddress: gmsc,
 		GmscNature:          gmscNature,
 		GmscPlan:            gmscPlan,
@@ -217,30 +226,43 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 		s.CugCheckInfo = convertWireToCugCheckInfo(arg.CugCheckInfo)
 	}
 
-	// NumberOfForwarding
+	// NumberOfForwarding — 1..5 per TS 29.002.
 	if arg.NumberOfForwarding != nil {
-		v := int(*arg.NumberOfForwarding)
+		v, err := narrowInt64Range(*arg.NumberOfForwarding, 1, 5, "NumberOfForwarding")
+		if err != nil {
+			return nil, err
+		}
 		s.NumberOfForwarding = &v
 	}
 
 	// OrInterrogation
 	s.OrInterrogation = nullPtrToBool(arg.OrInterrogation)
 
-	// OrCapability
+	// OrCapability — 1..127 per TS 29.002.
 	if arg.OrCapability != nil {
-		v := int(*arg.OrCapability)
+		v, err := narrowInt64Range(*arg.OrCapability, 1, 127, "OrCapability")
+		if err != nil {
+			return nil, err
+		}
 		s.OrCapability = &v
 	}
 
-	// CallReferenceNumber
+	// CallReferenceNumber — OCTET STRING (SIZE(1..8)) per TS 29.002.
 	if arg.CallReferenceNumber != nil {
+		if len(*arg.CallReferenceNumber) > 8 {
+			return nil, fmt.Errorf("CallReferenceNumber must be 1..8 octets, got %d", len(*arg.CallReferenceNumber))
+		}
 		s.CallReferenceNumber = HexBytes(*arg.CallReferenceNumber)
 	}
 
-	// ForwardingReason
+	// ForwardingReason — 0..2 per TS 29.002.
 	if arg.ForwardingReason != nil {
-		v := ForwardingReason(int(*arg.ForwardingReason))
-		s.ForwardingReason = &v
+		v, err := narrowInt64Range(int64(*arg.ForwardingReason), 0, 2, "ForwardingReason")
+		if err != nil {
+			return nil, err
+		}
+		fr := ForwardingReason(v)
+		s.ForwardingReason = &fr
 	}
 
 	// BasicServiceGroup
@@ -287,9 +309,12 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	// CcbsCall
 	s.CcbsCall = nullPtrToBool(arg.CcbsCall)
 
-	// SupportedCCBSPhase
+	// SupportedCCBSPhase — 1..5 per TS 29.002 (CCBS phase 1..5).
 	if arg.SupportedCCBSPhase != nil {
-		v := int(*arg.SupportedCCBSPhase)
+		v, err := narrowInt64Range(*arg.SupportedCCBSPhase, 1, 5, "SupportedCCBSPhase")
+		if err != nil {
+			return nil, err
+		}
 		s.SupportedCCBSPhase = &v
 	}
 
@@ -298,9 +323,12 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 		s.AdditionalSignalInfo = convertWireToExtExternalSignalInfo(arg.AdditionalSignalInfo)
 	}
 
-	// IstSupportIndicator
+	// IstSupportIndicator — 0..1 per TS 29.002.
 	if arg.IstSupportIndicator != nil {
-		v := int(*arg.IstSupportIndicator)
+		v, err := narrowInt64Range(int64(*arg.IstSupportIndicator), 0, 1, "IstSupportIndicator")
+		if err != nil {
+			return nil, err
+		}
 		s.IstSupportIndicator = &v
 	}
 
@@ -332,9 +360,12 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	// MtRoamingRetrySupported
 	s.MtRoamingRetrySupported = nullPtrToBool(arg.MtRoamingRetrySupported)
 
-	// CallPriority
+	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
 	if arg.CallPriority != nil {
-		v := int(*arg.CallPriority)
+		v, err := narrowInt64Range(int64(*arg.CallPriority), 0, 15, "CallPriority")
+		if err != nil {
+			return nil, err
+		}
 		s.CallPriority = &v
 	}
 
@@ -592,14 +623,25 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 		out.MSISDNPlan = pl
 	}
 
-	// NumberPortabilityStatus
+	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if res.NumberPortabilityStatus != nil {
-		v := NumberPortabilityStatus(int(*res.NumberPortabilityStatus))
+		v64 := int64(*res.NumberPortabilityStatus)
+		switch NumberPortabilityStatus(v64) {
+		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
+			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
+		default:
+			return nil, fmt.Errorf("NumberPortabilityStatus has undefined value %d", v64)
+		}
+		v := NumberPortabilityStatus(v64)
 		out.NumberPortabilityStatus = &v
 	}
 
 	// IstAlertTimer
-	out.IstAlertTimer = int64PtrTo(res.IstAlertTimer)
+	istAlert, err := int64PtrTo(res.IstAlertTimer)
+	if err != nil {
+		return nil, fmt.Errorf("decoding IstAlertTimer: %w", err)
+	}
+	out.IstAlertTimer = istAlert
 
 	// SupportedCamelPhasesInVMSC
 	if res.SupportedCamelPhasesInVMSC != nil && res.SupportedCamelPhasesInVMSC.BitLength > 0 {
@@ -645,10 +687,14 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 		out.AllowedServices = convertBitStringToAllowedServices(*res.AllowedServices)
 	}
 
-	// UnavailabilityCause
+	// UnavailabilityCause — 1..6 per TS 29.002.
 	if res.UnavailabilityCause != nil {
-		v := UnavailabilityCause(int(*res.UnavailabilityCause))
-		out.UnavailabilityCause = &v
+		v, err := narrowInt64Range(int64(*res.UnavailabilityCause), 1, 6, "UnavailabilityCause")
+		if err != nil {
+			return nil, err
+		}
+		uc := UnavailabilityCause(v)
+		out.UnavailabilityCause = &uc
 	}
 
 	// ReleaseResourcesSupported
