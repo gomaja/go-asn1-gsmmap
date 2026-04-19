@@ -216,7 +216,14 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.SkipSubscriberDataUpdate = nullPtrToBool(arg.SkipSubscriberDataUpdate)
 
 	if arg.UsedRATType != nil {
-		v := UsedRatType(int64(*arg.UsedRATType))
+		// Range-check the int64 wire value before narrowing to Go int so
+		// 32-bit builds can't truncate out-of-range values into the valid
+		// enum window.
+		v64 := int64(*arg.UsedRATType)
+		if v64 < 0 || v64 > 5 {
+			return nil, fmt.Errorf("UsedRATType out of range 0..5: %d", v64)
+		}
+		v := UsedRatType(v64)
 		u.UsedRatType = &v
 	}
 
@@ -227,7 +234,11 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.EpsSubscriptionDataNotNeeded = nullPtrToBool(arg.EpsSubscriptionDataNotNeeded)
 
 	if arg.UeSrvccCapability != nil {
-		v := UeSrvccCapability(int64(*arg.UeSrvccCapability))
+		v64 := int64(*arg.UeSrvccCapability)
+		if v64 < 0 || v64 > 1 {
+			return nil, fmt.Errorf("UeSrvccCapability out of range 0..1: %d", v64)
+		}
+		v := UeSrvccCapability(v64)
 		u.UeSrvccCapability = &v
 	}
 
@@ -253,7 +264,11 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	}
 
 	if arg.SmsRegisterRequest != nil {
-		v := SmsRegisterRequest(int64(*arg.SmsRegisterRequest))
+		v64 := int64(*arg.SmsRegisterRequest)
+		if v64 < 0 || v64 > 2 {
+			return nil, fmt.Errorf("SmsRegisterRequest out of range 0..2: %d", v64)
+		}
+		v := SmsRegisterRequest(v64)
 		u.SmsRegisterRequest = &v
 	}
 
@@ -449,12 +464,13 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 		}
 		return &EpsInfo{PdnGwUpdate: convertWireToPdnGwUpdate(w.PdnGwUpdate)}, nil
 	case gsm_map.EPSInfoChoiceIsrInformation:
-		out := &EpsInfo{}
-		if w.IsrInformation != nil {
-			out.IsrInformation = HexBytes(append([]byte(nil), w.IsrInformation.Bytes...))
-			out.IsrInformationBits = w.IsrInformation.BitLength
+		if w.IsrInformation == nil {
+			return nil, ErrSriChoiceNoAlternative
 		}
-		return out, nil
+		return &EpsInfo{
+			IsrInformation:     HexBytes(append([]byte(nil), w.IsrInformation.Bytes...)),
+			IsrInformationBits: w.IsrInformation.BitLength,
+		}, nil
 	default:
 		return nil, ErrSriChoiceNoAlternative
 	}

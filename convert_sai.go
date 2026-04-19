@@ -47,15 +47,79 @@ func convertReSynchronisationInfoToWire(r *ReSynchronisationInfo) (*gsm_map.ReSy
 }
 
 // convertWireToReSynchronisationInfo converts a wire-level
-// gsm_map.ReSynchronisationInfo into the public ReSynchronisationInfo.
-func convertWireToReSynchronisationInfo(w *gsm_map.ReSynchronisationInfo) *ReSynchronisationInfo {
+// gsm_map.ReSynchronisationInfo into the public ReSynchronisationInfo,
+// enforcing the spec-mandated 16-octet RAND and 14-octet AUTS lengths on
+// decode (symmetric with the encoder).
+func convertWireToReSynchronisationInfo(w *gsm_map.ReSynchronisationInfo) (*ReSynchronisationInfo, error) {
 	if w == nil {
-		return nil
+		return nil, nil
+	}
+	if len(w.Rand) != 16 {
+		return nil, fmt.Errorf("ReSynchronisationInfo: RAND must be exactly 16 octets, got %d", len(w.Rand))
+	}
+	if len(w.Auts) != 14 {
+		return nil, fmt.Errorf("ReSynchronisationInfo: AUTS must be exactly 14 octets, got %d", len(w.Auts))
 	}
 	return &ReSynchronisationInfo{
 		RAND: HexBytes(w.Rand),
 		AUTS: HexBytes(w.Auts),
+	}, nil
+}
+
+// validateTriplet enforces the fixed-length requirements on a GSM triplet
+// per 3GPP TS 29.002: RAND 16 octets, SRES 4 octets, Kc 8 octets.
+func validateTriplet(t *AuthenticationTriplet, idx int) error {
+	if len(t.RAND) != 16 {
+		return fmt.Errorf("sai: triplet[%d] RAND must be exactly 16 octets, got %d", idx, len(t.RAND))
 	}
+	if len(t.SRES) != 4 {
+		return fmt.Errorf("sai: triplet[%d] SRES must be exactly 4 octets, got %d", idx, len(t.SRES))
+	}
+	if len(t.Kc) != 8 {
+		return fmt.Errorf("sai: triplet[%d] Kc must be exactly 8 octets, got %d", idx, len(t.Kc))
+	}
+	return nil
+}
+
+// validateQuintuplet enforces the fixed-length requirements on a UMTS
+// quintuplet per 3GPP TS 29.002: RAND 16, XRES 4..16, CK 16, IK 16,
+// AUTN 16.
+func validateQuintuplet(q *AuthenticationQuintuplet, idx int) error {
+	if len(q.RAND) != 16 {
+		return fmt.Errorf("sai: quintuplet[%d] RAND must be exactly 16 octets, got %d", idx, len(q.RAND))
+	}
+	if len(q.XRES) < 4 || len(q.XRES) > 16 {
+		return fmt.Errorf("sai: quintuplet[%d] XRES must be 4..16 octets, got %d", idx, len(q.XRES))
+	}
+	if len(q.CK) != 16 {
+		return fmt.Errorf("sai: quintuplet[%d] CK must be exactly 16 octets, got %d", idx, len(q.CK))
+	}
+	if len(q.IK) != 16 {
+		return fmt.Errorf("sai: quintuplet[%d] IK must be exactly 16 octets, got %d", idx, len(q.IK))
+	}
+	if len(q.AUTN) != 16 {
+		return fmt.Errorf("sai: quintuplet[%d] AUTN must be exactly 16 octets, got %d", idx, len(q.AUTN))
+	}
+	return nil
+}
+
+// validateEpcAV enforces the fixed-length requirements on an EPS
+// authentication vector per 3GPP TS 29.272: RAND 16, XRES 4..16, AUTN 16,
+// KASME 32.
+func validateEpcAV(e *EpcAV, idx int) error {
+	if len(e.RAND) != 16 {
+		return fmt.Errorf("sai: epsAuthenticationSetList[%d] RAND must be exactly 16 octets, got %d", idx, len(e.RAND))
+	}
+	if len(e.XRES) < 4 || len(e.XRES) > 16 {
+		return fmt.Errorf("sai: epsAuthenticationSetList[%d] XRES must be 4..16 octets, got %d", idx, len(e.XRES))
+	}
+	if len(e.AUTN) != 16 {
+		return fmt.Errorf("sai: epsAuthenticationSetList[%d] AUTN must be exactly 16 octets, got %d", idx, len(e.AUTN))
+	}
+	if len(e.KASME) != 32 {
+		return fmt.Errorf("sai: epsAuthenticationSetList[%d] KASME must be exactly 32 octets, got %d", idx, len(e.KASME))
+	}
+	return nil
 }
 
 // convertAuthenticationSetListToWire converts the public CHOICE
@@ -74,24 +138,30 @@ func convertAuthenticationSetListToWire(a *AuthenticationSetList) (*gsm_map.Auth
 	}
 	if hasTriplets {
 		list := make(gsm_map.TripletList, len(a.Triplets))
-		for i, t := range a.Triplets {
+		for i := range a.Triplets {
+			if err := validateTriplet(&a.Triplets[i], i); err != nil {
+				return nil, err
+			}
 			list[i] = gsm_map.AuthenticationTriplet{
-				Rand: gsm_map.RAND(t.RAND),
-				Sres: gsm_map.SRES(t.SRES),
-				Kc:   gsm_map.Kc(t.Kc),
+				Rand: gsm_map.RAND(a.Triplets[i].RAND),
+				Sres: gsm_map.SRES(a.Triplets[i].SRES),
+				Kc:   gsm_map.Kc(a.Triplets[i].Kc),
 			}
 		}
 		v := gsm_map.NewAuthenticationSetListTripletList(list)
 		return &v, nil
 	}
 	list := make(gsm_map.QuintupletList, len(a.Quintuplets))
-	for i, q := range a.Quintuplets {
+	for i := range a.Quintuplets {
+		if err := validateQuintuplet(&a.Quintuplets[i], i); err != nil {
+			return nil, err
+		}
 		list[i] = gsm_map.AuthenticationQuintuplet{
-			Rand: gsm_map.RAND(q.RAND),
-			Xres: gsm_map.XRES(q.XRES),
-			Ck:   gsm_map.CK(q.CK),
-			Ik:   gsm_map.IK(q.IK),
-			Autn: gsm_map.AUTN(q.AUTN),
+			Rand: gsm_map.RAND(a.Quintuplets[i].RAND),
+			Xres: gsm_map.XRES(a.Quintuplets[i].XRES),
+			Ck:   gsm_map.CK(a.Quintuplets[i].CK),
+			Ik:   gsm_map.IK(a.Quintuplets[i].IK),
+			Autn: gsm_map.AUTN(a.Quintuplets[i].AUTN),
 		}
 	}
 	v := gsm_map.NewAuthenticationSetListQuintupletList(list)
@@ -113,6 +183,9 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 				SRES: HexBytes(t.Sres),
 				Kc:   HexBytes(t.Kc),
 			}
+			if err := validateTriplet(&out[i], i); err != nil {
+				return nil, err
+			}
 		}
 		return &AuthenticationSetList{Triplets: out}, nil
 	case gsm_map.AuthenticationSetListChoiceQuintupletList:
@@ -125,6 +198,9 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 				IK:   HexBytes(q.Ik),
 				AUTN: HexBytes(q.Autn),
 			}
+			if err := validateQuintuplet(&out[i], i); err != nil {
+				return nil, err
+			}
 		}
 		return &AuthenticationSetList{Quintuplets: out}, nil
 	default:
@@ -132,24 +208,33 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 	}
 }
 
-// convertEpcAVToWire converts the public EpcAV into the wire-level gsm_map.EPCAV.
-func convertEpcAVToWire(e *EpcAV) gsm_map.EPCAV {
+// convertEpcAVToWire converts the public EpcAV into the wire-level gsm_map.EPCAV,
+// enforcing RAND/XRES/AUTN/KASME size constraints per 3GPP TS 29.272.
+func convertEpcAVToWire(e *EpcAV, idx int) (gsm_map.EPCAV, error) {
+	if err := validateEpcAV(e, idx); err != nil {
+		return gsm_map.EPCAV{}, err
+	}
 	return gsm_map.EPCAV{
 		Rand:  gsm_map.RAND(e.RAND),
 		Xres:  gsm_map.XRES(e.XRES),
 		Autn:  gsm_map.AUTN(e.AUTN),
 		Kasme: gsm_map.KASME(e.KASME),
-	}
+	}, nil
 }
 
-// convertWireToEpcAV converts a wire-level gsm_map.EPCAV into the public EpcAV.
-func convertWireToEpcAV(w *gsm_map.EPCAV) EpcAV {
-	return EpcAV{
+// convertWireToEpcAV converts a wire-level gsm_map.EPCAV into the public
+// EpcAV, enforcing the same size constraints symmetrically on decode.
+func convertWireToEpcAV(w *gsm_map.EPCAV, idx int) (EpcAV, error) {
+	out := EpcAV{
 		RAND:  HexBytes(w.Rand),
 		XRES:  HexBytes(w.Xres),
 		AUTN:  HexBytes(w.Autn),
 		KASME: HexBytes(w.Kasme),
 	}
+	if err := validateEpcAV(&out, idx); err != nil {
+		return EpcAV{}, err
+	}
+	return out, nil
 }
 
 // convertSendAuthenticationInfoToArg converts the public SendAuthenticationInfo
@@ -225,12 +310,17 @@ func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) 
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
+	resync, err := convertWireToReSynchronisationInfo(arg.ReSynchronisationInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	out := &SendAuthenticationInfo{
 		IMSI:                         imsi,
 		NumberOfRequestedVectors:     int(arg.NumberOfRequestedVectors),
 		SegmentationProhibited:       nullPtrToBool(arg.SegmentationProhibited),
 		ImmediateResponsePreferred:   nullPtrToBool(arg.ImmediateResponsePreferred),
-		ReSynchronisationInfo:        convertWireToReSynchronisationInfo(arg.ReSynchronisationInfo),
+		ReSynchronisationInfo:        resync,
 		AdditionalVectorsAreForEPS:   nullPtrToBool(arg.AdditionalVectorsAreForEPS),
 		UeUsageTypeRequestIndication: nullPtrToBool(arg.UeUsageTypeRequestIndication),
 	}
@@ -284,7 +374,11 @@ func convertSendAuthenticationInfoResToRes(s *SendAuthenticationInfoRes) (*gsm_m
 		}
 		list := make(gsm_map.EPSAuthenticationSetList, len(s.EpsAuthenticationSetList))
 		for i := range s.EpsAuthenticationSetList {
-			list[i] = convertEpcAVToWire(&s.EpsAuthenticationSetList[i])
+			av, err := convertEpcAVToWire(&s.EpsAuthenticationSetList[i], i)
+			if err != nil {
+				return nil, err
+			}
+			list[i] = av
 		}
 		res.EpsAuthenticationSetList = list
 	}
@@ -316,7 +410,11 @@ func convertResToSendAuthenticationInfoRes(res *gsm_map.SendAuthenticationInfoRe
 		}
 		list := make([]EpcAV, len(res.EpsAuthenticationSetList))
 		for i := range res.EpsAuthenticationSetList {
-			list[i] = convertWireToEpcAV(&res.EpsAuthenticationSetList[i])
+			av, err := convertWireToEpcAV(&res.EpsAuthenticationSetList[i], i)
+			if err != nil {
+				return nil, err
+			}
+			list[i] = av
 		}
 		out.EpsAuthenticationSetList = list
 	}

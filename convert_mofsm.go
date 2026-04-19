@@ -70,6 +70,9 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 		if w.Lmsi == nil {
 			return nil, fmt.Errorf("SMRPDA LMSI is nil")
 		}
+		if len(*w.Lmsi) != 4 {
+			return nil, fmt.Errorf("SmRpDa LMSI must be exactly 4 octets, got %d", len(*w.Lmsi))
+		}
 		da.LMSI = HexBytes(*w.Lmsi)
 	case gsm_map.SMRPDAChoiceServiceCentreAddressDA:
 		if w.ServiceCentreAddressDA == nil {
