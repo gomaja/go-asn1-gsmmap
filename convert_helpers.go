@@ -68,8 +68,9 @@ func intPtrTo64(p *int) *int64 {
 }
 
 // int64PtrTo narrows a *int64 wire-type field to the *int public-type form.
-// On 32-bit builds, rejects values outside [math.MinInt32, math.MaxInt32]
-// rather than silently truncating.
+// Rejects values outside [math.MinInt, math.MaxInt] (which collapses to
+// [math.MinInt32, math.MaxInt32] on 32-bit platforms and is a no-op on
+// 64-bit) rather than silently truncating.
 func int64PtrTo(p *int64) (*int, error) {
 	if p == nil {
 		return nil, nil
