@@ -325,11 +325,25 @@ func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) 
 		UeUsageTypeRequestIndication: nullPtrToBool(arg.UeUsageTypeRequestIndication),
 	}
 
+	// RequestingNodeType — ENUMERATED { vlr(0), sgsn(1), ..., s-cscf(2),
+	// bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17) }
+	// per TS 29.002. Spec exception handling:
+	//   "received values in the range (6-15) shall be treated as 'vlr'"
+	//   "received values greater than 17 shall be treated as 'sgsn'"
+	// Apply the mapping in int64 space first so wire values that exceed
+	// platform int still satisfy the spec mandate on 32-bit builds.
 	if arg.RequestingNodeType != nil {
-		v := RequestingNodeType(*arg.RequestingNodeType)
-		if !isValidRequestingNodeType(v) {
-			return nil, fmt.Errorf("%w: got %d", ErrSaiInvalidRequestingNodeType, v)
+		raw64 := int64(*arg.RequestingNodeType)
+		if raw64 < 0 {
+			return nil, fmt.Errorf("RequestingNodeType cannot be negative: %d", raw64)
 		}
+		switch {
+		case raw64 >= 6 && raw64 <= 15:
+			raw64 = int64(RequestingNodeVlr)
+		case raw64 > 17:
+			raw64 = int64(RequestingNodeSgsn)
+		}
+		v := RequestingNodeType(raw64) // post-mapping value is always within spec set
 		out.RequestingNodeType = &v
 	}
 	if arg.RequestingPLMNId != nil {
