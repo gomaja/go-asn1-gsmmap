@@ -22,7 +22,11 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 	}
 
 	if s.SubscriberState != nil {
-		si.SubscriberState = convertSubscriberStateToAsn1(s.SubscriberState)
+		wireSs, err := convertSubscriberStateToAsn1(s.SubscriberState)
+		if err != nil {
+			return nil, fmt.Errorf("converting SubscriberState: %w", err)
+		}
+		si.SubscriberState = wireSs
 	}
 
 	if s.LocationInformationGPRS != nil {
@@ -131,7 +135,11 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	}
 
 	if si.SubscriberState != nil {
-		out.SubscriberState = convertAsn1ToSubscriberState(si.SubscriberState)
+		pubSs, err := convertAsn1ToSubscriberState(si.SubscriberState)
+		if err != nil {
+			return nil, fmt.Errorf("decoding SubscriberState: %w", err)
+		}
+		out.SubscriberState = pubSs
 	}
 
 	if si.LocationInformationGPRS != nil {
@@ -610,7 +618,11 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 	}
 
 	if w.VplmnId != nil {
-		out.VplmnID = []byte(*w.VplmnId)
+		p := []byte(*w.VplmnId)
+		if len(p) != 3 {
+			return nil, fmt.Errorf("LocationInformation5GS: VplmnID must be exactly 3 octets, got %d", len(p))
+		}
+		out.VplmnID = p
 	}
 
 	if w.LocaltimeZone != nil {

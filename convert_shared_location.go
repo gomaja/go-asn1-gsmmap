@@ -134,11 +134,19 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 		switch choice.Choice {
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength:
 			if choice.CellGlobalIdOrServiceAreaIdFixedLength != nil {
-				loc.CellGlobalId = []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
+				b := []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
+				if len(b) != 7 {
+					return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(b))
+				}
+				loc.CellGlobalId = b
 			}
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
 			if choice.LaiFixedLength != nil {
-				loc.LAI = []byte(*choice.LaiFixedLength)
+				b := []byte(*choice.LaiFixedLength)
+				if len(b) != 5 {
+					return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(b))
+				}
+				loc.LAI = b
 			}
 		}
 	}
@@ -163,7 +171,11 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 
 // --- SubscriberState conversion ---
 
-func convertSubscriberStateToAsn1(ss *SubscriberStateInfo) *gsm_map.SubscriberState {
+// convertSubscriberStateToAsn1 encodes the public SubscriberStateInfo into
+// a wire SubscriberState CHOICE. Unknown State values return an error so
+// an out-of-spec caller can't silently produce a zero-valued wire value
+// that re-decodes as assumedIdle.
+func convertSubscriberStateToAsn1(ss *SubscriberStateInfo) (*gsm_map.SubscriberState, error) {
 	var s gsm_map.SubscriberState
 	switch ss.State {
 	case StateAssumedIdle:
@@ -178,11 +190,16 @@ func convertSubscriberStateToAsn1(ss *SubscriberStateInfo) *gsm_map.SubscriberSt
 		}
 	case StateNotProvidedFromVLR:
 		s = gsm_map.NewSubscriberStateNotProvidedFromVLR(struct{}{})
+	default:
+		return nil, fmt.Errorf("SubscriberState: unknown State %d", ss.State)
 	}
-	return &s
+	return &s, nil
 }
 
-func convertAsn1ToSubscriberState(ss *gsm_map.SubscriberState) *SubscriberStateInfo {
+// convertAsn1ToSubscriberState decodes the wire SubscriberState CHOICE into
+// the public type, rejecting unknown CHOICE values rather than silently
+// emitting a zero-valued state.
+func convertAsn1ToSubscriberState(ss *gsm_map.SubscriberState) (*SubscriberStateInfo, error) {
 	info := &SubscriberStateInfo{}
 	switch ss.Choice {
 	case gsm_map.SubscriberStateChoiceAssumedIdle:
@@ -197,8 +214,10 @@ func convertAsn1ToSubscriberState(ss *gsm_map.SubscriberState) *SubscriberStateI
 		}
 	case gsm_map.SubscriberStateChoiceNotProvidedFromVLR:
 		info.State = StateNotProvidedFromVLR
+	default:
+		return nil, fmt.Errorf("SubscriberState: unknown CHOICE %d", ss.Choice)
 	}
-	return info
+	return info, nil
 }
 
 // --- EPS Location conversion ---
@@ -256,11 +275,19 @@ func convertAsn1ToEPSLocation(li *gsm_map.LocationInformationEPS) (*EPSLocationI
 	}
 
 	if li.EUtranCellGlobalIdentity != nil {
-		loc.EUtranCellGlobalIdentity = []byte(*li.EUtranCellGlobalIdentity)
+		b := []byte(*li.EUtranCellGlobalIdentity)
+		if len(b) != 7 {
+			return nil, fmt.Errorf("EUtranCellGlobalIdentity must be exactly 7 octets, got %d", len(b))
+		}
+		loc.EUtranCellGlobalIdentity = b
 	}
 
 	if li.TrackingAreaIdentity != nil {
-		loc.TrackingAreaIdentity = []byte(*li.TrackingAreaIdentity)
+		b := []byte(*li.TrackingAreaIdentity)
+		if len(b) != 5 {
+			return nil, fmt.Errorf("TrackingAreaIdentity must be exactly 5 octets, got %d", len(b))
+		}
+		loc.TrackingAreaIdentity = b
 	}
 
 	if li.GeographicalInformation != nil {
@@ -371,17 +398,29 @@ func convertAsn1ToGPRSLocation(li *gsm_map.LocationInformationGPRS) (*GPRSLocati
 		switch choice.Choice {
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength:
 			if choice.CellGlobalIdOrServiceAreaIdFixedLength != nil {
-				loc.CellGlobalId = []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
+				b := []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
+				if len(b) != 7 {
+					return nil, fmt.Errorf("CellGlobalId must be exactly 7 octets, got %d", len(b))
+				}
+				loc.CellGlobalId = b
 			}
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
 			if choice.LaiFixedLength != nil {
-				loc.LAI = []byte(*choice.LaiFixedLength)
+				b := []byte(*choice.LaiFixedLength)
+				if len(b) != 5 {
+					return nil, fmt.Errorf("LAI must be exactly 5 octets, got %d", len(b))
+				}
+				loc.LAI = b
 			}
 		}
 	}
 
 	if li.RouteingAreaIdentity != nil {
-		loc.RouteingAreaIdentity = []byte(*li.RouteingAreaIdentity)
+		b := []byte(*li.RouteingAreaIdentity)
+		if len(b) != 6 {
+			return nil, fmt.Errorf("RouteingAreaIdentity must be exactly 6 octets, got %d", len(b))
+		}
+		loc.RouteingAreaIdentity = b
 	}
 
 	if li.GeographicalInformation != nil {

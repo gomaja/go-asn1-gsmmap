@@ -269,6 +269,9 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 
 	// LMSI
 	if res.LocationInfoWithLMSI.Lmsi != nil {
+		if len(*res.LocationInfoWithLMSI.Lmsi) != 4 {
+			return nil, fmt.Errorf("LocationInfoWithLMSI.LMSI must be exactly 4 octets, got %d", len(*res.LocationInfoWithLMSI.Lmsi))
+		}
 		li.LMSI = HexBytes(*res.LocationInfoWithLMSI.Lmsi)
 	}
 
