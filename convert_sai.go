@@ -330,22 +330,20 @@ func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) 
 	// per TS 29.002. Spec exception handling:
 	//   "received values in the range (6-15) shall be treated as 'vlr'"
 	//   "received values greater than 17 shall be treated as 'sgsn'"
+	// Apply the mapping in int64 space first so wire values that exceed
+	// platform int still satisfy the spec mandate on 32-bit builds.
 	if arg.RequestingNodeType != nil {
 		raw64 := int64(*arg.RequestingNodeType)
 		if raw64 < 0 {
 			return nil, fmt.Errorf("RequestingNodeType cannot be negative: %d", raw64)
 		}
-		raw, err := narrowInt64(raw64)
-		if err != nil {
-			return nil, fmt.Errorf("RequestingNodeType: %w", err)
-		}
-		v := RequestingNodeType(raw)
 		switch {
-		case raw >= 6 && raw <= 15:
-			v = RequestingNodeVlr
-		case raw > 17:
-			v = RequestingNodeSgsn
+		case raw64 >= 6 && raw64 <= 15:
+			raw64 = int64(RequestingNodeVlr)
+		case raw64 > 17:
+			raw64 = int64(RequestingNodeSgsn)
 		}
+		v := RequestingNodeType(raw64) // post-mapping value is always within spec set
 		out.RequestingNodeType = &v
 	}
 	if arg.RequestingPLMNId != nil {

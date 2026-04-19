@@ -8,6 +8,7 @@
 package gsmmap
 
 import (
+	"math"
 	"testing"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
@@ -72,6 +73,9 @@ func TestSriDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) {
 		{"istCommandSupported", 1, 1},
 		{"future value 2 → 1", 2, 1},
 		{"future value 99 → 1", 99, 1},
+		// Spec mandate: any value > 1 maps to 1, even values that exceed
+		// platform int on 32-bit builds. Mapping must happen in int64 space.
+		{"future value MaxInt32+1 → 1", math.MaxInt32 + 1, 1},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -111,6 +115,9 @@ func TestUpdateLocationDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) 
 		{"basicISTSupported", 0, 0},
 		{"istCommandSupported", 1, 1},
 		{"future value 5 → 1", 5, 1},
+		// Spec mandate: any value > 1 maps to 1, even values that exceed
+		// platform int on 32-bit builds. Mapping must happen in int64 space.
+		{"future value MaxInt32+1 → 1", math.MaxInt32 + 1, 1},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -274,6 +281,9 @@ func TestSaiDecodeRequestingNodeType_AppliesSpecMapping(t *testing.T) {
 		{"mme-sgsn (17)", 17, RequestingNodeMmeSgsn},
 		{"reserved 18 → sgsn", 18, RequestingNodeSgsn},
 		{"reserved 99 → sgsn", 99, RequestingNodeSgsn},
+		// Spec mandate: any value > 17 maps to sgsn, even values that exceed
+		// platform int on 32-bit builds. Mapping must happen in int64 space.
+		{"reserved MaxInt32+1 → sgsn", math.MaxInt32 + 1, RequestingNodeSgsn},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

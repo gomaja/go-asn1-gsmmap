@@ -188,18 +188,17 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		// IstSupportIndicator — ENUMERATED { basicISTSupported(0),
 		// istCommandSupported(1), ... } per TS 29.002. Spec exception:
 		// "reception of values > 1 shall be mapped to 'istCommandSupported'".
+		// Apply the mapping in int64 space first so wire values that exceed
+		// platform int still satisfy the spec mandate on 32-bit builds.
 		if arg.VlrCapability.IstSupportIndicator != nil {
 			v64 := int64(*arg.VlrCapability.IstSupportIndicator)
 			if v64 < 0 {
 				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator cannot be negative: %d", v64)
 			}
-			v, err := narrowInt64(v64)
-			if err != nil {
-				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w", err)
+			if v64 > 1 {
+				v64 = 1 // per TS 29.002 exception handling
 			}
-			if v > 1 {
-				v = 1 // per TS 29.002 exception handling
-			}
+			v := int(v64) // post-mapping value is always 0 or 1
 			vlrCap.IstSupportIndicator = &v
 		}
 
