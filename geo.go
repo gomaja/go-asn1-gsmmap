@@ -134,12 +134,21 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 }
 
 // Encode encodes a GeographicalInfo back to raw octets per 3GPP TS 23.032.
+// Rejects caller errors (non-finite or out-of-range coordinates, missing
+// required shape fields) at the boundary so silently-clamped values can
+// never reach the wire.
 func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	if math.IsNaN(gi.Latitude) || math.IsInf(gi.Latitude, 0) {
 		return nil, fmt.Errorf("latitude is not a finite number: %v", gi.Latitude)
 	}
 	if math.IsNaN(gi.Longitude) || math.IsInf(gi.Longitude, 0) {
 		return nil, fmt.Errorf("longitude is not a finite number: %v", gi.Longitude)
+	}
+	if gi.Latitude < -90 || gi.Latitude > 90 {
+		return nil, fmt.Errorf("latitude out of range [-90, 90]: %v", gi.Latitude)
+	}
+	if gi.Longitude < -180 || gi.Longitude > 180 {
+		return nil, fmt.Errorf("longitude out of range [-180, 180]: %v", gi.Longitude)
 	}
 	latBytes, lonBytes := encodeLatLon(gi.Latitude, gi.Longitude)
 
@@ -152,90 +161,74 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 		return data, nil
 
 	case ShapeEllipsoidPointUncertainty:
+		if gi.UncertaintyCode == nil {
+			return nil, fmt.Errorf("EllipsoidPointUncertainty requires UncertaintyCode")
+		}
 		data := make([]byte, 8)
 		data[0] = byte(gi.ShapeType) << 4
 		copy(data[1:4], latBytes[:])
 		copy(data[4:7], lonBytes[:])
-		if gi.UncertaintyCode != nil {
-			data[7] = *gi.UncertaintyCode & 0x7F
-		}
+		data[7] = *gi.UncertaintyCode & 0x7F
 		return data, nil
 
 	case ShapeEllipsoidPointUncertaintyEllipse:
+		if gi.UncertaintySemiMajor == nil || gi.UncertaintySemiMinor == nil ||
+			gi.AngleMajorAxis == nil || gi.Confidence == nil {
+			return nil, fmt.Errorf("EllipsoidPointUncertaintyEllipse requires UncertaintySemiMajor, UncertaintySemiMinor, AngleMajorAxis, Confidence")
+		}
 		data := make([]byte, 11)
 		data[0] = byte(gi.ShapeType) << 4
 		copy(data[1:4], latBytes[:])
 		copy(data[4:7], lonBytes[:])
-		if gi.UncertaintySemiMajor != nil {
-			data[7] = *gi.UncertaintySemiMajor & 0x7F
-		}
-		if gi.UncertaintySemiMinor != nil {
-			data[8] = *gi.UncertaintySemiMinor & 0x7F
-		}
-		if gi.AngleMajorAxis != nil {
-			data[9] = *gi.AngleMajorAxis
-		}
-		if gi.Confidence != nil {
-			data[10] = *gi.Confidence & 0x7F
-		}
+		data[7] = *gi.UncertaintySemiMajor & 0x7F
+		data[8] = *gi.UncertaintySemiMinor & 0x7F
+		data[9] = *gi.AngleMajorAxis
+		data[10] = *gi.Confidence & 0x7F
 		return data, nil
 
 	case ShapeEllipsoidPointAltitude:
+		if gi.Altitude == nil || gi.UncertaintySemiMajor == nil ||
+			gi.UncertaintySemiMinor == nil || gi.AngleMajorAxis == nil ||
+			gi.UncertaintyAltitude == nil || gi.Confidence == nil {
+			return nil, fmt.Errorf("EllipsoidPointAltitude requires Altitude, UncertaintySemiMajor, UncertaintySemiMinor, AngleMajorAxis, UncertaintyAltitude, Confidence")
+		}
+		alt := *gi.Altitude
+		if alt < -32767 {
+			return nil, fmt.Errorf("altitude out of range [-32767, 32767]: %d", alt)
+		}
 		data := make([]byte, 14)
 		data[0] = byte(gi.ShapeType) << 4
 		copy(data[1:4], latBytes[:])
 		copy(data[4:7], lonBytes[:])
-		if gi.Altitude != nil {
-			alt := *gi.Altitude
-			if alt < -32767 {
-				return nil, fmt.Errorf("altitude out of range: %d", alt)
-			}
-			if alt < 0 {
-				data[7] = 0x80 | byte((-alt)>>8)
-				data[8] = byte(-alt)
-			} else {
-				data[7] = byte(alt >> 8)
-				data[8] = byte(alt)
-			}
+		if alt < 0 {
+			data[7] = 0x80 | byte((-alt)>>8)
+			data[8] = byte(-alt)
+		} else {
+			data[7] = byte(alt >> 8)
+			data[8] = byte(alt)
 		}
-		if gi.UncertaintySemiMajor != nil {
-			data[9] = *gi.UncertaintySemiMajor & 0x7F
-		}
-		if gi.UncertaintySemiMinor != nil {
-			data[10] = *gi.UncertaintySemiMinor & 0x7F
-		}
-		if gi.AngleMajorAxis != nil {
-			data[11] = *gi.AngleMajorAxis
-		}
-		if gi.UncertaintyAltitude != nil {
-			data[12] = *gi.UncertaintyAltitude & 0x7F
-		}
-		if gi.Confidence != nil {
-			data[13] = *gi.Confidence & 0x7F
-		}
+		data[9] = *gi.UncertaintySemiMajor & 0x7F
+		data[10] = *gi.UncertaintySemiMinor & 0x7F
+		data[11] = *gi.AngleMajorAxis
+		data[12] = *gi.UncertaintyAltitude & 0x7F
+		data[13] = *gi.Confidence & 0x7F
 		return data, nil
 
 	case ShapeEllipsoidArc:
+		if gi.InnerRadius == nil || gi.UncertaintyRadius == nil ||
+			gi.OffsetAngle == nil || gi.IncludedAngle == nil || gi.Confidence == nil {
+			return nil, fmt.Errorf("EllipsoidArc requires InnerRadius, UncertaintyRadius, OffsetAngle, IncludedAngle, Confidence")
+		}
 		data := make([]byte, 13)
 		data[0] = byte(gi.ShapeType) << 4
 		copy(data[1:4], latBytes[:])
 		copy(data[4:7], lonBytes[:])
-		if gi.InnerRadius != nil {
-			data[7] = byte(*gi.InnerRadius >> 8)
-			data[8] = byte(*gi.InnerRadius)
-		}
-		if gi.UncertaintyRadius != nil {
-			data[9] = *gi.UncertaintyRadius & 0x7F
-		}
-		if gi.OffsetAngle != nil {
-			data[10] = *gi.OffsetAngle
-		}
-		if gi.IncludedAngle != nil {
-			data[11] = *gi.IncludedAngle
-		}
-		if gi.Confidence != nil {
-			data[12] = *gi.Confidence & 0x7F
-		}
+		data[7] = byte(*gi.InnerRadius >> 8)
+		data[8] = byte(*gi.InnerRadius)
+		data[9] = *gi.UncertaintyRadius & 0x7F
+		data[10] = *gi.OffsetAngle
+		data[11] = *gi.IncludedAngle
+		data[12] = *gi.Confidence & 0x7F
 		return data, nil
 
 	default:
