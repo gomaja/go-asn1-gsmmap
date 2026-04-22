@@ -12,9 +12,11 @@ import (
 	"testing"
 )
 
-// Encode must reject latitudes outside [-90, 90].
+// Encode must reject latitudes outside (-90, 90). The spec's encoding
+// cannot represent exactly ±90 without silent quantization, so those
+// boundary values are also rejected.
 func TestGeoEncode_RejectsOutOfRangeLatitude(t *testing.T) {
-	for _, lat := range []float64{-90.01, 90.01, 200, -500} {
+	for _, lat := range []float64{-90.01, 90.01, 200, -500, 90, -90} {
 		gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: lat, Longitude: 0}
 		if _, err := gi.Encode(); err == nil {
 			t.Errorf("Latitude=%v: expected error, got nil", lat)
@@ -22,9 +24,11 @@ func TestGeoEncode_RejectsOutOfRangeLatitude(t *testing.T) {
 	}
 }
 
-// Encode must reject longitudes outside [-180, 180].
+// Encode must reject longitudes outside [-180, 180). lon=-180 is
+// representable exactly (two's-complement 0x800000) and is accepted;
+// lon=+180 cannot be represented and is rejected.
 func TestGeoEncode_RejectsOutOfRangeLongitude(t *testing.T) {
-	for _, lon := range []float64{-180.01, 180.01, 500, -500} {
+	for _, lon := range []float64{-180.01, 180.01, 500, -500, 180} {
 		gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: 0, Longitude: lon}
 		if _, err := gi.Encode(); err == nil {
 			t.Errorf("Longitude=%v: expected error, got nil", lon)
@@ -32,21 +36,38 @@ func TestGeoEncode_RejectsOutOfRangeLongitude(t *testing.T) {
 	}
 }
 
-// Encode must accept valid lat/lon at the boundary values.
+// Encode must accept valid lat/lon values inside the open/half-open
+// ranges. lon=-180 is the only exactly-representable boundary value.
 func TestGeoEncode_AcceptsBoundaryLatLon(t *testing.T) {
 	cases := []struct {
 		lat, lon float64
 	}{
 		{0, 0},
-		{90, 180},
-		{-90, -180},
 		{89.9999, 179.9999},
+		{-89.9999, -180},
 	}
 	for _, tc := range cases {
 		gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: tc.lat, Longitude: tc.lon}
 		if _, err := gi.Encode(); err != nil {
 			t.Errorf("Encode(lat=%v, lon=%v): unexpected error: %v", tc.lat, tc.lon, err)
 		}
+	}
+}
+
+// lon=-180 must round-trip exactly — the two's-complement encoding
+// makes 0x800000 an exact representation of -180°.
+func TestGeoEncode_LonNegative180RoundTrips(t *testing.T) {
+	gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: 0, Longitude: -180}
+	data, err := gi.Encode()
+	if err != nil {
+		t.Fatalf("Encode: %v", err)
+	}
+	got, err := DecodeGeographicalInfo(data)
+	if err != nil {
+		t.Fatalf("Decode: %v", err)
+	}
+	if got.Longitude != -180 {
+		t.Errorf("Longitude round-trip: got %v, want -180", got.Longitude)
 	}
 }
 
@@ -207,7 +228,8 @@ func TestGeoEncode_ValidShapesRoundTrip(t *testing.T) {
 	}
 }
 
-// Confirm the 7-bit fields encode/decode bit-for-bit.
+// Confirm the 7-bit fields encode bit-for-bit at their maximum valid
+// value (0x7F) without any masking-induced corruption.
 func TestGeoEncode_SevenBitFieldsExactBytes(t *testing.T) {
 	gi := &GeographicalInfo{
 		ShapeType: ShapeEllipsoidPointUncertainty,
@@ -224,5 +246,71 @@ func TestGeoEncode_SevenBitFieldsExactBytes(t *testing.T) {
 	}
 }
 
+// Encode must reject 7-bit shape-specific fields whose value exceeds 127.
+// Previously these were silently masked with & 0x7F, which landed an
+// unrelated value on the wire (e.g. 200 -> 72). The encoder now refuses
+// the input so the caller sees the error instead of silent corruption.
+func TestGeoEncode_Rejects7BitFieldsOverflow(t *testing.T) {
+	cases := []struct {
+		name string
+		gi   *GeographicalInfo
+	}{
+		{
+			"UncertaintyCode=200",
+			&GeographicalInfo{ShapeType: ShapeEllipsoidPointUncertainty, UncertaintyCode: u8(200)},
+		},
+		{
+			"UncertaintyCode=128",
+			&GeographicalInfo{ShapeType: ShapeEllipsoidPointUncertainty, UncertaintyCode: u8(128)},
+		},
+		{
+			"Ellipse: SemiMajor=200",
+			&GeographicalInfo{
+				ShapeType:            ShapeEllipsoidPointUncertaintyEllipse,
+				UncertaintySemiMajor: u8(200), UncertaintySemiMinor: u8(1),
+				AngleMajorAxis: u8(0), Confidence: u8(50),
+			},
+		},
+		{
+			"Ellipse: Confidence=255",
+			&GeographicalInfo{
+				ShapeType:            ShapeEllipsoidPointUncertaintyEllipse,
+				UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
+				AngleMajorAxis: u8(0), Confidence: u8(255),
+			},
+		},
+		{
+			"Altitude shape: UncertaintyAltitude=200",
+			func() *GeographicalInfo {
+				alt := int16(100)
+				return &GeographicalInfo{
+					ShapeType: ShapeEllipsoidPointAltitude,
+					Altitude:  &alt, UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
+					AngleMajorAxis: u8(0), UncertaintyAltitude: u8(200), Confidence: u8(50),
+				}
+			}(),
+		},
+		{
+			"Arc: UncertaintyRadius=200",
+			&GeographicalInfo{
+				ShapeType: ShapeEllipsoidArc,
+				InnerRadius:   u16(1000),
+				UncertaintyRadius: u8(200), OffsetAngle: u8(0),
+				IncludedAngle: u8(90), Confidence: u8(50),
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := tc.gi.Encode(); err == nil {
+				t.Errorf("%s: expected error, got nil", tc.name)
+			}
+		})
+	}
+}
+
 // u8 returns a pointer to the given uint8 literal.
 func u8(v uint8) *uint8 { return &v }
+
+// u16 returns a pointer to the given uint16 literal.
+func u16(v uint16) *uint16 { return &v }
