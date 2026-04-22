@@ -144,9 +144,22 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 }
 
 // Encode encodes a GeographicalInfo back to raw octets per 3GPP TS 23.032.
-// Rejects caller errors (non-finite or out-of-range coordinates, missing
-// required shape fields) at the boundary so silently-clamped values can
-// never reach the wire.
+//
+// Accepted ranges:
+//   - Latitude must lie in the open interval (-90, 90). Exact ±90 is
+//     rejected because the 23-bit wire encoding cannot represent it
+//     without quantization.
+//   - Longitude must lie in the half-open interval [-180, 180). The
+//     lower bound -180 is exactly representable (two's-complement
+//     0x800000); the upper bound +180 is not and is rejected.
+//   - Values arbitrarily close to the upper boundary that round up to
+//     the next quantum (the float ULPs just below 90 / +180) are also
+//     rejected — they would otherwise silently quantize.
+//
+// Rejects non-finite coordinates, missing required shape fields, and
+// shape-specific 7-bit fields whose value exceeds 127. On a successful
+// return, the decoded bytes round-trip back to the exact caller input
+// within the encoding's native quantum.
 func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	if math.IsNaN(gi.Latitude) || math.IsInf(gi.Latitude, 0) {
 		return nil, fmt.Errorf("latitude is not a finite number: %v", gi.Latitude)
@@ -154,19 +167,16 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	if math.IsNaN(gi.Longitude) || math.IsInf(gi.Longitude, 0) {
 		return nil, fmt.Errorf("longitude is not a finite number: %v", gi.Longitude)
 	}
-	// The 23-bit latitude and 24-bit longitude encodings per TS 23.032 cannot
-	// represent lat=±90 or lon=+180 exactly — they round up to 0x800000 and
-	// then get clamped, so a caller passing those values would silently
-	// observe ~±89.999999° / +179.999998° on the wire. Reject them so the
-	// library never returns successfully with a quantized result. lon=-180
-	// is representable exactly (two's-complement 0x800000) and is accepted.
 	if gi.Latitude <= -90 || gi.Latitude >= 90 {
 		return nil, fmt.Errorf("latitude out of range (-90, 90): %v", gi.Latitude)
 	}
 	if gi.Longitude < -180 || gi.Longitude >= 180 {
 		return nil, fmt.Errorf("longitude out of range [-180, 180): %v", gi.Longitude)
 	}
-	latBytes, lonBytes := encodeLatLon(gi.Latitude, gi.Longitude)
+	latBytes, lonBytes, err := encodeLatLon(gi.Latitude, gi.Longitude)
+	if err != nil {
+		return nil, err
+	}
 
 	switch gi.ShapeType {
 	case ShapeEllipsoidPoint:
@@ -308,17 +318,23 @@ func decodeLatLon(data []byte) (lat, lon float64) {
 }
 
 // encodeLatLon encodes latitude and longitude to 6 octets per 3GPP TS 23.032.
-// Returns [3]byte for latitude (sign in bit 7, 23-bit magnitude)
-// and [3]byte for longitude (24-bit two's complement).
-func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte) {
+// Returns [3]byte for latitude (sign in bit 7, 23-bit magnitude) and
+// [3]byte for longitude (24-bit two's complement).
+//
+// Returns an error when math.Round of the quantized value lands exactly
+// on 0x800000. That can happen even inside the caller-facing open range
+// because the float64 ULP just below 90 / +180 still rounds up to the
+// next quantum. Rejecting these prevents silent precision loss.
+func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte, err error) {
 	var sign byte
+	rawLat := lat
 	if lat < 0 {
 		sign = 1
 		lat = -lat
 	}
 	latN := uint32(math.Round(lat / 90.0 * float64(1<<23)))
 	if latN > 0x7FFFFF {
-		latN = 0x7FFFFF
+		return latBytes, lonBytes, fmt.Errorf("latitude %v rounds beyond the 23-bit quantum, cannot encode without quantization", rawLat)
 	}
 	latBytes[0] = sign<<7 | byte((latN>>16)&0x7F)
 	latBytes[1] = byte(latN >> 8)
@@ -326,13 +342,13 @@ func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte) {
 
 	lonN := int32(math.Round(lon / 360.0 * float64(1<<24)))
 	if lonN > 0x7FFFFF {
-		lonN = 0x7FFFFF
-	} else if lonN < -0x800000 {
-		lonN = -0x800000
+		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds beyond the 24-bit quantum, cannot encode without quantization", lon)
 	}
+	// The caller-facing range check (lon >= -180) ensures lonN cannot
+	// underflow -0x800000, so no lower clamp is needed.
 	lonBytes[0] = byte(lonN >> 16)
 	lonBytes[1] = byte(lonN >> 8)
 	lonBytes[2] = byte(lonN)
 
-	return latBytes, lonBytes
+	return latBytes, lonBytes, nil
 }

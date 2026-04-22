@@ -54,6 +54,44 @@ func TestGeoEncode_AcceptsBoundaryLatLon(t *testing.T) {
 	}
 }
 
+// Encode must reject values that pass the caller-facing range check but
+// still round up to the next quantum in encodeLatLon. The ULP just below
+// 90 and +180 lands on 0x800000 after math.Round, so emitting it would
+// silently quantize to 0x7FFFFF.
+func TestGeoEncode_RejectsULPJustBelowBoundary(t *testing.T) {
+	// The largest float64 strictly less than 90 is 90 - 2^-46 ≈
+	// 89.99999999999999, which passes the < 90 guard and then rounds up
+	// to 0x800000 in encodeLatLon.
+	latULP := math.Nextafter(90, 0)
+	if latULP >= 90 {
+		t.Fatalf("math.Nextafter(90,0) was not strictly below 90: %v", latULP)
+	}
+	gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: latULP, Longitude: 0}
+	if _, err := gi.Encode(); err == nil {
+		t.Errorf("Latitude=%v (ULP below 90): expected error, got nil", latULP)
+	}
+
+	// Same for latitude near the negative boundary.
+	latNegULP := math.Nextafter(-90, 0)
+	if latNegULP <= -90 {
+		t.Fatalf("math.Nextafter(-90,0) was not strictly above -90: %v", latNegULP)
+	}
+	gi = &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: latNegULP, Longitude: 0}
+	if _, err := gi.Encode(); err == nil {
+		t.Errorf("Latitude=%v (ULP above -90): expected error, got nil", latNegULP)
+	}
+
+	// Same for longitude near +180.
+	lonULP := math.Nextafter(180, 0)
+	if lonULP >= 180 {
+		t.Fatalf("math.Nextafter(180,0) was not strictly below 180: %v", lonULP)
+	}
+	gi = &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: 0, Longitude: lonULP}
+	if _, err := gi.Encode(); err == nil {
+		t.Errorf("Longitude=%v (ULP below 180): expected error, got nil", lonULP)
+	}
+}
+
 // lon=-180 must round-trip exactly — the two's-complement encoding
 // makes 0x800000 an exact representation of -180°.
 func TestGeoEncode_LonNegative180RoundTrips(t *testing.T) {
