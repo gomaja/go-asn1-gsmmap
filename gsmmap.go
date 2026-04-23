@@ -1306,11 +1306,11 @@ var (
 	ErrUpdateLocationMissingMSCNumber = errors.New("updateLocation: MSCNumber is empty")
 	ErrUpdateLocationMissingVLRNumber = errors.New("updateLocation: VLRNumber is empty")
 
-	ErrMtFsmMissingIMSI                   = errors.New("mtForwardSM: IMSI is empty")
-	ErrMtFsmMissingServiceCentreAddressOA = errors.New("mtForwardSM: ServiceCentreAddressOA is empty")
+	ErrMtFsmMissingIMSI                   = errors.New("mtFsm: IMSI is empty")
+	ErrMtFsmMissingServiceCentreAddressOA = errors.New("mtFsm: ServiceCentreAddressOA is empty")
 
-	ErrSriSmMissingMSISDN               = errors.New("sendRoutingInfoForSM: MSISDN is empty")
-	ErrSriSmMissingServiceCentreAddress = errors.New("sendRoutingInfoForSM: ServiceCentreAddress is empty")
+	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
+	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
 
 	ErrSaiMissingIMSI                                = errors.New("sai: IMSI is empty")
 	ErrSaiInvalidNumberOfRequestedVectors            = errors.New("sai: NumberOfRequestedVectors must be 1..5")
