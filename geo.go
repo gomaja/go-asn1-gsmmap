@@ -339,7 +339,7 @@ func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte, err err
 	}
 	latN := uint32(math.Round(lat / 90.0 * float64(1<<23)))
 	if latN > 0x7FFFFF {
-		return latBytes, lonBytes, fmt.Errorf("latitude %v rounds beyond the 23-bit quantum, cannot encode without quantization", rawLat)
+		return latBytes, lonBytes, fmt.Errorf("latitude %v rounds past the ±90 boundary of the 23-bit encoding", rawLat)
 	}
 	latBytes[0] = sign<<7 | byte((latN>>16)&0x7F)
 	latBytes[1] = byte(latN >> 8)
@@ -347,13 +347,13 @@ func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte, err err
 
 	lonN := int32(math.Round(lon / 360.0 * float64(1<<24)))
 	if lonN > 0x7FFFFF {
-		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds beyond the 24-bit quantum, cannot encode without quantization", lon)
+		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds past the +180 boundary of the 24-bit encoding", lon)
 	}
 	// -0x800000 is the legitimate quantum for lon=-180 exactly. Any other
 	// caller value that rounds onto it (ULPs in (-180, -179.99998927°])
 	// would silently collapse onto -180 on the wire.
 	if lonN == -0x800000 && lon != -180 {
-		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds onto the -180 quantum, cannot encode without quantization", lon)
+		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds onto the -180 quantum (would silently collapse onto -180)", lon)
 	}
 	lonBytes[0] = byte(lonN >> 16)
 	lonBytes[1] = byte(lonN >> 8)
