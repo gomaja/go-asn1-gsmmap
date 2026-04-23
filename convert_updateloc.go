@@ -11,6 +11,19 @@ import (
 // --- UpdateLocation ---
 
 func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, error) {
+	// imsi, msc-Number, vlr-Number are all non-OPTIONAL in
+	// UpdateLocationArg per MAP-MS-DataTypes.asn:256-259. Reject empty
+	// caller input explicitly so malformed wire bytes never reach the peer.
+	if u.IMSI == "" {
+		return nil, ErrUpdateLocationMissingIMSI
+	}
+	if u.MSCNumber == "" {
+		return nil, ErrUpdateLocationMissingMSCNumber
+	}
+	if u.VLRNumber == "" {
+		return nil, ErrUpdateLocationMissingVLRNumber
+	}
+
 	imsiBytes, err := tbcd.Encode(u.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)

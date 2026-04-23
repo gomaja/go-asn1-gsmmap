@@ -11,6 +11,17 @@ import (
 // --- MT-ForwardSM ---
 
 func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
+	// sm-RP-DA and sm-RP-OA are non-OPTIONAL CHOICEs in MT-ForwardSM-Arg
+	// per MAP-SM-DataTypes.asn:178-181. The public MtFsm type hardcodes
+	// the imsi / serviceCentreAddressOA alternatives, so those string
+	// fields must be non-empty for the wire CHOICE to be valid.
+	if m.IMSI == "" {
+		return nil, ErrMtFsmMissingIMSI
+	}
+	if m.ServiceCentreAddressOA == "" {
+		return nil, ErrMtFsmMissingServiceCentreAddressOA
+	}
+
 	imsiBytes, err := tbcd.Encode(m.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)

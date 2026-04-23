@@ -1302,6 +1302,16 @@ var (
 
 	ErrPurgeMSMissingIMSI = errors.New("purgeMS: IMSI is empty")
 
+	ErrUpdateLocationMissingIMSI      = errors.New("updateLocation: IMSI is empty")
+	ErrUpdateLocationMissingMSCNumber = errors.New("updateLocation: MSCNumber is empty")
+	ErrUpdateLocationMissingVLRNumber = errors.New("updateLocation: VLRNumber is empty")
+
+	ErrMtFsmMissingIMSI                   = errors.New("mtFsm: IMSI is empty")
+	ErrMtFsmMissingServiceCentreAddressOA = errors.New("mtFsm: ServiceCentreAddressOA is empty")
+
+	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
+	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
+
 	ErrSaiMissingIMSI                                = errors.New("sai: IMSI is empty")
 	ErrSaiInvalidNumberOfRequestedVectors            = errors.New("sai: NumberOfRequestedVectors must be 1..5")
 	ErrSaiInvalidNumberOfRequestedAdditionalVectors  = errors.New("sai: NumberOfRequestedAdditionalVectors must be 1..5")
