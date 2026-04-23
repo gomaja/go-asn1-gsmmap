@@ -152,9 +152,10 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 //   - Longitude must lie in the half-open interval [-180, 180). The
 //     lower bound -180 is exactly representable (two's-complement
 //     0x800000); the upper bound +180 is not and is rejected.
-//   - Values arbitrarily close to the upper boundary that round up to
-//     the next quantum (the float ULPs just below 90 / +180) are also
-//     rejected — they would otherwise silently quantize.
+//   - Values whose float64 ULP rounds onto a quantum they don't
+//     represent are rejected: ULPs just inside ±90 and +180 round up
+//     to the next quantum, and ULPs just above -180 round down onto
+//     -180's own quantum. All would otherwise silently quantize.
 //
 // Rejects non-finite coordinates, missing required shape fields, and
 // shape-specific 7-bit fields whose value exceeds 127. On a successful
@@ -321,10 +322,12 @@ func decodeLatLon(data []byte) (lat, lon float64) {
 // Returns [3]byte for latitude (sign in bit 7, 23-bit magnitude) and
 // [3]byte for longitude (24-bit two's complement).
 //
-// Returns an error when math.Round of the quantized value lands exactly
-// on 0x800000. That can happen even inside the caller-facing open range
-// because the float64 ULP just below 90 / +180 still rounds up to the
-// next quantum. Rejecting these prevents silent precision loss.
+// Returns an error when the rounded quantum would force a value inside
+// the caller-facing open range to share bytes with a boundary it didn't
+// ask for. That happens for float64 ULPs just inside the ±90 and +180
+// open bounds (they round up to 0x800000, colliding with the rejected
+// boundary) and symmetrically for ULPs just above −180 (they round down
+// to −0x800000, colliding with the legitimate -180 encoding).
 func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte, err error) {
 	var sign byte
 	rawLat := lat
@@ -344,8 +347,12 @@ func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte, err err
 	if lonN > 0x7FFFFF {
 		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds beyond the 24-bit quantum, cannot encode without quantization", lon)
 	}
-	// The caller-facing range check (lon >= -180) ensures lonN cannot
-	// underflow -0x800000, so no lower clamp is needed.
+	// -0x800000 is the legitimate quantum for lon=-180 exactly. Any other
+	// caller value that rounds onto it (ULPs in (-180, -179.99998927°])
+	// would silently collapse onto -180 on the wire.
+	if lonN == -0x800000 && lon != -180 {
+		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds onto the -180 quantum, cannot encode without quantization", lon)
+	}
 	lonBytes[0] = byte(lonN >> 16)
 	lonBytes[1] = byte(lonN >> 8)
 	lonBytes[2] = byte(lonN)

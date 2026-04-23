@@ -90,6 +90,18 @@ func TestGeoEncode_RejectsULPJustBelowBoundary(t *testing.T) {
 	if _, err := gi.Encode(); err == nil {
 		t.Errorf("Longitude=%v (ULP below 180): expected error, got nil", lonULP)
 	}
+
+	// Longitude just above -180: math.Round lands on -0x800000, which is
+	// the legitimate quantum for lon=-180 exactly. Accepting this would
+	// silently collapse the caller's input onto -180 on the wire.
+	lonNegULP := math.Nextafter(-180, 0)
+	if lonNegULP <= -180 {
+		t.Fatalf("math.Nextafter(-180,0) was not strictly above -180: %v", lonNegULP)
+	}
+	gi = &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: 0, Longitude: lonNegULP}
+	if _, err := gi.Encode(); err == nil {
+		t.Errorf("Longitude=%v (ULP above -180): expected error, got nil", lonNegULP)
+	}
 }
 
 // lon=-180 must round-trip exactly — the two's-complement encoding
