@@ -178,12 +178,21 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 //     to the next quantum, and ULPs just above -180 round down onto
 //     -180's own quantum. All would otherwise silently quantize.
 //
-// Rejects non-finite coordinates, missing required shape fields, and
-// shape-specific 7-bit fields whose value exceeds 127. Accepted inputs
-// are rounded to the nearest representable quantum (roughly 1.07e-5°
-// for latitude and 2.14e-5° for longitude), so the decoded float64 may
-// differ from the caller's by up to half a quantum; the ULP-rejection
-// rules above ensure it never crosses onto a different boundary.
+// Rejects non-finite coordinates, missing required shape fields,
+// shape-specific 7-bit fields whose value exceeds 127, and angular
+// octets (AngleMajorAxis, OffsetAngle, IncludedAngle) exceeding the
+// TS 23.032 bound of 179. Accepted inputs are rounded to the nearest
+// representable quantum (roughly 1.07e-5° for latitude and 2.14e-5°
+// for longitude), so the decoded float64 may differ from the caller's
+// by up to half a quantum; the ULP-rejection rules above ensure it
+// never crosses onto a different boundary.
+//
+// DecodeGeographicalInfo deliberately accepts spec-invalid wire input
+// (e.g. an AngleMajorAxis octet of 200) without error so that a
+// receiver can inspect what a peer actually sent. Round-tripping such
+// a decoded value back through Encode will therefore fail at the
+// boundary check above — that is intentional: the library will not
+// re-emit bytes that violate TS 23.032.
 func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	if math.IsNaN(gi.Latitude) || math.IsInf(gi.Latitude, 0) {
 		return nil, fmt.Errorf("latitude is not a finite number: %v", gi.Latitude)

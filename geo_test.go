@@ -471,6 +471,36 @@ func TestGeoEncode_AcceptsAngularFieldsAtBoundary(t *testing.T) {
 	}
 }
 
+// Decode deliberately accepts spec-invalid angular octets (the receiver
+// needs to observe what a peer sent), but re-encoding such a decoded
+// value must fail at the boundary check rather than silently re-emit
+// non-spec-compliant bytes. This locks in the Postel's-law asymmetry
+// established by PR #25 / PR #26.
+func TestGeoDecodeThenEncode_SpecInvalidAngleFailsOnReEncode(t *testing.T) {
+	// Hand-craft EllipsoidPointUncertaintyEllipse wire bytes with
+	// AngleMajorAxis=200 (invalid; spec caps at 179). Decode must succeed;
+	// re-encoding must fail.
+	wire := []byte{
+		0x30,                   // ShapeType=3 (UncertaintyEllipse)<<4
+		0x00, 0x00, 0x00,       // lat = 0
+		0x00, 0x00, 0x00,       // lon = 0
+		0x01,                   // SemiMajor = 1
+		0x01,                   // SemiMinor = 1
+		200,                    // AngleMajorAxis = 200 (SPEC-INVALID)
+		0x32,                   // Confidence = 50
+	}
+	gi, err := DecodeGeographicalInfo(wire)
+	if err != nil {
+		t.Fatalf("Decode of spec-invalid AngleMajorAxis=200: unexpected error: %v", err)
+	}
+	if gi.AngleMajorAxis == nil || *gi.AngleMajorAxis != 200 {
+		t.Fatalf("AngleMajorAxis after decode: got %v, want 200", gi.AngleMajorAxis)
+	}
+	if _, err := gi.Encode(); err == nil {
+		t.Error("Encode of spec-invalid AngleMajorAxis=200: expected error, got nil")
+	}
+}
+
 // u8 returns a pointer to the given uint8 literal.
 func u8(v uint8) *uint8 { return &v }
 
