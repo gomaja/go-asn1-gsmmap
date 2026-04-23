@@ -17,6 +17,16 @@ const (
 )
 
 // GeographicalInfo represents decoded geographical information per 3GPP TS 23.032.
+//
+// Field encoding notes:
+//   - 7-bit fields (UncertaintyCode, UncertaintySemiMajor/Minor,
+//     UncertaintyAltitude, UncertaintyRadius, Confidence) carry values
+//     0..127 in the low 7 bits of their octet; bit 7 is reserved.
+//   - AngleMajorAxis carries the orientation of the semi-major axis in
+//     degrees, integer 0..179 (1° steps).
+//   - OffsetAngle and IncludedAngle for the Ellipsoid Arc shape carry
+//     the octet value directly: stored N represents N × 2 degrees, so
+//     the valid octet range is 0..179 (representing 0..358° in 2° steps).
 type GeographicalInfo struct {
 	ShapeType            ShapeType `json:"ShapeType"`
 	Latitude             float64   `json:"Latitude"`
@@ -47,6 +57,17 @@ func uncertaintyToMeters(k uint8) float64 {
 func check7Bit(name string, v uint8) error {
 	if v > 127 {
 		return fmt.Errorf("%s out of range [0, 127]: %d", name, v)
+	}
+	return nil
+}
+
+// checkAngle validates an angular octet against the TS 23.032 semantic
+// bound of 0..179. Used for AngleMajorAxis (stored = degrees) and for
+// the ellipsoid arc's OffsetAngle / IncludedAngle (stored × 2 = degrees,
+// so the octet itself is capped at 179).
+func checkAngle(name string, v uint8) error {
+	if v > 179 {
+		return fmt.Errorf("%s out of range [0, 179]: %d", name, v)
 	}
 	return nil
 }
@@ -157,12 +178,21 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 //     to the next quantum, and ULPs just above -180 round down onto
 //     -180's own quantum. All would otherwise silently quantize.
 //
-// Rejects non-finite coordinates, missing required shape fields, and
-// shape-specific 7-bit fields whose value exceeds 127. Accepted inputs
-// are rounded to the nearest representable quantum (roughly 1.07e-5°
-// for latitude and 2.14e-5° for longitude), so the decoded float64 may
-// differ from the caller's by up to half a quantum; the ULP-rejection
-// rules above ensure it never crosses onto a different boundary.
+// Rejects non-finite coordinates, missing required shape fields,
+// shape-specific 7-bit fields whose value exceeds 127, and angular
+// octets (AngleMajorAxis, OffsetAngle, IncludedAngle) exceeding the
+// TS 23.032 bound of 179. Accepted inputs are rounded to the nearest
+// representable quantum (roughly 1.07e-5° for latitude and 2.14e-5°
+// for longitude), so the decoded float64 may differ from the caller's
+// by up to half a quantum; the ULP-rejection rules above ensure it
+// never crosses onto a different boundary.
+//
+// DecodeGeographicalInfo deliberately accepts spec-invalid wire input
+// (e.g. an AngleMajorAxis octet of 200) without error so that a
+// receiver can inspect what a peer actually sent. Round-tripping such
+// a decoded value back through Encode will therefore fail at the
+// boundary check above — that is intentional: the library will not
+// re-emit bytes that violate TS 23.032.
 func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	if math.IsNaN(gi.Latitude) || math.IsInf(gi.Latitude, 0) {
 		return nil, fmt.Errorf("latitude is not a finite number: %v", gi.Latitude)
@@ -214,6 +244,9 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 		if err := check7Bit("UncertaintySemiMinor", *gi.UncertaintySemiMinor); err != nil {
 			return nil, err
 		}
+		if err := checkAngle("AngleMajorAxis", *gi.AngleMajorAxis); err != nil {
+			return nil, err
+		}
 		if err := check7Bit("Confidence", *gi.Confidence); err != nil {
 			return nil, err
 		}
@@ -241,6 +274,9 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 			return nil, err
 		}
 		if err := check7Bit("UncertaintySemiMinor", *gi.UncertaintySemiMinor); err != nil {
+			return nil, err
+		}
+		if err := checkAngle("AngleMajorAxis", *gi.AngleMajorAxis); err != nil {
 			return nil, err
 		}
 		if err := check7Bit("UncertaintyAltitude", *gi.UncertaintyAltitude); err != nil {
@@ -273,6 +309,12 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 			return nil, fmt.Errorf("EllipsoidArc requires InnerRadius, UncertaintyRadius, OffsetAngle, IncludedAngle, Confidence")
 		}
 		if err := check7Bit("UncertaintyRadius", *gi.UncertaintyRadius); err != nil {
+			return nil, err
+		}
+		if err := checkAngle("OffsetAngle", *gi.OffsetAngle); err != nil {
+			return nil, err
+		}
+		if err := checkAngle("IncludedAngle", *gi.IncludedAngle); err != nil {
 			return nil, err
 		}
 		if err := check7Bit("Confidence", *gi.Confidence); err != nil {

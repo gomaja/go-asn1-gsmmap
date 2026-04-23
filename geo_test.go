@@ -359,6 +359,148 @@ func TestGeoEncode_Rejects7BitFieldsOverflow(t *testing.T) {
 	}
 }
 
+// Encode must reject angular fields whose octet value exceeds the
+// TS 23.032 spec-defined semantic bound of 179:
+//   - AngleMajorAxis: stored = degrees directly, valid 0..179°.
+//   - OffsetAngle / IncludedAngle (arc): stored × 2 = degrees; encoded
+//     octet valid 0..179 (representing 0..358° in 2° steps). Values
+//     180..255 are spec-invalid.
+func TestGeoEncode_RejectsAngularFieldsOutOfRange(t *testing.T) {
+	alt := int16(100)
+	cases := []struct {
+		name string
+		gi   *GeographicalInfo
+	}{
+		{
+			"Ellipse: AngleMajorAxis=180",
+			&GeographicalInfo{
+				ShapeType:            ShapeEllipsoidPointUncertaintyEllipse,
+				UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
+				AngleMajorAxis: u8(180), Confidence: u8(50),
+			},
+		},
+		{
+			"Ellipse: AngleMajorAxis=255",
+			&GeographicalInfo{
+				ShapeType:            ShapeEllipsoidPointUncertaintyEllipse,
+				UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
+				AngleMajorAxis: u8(255), Confidence: u8(50),
+			},
+		},
+		{
+			"Altitude: AngleMajorAxis=200",
+			&GeographicalInfo{
+				ShapeType: ShapeEllipsoidPointAltitude,
+				Altitude:  &alt, UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
+				AngleMajorAxis: u8(200), UncertaintyAltitude: u8(1), Confidence: u8(50),
+			},
+		},
+		{
+			"Arc: OffsetAngle=180",
+			&GeographicalInfo{
+				ShapeType:   ShapeEllipsoidArc,
+				InnerRadius: u16(1000), UncertaintyRadius: u8(1),
+				OffsetAngle: u8(180), IncludedAngle: u8(90), Confidence: u8(50),
+			},
+		},
+		{
+			"Arc: IncludedAngle=200",
+			&GeographicalInfo{
+				ShapeType:   ShapeEllipsoidArc,
+				InnerRadius: u16(1000), UncertaintyRadius: u8(1),
+				OffsetAngle: u8(0), IncludedAngle: u8(200), Confidence: u8(50),
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := tc.gi.Encode(); err == nil {
+				t.Errorf("%s: expected error, got nil", tc.name)
+			}
+		})
+	}
+}
+
+// Encode must accept angular fields at the upper valid boundary (179)
+// and also at the lower boundary (0).
+func TestGeoEncode_AcceptsAngularFieldsAtBoundary(t *testing.T) {
+	alt := int16(100)
+	cases := []struct {
+		name string
+		gi   *GeographicalInfo
+	}{
+		{
+			"Ellipse: AngleMajorAxis=0",
+			&GeographicalInfo{
+				ShapeType:            ShapeEllipsoidPointUncertaintyEllipse,
+				UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
+				AngleMajorAxis: u8(0), Confidence: u8(50),
+			},
+		},
+		{
+			"Ellipse: AngleMajorAxis=179",
+			&GeographicalInfo{
+				ShapeType:            ShapeEllipsoidPointUncertaintyEllipse,
+				UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
+				AngleMajorAxis: u8(179), Confidence: u8(50),
+			},
+		},
+		{
+			"Altitude: AngleMajorAxis=179",
+			&GeographicalInfo{
+				ShapeType: ShapeEllipsoidPointAltitude,
+				Altitude:  &alt, UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
+				AngleMajorAxis: u8(179), UncertaintyAltitude: u8(1), Confidence: u8(50),
+			},
+		},
+		{
+			"Arc: OffsetAngle=179, IncludedAngle=179",
+			&GeographicalInfo{
+				ShapeType:   ShapeEllipsoidArc,
+				InnerRadius: u16(1000), UncertaintyRadius: u8(1),
+				OffsetAngle: u8(179), IncludedAngle: u8(179), Confidence: u8(50),
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := tc.gi.Encode(); err != nil {
+				t.Errorf("%s: unexpected error: %v", tc.name, err)
+			}
+		})
+	}
+}
+
+// Decode deliberately accepts spec-invalid angular octets (the receiver
+// needs to observe what a peer sent), but re-encoding such a decoded
+// value must fail at the boundary check rather than silently re-emit
+// non-spec-compliant bytes. This locks in the Postel's-law asymmetry
+// established by PR #25 / PR #26.
+func TestGeoDecodeThenEncode_SpecInvalidAngleFailsOnReEncode(t *testing.T) {
+	// Hand-craft EllipsoidPointUncertaintyEllipse wire bytes with
+	// AngleMajorAxis=200 (invalid; spec caps at 179). Decode must succeed;
+	// re-encoding must fail.
+	wire := []byte{
+		0x30,                   // ShapeType=3 (UncertaintyEllipse)<<4
+		0x00, 0x00, 0x00,       // lat = 0
+		0x00, 0x00, 0x00,       // lon = 0
+		0x01,                   // SemiMajor = 1
+		0x01,                   // SemiMinor = 1
+		200,                    // AngleMajorAxis = 200 (SPEC-INVALID)
+		0x32,                   // Confidence = 50
+	}
+	gi, err := DecodeGeographicalInfo(wire)
+	if err != nil {
+		t.Fatalf("Decode of spec-invalid AngleMajorAxis=200: unexpected error: %v", err)
+	}
+	if gi.AngleMajorAxis == nil || *gi.AngleMajorAxis != 200 {
+		t.Fatalf("AngleMajorAxis after decode: got %v, want 200", gi.AngleMajorAxis)
+	}
+	if _, err := gi.Encode(); err == nil {
+		t.Error("Encode of spec-invalid AngleMajorAxis=200: expected error, got nil")
+	}
+}
+
 // u8 returns a pointer to the given uint8 literal.
 func u8(v uint8) *uint8 { return &v }
 
