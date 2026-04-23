@@ -41,6 +41,16 @@ func uncertaintyToMeters(k uint8) float64 {
 	return 10 * (math.Pow(1.1, float64(k)) - 1)
 }
 
+// check7Bit validates that a shape-specific 7-bit field fits within the
+// 0..127 range defined by TS 23.032. The wire octet reserves bit 7 as
+// spare/zero, so values above 127 cannot be encoded without truncation.
+func check7Bit(name string, v uint8) error {
+	if v > 127 {
+		return fmt.Errorf("%s out of range [0, 127]: %d", name, v)
+	}
+	return nil
+}
+
 // DecodeGeographicalInfo decodes raw Ext-GeographicalInformation octets per 3GPP TS 23.032.
 //
 // Octet layout:
@@ -134,6 +144,25 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 }
 
 // Encode encodes a GeographicalInfo back to raw octets per 3GPP TS 23.032.
+//
+// Accepted ranges:
+//   - Latitude must lie in the open interval (-90, 90). Exact ±90 is
+//     rejected because the 23-bit wire encoding cannot represent it
+//     without quantization.
+//   - Longitude must lie in the half-open interval [-180, 180). The
+//     lower bound -180 is exactly representable (two's-complement
+//     0x800000); the upper bound +180 is not and is rejected.
+//   - Values whose float64 ULP rounds onto a quantum they don't
+//     represent are rejected: ULPs just inside ±90 and +180 round up
+//     to the next quantum, and ULPs just above -180 round down onto
+//     -180's own quantum. All would otherwise silently quantize.
+//
+// Rejects non-finite coordinates, missing required shape fields, and
+// shape-specific 7-bit fields whose value exceeds 127. Accepted inputs
+// are rounded to the nearest representable quantum (roughly 1.07e-5°
+// for latitude and 2.14e-5° for longitude), so the decoded float64 may
+// differ from the caller's by up to half a quantum; the ULP-rejection
+// rules above ensure it never crosses onto a different boundary.
 func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	if math.IsNaN(gi.Latitude) || math.IsInf(gi.Latitude, 0) {
 		return nil, fmt.Errorf("latitude is not a finite number: %v", gi.Latitude)
@@ -141,7 +170,16 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	if math.IsNaN(gi.Longitude) || math.IsInf(gi.Longitude, 0) {
 		return nil, fmt.Errorf("longitude is not a finite number: %v", gi.Longitude)
 	}
-	latBytes, lonBytes := encodeLatLon(gi.Latitude, gi.Longitude)
+	if gi.Latitude <= -90 || gi.Latitude >= 90 {
+		return nil, fmt.Errorf("latitude out of range (-90, 90): %v", gi.Latitude)
+	}
+	if gi.Longitude < -180 || gi.Longitude >= 180 {
+		return nil, fmt.Errorf("longitude out of range [-180, 180): %v", gi.Longitude)
+	}
+	latBytes, lonBytes, err := encodeLatLon(gi.Latitude, gi.Longitude)
+	if err != nil {
+		return nil, err
+	}
 
 	switch gi.ShapeType {
 	case ShapeEllipsoidPoint:
@@ -152,90 +190,104 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 		return data, nil
 
 	case ShapeEllipsoidPointUncertainty:
+		if gi.UncertaintyCode == nil {
+			return nil, fmt.Errorf("EllipsoidPointUncertainty requires UncertaintyCode")
+		}
+		if err := check7Bit("UncertaintyCode", *gi.UncertaintyCode); err != nil {
+			return nil, err
+		}
 		data := make([]byte, 8)
 		data[0] = byte(gi.ShapeType) << 4
 		copy(data[1:4], latBytes[:])
 		copy(data[4:7], lonBytes[:])
-		if gi.UncertaintyCode != nil {
-			data[7] = *gi.UncertaintyCode & 0x7F
-		}
+		data[7] = *gi.UncertaintyCode
 		return data, nil
 
 	case ShapeEllipsoidPointUncertaintyEllipse:
+		if gi.UncertaintySemiMajor == nil || gi.UncertaintySemiMinor == nil ||
+			gi.AngleMajorAxis == nil || gi.Confidence == nil {
+			return nil, fmt.Errorf("EllipsoidPointUncertaintyEllipse requires UncertaintySemiMajor, UncertaintySemiMinor, AngleMajorAxis, Confidence")
+		}
+		if err := check7Bit("UncertaintySemiMajor", *gi.UncertaintySemiMajor); err != nil {
+			return nil, err
+		}
+		if err := check7Bit("UncertaintySemiMinor", *gi.UncertaintySemiMinor); err != nil {
+			return nil, err
+		}
+		if err := check7Bit("Confidence", *gi.Confidence); err != nil {
+			return nil, err
+		}
 		data := make([]byte, 11)
 		data[0] = byte(gi.ShapeType) << 4
 		copy(data[1:4], latBytes[:])
 		copy(data[4:7], lonBytes[:])
-		if gi.UncertaintySemiMajor != nil {
-			data[7] = *gi.UncertaintySemiMajor & 0x7F
-		}
-		if gi.UncertaintySemiMinor != nil {
-			data[8] = *gi.UncertaintySemiMinor & 0x7F
-		}
-		if gi.AngleMajorAxis != nil {
-			data[9] = *gi.AngleMajorAxis
-		}
-		if gi.Confidence != nil {
-			data[10] = *gi.Confidence & 0x7F
-		}
+		data[7] = *gi.UncertaintySemiMajor
+		data[8] = *gi.UncertaintySemiMinor
+		data[9] = *gi.AngleMajorAxis
+		data[10] = *gi.Confidence
 		return data, nil
 
 	case ShapeEllipsoidPointAltitude:
+		if gi.Altitude == nil || gi.UncertaintySemiMajor == nil ||
+			gi.UncertaintySemiMinor == nil || gi.AngleMajorAxis == nil ||
+			gi.UncertaintyAltitude == nil || gi.Confidence == nil {
+			return nil, fmt.Errorf("EllipsoidPointAltitude requires Altitude, UncertaintySemiMajor, UncertaintySemiMinor, AngleMajorAxis, UncertaintyAltitude, Confidence")
+		}
+		alt := *gi.Altitude
+		if alt < -32767 {
+			return nil, fmt.Errorf("altitude out of range [-32767, 32767]: %d", alt)
+		}
+		if err := check7Bit("UncertaintySemiMajor", *gi.UncertaintySemiMajor); err != nil {
+			return nil, err
+		}
+		if err := check7Bit("UncertaintySemiMinor", *gi.UncertaintySemiMinor); err != nil {
+			return nil, err
+		}
+		if err := check7Bit("UncertaintyAltitude", *gi.UncertaintyAltitude); err != nil {
+			return nil, err
+		}
+		if err := check7Bit("Confidence", *gi.Confidence); err != nil {
+			return nil, err
+		}
 		data := make([]byte, 14)
 		data[0] = byte(gi.ShapeType) << 4
 		copy(data[1:4], latBytes[:])
 		copy(data[4:7], lonBytes[:])
-		if gi.Altitude != nil {
-			alt := *gi.Altitude
-			if alt < -32767 {
-				return nil, fmt.Errorf("altitude out of range: %d", alt)
-			}
-			if alt < 0 {
-				data[7] = 0x80 | byte((-alt)>>8)
-				data[8] = byte(-alt)
-			} else {
-				data[7] = byte(alt >> 8)
-				data[8] = byte(alt)
-			}
+		if alt < 0 {
+			data[7] = 0x80 | byte((-alt)>>8)
+			data[8] = byte(-alt)
+		} else {
+			data[7] = byte(alt >> 8)
+			data[8] = byte(alt)
 		}
-		if gi.UncertaintySemiMajor != nil {
-			data[9] = *gi.UncertaintySemiMajor & 0x7F
-		}
-		if gi.UncertaintySemiMinor != nil {
-			data[10] = *gi.UncertaintySemiMinor & 0x7F
-		}
-		if gi.AngleMajorAxis != nil {
-			data[11] = *gi.AngleMajorAxis
-		}
-		if gi.UncertaintyAltitude != nil {
-			data[12] = *gi.UncertaintyAltitude & 0x7F
-		}
-		if gi.Confidence != nil {
-			data[13] = *gi.Confidence & 0x7F
-		}
+		data[9] = *gi.UncertaintySemiMajor
+		data[10] = *gi.UncertaintySemiMinor
+		data[11] = *gi.AngleMajorAxis
+		data[12] = *gi.UncertaintyAltitude
+		data[13] = *gi.Confidence
 		return data, nil
 
 	case ShapeEllipsoidArc:
+		if gi.InnerRadius == nil || gi.UncertaintyRadius == nil ||
+			gi.OffsetAngle == nil || gi.IncludedAngle == nil || gi.Confidence == nil {
+			return nil, fmt.Errorf("EllipsoidArc requires InnerRadius, UncertaintyRadius, OffsetAngle, IncludedAngle, Confidence")
+		}
+		if err := check7Bit("UncertaintyRadius", *gi.UncertaintyRadius); err != nil {
+			return nil, err
+		}
+		if err := check7Bit("Confidence", *gi.Confidence); err != nil {
+			return nil, err
+		}
 		data := make([]byte, 13)
 		data[0] = byte(gi.ShapeType) << 4
 		copy(data[1:4], latBytes[:])
 		copy(data[4:7], lonBytes[:])
-		if gi.InnerRadius != nil {
-			data[7] = byte(*gi.InnerRadius >> 8)
-			data[8] = byte(*gi.InnerRadius)
-		}
-		if gi.UncertaintyRadius != nil {
-			data[9] = *gi.UncertaintyRadius & 0x7F
-		}
-		if gi.OffsetAngle != nil {
-			data[10] = *gi.OffsetAngle
-		}
-		if gi.IncludedAngle != nil {
-			data[11] = *gi.IncludedAngle
-		}
-		if gi.Confidence != nil {
-			data[12] = *gi.Confidence & 0x7F
-		}
+		data[7] = byte(*gi.InnerRadius >> 8)
+		data[8] = byte(*gi.InnerRadius)
+		data[9] = *gi.UncertaintyRadius
+		data[10] = *gi.OffsetAngle
+		data[11] = *gi.IncludedAngle
+		data[12] = *gi.Confidence
 		return data, nil
 
 	default:
@@ -269,17 +321,25 @@ func decodeLatLon(data []byte) (lat, lon float64) {
 }
 
 // encodeLatLon encodes latitude and longitude to 6 octets per 3GPP TS 23.032.
-// Returns [3]byte for latitude (sign in bit 7, 23-bit magnitude)
-// and [3]byte for longitude (24-bit two's complement).
-func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte) {
+// Returns [3]byte for latitude (sign in bit 7, 23-bit magnitude) and
+// [3]byte for longitude (24-bit two's complement).
+//
+// Returns an error when the rounded quantum would force a value inside
+// the caller-facing open range to share bytes with a boundary it didn't
+// ask for. That happens for float64 ULPs just inside the ±90 and +180
+// open bounds (they round up to 0x800000, colliding with the rejected
+// boundary) and symmetrically for ULPs just above −180 (they round down
+// to −0x800000, colliding with the legitimate -180 encoding).
+func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte, err error) {
 	var sign byte
+	rawLat := lat
 	if lat < 0 {
 		sign = 1
 		lat = -lat
 	}
 	latN := uint32(math.Round(lat / 90.0 * float64(1<<23)))
 	if latN > 0x7FFFFF {
-		latN = 0x7FFFFF
+		return latBytes, lonBytes, fmt.Errorf("latitude %v rounds past the ±90 boundary of the 23-bit encoding", rawLat)
 	}
 	latBytes[0] = sign<<7 | byte((latN>>16)&0x7F)
 	latBytes[1] = byte(latN >> 8)
@@ -287,13 +347,17 @@ func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte) {
 
 	lonN := int32(math.Round(lon / 360.0 * float64(1<<24)))
 	if lonN > 0x7FFFFF {
-		lonN = 0x7FFFFF
-	} else if lonN < -0x800000 {
-		lonN = -0x800000
+		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds past the +180 boundary of the 24-bit encoding", lon)
+	}
+	// -0x800000 is the legitimate quantum for lon=-180 exactly. Any other
+	// caller value that rounds onto it (ULPs in (-180, -179.99998927°])
+	// would silently collapse onto -180 on the wire.
+	if lonN == -0x800000 && lon != -180 {
+		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds onto the -180 quantum (would silently collapse onto -180)", lon)
 	}
 	lonBytes[0] = byte(lonN >> 16)
 	lonBytes[1] = byte(lonN >> 8)
 	lonBytes[2] = byte(lonN)
 
-	return latBytes, lonBytes
+	return latBytes, lonBytes, nil
 }
