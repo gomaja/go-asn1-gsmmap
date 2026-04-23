@@ -10,6 +10,15 @@ import (
 // --- SRI-SM ---
 
 func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
+	// msisdn and serviceCentreAddress are non-OPTIONAL in
+	// RoutingInfoForSM-Arg per MAP-SM-DataTypes.asn:63-66.
+	if s.MSISDN == "" {
+		return nil, ErrSriSmMissingMSISDN
+	}
+	if s.ServiceCentreAddress == "" {
+		return nil, ErrSriSmMissingServiceCentreAddress
+	}
+
 	msisdn, err := encodeAddressField(s.MSISDN, s.MSISDNNature, s.MSISDNPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding MSISDN: %w", err)
