@@ -926,6 +926,116 @@ type GmscCamelSubscriptionInfo struct {
 	DCSI                      *DCSI                   // [5]
 }
 
+// SSCSI (SS-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2254.
+// Supplementary Service CAMEL Subscription Info.
+//
+// NotificationToCSE and CsiActive are spec-forbidden in messages sent
+// toward the VLR; they're only legal in ATSI/ATM-ack/NSDC messages.
+// The public API exposes them as bools for those cases.
+type SSCSI struct {
+	SsEventList       []SsCode // mandatory, 1..10 entries
+	GsmSCFAddress     string   // mandatory ISDN-AddressString
+	GsmSCFNature      uint8    // default: International
+	GsmSCFPlan        uint8    // default: ISDN
+	NotificationToCSE bool     // [0] NULL (ATSI/ATM/NSDC only)
+	CsiActive         bool     // [1] NULL (ATSI/ATM/NSDC only)
+}
+
+// MCSI (M-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2517.
+// Mobility-events CAMEL Subscription Info.
+type MCSI struct {
+	MobilityTriggers  []byte // mandatory 1..10 MM-Code octets (1 byte each)
+	ServiceKey        int64  // mandatory 0..2147483647
+	GsmSCFAddress     string // [0] mandatory ISDN-AddressString
+	GsmSCFNature      uint8  // default: International
+	GsmSCFPlan        uint8  // default: ISDN
+	NotificationToCSE bool   // [2] NULL (ATSI/ATM/NSDC only)
+	CsiActive         bool   // [3] NULL (ATSI/ATM/NSDC only)
+}
+
+// DefaultSMSHandling per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2509.
+// ENUMERATED { continueTransaction(0), releaseTransaction(1), ... }.
+// Per spec exception handling, values 2..31 are treated as
+// continueTransaction and values > 31 as releaseTransaction on decode —
+// the decoder maps them accordingly and the encoder rejects anything
+// outside 0..1.
+type DefaultSMSHandling int
+
+const (
+	DefaultSMSHandlingContinueTransaction DefaultSMSHandling = 0
+	DefaultSMSHandlingReleaseTransaction  DefaultSMSHandling = 1
+)
+
+// SMSTriggerDetectionPoint per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2487.
+// ENUMERATED { sms-CollectedInfo(1), sms-DeliveryRequest(2), ... }.
+type SMSTriggerDetectionPoint int
+
+const (
+	SMSTriggerDetectionPointSmsCollectedInfo   SMSTriggerDetectionPoint = 1
+	SMSTriggerDetectionPointSmsDeliveryRequest SMSTriggerDetectionPoint = 2
+)
+
+// SMSCAMELTDPData per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2478.
+// One SMS CAMEL trigger detection point entry.
+type SMSCAMELTDPData struct {
+	SmsTriggerDetectionPoint SMSTriggerDetectionPoint // [0] mandatory
+	ServiceKey               int64                    // [1] mandatory 0..2147483647
+	GsmSCFAddress            string                   // [2] mandatory ISDN-AddressString
+	GsmSCFNature             uint8                    // default: International
+	GsmSCFPlan               uint8                    // default: ISDN
+	DefaultSMSHandling       DefaultSMSHandling       // [3] mandatory
+}
+
+// SMSCSI (SMS-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2458.
+// Used for both mo-sms-CSI and mt-sms-CSI fields on the VLR.
+//
+// Per spec, SmsCAMELTDPDataList and CamelCapabilityHandling SHALL be
+// present in an SMS-CSI sequence (spec clause 8.8.1). The encoder
+// enforces that invariant.
+type SMSCSI struct {
+	SmsCAMELTDPDataList     []SMSCAMELTDPData // [0] mandatory 1..10 entries
+	CamelCapabilityHandling *int              // [1] mandatory phase (1..4)
+	NotificationToCSE       bool              // [3] NULL (ATSI/ATM/NSDC only)
+	CsiActive               bool              // [4] NULL (ATSI/ATM/NSDC only)
+}
+
+// MTSMSTPDUType per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2213.
+// ENUMERATED { sms-DELIVER(0), sms-SUBMIT-REPORT(1), sms-STATUS-REPORT(2), ... }.
+type MTSMSTPDUType int
+
+const (
+	MTSMSTPDUTypeSmsDELIVER      MTSMSTPDUType = 0
+	MTSMSTPDUTypeSmsSUBMITREPORT MTSMSTPDUType = 1
+	MTSMSTPDUTypeSmsSTATUSREPORT MTSMSTPDUType = 2
+)
+
+// MTSmsCAMELTDPCriteria per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2202.
+// Selection criteria for an MT-SMS CAMEL invocation.
+type MTSmsCAMELTDPCriteria struct {
+	SmsTriggerDetectionPoint SMSTriggerDetectionPoint // mandatory
+	TpduTypeCriterion        []MTSMSTPDUType          // [0] optional, 1..5 entries when present
+}
+
+// VlrCamelSubscriptionInfo per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2183.
+// Full typed coverage; all 11 fields are exposed. Fields with dedicated
+// ASN.1 CHOICE/SEQUENCE types delegate to their own domain structs.
+//
+// TifCSI is a NULL marker (spec-level "tif supported"); all other
+// fields are optional by spec and nil-checked by the encoder.
+type VlrCamelSubscriptionInfo struct {
+	OCSI                      *OCSI                   // [0]
+	SsCSI                     *SSCSI                  // [2]
+	OBcsmCamelTDPCriteriaList []OBcsmCamelTDPCriteria // [4]
+	TifCSI                    bool                    // [3] NULL
+	MCSI                      *MCSI                   // [5]
+	MoSmsCSI                  *SMSCSI                 // [6]
+	VtCSI                     *TCSI                   // [7]
+	TBcsmCamelTDPCriteriaList []TBcsmCamelTDPCriteria // [8]
+	DCSI                      *DCSI                   // [9]
+	MtSmsCSI                  *SMSCSI                 // [10]
+	MtSmsCAMELTDPCriteriaList []MTSmsCAMELTDPCriteria // [11] 1..5 entries
+}
+
 // CcbsIndicators SEQUENCE.
 type CcbsIndicators struct {
 	CcbsPossible          bool
@@ -1587,6 +1697,19 @@ var (
 	ErrCamelMissingDestinationNumber         = errors.New("camel: DestinationNumberList entry must have non-empty Digits")
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
 	ErrCamelInvalidCriteriaListSize          = errors.New("camel: TDP-CriteriaList must contain 1..10 entries when present")
+	ErrCamelMissingGsmSCFAddressShort        = errors.New("camel: GsmSCFAddress is mandatory and must be non-empty")
+	ErrCamelInvalidServiceKeyRange           = errors.New("camel: ServiceKey must be 0..2147483647")
+	ErrCamelInvalidSSEventListSize           = errors.New("camel: SsEventList must contain 1..10 entries")
+	ErrCamelInvalidMobilityTriggersSize      = errors.New("camel: MobilityTriggers must contain 1..10 single-octet entries")
+	ErrCamelInvalidMobilityTriggerOctet      = errors.New("camel: each MobilityTriggers entry must be exactly 1 octet")
+	ErrCamelInvalidSMSTDPDataListSize        = errors.New("camel: SmsCAMELTDPDataList must contain 1..10 entries")
+	ErrCamelSMSCSIMissingTDPData             = errors.New("camel: SMS-CSI must include SmsCAMELTDPDataList per TS 29.002 clause 8.8.1")
+	ErrCamelSMSCSIMissingCapabilityHandling  = errors.New("camel: SMS-CSI must include CamelCapabilityHandling per TS 29.002 clause 8.8.1")
+	ErrCamelInvalidSMSTriggerDetectionPoint  = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) or sms-DeliveryRequest(2)")
+	ErrCamelInvalidDefaultSMSHandling        = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
+	ErrCamelInvalidMTSmsCAMELCriteriaSize    = errors.New("camel: MtSmsCAMELTDPCriteriaList must contain 1..5 entries when present")
+	ErrCamelInvalidTPDUTypeCriterionSize     = errors.New("camel: TpduTypeCriterion must contain 1..5 entries when present")
+	ErrCamelInvalidMTSMSTPDUType             = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0), sms-SUBMIT-REPORT(1), or sms-STATUS-REPORT(2)")
 
 	ErrODBDataMissingGeneralData       = errors.New("odbData: OdbGeneralData is mandatory and must be non-nil")
 	ErrZoneCodeInvalidSize             = errors.New("zoneCode: each entry must be exactly 2 octets")

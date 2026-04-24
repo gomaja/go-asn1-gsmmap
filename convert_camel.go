@@ -789,3 +789,520 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 	}
 	return out, nil
 }
+
+// --- VlrCamelSubscriptionInfo sub-types (MAP-MS-DataTypes.asn:2183) ---
+
+// maxNumOfCamelTDPData is the spec upper bound on CAMEL TDP data lists
+// and related criteria lists (O-BCSM / T-BCSM / SMS).
+const maxNumOfCamelTDPData = 10
+
+// maxNumOfCamelSSEvents is the spec upper bound on SS-EventList.
+const maxNumOfCamelSSEvents = 10
+
+// maxNumOfMobilityTriggers is the spec upper bound on MobilityTriggers.
+const maxNumOfMobilityTriggers = 10
+
+// maxNumOfMTSmsCamelCriteria is the spec upper bound on MT-smsCAMELTDP-CriteriaList.
+const maxNumOfMTSmsCamelCriteria = 5
+
+// maxNumOfTPDUTypes is the spec upper bound on TPDUTypeCriterion.
+const maxNumOfTPDUTypes = 5
+
+func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
+	if len(s.SsEventList) < 1 || len(s.SsEventList) > maxNumOfCamelSSEvents {
+		return nil, ErrCamelInvalidSSEventListSize
+	}
+	if s.GsmSCFAddress == "" {
+		return nil, ErrCamelMissingGsmSCFAddressShort
+	}
+	addr, err := encodeAddressField(s.GsmSCFAddress, s.GsmSCFNature, s.GsmSCFPlan)
+	if err != nil {
+		return nil, fmt.Errorf("encoding SS-CSI.GsmSCFAddress: %w", err)
+	}
+	events := make(gsm_map.SSEventList, len(s.SsEventList))
+	for i, c := range s.SsEventList {
+		events[i] = gsm_map.SSCode{byte(c)}
+	}
+	return &gsm_map.SSCSI{
+		SsCamelData: gsm_map.SSCamelData{
+			SsEventList:   events,
+			GsmSCFAddress: gsm_map.ISDNAddressString(addr),
+		},
+		NotificationToCSE: boolToNullPtr(s.NotificationToCSE),
+		CsiActive:         boolToNullPtr(s.CsiActive),
+	}, nil
+}
+
+func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
+	events := w.SsCamelData.SsEventList
+	if len(events) < 1 || len(events) > maxNumOfCamelSSEvents {
+		return nil, ErrCamelInvalidSSEventListSize
+	}
+	digits, nat, plan, err := decodeAddressField(w.SsCamelData.GsmSCFAddress)
+	if err != nil {
+		return nil, fmt.Errorf("decoding SS-CSI.GsmSCFAddress: %w", err)
+	}
+	if digits == "" {
+		return nil, ErrCamelMissingGsmSCFAddressShort
+	}
+	ssList := make([]SsCode, len(events))
+	for i, b := range events {
+		if len(b) != 1 {
+			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]: SsCode must be 1 octet, got %d", i, len(b))
+		}
+		ssList[i] = SsCode(b[0])
+	}
+	return &SSCSI{
+		SsEventList:       ssList,
+		GsmSCFAddress:     digits,
+		GsmSCFNature:      nat,
+		GsmSCFPlan:        plan,
+		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
+		CsiActive:         nullPtrToBool(w.CsiActive),
+	}, nil
+}
+
+func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
+	if len(m.MobilityTriggers) < 1 || len(m.MobilityTriggers) > maxNumOfMobilityTriggers {
+		return nil, ErrCamelInvalidMobilityTriggersSize
+	}
+	if m.ServiceKey < 0 || m.ServiceKey > 2147483647 {
+		return nil, ErrCamelInvalidServiceKeyRange
+	}
+	if m.GsmSCFAddress == "" {
+		return nil, ErrCamelMissingGsmSCFAddressShort
+	}
+	addr, err := encodeAddressField(m.GsmSCFAddress, m.GsmSCFNature, m.GsmSCFPlan)
+	if err != nil {
+		return nil, fmt.Errorf("encoding M-CSI.GsmSCFAddress: %w", err)
+	}
+	triggers := make(gsm_map.MobilityTriggers, len(m.MobilityTriggers))
+	for i, b := range m.MobilityTriggers {
+		triggers[i] = gsm_map.MMCode{b}
+	}
+	return &gsm_map.MCSI{
+		MobilityTriggers:  triggers,
+		ServiceKey:        gsm_map.ServiceKey(m.ServiceKey),
+		GsmSCFAddress:     gsm_map.ISDNAddressString(addr),
+		NotificationToCSE: boolToNullPtr(m.NotificationToCSE),
+		CsiActive:         boolToNullPtr(m.CsiActive),
+	}, nil
+}
+
+func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
+	if len(w.MobilityTriggers) < 1 || len(w.MobilityTriggers) > maxNumOfMobilityTriggers {
+		return nil, ErrCamelInvalidMobilityTriggersSize
+	}
+	sk := int64(w.ServiceKey)
+	if sk < 0 || sk > 2147483647 {
+		return nil, ErrCamelInvalidServiceKeyRange
+	}
+	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
+	if err != nil {
+		return nil, fmt.Errorf("decoding M-CSI.GsmSCFAddress: %w", err)
+	}
+	if digits == "" {
+		return nil, ErrCamelMissingGsmSCFAddressShort
+	}
+	triggers := make([]byte, len(w.MobilityTriggers))
+	for i, mm := range w.MobilityTriggers {
+		if len(mm) != 1 {
+			return nil, fmt.Errorf("M-CSI.MobilityTriggers[%d]: %w", i, ErrCamelInvalidMobilityTriggerOctet)
+		}
+		triggers[i] = mm[0]
+	}
+	return &MCSI{
+		MobilityTriggers:  triggers,
+		ServiceKey:        sk,
+		GsmSCFAddress:     digits,
+		GsmSCFNature:      nat,
+		GsmSCFPlan:        plan,
+		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
+		CsiActive:         nullPtrToBool(w.CsiActive),
+	}, nil
+}
+
+func isValidSMSTriggerDetectionPoint(v SMSTriggerDetectionPoint) bool {
+	return v == SMSTriggerDetectionPointSmsCollectedInfo ||
+		v == SMSTriggerDetectionPointSmsDeliveryRequest
+}
+
+func isValidDefaultSMSHandling(v DefaultSMSHandling) bool {
+	return v == DefaultSMSHandlingContinueTransaction ||
+		v == DefaultSMSHandlingReleaseTransaction
+}
+
+func isValidMTSMSTPDUType(v MTSMSTPDUType) bool {
+	return v == MTSMSTPDUTypeSmsDELIVER ||
+		v == MTSMSTPDUTypeSmsSUBMITREPORT ||
+		v == MTSMSTPDUTypeSmsSTATUSREPORT
+}
+
+func convertSMSCAMELTDPDataToWire(d *SMSCAMELTDPData) (gsm_map.SMSCAMELTDPData, error) {
+	if !isValidSMSTriggerDetectionPoint(d.SmsTriggerDetectionPoint) {
+		return gsm_map.SMSCAMELTDPData{}, ErrCamelInvalidSMSTriggerDetectionPoint
+	}
+	if d.ServiceKey < 0 || d.ServiceKey > 2147483647 {
+		return gsm_map.SMSCAMELTDPData{}, ErrCamelInvalidServiceKeyRange
+	}
+	if d.GsmSCFAddress == "" {
+		return gsm_map.SMSCAMELTDPData{}, ErrCamelMissingGsmSCFAddressShort
+	}
+	if !isValidDefaultSMSHandling(d.DefaultSMSHandling) {
+		return gsm_map.SMSCAMELTDPData{}, ErrCamelInvalidDefaultSMSHandling
+	}
+	addr, err := encodeAddressField(d.GsmSCFAddress, d.GsmSCFNature, d.GsmSCFPlan)
+	if err != nil {
+		return gsm_map.SMSCAMELTDPData{}, fmt.Errorf("encoding SMS-CAMEL-TDP-Data.GsmSCFAddress: %w", err)
+	}
+	return gsm_map.SMSCAMELTDPData{
+		SmsTriggerDetectionPoint: gsm_map.SMSTriggerDetectionPoint(d.SmsTriggerDetectionPoint),
+		ServiceKey:               gsm_map.ServiceKey(d.ServiceKey),
+		GsmSCFAddress:            gsm_map.ISDNAddressString(addr),
+		DefaultSMSHandling:       gsm_map.DefaultSMSHandling(d.DefaultSMSHandling),
+	}, nil
+}
+
+// convertWireToSMSCAMELTDPData decodes an SMS-CAMEL-TDP-Data entry.
+// Per spec exception handling, the decoder applies the lenient rules
+// documented on DefaultSMSHandling (values 2..31 → continueTransaction,
+// values >31 → releaseTransaction) and SmsTriggerDetectionPoint
+// (unknown values cause the whole sequence to be rejected; the list
+// converter will drop such entries).
+func convertWireToSMSCAMELTDPData(w *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData, error) {
+	tdp := SMSTriggerDetectionPoint(int64(w.SmsTriggerDetectionPoint))
+	if !isValidSMSTriggerDetectionPoint(tdp) {
+		return nil, ErrCamelInvalidSMSTriggerDetectionPoint
+	}
+	sk := int64(w.ServiceKey)
+	if sk < 0 || sk > 2147483647 {
+		return nil, ErrCamelInvalidServiceKeyRange
+	}
+	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
+	if err != nil {
+		return nil, fmt.Errorf("decoding SMS-CAMEL-TDP-Data.GsmSCFAddress: %w", err)
+	}
+	if digits == "" {
+		return nil, ErrCamelMissingGsmSCFAddressShort
+	}
+	// DefaultSMSHandling lenient mapping per TS 29.002 §8.8.1:
+	//   0 = continueTransaction
+	//   1 = releaseTransaction
+	//   2..31 → continueTransaction
+	//   >31  → releaseTransaction
+	dsh := DefaultSMSHandling(int64(w.DefaultSMSHandling))
+	switch {
+	case dsh == DefaultSMSHandlingContinueTransaction, dsh == DefaultSMSHandlingReleaseTransaction:
+		// already valid
+	case int64(dsh) >= 2 && int64(dsh) <= 31:
+		dsh = DefaultSMSHandlingContinueTransaction
+	case int64(dsh) > 31:
+		dsh = DefaultSMSHandlingReleaseTransaction
+	default:
+		return nil, ErrCamelInvalidDefaultSMSHandling
+	}
+	return &SMSCAMELTDPData{
+		SmsTriggerDetectionPoint: tdp,
+		ServiceKey:               sk,
+		GsmSCFAddress:            digits,
+		GsmSCFNature:             nat,
+		GsmSCFPlan:               plan,
+		DefaultSMSHandling:       dsh,
+	}, nil
+}
+
+func convertSMSCSIToWire(s *SMSCSI) (*gsm_map.SMSCSI, error) {
+	// Spec 8.8.1: both SmsCAMELTDPDataList and CamelCapabilityHandling
+	// shall be present in an SMS-CSI sequence. Encoder enforces that.
+	if len(s.SmsCAMELTDPDataList) < 1 || len(s.SmsCAMELTDPDataList) > maxNumOfCamelTDPData {
+		return nil, ErrCamelInvalidSMSTDPDataListSize
+	}
+	if s.CamelCapabilityHandling == nil {
+		return nil, ErrCamelSMSCSIMissingCapabilityHandling
+	}
+	if err := validateCamelCapabilityHandling(s.CamelCapabilityHandling); err != nil {
+		return nil, err
+	}
+	list := make(gsm_map.SMSCAMELTDPDataList, len(s.SmsCAMELTDPDataList))
+	for i := range s.SmsCAMELTDPDataList {
+		w, err := convertSMSCAMELTDPDataToWire(&s.SmsCAMELTDPDataList[i])
+		if err != nil {
+			return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
+		}
+		list[i] = w
+	}
+	cch := gsm_map.CamelCapabilityHandling(int64(*s.CamelCapabilityHandling))
+	return &gsm_map.SMSCSI{
+		SmsCAMELTDPDataList:     list,
+		CamelCapabilityHandling: &cch,
+		NotificationToCSE:       boolToNullPtr(s.NotificationToCSE),
+		CsiActive:               boolToNullPtr(s.CsiActive),
+	}, nil
+}
+
+func convertWireToSMSCSI(w *gsm_map.SMSCSI) (*SMSCSI, error) {
+	if len(w.SmsCAMELTDPDataList) < 1 || len(w.SmsCAMELTDPDataList) > maxNumOfCamelTDPData {
+		return nil, ErrCamelSMSCSIMissingTDPData
+	}
+	if w.CamelCapabilityHandling == nil {
+		return nil, ErrCamelSMSCSIMissingCapabilityHandling
+	}
+	v64 := int64(*w.CamelCapabilityHandling)
+	if v64 < 1 || v64 > 4 {
+		return nil, ErrCamelInvalidCamelCapabilityHandling
+	}
+	cch := int(v64)
+	list := make([]SMSCAMELTDPData, len(w.SmsCAMELTDPDataList))
+	for i := range w.SmsCAMELTDPDataList {
+		d, err := convertWireToSMSCAMELTDPData(&w.SmsCAMELTDPDataList[i])
+		if err != nil {
+			return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
+		}
+		list[i] = *d
+	}
+	return &SMSCSI{
+		SmsCAMELTDPDataList:     list,
+		CamelCapabilityHandling: &cch,
+		NotificationToCSE:       nullPtrToBool(w.NotificationToCSE),
+		CsiActive:               nullPtrToBool(w.CsiActive),
+	}, nil
+}
+
+func convertMTSmsCAMELTDPCriteriaToWire(c *MTSmsCAMELTDPCriteria) (gsm_map.MTSmsCAMELTDPCriteria, error) {
+	if !isValidSMSTriggerDetectionPoint(c.SmsTriggerDetectionPoint) {
+		return gsm_map.MTSmsCAMELTDPCriteria{}, ErrCamelInvalidSMSTriggerDetectionPoint
+	}
+	out := gsm_map.MTSmsCAMELTDPCriteria{
+		SmsTriggerDetectionPoint: gsm_map.SMSTriggerDetectionPoint(c.SmsTriggerDetectionPoint),
+	}
+	if len(c.TpduTypeCriterion) > 0 {
+		if len(c.TpduTypeCriterion) > maxNumOfTPDUTypes {
+			return gsm_map.MTSmsCAMELTDPCriteria{}, ErrCamelInvalidTPDUTypeCriterionSize
+		}
+		tpdu := make(gsm_map.TPDUTypeCriterion, len(c.TpduTypeCriterion))
+		for i, t := range c.TpduTypeCriterion {
+			if !isValidMTSMSTPDUType(t) {
+				return gsm_map.MTSmsCAMELTDPCriteria{}, fmt.Errorf("TpduTypeCriterion[%d]: %w", i, ErrCamelInvalidMTSMSTPDUType)
+			}
+			tpdu[i] = gsm_map.MTSMSTPDUType(t)
+		}
+		out.TpduTypeCriterion = tpdu
+	}
+	return out, nil
+}
+
+func convertWireToMTSmsCAMELTDPCriteria(w *gsm_map.MTSmsCAMELTDPCriteria) (*MTSmsCAMELTDPCriteria, error) {
+	tdp := SMSTriggerDetectionPoint(int64(w.SmsTriggerDetectionPoint))
+	if !isValidSMSTriggerDetectionPoint(tdp) {
+		return nil, ErrCamelInvalidSMSTriggerDetectionPoint
+	}
+	out := &MTSmsCAMELTDPCriteria{SmsTriggerDetectionPoint: tdp}
+	if len(w.TpduTypeCriterion) > 0 {
+		if len(w.TpduTypeCriterion) > maxNumOfTPDUTypes {
+			return nil, ErrCamelInvalidTPDUTypeCriterionSize
+		}
+		tpdu := make([]MTSMSTPDUType, len(w.TpduTypeCriterion))
+		for i, t := range w.TpduTypeCriterion {
+			tt := MTSMSTPDUType(int64(t))
+			if !isValidMTSMSTPDUType(tt) {
+				return nil, fmt.Errorf("TpduTypeCriterion[%d]: %w", i, ErrCamelInvalidMTSMSTPDUType)
+			}
+			tpdu[i] = tt
+		}
+		out.TpduTypeCriterion = tpdu
+	}
+	return out, nil
+}
+
+func convertVlrCamelSubscriptionInfoToWire(v *VlrCamelSubscriptionInfo) (*gsm_map.VlrCamelSubscriptionInfo, error) {
+	out := &gsm_map.VlrCamelSubscriptionInfo{}
+	if v.OCSI != nil {
+		w, err := convertOCSIToWire(v.OCSI)
+		if err != nil {
+			return nil, fmt.Errorf("OCSI: %w", err)
+		}
+		out.OCSI = w
+	}
+	if v.SsCSI != nil {
+		w, err := convertSSCSIToWire(v.SsCSI)
+		if err != nil {
+			return nil, fmt.Errorf("SsCSI: %w", err)
+		}
+		out.SsCSI = w
+	}
+	if len(v.OBcsmCamelTDPCriteriaList) > 0 {
+		if len(v.OBcsmCamelTDPCriteriaList) > maxNumOfCamelTDPData {
+			return nil, ErrCamelInvalidCriteriaListSize
+		}
+		list := make(gsm_map.OBcsmCamelTDPCriteriaList, len(v.OBcsmCamelTDPCriteriaList))
+		for i := range v.OBcsmCamelTDPCriteriaList {
+			w, err := convertOBcsmTDPCriteriaToWire(&v.OBcsmCamelTDPCriteriaList[i])
+			if err != nil {
+				return nil, fmt.Errorf("OBcsmCamelTDPCriteriaList[%d]: %w", i, err)
+			}
+			list[i] = w
+		}
+		out.OBcsmCamelTDPCriteriaList = list
+	}
+	out.TifCSI = boolToNullPtr(v.TifCSI)
+	if v.MCSI != nil {
+		w, err := convertMCSIToWire(v.MCSI)
+		if err != nil {
+			return nil, fmt.Errorf("MCSI: %w", err)
+		}
+		out.MCSI = w
+	}
+	if v.MoSmsCSI != nil {
+		w, err := convertSMSCSIToWire(v.MoSmsCSI)
+		if err != nil {
+			return nil, fmt.Errorf("MoSmsCSI: %w", err)
+		}
+		out.MoSmsCSI = w
+	}
+	if v.VtCSI != nil {
+		w, err := convertTCSIToWire(v.VtCSI)
+		if err != nil {
+			return nil, fmt.Errorf("VtCSI: %w", err)
+		}
+		out.VtCSI = w
+	}
+	if len(v.TBcsmCamelTDPCriteriaList) > 0 {
+		if len(v.TBcsmCamelTDPCriteriaList) > maxNumOfCamelTDPData {
+			return nil, ErrCamelInvalidCriteriaListSize
+		}
+		list := make(gsm_map.TBCSMCAMELTDPCriteriaList, len(v.TBcsmCamelTDPCriteriaList))
+		for i := range v.TBcsmCamelTDPCriteriaList {
+			w, err := convertTBcsmTDPCriteriaToWire(&v.TBcsmCamelTDPCriteriaList[i])
+			if err != nil {
+				return nil, fmt.Errorf("TBcsmCamelTDPCriteriaList[%d]: %w", i, err)
+			}
+			list[i] = w
+		}
+		out.TBCSMCAMELTDPCriteriaList = list
+	}
+	if v.DCSI != nil {
+		w, err := convertDCSIToWire(v.DCSI)
+		if err != nil {
+			return nil, fmt.Errorf("DCSI: %w", err)
+		}
+		out.DCSI = w
+	}
+	if v.MtSmsCSI != nil {
+		w, err := convertSMSCSIToWire(v.MtSmsCSI)
+		if err != nil {
+			return nil, fmt.Errorf("MtSmsCSI: %w", err)
+		}
+		out.MtSmsCSI = w
+	}
+	if len(v.MtSmsCAMELTDPCriteriaList) > 0 {
+		if len(v.MtSmsCAMELTDPCriteriaList) > maxNumOfMTSmsCamelCriteria {
+			return nil, ErrCamelInvalidMTSmsCAMELCriteriaSize
+		}
+		list := make(gsm_map.MTSmsCAMELTDPCriteriaList, len(v.MtSmsCAMELTDPCriteriaList))
+		for i := range v.MtSmsCAMELTDPCriteriaList {
+			w, err := convertMTSmsCAMELTDPCriteriaToWire(&v.MtSmsCAMELTDPCriteriaList[i])
+			if err != nil {
+				return nil, fmt.Errorf("MtSmsCAMELTDPCriteriaList[%d]: %w", i, err)
+			}
+			list[i] = w
+		}
+		out.MtSmsCAMELTDPCriteriaList = list
+	}
+	return out, nil
+}
+
+func convertWireToVlrCamelSubscriptionInfo(w *gsm_map.VlrCamelSubscriptionInfo) (*VlrCamelSubscriptionInfo, error) {
+	out := &VlrCamelSubscriptionInfo{TifCSI: nullPtrToBool(w.TifCSI)}
+	if w.OCSI != nil {
+		d, err := convertWireToOCSI(w.OCSI)
+		if err != nil {
+			return nil, fmt.Errorf("OCSI: %w", err)
+		}
+		out.OCSI = d
+	}
+	if w.SsCSI != nil {
+		d, err := convertWireToSSCSI(w.SsCSI)
+		if err != nil {
+			return nil, fmt.Errorf("SsCSI: %w", err)
+		}
+		out.SsCSI = d
+	}
+	if len(w.OBcsmCamelTDPCriteriaList) > 0 {
+		if len(w.OBcsmCamelTDPCriteriaList) > maxNumOfCamelTDPData {
+			return nil, ErrCamelInvalidCriteriaListSize
+		}
+		list := make([]OBcsmCamelTDPCriteria, len(w.OBcsmCamelTDPCriteriaList))
+		for i := range w.OBcsmCamelTDPCriteriaList {
+			d, err := convertWireToOBcsmTDPCriteria(&w.OBcsmCamelTDPCriteriaList[i])
+			if err != nil {
+				return nil, fmt.Errorf("OBcsmCamelTDPCriteriaList[%d]: %w", i, err)
+			}
+			list[i] = d
+		}
+		out.OBcsmCamelTDPCriteriaList = list
+	}
+	if w.MCSI != nil {
+		d, err := convertWireToMCSI(w.MCSI)
+		if err != nil {
+			return nil, fmt.Errorf("MCSI: %w", err)
+		}
+		out.MCSI = d
+	}
+	if w.MoSmsCSI != nil {
+		d, err := convertWireToSMSCSI(w.MoSmsCSI)
+		if err != nil {
+			return nil, fmt.Errorf("MoSmsCSI: %w", err)
+		}
+		out.MoSmsCSI = d
+	}
+	if w.VtCSI != nil {
+		d, err := convertWireToTCSI(w.VtCSI)
+		if err != nil {
+			return nil, fmt.Errorf("VtCSI: %w", err)
+		}
+		out.VtCSI = d
+	}
+	if len(w.TBCSMCAMELTDPCriteriaList) > 0 {
+		if len(w.TBCSMCAMELTDPCriteriaList) > maxNumOfCamelTDPData {
+			return nil, ErrCamelInvalidCriteriaListSize
+		}
+		list := make([]TBcsmCamelTDPCriteria, len(w.TBCSMCAMELTDPCriteriaList))
+		for i := range w.TBCSMCAMELTDPCriteriaList {
+			d, err := convertWireToTBcsmTDPCriteria(&w.TBCSMCAMELTDPCriteriaList[i])
+			if err != nil {
+				return nil, fmt.Errorf("TBcsmCamelTDPCriteriaList[%d]: %w", i, err)
+			}
+			list[i] = d
+		}
+		out.TBcsmCamelTDPCriteriaList = list
+	}
+	if w.DCSI != nil {
+		d, err := convertWireToDCSI(w.DCSI)
+		if err != nil {
+			return nil, fmt.Errorf("DCSI: %w", err)
+		}
+		out.DCSI = d
+	}
+	if w.MtSmsCSI != nil {
+		d, err := convertWireToSMSCSI(w.MtSmsCSI)
+		if err != nil {
+			return nil, fmt.Errorf("MtSmsCSI: %w", err)
+		}
+		out.MtSmsCSI = d
+	}
+	if len(w.MtSmsCAMELTDPCriteriaList) > 0 {
+		if len(w.MtSmsCAMELTDPCriteriaList) > maxNumOfMTSmsCamelCriteria {
+			return nil, ErrCamelInvalidMTSmsCAMELCriteriaSize
+		}
+		list := make([]MTSmsCAMELTDPCriteria, len(w.MtSmsCAMELTDPCriteriaList))
+		for i := range w.MtSmsCAMELTDPCriteriaList {
+			d, err := convertWireToMTSmsCAMELTDPCriteria(&w.MtSmsCAMELTDPCriteriaList[i])
+			if err != nil {
+				return nil, fmt.Errorf("MtSmsCAMELTDPCriteriaList[%d]: %w", i, err)
+			}
+			list[i] = *d
+		}
+		out.MtSmsCAMELTDPCriteriaList = list
+	}
+	return out, nil
+}
