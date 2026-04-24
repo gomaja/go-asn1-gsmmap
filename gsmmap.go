@@ -1262,6 +1262,162 @@ type CancelLocation struct {
 	ReattachRequired              bool          // [6] NULL
 }
 
+// --- InsertSubscriberData (opCode 7) — foundation types ---
+
+// SubscriberStatus per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:1756).
+// ENUMERATED { serviceGranted(0), operatorDeterminedBarring(1) }.
+type SubscriberStatus int
+
+const (
+	SubscriberStatusServiceGranted            SubscriberStatus = 0
+	SubscriberStatusOperatorDeterminedBarring SubscriberStatus = 1
+)
+
+// NetworkAccessMode per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:1509).
+// ENUMERATED { packetAndCircuit(0), onlyCircuit(1), onlyPacket(2) }.
+type NetworkAccessMode int
+
+const (
+	NetworkAccessModePacketAndCircuit NetworkAccessMode = 0
+	NetworkAccessModeOnlyCircuit      NetworkAccessMode = 1
+	NetworkAccessModeOnlyPacket       NetworkAccessMode = 2
+)
+
+// RegionalSubscriptionResponse per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:2091).
+// ENUMERATED { networkNode-AreaRestricted(0), tooManyZoneCodes(1),
+// zoneCodesConflict(2), regionalSubscNotSupported(3) }.
+type RegionalSubscriptionResponse int
+
+const (
+	RegionalSubscriptionResponseNetworkNodeAreaRestricted RegionalSubscriptionResponse = 0
+	RegionalSubscriptionResponseTooManyZoneCodes          RegionalSubscriptionResponse = 1
+	RegionalSubscriptionResponseZoneCodesConflict         RegionalSubscriptionResponse = 2
+	RegionalSubscriptionResponseRegionalSubscNotSupported RegionalSubscriptionResponse = 3
+)
+
+// ODBGeneralData (BIT STRING SIZE 15..32) per TS 29.002 MAP-MS-DataTypes.asn:1776.
+// 29 named bits covering operator-determined barring of outgoing calls,
+// explicit call transfer, packet-oriented services, and roaming. Unknown
+// bits received from peers are treated as unsupported-ODB per spec
+// exception handling.
+type ODBGeneralData struct {
+	AllOGCallsBarred                                                   bool // bit 0
+	InternationalOGCallsBarred                                         bool // bit 1
+	InternationalOGCallsNotToHPLMNCountryBarred                        bool // bit 2
+	PremiumRateInformationOGCallsBarred                                bool // bit 3
+	PremiumRateEntertainmentOGCallsBarred                              bool // bit 4
+	SSAccessBarred                                                     bool // bit 5
+	InterzonalOGCallsBarred                                            bool // bit 6
+	InterzonalOGCallsNotToHPLMNCountryBarred                           bool // bit 7
+	InterzonalOGCallsAndInternationalOGCallsNotToHPLMNCountryBarred    bool // bit 8
+	AllECTBarred                                                       bool // bit 9
+	ChargeableECTBarred                                                bool // bit 10
+	InternationalECTBarred                                             bool // bit 11
+	InterzonalECTBarred                                                bool // bit 12
+	DoublyChargeableECTBarred                                          bool // bit 13
+	MultipleECTBarred                                                  bool // bit 14
+	AllPacketOrientedServicesBarred                                    bool // bit 15
+	RoamerAccessToHPLMNAPBarred                                        bool // bit 16
+	RoamerAccessToVPLMNAPBarred                                        bool // bit 17
+	RoamingOutsidePLMNOGCallsBarred                                    bool // bit 18
+	AllICCallsBarred                                                   bool // bit 19
+	RoamingOutsidePLMNICCallsBarred                                    bool // bit 20
+	RoamingOutsidePLMNICountryICCallsBarred                            bool // bit 21
+	RoamingOutsidePLMNBarred                                           bool // bit 22
+	RoamingOutsidePLMNCountryBarred                                    bool // bit 23
+	RegistrationAllCFBarred                                            bool // bit 24
+	RegistrationCFNotToHPLMNBarred                                     bool // bit 25
+	RegistrationInterzonalCFBarred                                     bool // bit 26
+	RegistrationInterzonalCFNotToHPLMNBarred                           bool // bit 27
+	RegistrationInternationalCFBarred                                  bool // bit 28
+}
+
+// ODBHPLMNData (BIT STRING SIZE 4..32) per TS 29.002 MAP-MS-DataTypes.asn:1812.
+// Carries HPLMN-specific ODB barring types. Unknown bits received from
+// peers are treated as unsupported-ODB per spec exception handling.
+type ODBHPLMNData struct {
+	PLMNSpecificBarringType1 bool // bit 0
+	PLMNSpecificBarringType2 bool // bit 1
+	PLMNSpecificBarringType3 bool // bit 2
+	PLMNSpecificBarringType4 bool // bit 3
+}
+
+// AccessRestrictionData (BIT STRING SIZE 2..8) per TS 29.002
+// MAP-MS-DataTypes.asn:1454. Access-type restrictions applied to the
+// subscriber. Per spec, nodes shall ignore restrictions for access types
+// they do not support.
+type AccessRestrictionData struct {
+	UtranNotAllowed            bool // bit 0
+	GeranNotAllowed            bool // bit 1
+	GanNotAllowed              bool // bit 2
+	IHSPAEvolutionNotAllowed   bool // bit 3
+	WBEUtranNotAllowed         bool // bit 4
+	HoToNon3GPPAccessNotAllowed bool // bit 5
+	NBIoTNotAllowed            bool // bit 6
+	EnhancedCoverageNotAllowed bool // bit 7
+}
+
+// ExtAccessRestrictionData (BIT STRING SIZE 1..32) per TS 29.002
+// MAP-MS-DataTypes.asn:1471. Additional access-type restrictions that
+// don't fit in the 8-bit AccessRestrictionData.
+type ExtAccessRestrictionData struct {
+	NrAsSecondaryRATNotAllowed                bool // bit 0
+	UnlicensedSpectrumAsSecondaryRATNotAllowed bool // bit 1
+}
+
+// SupportedFeatures (BIT STRING SIZE 26..40) per TS 29.002
+// MAP-MS-DataTypes.asn:642. HSS/HLR-advertised feature support;
+// see 3GPP TS 29.272 for each bit's meaning.
+type SupportedFeatures struct {
+	OdbAllApn                                        bool // bit 0
+	OdbHPLMNApn                                      bool // bit 1
+	OdbVPLMNApn                                      bool // bit 2
+	OdbAllOg                                         bool // bit 3
+	OdbAllInternationalOg                            bool // bit 4
+	OdbAllIntOgNotToHPLMNCountry                     bool // bit 5
+	OdbAllInterzonalOg                               bool // bit 6
+	OdbAllInterzonalOgNotToHPLMNCountry              bool // bit 7
+	OdbAllInterzonalOgAndInternatOgNotToHPLMNCountry bool // bit 8
+	RegSub                                           bool // bit 9
+	Trace                                            bool // bit 10
+	LcsAllPrivExcep                                  bool // bit 11
+	LcsUniversal                                     bool // bit 12
+	LcsCallSessionRelated                            bool // bit 13
+	LcsCallSessionUnrelated                          bool // bit 14
+	LcsPLMNOperator                                  bool // bit 15
+	LcsServiceType                                   bool // bit 16
+	LcsAllMOLRSS                                     bool // bit 17
+	LcsBasicSelfLocation                             bool // bit 18
+	LcsAutonomousSelfLocation                        bool // bit 19
+	LcsTransferToThirdParty                          bool // bit 20
+	SmMoPp                                           bool // bit 21
+	BarringOutgoingCalls                             bool // bit 22
+	Baoc                                             bool // bit 23
+	Boic                                             bool // bit 24
+	BoicExHC                                         bool // bit 25
+	LocalTimeZoneRetrieval                           bool // bit 26
+	AdditionalMsisdn                                 bool // bit 27
+	SmsInMME                                         bool // bit 28
+	SmsInSGSN                                        bool // bit 29
+	UeReachabilityNotification                       bool // bit 30
+	StateLocationInformationRetrieval                bool // bit 31
+	PartialPurge                                     bool // bit 32
+	GddInSGSN                                        bool // bit 33
+	SgsnCAMELCapability                              bool // bit 34
+	PcscfRestoration                                 bool // bit 35
+	DedicatedCoreNetworks                            bool // bit 36
+	NonIPPDNTypeAPNs                                 bool // bit 37
+	NonIPPDPTypeAPNs                                 bool // bit 38
+	NrAsSecondaryRAT                                 bool // bit 39
+}
+
+// ExtSupportedFeatures (BIT STRING SIZE 1..40) per TS 29.002
+// MAP-MS-DataTypes.asn:687. Extension to SupportedFeatures for newer
+// feature bits; only 1 bit is currently defined.
+type ExtSupportedFeatures struct {
+	UnlicensedSpectrumAsSecondaryRAT bool // bit 0
+}
+
 // CancelLocationRes represents a CancelLocation response (opCode 3) per
 // 3GPP TS 29.002. The response body carries only an optional
 // ExtensionContainer; the wire response is effectively empty in practice.
