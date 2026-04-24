@@ -274,6 +274,12 @@ func TestISDBitStrings_DecodesShortInput(t *testing.T) {
 			want: &ODBHPLMNData{},
 		},
 		{
+			name: "ODBHPLMNData/oneBit",
+			bs:   runtime.BitString{Bytes: []byte{0x80}, BitLength: 1},
+			got:  func(bs runtime.BitString) any { return convertBitStringToODBHPLMNData(bs) },
+			want: &ODBHPLMNData{PLMNSpecificBarringType1: true},
+		},
+		{
 			name: "AccessRestrictionData/empty",
 			bs:   runtime.BitString{},
 			got:  func(bs runtime.BitString) any { return convertBitStringToAccessRestrictionData(bs) },
@@ -292,6 +298,12 @@ func TestISDBitStrings_DecodesShortInput(t *testing.T) {
 			want: &ExtAccessRestrictionData{},
 		},
 		{
+			name: "ExtAccessRestrictionData/oneBit",
+			bs:   runtime.BitString{Bytes: []byte{0x80}, BitLength: 1},
+			got:  func(bs runtime.BitString) any { return convertBitStringToExtAccessRestrictionData(bs) },
+			want: &ExtAccessRestrictionData{NrAsSecondaryRATNotAllowed: true},
+		},
+		{
 			name: "SupportedFeatures/empty",
 			bs:   runtime.BitString{},
 			got:  func(bs runtime.BitString) any { return convertBitStringToSupportedFeatures(bs) },
@@ -308,6 +320,12 @@ func TestISDBitStrings_DecodesShortInput(t *testing.T) {
 			bs:   runtime.BitString{},
 			got:  func(bs runtime.BitString) any { return convertBitStringToExtSupportedFeatures(bs) },
 			want: &ExtSupportedFeatures{},
+		},
+		{
+			name: "ExtSupportedFeatures/oneBit",
+			bs:   runtime.BitString{Bytes: []byte{0x80}, BitLength: 1},
+			got:  func(bs runtime.BitString) any { return convertBitStringToExtSupportedFeatures(bs) },
+			want: &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true},
 		},
 	}
 	for _, tc := range cases {
