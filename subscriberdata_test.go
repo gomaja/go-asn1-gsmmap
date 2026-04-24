@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -260,6 +261,28 @@ func TestVoiceGroupCallDataValidation(t *testing.T) {
 			t.Errorf("want ErrLongGroupIdInvalidEncodedLength, got %v", err)
 		}
 	})
+}
+
+// Per the VoiceGroupCallData.AdditionalInfo godoc, the HexBytes
+// representation is byte-aligned only — a wire BIT STRING whose
+// BitLength is not a multiple of 8 has its sub-byte trailing bits
+// discarded. The decoder uses BitLength/8 (floor), not ceiling.
+func TestVoiceGroupCallDataAdditionalInfoSubByteDiscarded(t *testing.T) {
+	// Wire carries 9 bits in 2 bytes; floor(9/8) = 1, so only the
+	// first byte survives the decode.
+	bs := runtime.BitString{Bytes: []byte{0xAB, 0x80}, BitLength: 9}
+	w := &gsm_map.VoiceGroupCallData{
+		GroupId:        []byte{0x21, 0x43, 0x65}, // TBCD of "123456"
+		AdditionalInfo: &bs,
+	}
+	got, err := convertWireToVoiceGroupCallData(w)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	want := HexBytes{0xAB}
+	if diff := cmp.Diff(want, got.AdditionalInfo); diff != "" {
+		t.Errorf("sub-byte truncation (-want +got):\n%s", diff)
+	}
 }
 
 // LongGroupId's trailing 'f' nibble must survive the round-trip — the

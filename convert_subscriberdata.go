@@ -186,17 +186,24 @@ func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroup
 		out.AdditionalSubscriptions = convertBitStringToAdditionalSubscriptions(*w.AdditionalSubscriptions)
 	}
 	if w.AdditionalInfo != nil && w.AdditionalInfo.BitLength > 0 {
-		byteLen := (w.AdditionalInfo.BitLength + 7) / 8
-		if byteLen > MaxAdditionalInfoOctets {
+		// Byte-aligned-only public type per the VoiceGroupCallData.Additional-
+		// Info godoc: take full octets only (BitLength / 8, floor),
+		// discarding any sub-byte trailing bits. A BitLength of 7 surfaces
+		// zero bytes; callers who need sub-byte handling should read the
+		// underlying BIT STRING directly.
+		byteLen := w.AdditionalInfo.BitLength / 8
+		// Spec max is 136 bits = 17 octets; reject larger inputs. Use the
+		// ceiling of BitLength to catch over-spec encodings that also
+		// carry sub-byte trailing bits.
+		if (w.AdditionalInfo.BitLength+7)/8 > MaxAdditionalInfoOctets {
 			return nil, fmt.Errorf("VoiceGroupCallData.AdditionalInfo: %w", ErrAdditionalInfoTooLong)
 		}
-		// Byte-aligned-only public type: take up to byteLen bytes,
-		// discarding any sub-byte trailing bits. Documented on the
-		// VoiceGroupCallData.AdditionalInfo field.
 		if byteLen > len(w.AdditionalInfo.Bytes) {
 			byteLen = len(w.AdditionalInfo.Bytes)
 		}
-		out.AdditionalInfo = HexBytes(w.AdditionalInfo.Bytes[:byteLen])
+		if byteLen > 0 {
+			out.AdditionalInfo = HexBytes(w.AdditionalInfo.Bytes[:byteLen])
+		}
 	}
 	if w.LongGroupId != nil {
 		out.LongGroupId = decodeLongGroupID(*w.LongGroupId)
