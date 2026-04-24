@@ -1418,6 +1418,65 @@ type ExtSupportedFeatures struct {
 	UnlicensedSpectrumAsSecondaryRAT bool // bit 0
 }
 
+// ODBData per TS 29.002 MAP-MS-DataTypes.asn:1770. Wraps the general
+// ODB bit-string with an optional HPLMN-specific overlay.
+type ODBData struct {
+	OdbGeneralData *ODBGeneralData // mandatory
+	OdbHPLMNData   *ODBHPLMNData   // optional
+}
+
+// ZoneCode (OCTET STRING SIZE 2) per TS 29.002 MAP-MS-DataTypes.asn:2073.
+// Internal structure defined in 3GPP TS 23.003.
+type ZoneCode HexBytes
+
+// ZoneCodeList (SEQUENCE SIZE 1..10 OF ZoneCode) per TS 29.002
+// MAP-MS-DataTypes.asn:2070.
+type ZoneCodeList []ZoneCode
+
+// MaxNumOfZoneCodes is the upper bound on ZoneCodeList per TS 29.002.
+const MaxNumOfZoneCodes = 10
+
+// MaxNumOfVBSGroupIds is the upper bound on VBSDataList per TS 29.002.
+const MaxNumOfVBSGroupIds = 50
+
+// MaxNumOfVGCSGroupIds is the upper bound on VGCSDataList per TS 29.002.
+const MaxNumOfVGCSGroupIds = 50
+
+// AdditionalSubscriptions (BIT STRING SIZE 3..8) per TS 29.002
+// MAP-MS-DataTypes.asn:2711. Carries VGCS uplink-request privileges.
+// Bits other than the three listed below shall be discarded by the
+// receiver per spec.
+type AdditionalSubscriptions struct {
+	PrivilegedUplinkRequest bool // bit 0
+	EmergencyUplinkRequest  bool // bit 1
+	EmergencyReset          bool // bit 2
+}
+
+// VoiceBroadcastData per TS 29.002 MAP-MS-DataTypes.asn:2717.
+// When LongGroupId is present, GroupId must be filled with six TBCD
+// fillers (1111) per spec — the encoder enforces that invariant.
+type VoiceBroadcastData struct {
+	GroupId                  string // mandatory TBCD, SIZE(3) octets = up to 6 digits
+	BroadcastInitEntitlement bool   // NULL marker
+	LongGroupId              string // optional TBCD, SIZE(4) octets = up to 8 digits
+}
+
+// VoiceGroupCallData per TS 29.002 MAP-MS-DataTypes.asn:2695.
+// When LongGroupId is present, GroupId must be filled with six TBCD
+// fillers (1111) per spec — the encoder enforces that invariant.
+type VoiceGroupCallData struct {
+	GroupId                 string                   // mandatory TBCD, SIZE(3) octets = up to 6 digits
+	AdditionalSubscriptions *AdditionalSubscriptions // optional
+	AdditionalInfo          HexBytes                 // optional BIT STRING (SIZE 1..136) per TS 43.068
+	LongGroupId             string                   // optional TBCD, SIZE(4) octets = up to 8 digits
+}
+
+// VBSDataList per TS 29.002 MAP-MS-DataTypes.asn:2685 (SIZE 1..50).
+type VBSDataList []VoiceBroadcastData
+
+// VGCSDataList per TS 29.002 MAP-MS-DataTypes.asn:2688 (SIZE 1..50).
+type VGCSDataList []VoiceGroupCallData
+
 // CancelLocationRes represents a CancelLocation response (opCode 3) per
 // 3GPP TS 29.002. The response body carries only an optional
 // ExtensionContainer; the wire response is effectively empty in practice.
@@ -1510,4 +1569,12 @@ var (
 	ErrCamelMissingDestinationNumber         = errors.New("camel: DestinationNumberList entry must have non-empty Digits")
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
 	ErrCamelInvalidCriteriaListSize          = errors.New("camel: TDP-CriteriaList must contain 1..10 entries when present")
+
+	ErrODBDataMissingGeneralData = errors.New("odbData: OdbGeneralData is mandatory and must be non-nil")
+	ErrZoneCodeInvalidSize       = errors.New("zoneCode: each entry must be exactly 2 octets")
+	ErrZoneCodeListInvalidSize   = errors.New("zoneCode: ZoneCodeList must contain 1..10 entries")
+	ErrVBSDataListInvalidSize    = errors.New("vbsData: VBSDataList must contain 1..50 entries")
+	ErrVGCSDataListInvalidSize   = errors.New("vgcsData: VGCSDataList must contain 1..50 entries")
+	ErrGroupIdMissingWithoutLong = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId is mandatory")
+	ErrGroupIdFillerRequired     = errors.New("voiceGroupCallData/voiceBroadcastData: when LongGroupId is present, GroupId must be filled with TBCD filler digits per TS 29.002")
 )

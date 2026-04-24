@@ -476,3 +476,18 @@ func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedF
 		UnlicensedSpectrumAsSecondaryRAT: bs.Has(0),
 	}
 }
+
+// AdditionalSubscriptions: 3 named bits (SIZE 3..8) per MAP-MS-DataTypes.asn:2711.
+// "Other bits than listed above shall be discarded" per spec.
+func convertAdditionalSubscriptionsToBitString(a *AdditionalSubscriptions) runtime.BitString {
+	bits := []bool{a.PrivilegedUplinkRequest, a.EmergencyUplinkRequest, a.EmergencyReset}
+	return packBits(bits, 3)
+}
+
+func convertBitStringToAdditionalSubscriptions(bs runtime.BitString) *AdditionalSubscriptions {
+	return &AdditionalSubscriptions{
+		PrivilegedUplinkRequest: bs.Has(0),
+		EmergencyUplinkRequest:  bs.Has(1),
+		EmergencyReset:          bs.Has(2),
+	}
+}
