@@ -11,7 +11,14 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
+
+// gsmMapEmptyZoneCodeList returns a non-nil, zero-length wire ZoneCodeList
+// to exercise the decoder's SIZE(1..10) lower-bound check.
+func gsmMapEmptyZoneCodeList() gsm_map.ZoneCodeList {
+	return gsm_map.ZoneCodeList{}
+}
 
 // --- ODBData ---
 
@@ -64,10 +71,30 @@ func TestZoneCodeListRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode: %v", err)
 	}
-	got := convertWireToZoneCodeList(wire)
+	got, err := convertWireToZoneCodeList(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip mismatch (-want +got):\n%s", diff)
 	}
+}
+
+// Decoder must treat an empty (non-nil) wire list as malformed, per the
+// spec's SIZE(1..N) constraint — encode and decode share the same bounds.
+func TestZoneCodeListDecoderEnforcesBounds(t *testing.T) {
+	t.Run("nilReturnsNil", func(t *testing.T) {
+		got, err := convertWireToZoneCodeList(nil)
+		if err != nil || got != nil {
+			t.Errorf("nil wire: got (%v, %v), want (nil, nil)", got, err)
+		}
+	})
+	t.Run("emptyNonNil", func(t *testing.T) {
+		_, err := convertWireToZoneCodeList(gsmMapEmptyZoneCodeList())
+		if !errors.Is(err, ErrZoneCodeListInvalidSize) {
+			t.Errorf("want ErrZoneCodeListInvalidSize, got %v", err)
+		}
+	})
 }
 
 func TestZoneCodeListValidation(t *testing.T) {
@@ -149,6 +176,112 @@ func TestVoiceBroadcastDataValidation(t *testing.T) {
 			t.Errorf("want ErrGroupIdFillerRequired, got %v", err)
 		}
 	})
+	t.Run("nonFillerGroupIdWithLongId", func(t *testing.T) {
+		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
+			GroupId:     "123456",
+			LongGroupId: "1234abcd",
+		})
+		if !errors.Is(err, ErrGroupIdFillerRequired) {
+			t.Errorf("want ErrGroupIdFillerRequired, got %v", err)
+		}
+	})
+	t.Run("wrongLengthGroupId", func(t *testing.T) {
+		// 4 hex chars = 2 TBCD octets, but spec demands exactly 3.
+		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{GroupId: "1234"})
+		if !errors.Is(err, ErrGroupIdInvalidEncodedLength) {
+			t.Errorf("want ErrGroupIdInvalidEncodedLength, got %v", err)
+		}
+	})
+	t.Run("wrongLengthLongGroupId", func(t *testing.T) {
+		// 6 hex chars = 3 TBCD octets, but spec demands exactly 4.
+		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
+			GroupId:     "ffffff",
+			LongGroupId: "123456",
+		})
+		if !errors.Is(err, ErrLongGroupIdInvalidEncodedLength) {
+			t.Errorf("want ErrLongGroupIdInvalidEncodedLength, got %v", err)
+		}
+	})
+	t.Run("fillerGroupIdCaseInsensitive", func(t *testing.T) {
+		// Spec filler is six 'f' nibbles; accept uppercase too.
+		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
+			GroupId:     "FFFFFF",
+			LongGroupId: "1234abcd",
+		})
+		if err != nil {
+			t.Errorf("FFFFFF filler should be accepted case-insensitively: %v", err)
+		}
+	})
+}
+
+func TestVoiceGroupCallDataValidation(t *testing.T) {
+	t.Run("missingGroupId", func(t *testing.T) {
+		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{})
+		if !errors.Is(err, ErrGroupIdMissingWithoutLong) {
+			t.Errorf("want ErrGroupIdMissingWithoutLong, got %v", err)
+		}
+	})
+	t.Run("nonFillerGroupIdWithLongId", func(t *testing.T) {
+		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
+			GroupId:     "abcdef",
+			LongGroupId: "1234abcd",
+		})
+		if !errors.Is(err, ErrGroupIdFillerRequired) {
+			t.Errorf("want ErrGroupIdFillerRequired, got %v", err)
+		}
+	})
+	t.Run("additionalInfoTooLong", func(t *testing.T) {
+		big := make(HexBytes, MaxAdditionalInfoOctets+1)
+		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
+			GroupId:        "123456",
+			AdditionalInfo: big,
+		})
+		if !errors.Is(err, ErrAdditionalInfoTooLong) {
+			t.Errorf("want ErrAdditionalInfoTooLong, got %v", err)
+		}
+	})
+	t.Run("additionalInfoAtBoundary", func(t *testing.T) {
+		// Exactly MaxAdditionalInfoOctets bytes must be accepted.
+		ok := make(HexBytes, MaxAdditionalInfoOctets)
+		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
+			GroupId:        "123456",
+			AdditionalInfo: ok,
+		})
+		if err != nil {
+			t.Errorf("%d-octet AdditionalInfo should be accepted: %v", MaxAdditionalInfoOctets, err)
+		}
+	})
+	t.Run("wrongLengthLongGroupId", func(t *testing.T) {
+		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
+			GroupId:     "ffffff",
+			LongGroupId: "123456", // 3 octets, need 4
+		})
+		if !errors.Is(err, ErrLongGroupIdInvalidEncodedLength) {
+			t.Errorf("want ErrLongGroupIdInvalidEncodedLength, got %v", err)
+		}
+	})
+}
+
+// LongGroupId's trailing 'f' nibble must survive the round-trip — the
+// raw nibble-swap decoder must not strip it (tbcd.Decode would).
+func TestLongGroupIdTrailingFRoundTrips(t *testing.T) {
+	// LongGroupId = "1234567f" ends with a legitimate 'f' nibble;
+	// tbcd.Decode would have silently turned this into "1234567".
+	in := &VoiceBroadcastData{
+		GroupId:     "ffffff",
+		LongGroupId: "1234567f",
+	}
+	wire, err := convertVoiceBroadcastDataToWire(in)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	got, err := convertWireToVoiceBroadcastData(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.LongGroupId != in.LongGroupId {
+		t.Errorf("LongGroupId round-trip: got %q, want %q", got.LongGroupId, in.LongGroupId)
+	}
 }
 
 func TestVBSDataListRoundTrip(t *testing.T) {
