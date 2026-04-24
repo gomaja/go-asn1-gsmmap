@@ -242,6 +242,84 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 	}
 }
 
+// Each decoder must tolerate a short-encoded peer BIT STRING without
+// panicking or setting out-of-range bits. A well-behaved peer that
+// doesn't support the newer feature bits may send fewer bytes than
+// the spec minimum; the library's decoders rely on runtime.BitString.Has
+// (which returns false past BitLength) so no out-of-bounds read occurs.
+// Locks in the Postel's-law claim from the ISD foundation commit.
+func TestISDBitStrings_DecodesShortInput(t *testing.T) {
+	cases := []struct {
+		name string
+		bs   runtime.BitString
+		got  func(runtime.BitString) any
+		want any
+	}{
+		{
+			name: "ODBGeneralData/empty",
+			bs:   runtime.BitString{},
+			got:  func(bs runtime.BitString) any { return convertBitStringToODBGeneralData(bs) },
+			want: &ODBGeneralData{},
+		},
+		{
+			name: "ODBGeneralData/oneBit",
+			bs:   runtime.BitString{Bytes: []byte{0x80}, BitLength: 1},
+			got:  func(bs runtime.BitString) any { return convertBitStringToODBGeneralData(bs) },
+			want: &ODBGeneralData{AllOGCallsBarred: true},
+		},
+		{
+			name: "ODBHPLMNData/empty",
+			bs:   runtime.BitString{},
+			got:  func(bs runtime.BitString) any { return convertBitStringToODBHPLMNData(bs) },
+			want: &ODBHPLMNData{},
+		},
+		{
+			name: "AccessRestrictionData/empty",
+			bs:   runtime.BitString{},
+			got:  func(bs runtime.BitString) any { return convertBitStringToAccessRestrictionData(bs) },
+			want: &AccessRestrictionData{},
+		},
+		{
+			name: "AccessRestrictionData/oneBit",
+			bs:   runtime.BitString{Bytes: []byte{0x80}, BitLength: 1},
+			got:  func(bs runtime.BitString) any { return convertBitStringToAccessRestrictionData(bs) },
+			want: &AccessRestrictionData{UtranNotAllowed: true},
+		},
+		{
+			name: "ExtAccessRestrictionData/empty",
+			bs:   runtime.BitString{},
+			got:  func(bs runtime.BitString) any { return convertBitStringToExtAccessRestrictionData(bs) },
+			want: &ExtAccessRestrictionData{},
+		},
+		{
+			name: "SupportedFeatures/empty",
+			bs:   runtime.BitString{},
+			got:  func(bs runtime.BitString) any { return convertBitStringToSupportedFeatures(bs) },
+			want: &SupportedFeatures{},
+		},
+		{
+			name: "SupportedFeatures/truncatedOneByte",
+			bs:   runtime.BitString{Bytes: []byte{0x80}, BitLength: 1},
+			got:  func(bs runtime.BitString) any { return convertBitStringToSupportedFeatures(bs) },
+			want: &SupportedFeatures{OdbAllApn: true},
+		},
+		{
+			name: "ExtSupportedFeatures/empty",
+			bs:   runtime.BitString{},
+			got:  func(bs runtime.BitString) any { return convertBitStringToExtSupportedFeatures(bs) },
+			want: &ExtSupportedFeatures{},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := tc.got(tc.bs)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("short-input decode mismatch:\n got  = %#v\n want = %#v", got, tc.want)
+			}
+		})
+	}
+}
+
 // BitLength must satisfy each BIT STRING's spec-min when encoding an
 // all-zeros value — a receiver checking the encoded size needs to see
 // at least the minimum. Uses the spec bounds from MAP-MS-DataTypes.asn.

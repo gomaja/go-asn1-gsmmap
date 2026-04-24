@@ -1336,10 +1336,10 @@ type ODBGeneralData struct {
 // Carries HPLMN-specific ODB barring types. Unknown bits received from
 // peers are treated as unsupported-ODB per spec exception handling.
 type ODBHPLMNData struct {
-	PlmnSpecificBarringType1 bool // bit 0
-	PlmnSpecificBarringType2 bool // bit 1
-	PlmnSpecificBarringType3 bool // bit 2
-	PlmnSpecificBarringType4 bool // bit 3
+	PLMNSpecificBarringType1 bool // bit 0
+	PLMNSpecificBarringType2 bool // bit 1
+	PLMNSpecificBarringType3 bool // bit 2
+	PLMNSpecificBarringType4 bool // bit 3
 }
 
 // AccessRestrictionData (BIT STRING SIZE 2..8) per TS 29.002

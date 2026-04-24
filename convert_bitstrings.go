@@ -355,16 +355,16 @@ func convertBitStringToODBGeneralData(bs runtime.BitString) *ODBGeneralData {
 
 // ODBHPLMNData: 4 named bits (SIZE 4..32) per MAP-MS-DataTypes.asn:1812.
 func convertODBHPLMNDataToBitString(o *ODBHPLMNData) runtime.BitString {
-	bits := []bool{o.PlmnSpecificBarringType1, o.PlmnSpecificBarringType2, o.PlmnSpecificBarringType3, o.PlmnSpecificBarringType4}
+	bits := []bool{o.PLMNSpecificBarringType1, o.PLMNSpecificBarringType2, o.PLMNSpecificBarringType3, o.PLMNSpecificBarringType4}
 	return packBits(bits, 4)
 }
 
 func convertBitStringToODBHPLMNData(bs runtime.BitString) *ODBHPLMNData {
 	return &ODBHPLMNData{
-		PlmnSpecificBarringType1: bs.Has(0),
-		PlmnSpecificBarringType2: bs.Has(1),
-		PlmnSpecificBarringType3: bs.Has(2),
-		PlmnSpecificBarringType4: bs.Has(3),
+		PLMNSpecificBarringType1: bs.Has(0),
+		PLMNSpecificBarringType2: bs.Has(1),
+		PLMNSpecificBarringType3: bs.Has(2),
+		PLMNSpecificBarringType4: bs.Has(3),
 	}
 }
 
