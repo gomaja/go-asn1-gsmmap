@@ -129,8 +129,13 @@ func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
 	if p.ExtPdpType != nil && len(p.ExtPdpType) != 2 {
 		return nil, fmt.Errorf("%w (got %d)", ErrExtPDPTypeInvalidSize, len(p.ExtPdpType))
 	}
-	if p.ExtPdpAddress != nil && (len(p.ExtPdpAddress) < 1 || len(p.ExtPdpAddress) > 16) {
-		return nil, fmt.Errorf("%w (got %d)", ErrExtPDPAddressInvalidSize, len(p.ExtPdpAddress))
+	if p.ExtPdpAddress != nil {
+		if p.PdpAddress == nil {
+			return nil, ErrExtPDPAddressWithoutPDPAddress
+		}
+		if len(p.ExtPdpAddress) < 1 || len(p.ExtPdpAddress) > 16 {
+			return nil, fmt.Errorf("%w (got %d)", ErrExtPDPAddressInvalidSize, len(p.ExtPdpAddress))
+		}
 	}
 	if p.PdpChargingCharacteristics != nil && len(p.PdpChargingCharacteristics) != 2 {
 		return nil, fmt.Errorf("%w (got %d)", ErrPDPChargingCharsInvalidSize, len(p.PdpChargingCharacteristics))
@@ -329,6 +334,9 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 		out.ExtPdpType = HexBytes(*w.ExtPdpType)
 	}
 	if w.ExtPdpAddress != nil {
+		if w.PdpAddress == nil {
+			return nil, ErrExtPDPAddressWithoutPDPAddress
+		}
 		if len(*w.ExtPdpAddress) < 1 || len(*w.ExtPdpAddress) > 16 {
 			return nil, fmt.Errorf("%w (got %d)", ErrExtPDPAddressInvalidSize, len(*w.ExtPdpAddress))
 		}

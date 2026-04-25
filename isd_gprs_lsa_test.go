@@ -183,6 +183,16 @@ func TestPDPContext_FieldSizeViolations(t *testing.T) {
 	}
 }
 
+func TestPDPContext_ExtPdpAddressRequiresPdpAddress(t *testing.T) {
+	in := makePDPContext()
+	in.PdpAddress = nil // remove pdp-Address
+	// in.ExtPdpAddress is still populated by makePDPContext
+	_, err := convertPDPContextToWire(&in)
+	if !errors.Is(err, ErrExtPDPAddressWithoutPDPAddress) {
+		t.Fatalf("want ErrExtPDPAddressWithoutPDPAddress, got %v", err)
+	}
+}
+
 func TestPDPContext_ExtQoSHierarchy(t *testing.T) {
 	cases := []struct {
 		name string
