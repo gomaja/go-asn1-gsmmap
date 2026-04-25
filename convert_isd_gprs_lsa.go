@@ -184,9 +184,7 @@ func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
 		v := gsm_map.PDPAddress(p.PdpAddress)
 		out.PdpAddress = &v
 	}
-	if p.VplmnAddressAllowed {
-		out.VplmnAddressAllowed = &struct{}{}
-	}
+	out.VplmnAddressAllowed = boolToNullPtr(p.VplmnAddressAllowed)
 	if p.ExtQoSSubscribed != nil {
 		v := gsm_map.ExtQoSSubscribed(p.ExtQoSSubscribed)
 		out.ExtQoSSubscribed = &v
@@ -296,7 +294,7 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 		PdpType:             HexBytes(w.PdpType),
 		QosSubscribed:       HexBytes(w.QosSubscribed),
 		Apn:                 HexBytes(w.Apn),
-		VplmnAddressAllowed: w.VplmnAddressAllowed != nil,
+		VplmnAddressAllowed: nullPtrToBool(w.VplmnAddressAllowed),
 	}
 	if w.PdpAddress != nil {
 		if len(*w.PdpAddress) < 1 || len(*w.PdpAddress) > 16 {
@@ -444,9 +442,9 @@ func convertGPRSSubscriptionDataToWire(g *GPRSSubscriptionData) (*gsm_map.GPRSSu
 	if err != nil {
 		return nil, err
 	}
-	out := &gsm_map.GPRSSubscriptionData{GprsDataList: gdl}
-	if g.CompleteDataListIncluded {
-		out.CompleteDataListIncluded = &struct{}{}
+	out := &gsm_map.GPRSSubscriptionData{
+		GprsDataList:             gdl,
+		CompleteDataListIncluded: boolToNullPtr(g.CompleteDataListIncluded),
 	}
 	if g.ApnOiReplacement != nil {
 		if err := validateAPNOIReplacement(g.ApnOiReplacement, "GPRSSubscriptionData.ApnOiReplacement"); err != nil {
@@ -471,7 +469,7 @@ func convertWireToGPRSSubscriptionData(w *gsm_map.GPRSSubscriptionData) (*GPRSSu
 	}
 	out := &GPRSSubscriptionData{
 		GprsDataList:             gdl,
-		CompleteDataListIncluded: w.CompleteDataListIncluded != nil,
+		CompleteDataListIncluded: nullPtrToBool(w.CompleteDataListIncluded),
 	}
 	if w.ApnOiReplacement != nil {
 		if err := validateAPNOIReplacement(HexBytes(*w.ApnOiReplacement), "GPRSSubscriptionData.ApnOiReplacement"); err != nil {
@@ -497,14 +495,11 @@ func convertLSADataToWire(l *LSAData) (*gsm_map.LSAData, error) {
 	if len(l.LsaAttributes) != 1 {
 		return nil, fmt.Errorf("%w (got %d)", ErrLSAAttributesInvalidSize, len(l.LsaAttributes))
 	}
-	out := &gsm_map.LSAData{
-		LsaIdentity:   gsm_map.LSAIdentity(l.LsaIdentity),
-		LsaAttributes: gsm_map.LSAAttributes(l.LsaAttributes),
-	}
-	if l.LsaActiveModeIndicator {
-		out.LsaActiveModeIndicator = &struct{}{}
-	}
-	return out, nil
+	return &gsm_map.LSAData{
+		LsaIdentity:            gsm_map.LSAIdentity(l.LsaIdentity),
+		LsaAttributes:          gsm_map.LSAAttributes(l.LsaAttributes),
+		LsaActiveModeIndicator: boolToNullPtr(l.LsaActiveModeIndicator),
+	}, nil
 }
 
 func convertWireToLSAData(w *gsm_map.LSAData) (*LSAData, error) {
@@ -520,7 +515,7 @@ func convertWireToLSAData(w *gsm_map.LSAData) (*LSAData, error) {
 	return &LSAData{
 		LsaIdentity:            HexBytes(w.LsaIdentity),
 		LsaAttributes:          HexBytes(w.LsaAttributes),
-		LsaActiveModeIndicator: w.LsaActiveModeIndicator != nil,
+		LsaActiveModeIndicator: nullPtrToBool(w.LsaActiveModeIndicator),
 	}, nil
 }
 
@@ -570,9 +565,8 @@ func convertLSAInformationToWire(l *LSAInformation) (*gsm_map.LSAInformation, er
 			return nil, fmt.Errorf("%w (got %d)", ErrLSAOnlyAccessIndicatorInvalid, v)
 		}
 	}
-	out := &gsm_map.LSAInformation{}
-	if l.CompleteDataListIncluded {
-		out.CompleteDataListIncluded = &struct{}{}
+	out := &gsm_map.LSAInformation{
+		CompleteDataListIncluded: boolToNullPtr(l.CompleteDataListIncluded),
 	}
 	if l.LsaOnlyAccessIndicator != nil {
 		v := gsm_map.LSAOnlyAccessIndicator(*l.LsaOnlyAccessIndicator)
@@ -593,7 +587,7 @@ func convertWireToLSAInformation(w *gsm_map.LSAInformation) (*LSAInformation, er
 		return nil, nil
 	}
 	out := &LSAInformation{
-		CompleteDataListIncluded: w.CompleteDataListIncluded != nil,
+		CompleteDataListIncluded: nullPtrToBool(w.CompleteDataListIncluded),
 	}
 	if w.LsaOnlyAccessIndicator != nil {
 		v := LSAOnlyAccessIndicator(*w.LsaOnlyAccessIndicator)
