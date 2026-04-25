@@ -1757,10 +1757,6 @@ type MCSSInfo struct {
 	NbrUser  int      // [3] mandatory: MC-Bearers (1..7)
 }
 
-// MaxNumOfMCBearers is the upper bound for both MaxMC-Bearers and MC-Bearers
-// per TS 29.002 MAP-CommonDataTypes.asn:639 (maxNumOfMC-Bearers INTEGER ::= 7).
-const MaxNumOfMCBearers = 7
-
 // CSGSubscriptionData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1262.
 // CsgId is a 27-bit Closed Subscriber Group identifier per TS 23.003.
 type CSGSubscriptionData struct {
@@ -1990,12 +1986,13 @@ var (
 
 	ErrMCSSInfoNbrSBOutOfRange   = errors.New("mcSSInfo: NbrSB (MaxMC-Bearers) must be 2..7 per TS 29.002")
 	ErrMCSSInfoNbrUserOutOfRange = errors.New("mcSSInfo: NbrUser (MC-Bearers) must be 1..7 per TS 29.002")
+	ErrMCSSInfoMissingSsCode     = errors.New("mcSSInfo: SsCode is mandatory ([0]) and must be present on the wire")
 
-	ErrCSGIdInvalidSize             = errors.New("csgSubscriptionData: CsgId BIT STRING (SIZE 27) requires exactly 4 octets carrying 27 bits")
-	ErrCSGSubscriptionDataListSize  = errors.New("csgSubscriptionDataList: must contain 1..50 entries when present")
-	ErrLipaAllowedAPNListEmpty      = errors.New("csgSubscriptionData: LipaAllowedAPNList must contain at least one APN when present")
-	ErrLipaAPNInvalidSize           = errors.New("csgSubscriptionData: each LipaAllowedAPN entry must be 2..63 octets per TS 29.002")
-	ErrPlmnIdInvalidSize            = errors.New("plmnId must be exactly 3 octets per TS 23.003")
+	ErrCSGIdInvalidSize            = errors.New("csgSubscriptionData: CsgId BIT STRING (SIZE 27) requires exactly 4 octets carrying 27 bits; CsgIdBitLength must be set to 27")
+	ErrCSGSubscriptionDataListSize = errors.New("csgSubscriptionDataList: must contain 1..50 entries when present")
+	ErrLipaAllowedAPNListSize      = errors.New("csgSubscriptionData: LipaAllowedAPNList must contain 1..50 entries when present per TS 29.002")
+	ErrAPNInvalidSize              = errors.New("apn: each entry must be 2..63 octets per TS 29.002 MAP-MS-DataTypes.asn:1654")
+	ErrPlmnIdInvalidSize           = errors.New("plmnId must be exactly 3 octets per TS 23.003")
 
 	ErrAdjacentAccessRestrictionListSize = errors.New("adjacentAccessRestrictionDataList: must contain 1..50 entries when present")
 

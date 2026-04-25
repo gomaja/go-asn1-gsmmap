@@ -18,10 +18,10 @@ func convertMCSSInfoToWire(m *MCSSInfo) (*gsm_map.MCSSInfo, error) {
 	if err := validateExtSSStatus(m.SsStatus, "MCSSInfo.SsStatus"); err != nil {
 		return nil, err
 	}
-	if m.NbrSB < 2 || m.NbrSB > MaxNumOfMCBearers {
+	if int64(m.NbrSB) < 2 || int64(m.NbrSB) > gsm_map.MaxNumOfMCBearers {
 		return nil, fmt.Errorf("%w (got %d)", ErrMCSSInfoNbrSBOutOfRange, m.NbrSB)
 	}
-	if m.NbrUser < 1 || m.NbrUser > MaxNumOfMCBearers {
+	if int64(m.NbrUser) < 1 || int64(m.NbrUser) > gsm_map.MaxNumOfMCBearers {
 		return nil, fmt.Errorf("%w (got %d)", ErrMCSSInfoNbrUserOutOfRange, m.NbrUser)
 	}
 	return &gsm_map.MCSSInfo{
@@ -39,20 +39,19 @@ func convertWireToMCSSInfo(w *gsm_map.MCSSInfo) (*MCSSInfo, error) {
 	if err := validateExtSSStatus(HexBytes(w.SsStatus), "MCSSInfo.SsStatus"); err != nil {
 		return nil, err
 	}
-	nbrSB, err := narrowInt64Range(w.NbrSB, 2, int64(MaxNumOfMCBearers), "MCSSInfo.NbrSB")
+	nbrSB, err := narrowInt64Range(w.NbrSB, 2, gsm_map.MaxNumOfMCBearers, "MCSSInfo.NbrSB")
 	if err != nil {
 		return nil, err
 	}
-	nbrUser, err := narrowInt64Range(w.NbrUser, 1, int64(MaxNumOfMCBearers), "MCSSInfo.NbrUser")
+	nbrUser, err := narrowInt64Range(w.NbrUser, 1, gsm_map.MaxNumOfMCBearers, "MCSSInfo.NbrUser")
 	if err != nil {
 		return nil, err
 	}
-	var sc SsCode
-	if len(w.SsCode) > 0 {
-		sc = SsCode(w.SsCode[0])
+	if len(w.SsCode) == 0 {
+		return nil, ErrMCSSInfoMissingSsCode
 	}
 	return &MCSSInfo{
-		SsCode:   sc,
+		SsCode:   SsCode(w.SsCode[0]),
 		SsStatus: HexBytes(w.SsStatus),
 		NbrSB:    nbrSB,
 		NbrUser:  nbrUser,
@@ -64,35 +63,15 @@ func convertWireToMCSSInfo(w *gsm_map.MCSSInfo) (*MCSSInfo, error) {
 // — TS 29.002 MAP-MS-DataTypes.asn:1259-1274
 // ============================================================================
 
-// validatePlmnId checks the 3-octet PLMN-Id constraint per TS 23.003.
-func validatePlmnId(b HexBytes, field string) error {
-	if len(b) != 3 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrPlmnIdInvalidSize, len(b))
-	}
-	return nil
-}
-
-// validateAPN checks APN OCTET STRING (SIZE 2..63) per TS 29.002
-// MAP-MS-DataTypes.asn:1654.
-func validateAPN(b HexBytes, field string) error {
-	if len(b) < 2 || len(b) > 63 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrLipaAPNInvalidSize, len(b))
-	}
-	return nil
-}
-
 func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubscriptionData, error) {
 	if c == nil {
 		return nil, nil
 	}
-	bitLen := c.CsgIdBitLength
-	if bitLen == 0 {
-		bitLen = CSGIdBitLength
-	}
-	// CSG-Id is exactly 27 bits → ceil(27/8) = 4 octets
-	expectedOctets := (bitLen + 7) / 8
-	if len(c.CsgId) != expectedOctets || bitLen != CSGIdBitLength {
-		return nil, fmt.Errorf("%w (got %d octets, %d bits)", ErrCSGIdInvalidSize, len(c.CsgId), bitLen)
+	// CSG-Id is exactly 27 bits → ceil(27/8) = 4 octets. Caller must set
+	// the bit length explicitly; silent coercion of 0 has been removed
+	// to prevent encode/decode round-trip mutation (0 → 27).
+	if c.CsgIdBitLength != CSGIdBitLength || len(c.CsgId) != (CSGIdBitLength+7)/8 {
+		return nil, fmt.Errorf("%w (got %d octets, %d bits)", ErrCSGIdInvalidSize, len(c.CsgId), c.CsgIdBitLength)
 	}
 	if c.PlmnId != nil {
 		if err := validatePlmnId(c.PlmnId, "CSGSubscriptionData.PlmnId"); err != nil {
@@ -100,15 +79,15 @@ func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubsc
 		}
 	}
 	out := &gsm_map.CSGSubscriptionData{
-		CsgId: runtime.BitString{Bytes: append([]byte(nil), c.CsgId...), BitLength: bitLen},
+		CsgId: runtime.BitString{Bytes: append([]byte(nil), c.CsgId...), BitLength: CSGIdBitLength},
 	}
 	if len(c.ExpirationDate) > 0 {
 		t := gsm_map.Time(c.ExpirationDate)
 		out.ExpirationDate = &t
 	}
 	if c.LipaAllowedAPNList != nil {
-		if len(c.LipaAllowedAPNList) < 1 {
-			return nil, ErrLipaAllowedAPNListEmpty
+		if len(c.LipaAllowedAPNList) < 1 || int64(len(c.LipaAllowedAPNList)) > gsm_map.MaxNumOfLIPAAllowedAPN {
+			return nil, fmt.Errorf("%w (got %d)", ErrLipaAllowedAPNListSize, len(c.LipaAllowedAPNList))
 		}
 		out.LipaAllowedAPNList = make(gsm_map.LIPAAllowedAPNList, len(c.LipaAllowedAPNList))
 		for i, apn := range c.LipaAllowedAPNList {
@@ -140,6 +119,9 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubsc
 		out.ExpirationDate = HexBytes(*w.ExpirationDate)
 	}
 	if w.LipaAllowedAPNList != nil {
+		if len(w.LipaAllowedAPNList) < 1 || int64(len(w.LipaAllowedAPNList)) > gsm_map.MaxNumOfLIPAAllowedAPN {
+			return nil, fmt.Errorf("%w (got %d)", ErrLipaAllowedAPNListSize, len(w.LipaAllowedAPNList))
+		}
 		out.LipaAllowedAPNList = make([]HexBytes, len(w.LipaAllowedAPNList))
 		for i, apn := range w.LipaAllowedAPNList {
 			if err := validateAPN(HexBytes(apn), fmt.Sprintf("CSGSubscriptionData.LipaAllowedAPNList[%d]", i)); err != nil {

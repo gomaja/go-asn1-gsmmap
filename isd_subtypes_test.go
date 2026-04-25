@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // ----------------------------------------------------------------------------
@@ -69,6 +71,21 @@ func TestMCSSInfo_NilPassthrough(t *testing.T) {
 	}
 }
 
+func TestMCSSInfo_DecodeRejectsMissingSsCode(t *testing.T) {
+	// Fix 4: SsCode is documented as [0] mandatory; decoder must not
+	// silently zero-fill an empty wire SsCode.
+	w := &gsm_map.MCSSInfo{
+		SsCode:   gsm_map.SSCode{}, // empty (mandatory tag missing on wire)
+		SsStatus: gsm_map.ExtSSStatus{0x01},
+		NbrSB:    2,
+		NbrUser:  1,
+	}
+	_, err := convertWireToMCSSInfo(w)
+	if !errors.Is(err, ErrMCSSInfoMissingSsCode) {
+		t.Fatalf("want ErrMCSSInfoMissingSsCode, got %v", err)
+	}
+}
+
 // ----------------------------------------------------------------------------
 // CSG-SubscriptionData / list / VPLMN-list
 // ----------------------------------------------------------------------------
@@ -100,15 +117,14 @@ func TestCSGSubscriptionData_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestCSGSubscriptionData_DefaultBitLength(t *testing.T) {
+func TestCSGSubscriptionData_BitLengthZeroRejected(t *testing.T) {
+	// Fix 5: silent coercion of CsgIdBitLength=0 → 27 has been removed
+	// because it caused encode/decode round-trip mutation.
 	in := makeCSGEntry()
-	in.CsgIdBitLength = 0 // ask converter to use spec default
-	w, err := convertCSGSubscriptionDataToWire(&in)
-	if err != nil {
-		t.Fatalf("toWire: %v", err)
-	}
-	if w.CsgId.BitLength != 27 {
-		t.Fatalf("want BitLength=27, got %d", w.CsgId.BitLength)
+	in.CsgIdBitLength = 0
+	_, err := convertCSGSubscriptionDataToWire(&in)
+	if !errors.Is(err, ErrCSGIdInvalidSize) {
+		t.Fatalf("want ErrCSGIdInvalidSize for BitLength=0, got %v", err)
 	}
 }
 
@@ -134,8 +150,8 @@ func TestCSGSubscriptionData_BadAPN(t *testing.T) {
 	in := makeCSGEntry()
 	in.LipaAllowedAPNList = []HexBytes{{'a'}} // 1 octet, below the 2..63 range
 	_, err := convertCSGSubscriptionDataToWire(&in)
-	if !errors.Is(err, ErrLipaAPNInvalidSize) {
-		t.Fatalf("want ErrLipaAPNInvalidSize, got %v", err)
+	if !errors.Is(err, ErrAPNInvalidSize) {
+		t.Fatalf("want ErrAPNInvalidSize, got %v", err)
 	}
 }
 
@@ -143,8 +159,21 @@ func TestCSGSubscriptionData_EmptyAPNList(t *testing.T) {
 	in := makeCSGEntry()
 	in.LipaAllowedAPNList = []HexBytes{} // present but empty → not allowed (use nil)
 	_, err := convertCSGSubscriptionDataToWire(&in)
-	if !errors.Is(err, ErrLipaAllowedAPNListEmpty) {
-		t.Fatalf("want ErrLipaAllowedAPNListEmpty, got %v", err)
+	if !errors.Is(err, ErrLipaAllowedAPNListSize) {
+		t.Fatalf("want ErrLipaAllowedAPNListSize, got %v", err)
+	}
+}
+
+func TestCSGSubscriptionData_OverMaxAPNList(t *testing.T) {
+	in := makeCSGEntry()
+	apns := make([]HexBytes, 51)
+	for i := range apns {
+		apns[i] = HexBytes{'a', 'p', 'n'}
+	}
+	in.LipaAllowedAPNList = apns
+	_, err := convertCSGSubscriptionDataToWire(&in)
+	if !errors.Is(err, ErrLipaAllowedAPNListSize) {
+		t.Fatalf("want ErrLipaAllowedAPNListSize, got %v", err)
 	}
 }
 
