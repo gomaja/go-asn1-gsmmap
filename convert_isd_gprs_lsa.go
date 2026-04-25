@@ -259,7 +259,8 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 	}
 	id, err := narrowInt64Range(int64(w.PdpContextId), 1, gsm_map.MaxNumOfPDPContexts, "PDPContext.PdpContextId")
 	if err != nil {
-		return nil, err
+		// Wrap to preserve encode/decode symmetry on errors.Is(...).
+		return nil, fmt.Errorf("%w: %v", ErrPDPContextIdOutOfRange, err)
 	}
 	if len(w.PdpType) != 2 {
 		return nil, fmt.Errorf("%w (got %d)", ErrPDPTypeInvalidSize, len(w.PdpType))

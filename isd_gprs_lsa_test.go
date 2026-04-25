@@ -183,6 +183,23 @@ func TestPDPContext_FieldSizeViolations(t *testing.T) {
 	}
 }
 
+func TestPDPContext_DecoderRejectsContextIdOutOfRange(t *testing.T) {
+	// Codec symmetry: `errors.Is(err, ErrPDPContextIdOutOfRange)` must hold
+	// on the decode path too, not just on encode (coderabbit #33 finding).
+	for _, id := range []int64{0, 51, 100} {
+		w := &gsm_map.PDPContext{
+			PdpContextId:  gsm_map.ContextId(id),
+			PdpType:       gsm_map.PDPType{0xf1, 0x21},
+			QosSubscribed: gsm_map.QoSSubscribed{0x09, 0x00, 0x00},
+			Apn:           gsm_map.APN{'a', 'p'},
+		}
+		_, err := convertWireToPDPContext(w)
+		if !errors.Is(err, ErrPDPContextIdOutOfRange) {
+			t.Fatalf("id=%d decode: want ErrPDPContextIdOutOfRange, got %v", id, err)
+		}
+	}
+}
+
 func TestPDPContext_ExtPdpAddressRequiresPdpAddress(t *testing.T) {
 	in := makePDPContext()
 	in.PdpAddress = nil // remove pdp-Address
