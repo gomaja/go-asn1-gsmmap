@@ -2189,7 +2189,7 @@ type PLMNClientList []LCSClientInternalID
 
 // ServiceType (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2050.
 type ServiceType struct {
-	ServiceTypeIdentity  int                   // mandatory, LCSServiceTypeID INTEGER
+	ServiceTypeIdentity  int64                 // mandatory, LCSServiceTypeID INTEGER
 	GmlcRestriction      *GMLCRestriction      // [0] optional
 	NotificationToMSUser *NotificationToMSUser // [1] optional
 }
@@ -2279,7 +2279,7 @@ const (
 // All four fields are mandatory per spec.
 type GPRSCamelTDPData struct {
 	GprsTriggerDetectionPoint GPRSTriggerDetectionPoint // [0] mandatory
-	ServiceKey                int                       // [1] mandatory
+	ServiceKey                int64                     // [1] mandatory, 0..2147483647 per CAMEL convention
 	GsmSCFAddress             string                    // [2] mandatory ISDN-AddressString digits
 	GsmSCFAddressNature       uint8
 	GsmSCFAddressPlan         uint8
@@ -2304,13 +2304,13 @@ type GPRSCSI struct {
 // MGCSI (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2528.
 // MobilityTriggers SIZE 1..10, each entry MM-Code SIZE 1.
 type MGCSI struct {
-	MobilityTriggers   []HexBytes // mandatory, 1..10 entries; each MM-Code SIZE 1
-	ServiceKey         int        // mandatory
-	GsmSCFAddress      string     // [0] mandatory ISDN-AddressString digits
+	MobilityTriggers    []HexBytes // mandatory, 1..10 entries; each MM-Code SIZE 1
+	ServiceKey          int64      // mandatory, 0..2147483647 per CAMEL convention
+	GsmSCFAddress       string     // [0] mandatory ISDN-AddressString digits
 	GsmSCFAddressNature uint8
 	GsmSCFAddressPlan   uint8
-	NotificationToCSE  bool // [2] optional NULL — true when present
-	CsiActive          bool // [3] optional NULL — true when present
+	NotificationToCSE   bool // [2] optional NULL — true when present
+	CsiActive           bool // [3] optional NULL — true when present
 }
 
 // SGSNCAMELSubscriptionInfo (SEQUENCE) per TS 29.002
@@ -2525,6 +2525,11 @@ var (
 	ErrGMLCRestrictionInvalid             = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
 	ErrNotificationToMSUserInvalid        = errors.New("notificationToMSUser: must be 0..3 per TS 29.002 MAP-MS-DataTypes.asn:2035")
 	ErrLCSClientInternalIDInvalid         = errors.New("plmnClientList: LCSClientInternalID must be 0..4 per TS 29.002 MAP-CommonDataTypes.asn")
+	ErrServiceTypeIdentityRange           = errors.New("serviceType: ServiceTypeIdentity must fit Go int after platform narrowing (LCSServiceTypeID INTEGER)")
+	ErrLCSPrivacyClassSsCodeInvalidSize   = errors.New("lcsPrivacyClass: SsCode must be exactly 1 octet per TS 29.002 (mandatory SS-Code)")
+	ErrMOLRClassSsCodeInvalidSize         = errors.New("molrClass: SsCode must be exactly 1 octet per TS 29.002 (mandatory SS-Code)")
+	ErrGMLCAddressEmpty                   = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
+	ErrSGSNMtSmsCAMELTDPCriteriaListSize  = errors.New("sgsnCAMELSubscriptionInfo: MtSmsCAMELTDPCriteriaList must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002 MAP-MS-DataTypes.asn:2199")
 
 	ErrGPRSCamelTDPDataListSize           = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
 	ErrGPRSTriggerDetectionPointInvalid   = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be 1, 2, 11, 12, or 14 per TS 29.002 (extensible enum: unknown values preserved on decode)")

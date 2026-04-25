@@ -188,7 +188,7 @@ func TestServiceTypeList_BoundsRejected(t *testing.T) {
 	}
 	too := make(ServiceTypeList, 33)
 	for i := range too {
-		too[i] = ServiceType{ServiceTypeIdentity: i}
+		too[i] = ServiceType{ServiceTypeIdentity: int64(i)}
 	}
 	_, err = convertServiceTypeListToWire(too)
 	if !errors.Is(err, ErrServiceTypeListSize) {
@@ -406,6 +406,89 @@ func TestGPRSCamelTDPData_DefaultGPRSHandlingLenientRemap(t *testing.T) {
 	}
 	if out.DefaultSessionHandling != DefaultGPRSReleaseTransaction {
 		t.Fatalf("lenient remap: want DefaultGPRSReleaseTransaction, got %v", out.DefaultSessionHandling)
+	}
+}
+
+func TestGPRSCamelTDPData_ServiceKeyRange(t *testing.T) {
+	for _, sk := range []int64{-1, 2147483648, 1 << 40} {
+		in := makeGPRSCamelTDPData()
+		in.ServiceKey = sk
+		_, err := convertGPRSCamelTDPDataToWire(&in)
+		if !errors.Is(err, ErrCamelInvalidServiceKey) {
+			t.Fatalf("encode sk=%d: want ErrCamelInvalidServiceKey, got %v", sk, err)
+		}
+	}
+}
+
+func TestGPRSCamelTDPData_EmptyAddressRejected(t *testing.T) {
+	in := makeGPRSCamelTDPData()
+	in.GsmSCFAddress = ""
+	_, err := convertGPRSCamelTDPDataToWire(&in)
+	if err == nil {
+		t.Fatalf("encode empty GsmSCFAddress: want error, got nil")
+	}
+}
+
+func TestMGCSI_ServiceKeyRange(t *testing.T) {
+	for _, sk := range []int64{-1, 2147483648, 1 << 40} {
+		in := makeMGCSI()
+		in.ServiceKey = sk
+		_, err := convertMGCSIToWire(in)
+		if !errors.Is(err, ErrCamelInvalidServiceKey) {
+			t.Fatalf("encode sk=%d: want ErrCamelInvalidServiceKey, got %v", sk, err)
+		}
+	}
+}
+
+func TestLCSPrivacyClass_SsCodeStrictSize(t *testing.T) {
+	w := &gsm_map.LCSPrivacyClass{
+		SsCode:   gsm_map.SSCode{0x21, 0x42}, // 2 octets — should be 1
+		SsStatus: gsm_map.ExtSSStatus{0x01},
+	}
+	_, err := convertWireToLCSPrivacyClass(w)
+	if !errors.Is(err, ErrLCSPrivacyClassSsCodeInvalidSize) {
+		t.Fatalf("want ErrLCSPrivacyClassSsCodeInvalidSize, got %v", err)
+	}
+}
+
+func TestMOLRClass_SsCodeStrictSize(t *testing.T) {
+	w := &gsm_map.MOLRClass{
+		SsCode:   gsm_map.SSCode{0x21, 0x42},
+		SsStatus: gsm_map.ExtSSStatus{0x01},
+	}
+	_, err := convertWireToMOLRClass(w)
+	if !errors.Is(err, ErrMOLRClassSsCodeInvalidSize) {
+		t.Fatalf("want ErrMOLRClassSsCodeInvalidSize, got %v", err)
+	}
+}
+
+func TestGMLCAddress_EmptyRejected(t *testing.T) {
+	in := GMLCList{{Address: "", Nature: 0x10, Plan: 0x01}}
+	_, err := convertGMLCListToWire(in)
+	if !errors.Is(err, ErrGMLCAddressEmpty) {
+		t.Fatalf("encode empty: want ErrGMLCAddressEmpty, got %v", err)
+	}
+}
+
+func TestSGSNCAMELSubscriptionInfo_MtSmsCAMELTDPCriteriaListSize(t *testing.T) {
+	tdp := MTSmsCAMELTDPCriteria{
+		SmsTriggerDetectionPoint: SMSTriggerDetectionPoint(1),
+	}
+	in := &SGSNCAMELSubscriptionInfo{
+		MtSmsCAMELTDPCriteriaList: []MTSmsCAMELTDPCriteria{},
+	}
+	_, err := convertSGSNCAMELSubscriptionInfoToWire(in)
+	if !errors.Is(err, ErrSGSNMtSmsCAMELTDPCriteriaListSize) {
+		t.Fatalf("empty: want ErrSGSNMtSmsCAMELTDPCriteriaListSize, got %v", err)
+	}
+	too := make([]MTSmsCAMELTDPCriteria, 11)
+	for i := range too {
+		too[i] = tdp
+	}
+	in.MtSmsCAMELTDPCriteriaList = too
+	_, err = convertSGSNCAMELSubscriptionInfoToWire(in)
+	if !errors.Is(err, ErrSGSNMtSmsCAMELTDPCriteriaListSize) {
+		t.Fatalf("over-max: want ErrSGSNMtSmsCAMELTDPCriteriaListSize, got %v", err)
 	}
 }
 
