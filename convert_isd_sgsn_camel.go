@@ -56,14 +56,17 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 		return nil, fmt.Errorf("GPRSCamelTDPData.ServiceKey: %w (got %d)", ErrCamelInvalidServiceKey, w.ServiceKey)
 	}
 	sk := int64(w.ServiceKey)
-	// DefaultGPRSHandling: spec exception clause says decoders MUST treat
-	// values >1 as releaseTransaction. Apply the lenient remap here per
-	// the same convention used in PR #30 for SMS-CSI.
+	// DefaultGPRSHandling: spec exception clause (TS 29.002
+	// MAP-MS-DataTypes.asn:1638-1640) says decoders MUST treat
+	//   - values 2..31  as continueTransaction (0)
+	//   - values >  31  as releaseTransaction (1)
 	dgh := DefaultGPRSHandling(w.DefaultSessionHandling)
-	if dgh < 0 {
+	switch {
+	case dgh < 0:
 		return nil, fmt.Errorf("%w (got %d)", ErrDefaultGPRSHandlingInvalid, dgh)
-	}
-	if dgh > 1 {
+	case dgh >= 2 && dgh <= 31:
+		dgh = DefaultGPRSContinueTransaction
+	case dgh > 31:
 		dgh = DefaultGPRSReleaseTransaction
 	}
 	return &GPRSCamelTDPData{
@@ -120,9 +123,10 @@ func convertGPRSCSIToWire(g *GPRSCSI) (*gsm_map.GPRSCSI, error) {
 	if g == nil {
 		return nil, nil
 	}
-	// Per spec clause 8.8: when GprsCSI is present both
-	// GprsCamelTDPDataList and CamelCapabilityHandling SHALL be set.
-	if (g.GprsCamelTDPDataList == nil) != (g.CamelCapabilityHandling == nil) {
+	// Per TS 29.002 MAP-MS-DataTypes.asn:1615-1616: when GPRS-CSI is
+	// present, BOTH GprsCamelTDPDataList AND CamelCapabilityHandling
+	// SHALL be present.
+	if g.GprsCamelTDPDataList == nil || g.CamelCapabilityHandling == nil {
 		return nil, ErrGPRSCSIRequiresTDPListAndPhase
 	}
 	if g.CamelCapabilityHandling != nil {
@@ -152,7 +156,7 @@ func convertWireToGPRSCSI(w *gsm_map.GPRSCSI) (*GPRSCSI, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if (w.GprsCamelTDPDataList == nil) != (w.CamelCapabilityHandling == nil) {
+	if w.GprsCamelTDPDataList == nil || w.CamelCapabilityHandling == nil {
 		return nil, ErrGPRSCSIRequiresTDPListAndPhase
 	}
 	out := &GPRSCSI{

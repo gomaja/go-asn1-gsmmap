@@ -226,6 +226,9 @@ func convertServiceTypeToWire(s *ServiceType) (*gsm_map.ServiceType, error) {
 	if s == nil {
 		return nil, nil
 	}
+	if s.ServiceTypeIdentity < 0 || s.ServiceTypeIdentity > 127 {
+		return nil, fmt.Errorf("%w (got %d)", ErrServiceTypeIdentityRange, s.ServiceTypeIdentity)
+	}
 	if s.GmlcRestriction != nil {
 		if v := *s.GmlcRestriction; v < 0 || v > 1 {
 			return nil, fmt.Errorf("ServiceType.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, v)
@@ -251,6 +254,9 @@ func convertServiceTypeToWire(s *ServiceType) (*gsm_map.ServiceType, error) {
 func convertWireToServiceType(w *gsm_map.ServiceType) (*ServiceType, error) {
 	if w == nil {
 		return nil, nil
+	}
+	if int64(w.ServiceTypeIdentity) < 0 || int64(w.ServiceTypeIdentity) > 127 {
+		return nil, fmt.Errorf("%w (got %d)", ErrServiceTypeIdentityRange, w.ServiceTypeIdentity)
 	}
 	out := &ServiceType{ServiceTypeIdentity: int64(w.ServiceTypeIdentity)}
 	if w.GmlcRestriction != nil {

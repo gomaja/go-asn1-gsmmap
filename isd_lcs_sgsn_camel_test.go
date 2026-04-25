@@ -391,21 +391,34 @@ func TestGPRSCamelTDPData_RoundTrip(t *testing.T) {
 }
 
 func TestGPRSCamelTDPData_DefaultGPRSHandlingLenientRemap(t *testing.T) {
-	// Spec exception clause: decoder remaps DefaultSessionHandling >1 to
-	// releaseTransaction. Verify by hand-crafting a wire frame.
+	// Per TS 29.002 MAP-MS-DataTypes.asn:1638-1640 spec exception clause:
+	//   - values 2..31 → continueTransaction(0)
+	//   - values >31   → releaseTransaction(1)
 	addr, _ := encodeAddressField("31611111111", 0x10, 0x01)
-	w := &gsm_map.GPRSCamelTDPData{
-		GprsTriggerDetectionPoint: gsm_map.GPRSTriggerDetectionPointAttach,
-		ServiceKey:                gsm_map.ServiceKey(1),
-		GsmSCFAddress:             gsm_map.ISDNAddressString(addr),
-		DefaultSessionHandling:    gsm_map.DefaultGPRSHandling(99), // out-of-range
+	cases := []struct {
+		wire int64
+		want DefaultGPRSHandling
+	}{
+		{2, DefaultGPRSContinueTransaction},
+		{15, DefaultGPRSContinueTransaction},
+		{31, DefaultGPRSContinueTransaction},
+		{32, DefaultGPRSReleaseTransaction},
+		{99, DefaultGPRSReleaseTransaction},
 	}
-	out, err := convertWireToGPRSCamelTDPData(w)
-	if err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if out.DefaultSessionHandling != DefaultGPRSReleaseTransaction {
-		t.Fatalf("lenient remap: want DefaultGPRSReleaseTransaction, got %v", out.DefaultSessionHandling)
+	for _, tc := range cases {
+		w := &gsm_map.GPRSCamelTDPData{
+			GprsTriggerDetectionPoint: gsm_map.GPRSTriggerDetectionPointAttach,
+			ServiceKey:                gsm_map.ServiceKey(1),
+			GsmSCFAddress:             gsm_map.ISDNAddressString(addr),
+			DefaultSessionHandling:    gsm_map.DefaultGPRSHandling(tc.wire),
+		}
+		out, err := convertWireToGPRSCamelTDPData(w)
+		if err != nil {
+			t.Fatalf("wire=%d: decode: %v", tc.wire, err)
+		}
+		if out.DefaultSessionHandling != tc.want {
+			t.Fatalf("wire=%d: want %v, got %v", tc.wire, tc.want, out.DefaultSessionHandling)
+		}
 	}
 }
 
@@ -533,11 +546,15 @@ func TestGPRSCSI_RoundTrip(t *testing.T) {
 }
 
 func TestGPRSCSI_RequiresBothListAndPhase(t *testing.T) {
-	// Spec clause 8.8: both must be present together
+	// Per TS 29.002 MAP-MS-DataTypes.asn:1615-1616, when GPRS-CSI is
+	// present BOTH GprsCamelTDPDataList AND CamelCapabilityHandling
+	// SHALL be present.
 	phase := 2
 	cases := []*GPRSCSI{
 		{GprsCamelTDPDataList: GPRSCamelTDPDataList{makeGPRSCamelTDPData()}}, // missing phase
 		{CamelCapabilityHandling: &phase},                                    // missing list
+		{},                                                                   // both missing
+		{NotificationToCSE: true},                                            // both missing, only NULL flag set
 	}
 	for i, c := range cases {
 		_, err := convertGPRSCSIToWire(c)
