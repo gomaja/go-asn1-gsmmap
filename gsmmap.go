@@ -2036,7 +2036,11 @@ type WLANOffloadability struct {
 // VplmnAddressAllowed and NonIPPDNTypeIndicator are OPTIONAL ASN.1 NULL
 // fields modeled as bool (true means present).
 //
-// Field ordering follows the ASN.1 tag order [0]..[22].
+// Field ordering follows the ASN.1 tag order. Tag [11]
+// (extensionContainer) is intentionally omitted from the public type
+// per the package-wide convention that ExtensionContainer is opaque
+// metadata not surfaced to callers (the wire struct still carries it
+// transparently across round-trip).
 type APNConfiguration struct {
 	ContextId                int              // [0] mandatory, ContextId 1..50
 	PdnType                  HexBytes         // [1] mandatory, OCTET STRING SIZE 1
@@ -2093,11 +2097,11 @@ type EPSSubscriptionData struct {
 	SubscribedVsrvcc        bool                     // [9] optional NULL — true when present
 }
 
-// MaxNumOfAPNConfigurations / MaxNumOfSpecificAPNInfos are aliases of
-// the go-asn1 spec exports — see gsm_map.MaxNumOfAPNConfigurations and
-// gsm_map.MaxNumOfSpecificAPNInfos. Use the upstream constants in
-// converters; these aliases exist purely for godoc cross-references in
-// the public types above.
+// EPS-DataList and SpecificAPNInfoList are bounded by the upstream
+// constants gsm_map.MaxNumOfAPNConfigurations (50) and
+// gsm_map.MaxNumOfSpecificAPNInfos (50) respectively — converters
+// reference those constants directly per project rule
+// "GSM-MAP spec constants must come from go-asn1, not defined locally".
 
 // MaxRFSPID is the upper bound on RFSP-ID per TS 29.002
 // MAP-MS-DataTypes.asn:1306 (`RFSP-ID ::= INTEGER (1..256)`). go-asn1
