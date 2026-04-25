@@ -1036,6 +1036,144 @@ type VlrCamelSubscriptionInfo struct {
 	MtSmsCAMELTDPCriteriaList []MTSmsCAMELTDPCriteria // [11] 1..5 entries
 }
 
+// --- Ext-SS-Info (MAP-MS-DataTypes.asn:1826) — 5-alternative CHOICE ---
+
+// MaxNumOfExtBasicServiceGroups is the spec upper bound on the various
+// Ext-BasicServiceGroupList instances throughout TS 29.002 (asn:1942).
+const MaxNumOfExtBasicServiceGroups = 32
+
+// MaxNumOfCUG is the upper bound on CUG-SubscriptionList per TS 29.002
+// (asn:1934). Note the lower bound is 0 (peer is allowed to send an
+// empty CUG-SubscriptionList, unlike most other lists).
+const MaxNumOfCUG = 10
+
+// CliRestrictionOption per TS 29.002 MAP-SS-DataTypes.asn:177.
+// ENUMERATED { permanent(0), temporaryDefaultRestricted(1),
+// temporaryDefaultAllowed(2) }.
+type CliRestrictionOption int
+
+const (
+	CliRestrictionPermanent                  CliRestrictionOption = 0
+	CliRestrictionTemporaryDefaultRestricted CliRestrictionOption = 1
+	CliRestrictionTemporaryDefaultAllowed    CliRestrictionOption = 2
+)
+
+// OverrideCategory per TS 29.002 MAP-SS-DataTypes.asn:182.
+// ENUMERATED { overrideEnabled(0), overrideDisabled(1) }.
+type OverrideCategory int
+
+const (
+	OverrideEnabled  OverrideCategory = 0
+	OverrideDisabled OverrideCategory = 1
+)
+
+// SSSubscriptionOption is the SS-SubscriptionOption CHOICE
+// (MAP-SS-DataTypes.asn:173). Set exactly one alternative.
+type SSSubscriptionOption struct {
+	CliRestriction *CliRestrictionOption // [2] cliRestrictionOption
+	Override       *OverrideCategory     // [1] overrideCategory
+}
+
+// IntraCUGOptions per TS 29.002 MAP-MS-DataTypes.asn:1929.
+// ENUMERATED { noCUG-Restrictions(0), cugIC-CallBarred(1),
+// cugOG-CallBarred(2) }.
+type IntraCUGOptions int
+
+const (
+	IntraCUGNoRestrictions IntraCUGOptions = 0
+	IntraCUGICCallBarred   IntraCUGOptions = 1
+	IntraCUGOGCallBarred   IntraCUGOptions = 2
+)
+
+// CUGSubscription per TS 29.002 MAP-MS-DataTypes.asn:1916.
+type CUGSubscription struct {
+	CugIndex              int                    // mandatory 0..32767
+	CugInterlock          HexBytes               // mandatory, exactly 4 octets
+	IntraCUGOptions       IntraCUGOptions        // mandatory
+	BasicServiceGroupList []ExtBasicServiceCode  // optional, 1..32 entries when present
+}
+
+// CUGFeature per TS 29.002 MAP-MS-DataTypes.asn:1944.
+type CUGFeature struct {
+	BasicService          *ExtBasicServiceCode // optional
+	PreferentialCUGIndex  *int                 // optional 0..32767
+	InterCUGRestrictions  uint8                // mandatory; 1 octet bit-encoded per spec
+}
+
+// CUGInfo per TS 29.002 MAP-MS-DataTypes.asn:1907.
+type CUGInfo struct {
+	CugSubscriptionList []CUGSubscription // mandatory but spec allows SIZE(0..10) on the wire
+	CugFeatureList      []CUGFeature      // optional, 1..32 entries when present
+}
+
+// ExtCallBarringFeature per TS 29.002 MAP-MS-DataTypes.asn:1901.
+type ExtCallBarringFeature struct {
+	BasicService *ExtBasicServiceCode // optional
+	SsStatus     HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status
+}
+
+// ExtCallBarInfo per TS 29.002 MAP-MS-DataTypes.asn:1892.
+type ExtCallBarInfo struct {
+	SsCode                 SsCode                  // mandatory
+	CallBarringFeatureList []ExtCallBarringFeature // mandatory, 1..32 entries
+}
+
+// ExtForwFeature per TS 29.002 MAP-MS-DataTypes.asn:1842.
+//
+// ForwardedToNumber + ForwardingOptions + NoReplyConditionTime are all
+// optional on the wire; the encoder writes whatever subset the caller
+// populated. ForwardingOptions is 1..5 octets per spec; the encoder
+// rejects anything outside that range. NoReplyConditionTime is 1..100;
+// the lenient decoder maps 1..4 → 5 and 31..100 → 30 per spec exception
+// handling.
+type ExtForwFeature struct {
+	BasicService          *ExtBasicServiceCode // optional
+	SsStatus              HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status
+	ForwardedToNumber     string               // [5] optional ISDN-AddressString
+	ForwardedToNature     uint8                // default: International
+	ForwardedToPlan       uint8                // default: ISDN
+	ForwardedToSubaddress HexBytes             // [8] optional ISDN-SubaddressString
+	ForwardingOptions     HexBytes             // [6] optional 1..5 octets
+	NoReplyConditionTime  *int                 // [7] optional 1..100 (post-decode normalised to 5..30)
+	LongForwardedToNumber string               // [10] optional FTN-AddressString
+}
+
+// ExtForwInfo per TS 29.002 MAP-MS-DataTypes.asn:1833.
+type ExtForwInfo struct {
+	SsCode                SsCode           // mandatory
+	ForwardingFeatureList []ExtForwFeature // mandatory, 1..32 entries
+}
+
+// ExtSSData per TS 29.002 MAP-MS-DataTypes.asn:1963.
+type ExtSSData struct {
+	SsCode                SsCode                // mandatory
+	SsStatus              HexBytes              // [4] mandatory, 1..5 octets per Ext-SS-Status
+	SsSubscriptionOption  *SSSubscriptionOption // optional CHOICE
+	BasicServiceGroupList []ExtBasicServiceCode // optional, 1..32 entries when present
+}
+
+// EMLPPInfo per TS 29.002 MAP-CommonDataTypes.asn:607.
+//
+// Both priorities are EMLPP-Priority INTEGER (0..15); per spec exception
+// handling, values 7..15 are spare and shall be mapped to 4 on decode.
+// The encoder accepts anything 0..6 directly (the spec's mapped/named
+// range — A=6, B=5, 0..4=0..4) and rejects 7..15 to avoid silently
+// emitting a value the receiver will rewrite.
+type EMLPPInfo struct {
+	MaximumEntitledPriority int // mandatory 0..6 (post-mapping)
+	DefaultPriority         int // mandatory 0..6 (post-mapping)
+}
+
+// ExtSSInfo is the Ext-SS-InfoList element CHOICE per TS 29.002
+// MAP-MS-DataTypes.asn:1826. Exactly one alternative must be set.
+type ExtSSInfo struct {
+	ForwardingInfo  *ExtForwInfo    // [0] forwardingInfo
+	CallBarringInfo *ExtCallBarInfo // [1] callBarringInfo
+	CugInfo         *CUGInfo        // [2] cug-Info
+	SsData          *ExtSSData      // [3] ss-Data
+	EmlppInfo       *EMLPPInfo      // [4] emlpp-Info
+}
+
 // CcbsIndicators SEQUENCE.
 type CcbsIndicators struct {
 	CcbsPossible          bool
@@ -1708,6 +1846,26 @@ var (
 	ErrCamelInvalidMTSmsCAMELCriteriaSize    = errors.New("camel: MtSmsCAMELTDPCriteriaList must contain 1..5 entries when present")
 	ErrCamelInvalidTPDUTypeCriterionSize     = errors.New("camel: TpduTypeCriterion must contain 1..5 entries when present")
 	ErrCamelInvalidMTSMSTPDUType             = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0), sms-SUBMIT-REPORT(1), or sms-STATUS-REPORT(2)")
+
+	// Ext-SS-Info CHOICE / nested SEQUENCE validation
+	ErrExtSSInfoChoiceNoAlternative           = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
+	ErrExtSSInfoChoiceMultipleAlternatives    = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
+	ErrExtSSStatusInvalidSize                 = errors.New("extSSInfo: SsStatus (Ext-SS-Status) must be 1..5 octets")
+	ErrExtForwOptionsInvalidSize              = errors.New("extSSInfo: ForwardingOptions (Ext-ForwOptions) must be 1..5 octets")
+	ErrExtNoRepCondTimeOutOfRange             = errors.New("extSSInfo: NoReplyConditionTime must be 1..100 per Ext-NoRepCondTime")
+	ErrExtForwFeatureListInvalidSize          = errors.New("extSSInfo: ForwardingFeatureList must contain 1..32 entries")
+	ErrExtCallBarFeatureListInvalidSize       = errors.New("extSSInfo: CallBarringFeatureList must contain 1..32 entries")
+	ErrExtBasicServiceGroupListInvalidSize    = errors.New("extSSInfo: BasicServiceGroupList must contain 1..32 entries when present")
+	ErrCUGSubscriptionListInvalidSize         = errors.New("extSSInfo: CugSubscriptionList must contain 0..10 entries")
+	ErrCUGFeatureListInvalidSize              = errors.New("extSSInfo: CugFeatureList must contain 1..32 entries when present")
+	ErrCUGIndexOutOfRange                     = errors.New("extSSInfo: CugIndex must be 0..32767")
+	ErrCUGInterlockInvalidSize                = errors.New("extSSInfo: CugInterlock must be exactly 4 octets")
+	ErrIntraCUGOptionsInvalidValue            = errors.New("extSSInfo: IntraCUGOptions must be noCUG-Restrictions(0), cugIC-CallBarred(1), or cugOG-CallBarred(2)")
+	ErrSSSubscriptionOptionChoiceNoAlt        = errors.New("extSSInfo: SsSubscriptionOption requires exactly one of CliRestriction or Override")
+	ErrSSSubscriptionOptionChoiceMultipleAlt  = errors.New("extSSInfo: SsSubscriptionOption may only have one of CliRestriction or Override set")
+	ErrCliRestrictionOptionInvalidValue       = errors.New("extSSInfo: CliRestrictionOption must be permanent(0), temporaryDefaultRestricted(1), or temporaryDefaultAllowed(2)")
+	ErrOverrideCategoryInvalidValue           = errors.New("extSSInfo: OverrideCategory must be overrideEnabled(0) or overrideDisabled(1)")
+	ErrEMLPPPriorityOutOfRange                = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
 
 	ErrODBDataMissingGeneralData       = errors.New("odbData: OdbGeneralData is mandatory and must be non-nil")
 	ErrZoneCodeInvalidSize             = errors.New("zoneCode: each entry must be exactly 2 octets")
