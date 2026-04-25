@@ -103,3 +103,21 @@ func narrowInt64Range(v int64, lo, hi int64, field string) (int, error) {
 	}
 	return narrowInt64(v)
 }
+
+// validatePlmnId is the canonical 3-octet PLMN-Id check per TS 23.003,
+// shared across all converters that surface a PLMN-Id field.
+func validatePlmnId(b HexBytes, field string) error {
+	if len(b) != 3 {
+		return fmt.Errorf("%s: %w (got %d)", field, ErrPlmnIdInvalidSize, len(b))
+	}
+	return nil
+}
+
+// validateAPN checks the APN OCTET STRING (SIZE 2..63) constraint per
+// TS 29.002 MAP-MS-DataTypes.asn:1654.
+func validateAPN(b HexBytes, field string) error {
+	if len(b) < 2 || len(b) > 63 {
+		return fmt.Errorf("%s: %w (got %d)", field, ErrAPNInvalidSize, len(b))
+	}
+	return nil
+}

@@ -1748,6 +1748,100 @@ type VGCSDataList []VoiceGroupCallData
 // ExtensionContainer; the wire response is effectively empty in practice.
 type CancelLocationRes struct{}
 
+// MCSSInfo (SEQUENCE) per TS 29.002 MAP-CommonDataTypes.asn:627.
+// Carries multicall supplementary-service status and bearer counts.
+type MCSSInfo struct {
+	SsCode   SsCode   // [0] mandatory
+	SsStatus HexBytes // [1] mandatory: Ext-SS-Status (1..5 octets)
+	NbrSB    int      // [2] mandatory: MaxMC-Bearers (2..7)
+	NbrUser  int      // [3] mandatory: MC-Bearers (1..7)
+}
+
+// CSGSubscriptionData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1262.
+// CsgId is a 27-bit Closed Subscriber Group identifier per TS 23.003.
+type CSGSubscriptionData struct {
+	CsgId              HexBytes   // mandatory: 27-bit BIT STRING (4 octets carrying 27 bits)
+	CsgIdBitLength     int        // mandatory: must be set to 27; any other value (including 0) is rejected by the encoder
+	ExpirationDate     HexBytes   // optional: Time (UTCTime/GeneralizedTime BER-encoded)
+	LipaAllowedAPNList []HexBytes // [0] optional: list of APN OCTET STRINGs (SIZE 2..63), 1..50 entries when present
+	PlmnId             HexBytes   // [1] optional: PLMN-Id (3 octets)
+}
+
+// CSGSubscriptionDataList (SEQUENCE SIZE 1..50 OF CSG-SubscriptionData) per
+// TS 29.002 MAP-MS-DataTypes.asn:1259.
+type CSGSubscriptionDataList []CSGSubscriptionData
+
+// VPLMNCSGSubscriptionDataList (SEQUENCE SIZE 1..50 OF CSG-SubscriptionData)
+// per TS 29.002 MAP-MS-DataTypes.asn:1271. Same shape as CSGSubscriptionDataList.
+type VPLMNCSGSubscriptionDataList []CSGSubscriptionData
+
+// MaxNumOfCSGSubscriptions is the upper bound on CSGSubscriptionDataList and
+// VPLMNCSGSubscriptionDataList per TS 29.002.
+const MaxNumOfCSGSubscriptions = 50
+
+// CSGIdBitLength is the spec-mandated bit length for CSG-Id per
+// TS 29.002 MAP-MS-DataTypes.asn:1274 (BIT STRING SIZE 27).
+const CSGIdBitLength = 27
+
+// AdjacentAccessRestrictionData (SEQUENCE) per TS 29.002
+// MAP-MS-DataTypes.asn:1478.
+type AdjacentAccessRestrictionData struct {
+	PlmnId                   HexBytes                  // [0] mandatory: 3-octet PLMN-Id
+	AccessRestrictionData    AccessRestrictionData     // [1] mandatory
+	ExtAccessRestrictionData *ExtAccessRestrictionData // [2] optional
+}
+
+// AdjacentAccessRestrictionDataList (SEQUENCE SIZE 1..50 OF
+// AdjacentAccessRestrictionData) per TS 29.002 MAP-MS-DataTypes.asn:1475.
+type AdjacentAccessRestrictionDataList []AdjacentAccessRestrictionData
+
+// MaxNumOfAdjacentPLMN is the upper bound on AdjacentAccessRestrictionDataList
+// per TS 29.002.
+const MaxNumOfAdjacentPLMN = 50
+
+// IMSIGroupId (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1245.
+type IMSIGroupId struct {
+	GroupServiceID uint32   // [0] mandatory: 0..4294967295
+	PlmnId         HexBytes // [1] mandatory: 3-octet PLMN-Id
+	LocalGroupID   HexBytes // [2] mandatory: 1..10 octets
+}
+
+// IMSIGroupIdList (SEQUENCE SIZE 1..50 OF IMSI-GroupId) per TS 29.002
+// MAP-MS-DataTypes.asn:1242.
+type IMSIGroupIdList []IMSIGroupId
+
+// MaxNumOfIMSIGroupId is the upper bound on IMSIGroupIdList per TS 29.002.
+const MaxNumOfIMSIGroupId = 50
+
+// EDRXCycleLength (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1210.
+// EDRXCycleLengthValue is a single-octet code per 3GPP TS 29.272 clause 7.3.216.
+type EDRXCycleLength struct {
+	// RatType: currently defined values are 0..5 (UsedRatUTRAN..UsedRatNBIOT);
+	// the spec marks the enum as extensible, so unknown values are preserved
+	// across round-trip per Postel's law.
+	RatType              UsedRatType // [0] mandatory
+	EDRXCycleLengthValue HexBytes    // [1] mandatory: exactly 1 octet
+}
+
+// EDRXCycleLengthList (SEQUENCE SIZE 1..8 OF EDRX-Cycle-Length) per TS 29.002
+// MAP-MS-DataTypes.asn:1207.
+type EDRXCycleLengthList []EDRXCycleLength
+
+// MaxNumOfEDRXCycleLength is the upper bound on EDRXCycleLengthList per TS 29.002.
+const MaxNumOfEDRXCycleLength = 8
+
+// ResetIdList (SEQUENCE SIZE 1..50 OF Reset-Id) per TS 29.002
+// MAP-MS-DataTypes.asn:1223. Each Reset-Id is an OCTET STRING (SIZE 1..4)
+// unique within the HPLMN.
+type ResetIdList []HexBytes
+
+// MaxNumOfResetId is the upper bound on ResetIdList per TS 29.002.
+const MaxNumOfResetId = 50
+
+// MaxResetIdOctets is the upper bound on a single Reset-Id per TS 29.002
+// (OCTET STRING SIZE 1..4).
+const MaxResetIdOctets = 4
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -1878,4 +1972,26 @@ var (
 	ErrGroupIdInvalidEncodedLength     = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId must encode to exactly 3 TBCD octets")
 	ErrLongGroupIdInvalidEncodedLength = errors.New("voiceGroupCallData/voiceBroadcastData: LongGroupId must encode to exactly 4 TBCD octets")
 	ErrAdditionalInfoTooLong           = errors.New("voiceGroupCallData: AdditionalInfo exceeds the TS 43.068 maximum of 17 octets / 136 bits")
+
+	ErrMCSSInfoNbrSBOutOfRange   = errors.New("mcSSInfo: NbrSB (MaxMC-Bearers) must be 2..7 per TS 29.002")
+	ErrMCSSInfoNbrUserOutOfRange = errors.New("mcSSInfo: NbrUser (MC-Bearers) must be 1..7 per TS 29.002")
+	ErrMCSSInfoSsCodeInvalidSize = errors.New("mcSSInfo: SsCode must be exactly 1 octet per TS 29.002 (mandatory tag [0])")
+
+	ErrCSGIdInvalidSize            = errors.New("csgSubscriptionData: CsgId BIT STRING (SIZE 27) requires exactly 4 octets carrying 27 bits; CsgIdBitLength must be set to 27")
+	ErrCSGSubscriptionDataListSize = errors.New("csgSubscriptionDataList: must contain 1..50 entries when present")
+	ErrLipaAllowedAPNListSize      = errors.New("csgSubscriptionData: LipaAllowedAPNList must contain 1..50 entries when present per TS 29.002")
+	ErrAPNInvalidSize              = errors.New("apn: each entry must be 2..63 octets per TS 29.002 MAP-MS-DataTypes.asn:1654")
+	ErrPlmnIdInvalidSize           = errors.New("plmnId must be exactly 3 octets per TS 23.003")
+
+	ErrAdjacentAccessRestrictionListSize = errors.New("adjacentAccessRestrictionDataList: must contain 1..50 entries when present")
+
+	ErrIMSIGroupIdListSize         = errors.New("imsiGroupIdList: must contain 1..50 entries when present")
+	ErrIMSIGroupServiceIDOverflow  = errors.New("imsiGroupId: GroupServiceID must fit in 0..4294967295")
+	ErrLocalGroupIDInvalidSize     = errors.New("imsiGroupId: LocalGroupID must be 1..10 octets per TS 29.002")
+
+	ErrEDRXCycleLengthListSize    = errors.New("eDRXCycleLengthList: must contain 1..8 entries when present")
+	ErrEDRXCycleLengthValueSize   = errors.New("eDRXCycleLength: EDRXCycleLengthValue must be exactly 1 octet per TS 29.002")
+
+	ErrResetIdListSize     = errors.New("resetIdList: must contain 1..50 entries when present")
+	ErrResetIdInvalidSize  = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")
 )
