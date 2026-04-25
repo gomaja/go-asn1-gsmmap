@@ -17,9 +17,10 @@ import (
 
 // gsmMapDefaultSMSHandling is a test helper for injecting spec-invalid
 // DefaultSMSHandling values onto the wire struct, so the decoder's
-// lenient exception-handling rules can be exercised.
-func gsmMapDefaultSMSHandling(v int) gsm_map.DefaultSMSHandling {
-	return gsm_map.DefaultSMSHandling(int64(v))
+// lenient exception-handling rules can be exercised. Takes int64 so
+// callers can build values that exceed platform int on 32-bit builds.
+func gsmMapDefaultSMSHandling(v int64) gsm_map.DefaultSMSHandling {
+	return gsm_map.DefaultSMSHandling(v)
 }
 
 // --- SSCSI ---
@@ -310,10 +311,12 @@ func TestMTSmsCAMELTDPCriteriaValidation(t *testing.T) {
 
 func TestSMSCAMELTDPDataLenientDefaultSMSHandling(t *testing.T) {
 	// Per TS 29.002 §8.8.1: values 2..31 → continueTransaction;
-	// values > 31 → releaseTransaction.
+	// values > 31 → releaseTransaction. Apply the mapping in int64 space
+	// so wire values exceeding platform int still follow the rule on
+	// 32-bit builds (locked in by the >MaxInt32 case below).
 	cases := []struct {
 		name string
-		wire int
+		wire int64
 		want DefaultSMSHandling
 	}{
 		{"continue", 0, DefaultSMSHandlingContinueTransaction},
@@ -322,6 +325,9 @@ func TestSMSCAMELTDPDataLenientDefaultSMSHandling(t *testing.T) {
 		{"reserved31Maps", 31, DefaultSMSHandlingContinueTransaction},
 		{"reserved32Maps", 32, DefaultSMSHandlingReleaseTransaction},
 		{"reserved200Maps", 200, DefaultSMSHandlingReleaseTransaction},
+		// Values larger than platform int on 32-bit builds must still
+		// map to releaseTransaction per spec, not error on the narrow.
+		{"hugeMapsToRelease", 1 << 33, DefaultSMSHandlingReleaseTransaction},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

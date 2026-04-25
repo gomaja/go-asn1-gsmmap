@@ -998,21 +998,25 @@ func convertWireToSMSCAMELTDPData(w *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData,
 	//   1 = releaseTransaction
 	//   2..31 → continueTransaction
 	//   >31  → releaseTransaction
-	// Range-check before narrowing so 32-bit wrap-around can't fold a
-	// huge wire value into the small valid set and skip the lenient map.
-	dshRaw, err := narrowInt64(int64(w.DefaultSMSHandling))
-	if err != nil {
-		return nil, fmt.Errorf("DefaultSMSHandling: %w", err)
-	}
-	dsh := DefaultSMSHandling(dshRaw)
+	// Apply the mapping in int64 space first so a wire value larger than
+	// platform int (e.g. on a 32-bit build) still follows the spec's
+	// >31 → releaseTransaction rule instead of erroring on the narrow.
+	// The post-mapping value is always 0 or 1, which fits in int on every
+	// supported platform.
+	dsh64 := int64(w.DefaultSMSHandling)
+	var dsh DefaultSMSHandling
 	switch {
-	case dsh == DefaultSMSHandlingContinueTransaction, dsh == DefaultSMSHandlingReleaseTransaction:
-		// already valid
-	case int64(dsh) >= 2 && int64(dsh) <= 31:
+	case dsh64 == 0:
 		dsh = DefaultSMSHandlingContinueTransaction
-	case int64(dsh) > 31:
+	case dsh64 == 1:
+		dsh = DefaultSMSHandlingReleaseTransaction
+	case dsh64 >= 2 && dsh64 <= 31:
+		dsh = DefaultSMSHandlingContinueTransaction
+	case dsh64 > 31:
 		dsh = DefaultSMSHandlingReleaseTransaction
 	default:
+		// Negative values aren't covered by the spec exception clause;
+		// reject them.
 		return nil, ErrCamelInvalidDefaultSMSHandling
 	}
 	return &SMSCAMELTDPData{
