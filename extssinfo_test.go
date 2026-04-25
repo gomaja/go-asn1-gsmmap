@@ -46,14 +46,14 @@ func TestSSSubscriptionOptionValidation(t *testing.T) {
 	over := OverrideDisabled
 	t.Run("noAlt", func(t *testing.T) {
 		_, err := convertSSSubscriptionOptionToWire(&SSSubscriptionOption{})
-		if !errors.Is(err, ErrSSSubscriptionOptionChoiceNoAlt) {
-			t.Errorf("want ErrSSSubscriptionOptionChoiceNoAlt, got %v", err)
+		if !errors.Is(err, ErrSSSubscriptionOptionChoiceNoAlternative) {
+			t.Errorf("want ErrSSSubscriptionOptionChoiceNoAlternative, got %v", err)
 		}
 	})
 	t.Run("multipleAlts", func(t *testing.T) {
 		_, err := convertSSSubscriptionOptionToWire(&SSSubscriptionOption{CliRestriction: &cli, Override: &over})
-		if !errors.Is(err, ErrSSSubscriptionOptionChoiceMultipleAlt) {
-			t.Errorf("want ErrSSSubscriptionOptionChoiceMultipleAlt, got %v", err)
+		if !errors.Is(err, ErrSSSubscriptionOptionChoiceMultipleAlternatives) {
+			t.Errorf("want ErrSSSubscriptionOptionChoiceMultipleAlternatives, got %v", err)
 		}
 	})
 	t.Run("invalidCliRestriction", func(t *testing.T) {
@@ -183,6 +183,74 @@ func TestExtForwInfoValidation(t *testing.T) {
 		})
 		if !errors.Is(err, ErrExtNoRepCondTimeOutOfRange) {
 			t.Errorf("want ErrExtNoRepCondTimeOutOfRange, got %v", err)
+		}
+	})
+}
+
+// LongForwardedToNumber must round-trip its TON/NPI when it's the only
+// number present. Encoder uses the shared ForwardedToNature/Plan; the
+// decoder must populate them from the long number's wire octets when
+// ForwardedToNumber is absent.
+func TestExtForwFeatureLongForwardedToNumberRoundTripPreservesNaturePlan(t *testing.T) {
+	in := &ExtForwInfo{
+		SsCode: 0x29,
+		ForwardingFeatureList: []ExtForwFeature{{
+			SsStatus:              HexBytes{0x05},
+			LongForwardedToNumber: "31611111111",
+			ForwardedToNature:     0x20, // National — non-default to detect loss
+			ForwardedToPlan:       9,    // Private — non-default to detect loss
+		}},
+	}
+	wire, err := convertExtForwInfoToWire(in)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	got, err := convertWireToExtForwInfo(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("non-default TON/NPI on LongForwardedToNumber must survive round-trip (-want +got):\n%s", diff)
+	}
+}
+
+// SIZE(1..21) + SIZE(1..5) discipline: a non-nil empty slice is rejected
+// at both encode and decode (PR #29 pattern).
+func TestExtForwFeatureNilVsEmptyDiscipline(t *testing.T) {
+	t.Run("encoderRejectsEmptySubaddress", func(t *testing.T) {
+		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+			SsCode: 0x21,
+			ForwardingFeatureList: []ExtForwFeature{{
+				SsStatus:              HexBytes{0x05},
+				ForwardedToSubaddress: HexBytes{}, // non-nil, empty
+			}},
+		})
+		if !errors.Is(err, ErrExtForwSubaddressInvalidSize) {
+			t.Errorf("want ErrExtForwSubaddressInvalidSize, got %v", err)
+		}
+	})
+	t.Run("encoderRejectsOversizeSubaddress", func(t *testing.T) {
+		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+			SsCode: 0x21,
+			ForwardingFeatureList: []ExtForwFeature{{
+				SsStatus:              HexBytes{0x05},
+				ForwardedToSubaddress: make(HexBytes, 22), // 22 octets, max is 21
+			}},
+		})
+		if !errors.Is(err, ErrExtForwSubaddressInvalidSize) {
+			t.Errorf("want ErrExtForwSubaddressInvalidSize, got %v", err)
+		}
+	})
+	t.Run("encoderRejectsEmptyForwOptions", func(t *testing.T) {
+		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+			SsCode: 0x21,
+			ForwardingFeatureList: []ExtForwFeature{{
+				SsStatus:          HexBytes{0x05},
+				ForwardingOptions: HexBytes{}, // non-nil, empty
+			}},
+		})
+		if !errors.Is(err, ErrExtForwOptionsInvalidSize) {
+			t.Errorf("want ErrExtForwOptionsInvalidSize, got %v", err)
 		}
 	})
 }

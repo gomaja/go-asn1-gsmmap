@@ -37,7 +37,7 @@ func convertSSSubscriptionOptionToWire(o *SSSubscriptionOption) (*gsm_map.SSSubs
 	hasOver := o.Override != nil
 	switch {
 	case hasCli && hasOver:
-		return nil, ErrSSSubscriptionOptionChoiceMultipleAlt
+		return nil, ErrSSSubscriptionOptionChoiceMultipleAlternatives
 	case hasCli:
 		if !isValidCliRestrictionOption(*o.CliRestriction) {
 			return nil, ErrCliRestrictionOptionInvalidValue
@@ -51,7 +51,7 @@ func convertSSSubscriptionOptionToWire(o *SSSubscriptionOption) (*gsm_map.SSSubs
 		v := gsm_map.NewSSSubscriptionOptionOverrideCategory(gsm_map.OverrideCategory(int64(*o.Override)))
 		return &v, nil
 	default:
-		return nil, ErrSSSubscriptionOptionChoiceNoAlt
+		return nil, ErrSSSubscriptionOptionChoiceNoAlternative
 	}
 }
 
@@ -59,7 +59,7 @@ func convertWireToSSSubscriptionOption(w *gsm_map.SSSubscriptionOption) (*SSSubs
 	switch w.Choice {
 	case gsm_map.SSSubscriptionOptionChoiceCliRestrictionOption:
 		if w.CliRestrictionOption == nil {
-			return nil, ErrSSSubscriptionOptionChoiceNoAlt
+			return nil, ErrSSSubscriptionOptionChoiceNoAlternative
 		}
 		raw, err := narrowInt64(int64(*w.CliRestrictionOption))
 		if err != nil {
@@ -72,7 +72,7 @@ func convertWireToSSSubscriptionOption(w *gsm_map.SSSubscriptionOption) (*SSSubs
 		return &SSSubscriptionOption{CliRestriction: &v}, nil
 	case gsm_map.SSSubscriptionOptionChoiceOverrideCategory:
 		if w.OverrideCategory == nil {
-			return nil, ErrSSSubscriptionOptionChoiceNoAlt
+			return nil, ErrSSSubscriptionOptionChoiceNoAlternative
 		}
 		raw, err := narrowInt64(int64(*w.OverrideCategory))
 		if err != nil {
@@ -84,7 +84,7 @@ func convertWireToSSSubscriptionOption(w *gsm_map.SSSubscriptionOption) (*SSSubs
 		}
 		return &SSSubscriptionOption{Override: &v}, nil
 	default:
-		return nil, ErrSSSubscriptionOptionChoiceNoAlt
+		return nil, ErrSSSubscriptionOptionChoiceNoAlternative
 	}
 }
 
@@ -162,12 +162,18 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 		v := gsm_map.ISDNAddressString(enc)
 		out.ForwardedToNumber = &v
 	}
-	if len(f.ForwardedToSubaddress) > 0 {
+	if f.ForwardedToSubaddress != nil {
+		// ISDN-SubaddressString SIZE(1..21) per TS 29.002. Reject a non-nil
+		// empty slice rather than silently omitting it (PR #29 pattern).
+		if len(f.ForwardedToSubaddress) < 1 || len(f.ForwardedToSubaddress) > 21 {
+			return gsm_map.ExtForwFeature{}, ErrExtForwSubaddressInvalidSize
+		}
 		v := gsm_map.ISDNSubaddressString(f.ForwardedToSubaddress)
 		out.ForwardedToSubaddress = &v
 	}
-	if len(f.ForwardingOptions) > 0 {
-		if len(f.ForwardingOptions) > 5 {
+	if f.ForwardingOptions != nil {
+		// Ext-ForwOptions OCTET STRING (SIZE 1..5) per TS 29.002.
+		if len(f.ForwardingOptions) < 1 || len(f.ForwardingOptions) > 5 {
 			return gsm_map.ExtForwFeature{}, ErrExtForwOptionsInvalidSize
 		}
 		v := gsm_map.ExtForwOptions(f.ForwardingOptions)
@@ -214,6 +220,10 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		out.ForwardedToPlan = plan
 	}
 	if w.ForwardedToSubaddress != nil {
+		// ISDN-SubaddressString SIZE(1..21) per TS 29.002.
+		if len(*w.ForwardedToSubaddress) < 1 || len(*w.ForwardedToSubaddress) > 21 {
+			return ExtForwFeature{}, ErrExtForwSubaddressInvalidSize
+		}
 		out.ForwardedToSubaddress = HexBytes(*w.ForwardedToSubaddress)
 	}
 	if w.ForwardingOptions != nil {
@@ -240,11 +250,23 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		out.NoReplyConditionTime = &v
 	}
 	if w.LongForwardedToNumber != nil {
-		digits, _, _, err := decodeAddressField(*w.LongForwardedToNumber)
+		// FTN-AddressString carries its own ext+ton+npi octet (TS 29.002).
+		// The public type shares ForwardedToNature / ForwardedToPlan
+		// between the short and long numbers, so the encoder reuses
+		// whichever pair is populated. To preserve round-trip fidelity
+		// when only LongForwardedToNumber is present, capture its
+		// decoded nat/plan into the shared fields. When ForwardedToNumber
+		// is also present, its values were already written above and
+		// take precedence (consistent with the encoder's behavior).
+		digits, nat, plan, err := decodeAddressField(*w.LongForwardedToNumber)
 		if err != nil {
 			return ExtForwFeature{}, fmt.Errorf("LongForwardedToNumber: %w", err)
 		}
 		out.LongForwardedToNumber = digits
+		if w.ForwardedToNumber == nil {
+			out.ForwardedToNature = nat
+			out.ForwardedToPlan = plan
+		}
 	}
 	return out, nil
 }
