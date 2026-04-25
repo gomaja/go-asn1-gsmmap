@@ -3,7 +3,10 @@ package gsmmap
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // ----------------------------------------------------------------------------
@@ -85,7 +88,7 @@ func TestSpecificAPNInfoList_RoundTrip(t *testing.T) {
 		t.Fatalf("fromWire: %v", err)
 	}
 	if !reflect.DeepEqual(in, out) {
-		t.Fatalf("mismatch")
+		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, out)
 	}
 }
 
@@ -124,7 +127,7 @@ func TestWLANOffloadability_RoundTrip(t *testing.T) {
 		t.Fatalf("fromWire: %v", err)
 	}
 	if !reflect.DeepEqual(in, out) {
-		t.Fatalf("mismatch")
+		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, out)
 	}
 }
 
@@ -379,6 +382,21 @@ func TestEPSSubscriptionData_MinimalRoundTrip(t *testing.T) {
 	}
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, out)
+	}
+}
+
+func TestEPSSubscriptionData_DecodeRejectsEmptyStnSr(t *testing.T) {
+	// Round-trip safety: a present wire StnSr that decodes to empty
+	// digits would be silently dropped by re-encode (e.StnSr != "").
+	// Decoder must reject explicitly to keep semantics stable.
+	stn := gsm_map.ISDNAddressString{0x91} // 1 byte: nature/plan only, no digits
+	w := &gsm_map.EPSSubscriptionData{StnSr: &stn}
+	_, err := convertWireToEPSSubscriptionData(w)
+	if err == nil {
+		t.Fatalf("decode of empty-digits StnSr: want error, got nil")
+	}
+	if !strings.Contains(err.Error(), "EPSSubscriptionData.StnSr") {
+		t.Fatalf("decode error should mention StnSr, got %v", err)
 	}
 }
 

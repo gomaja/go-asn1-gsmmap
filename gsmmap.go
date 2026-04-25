@@ -2022,7 +2022,13 @@ type SpecificAPNInfo struct {
 }
 
 // SpecificAPNInfoList (SEQUENCE SIZE 1..50 OF SpecificAPNInfo) per
-// TS 29.002 MAP-MS-DataTypes.asn:1398.
+// TS 29.002 MAP-MS-DataTypes.asn:1398. The field is OPTIONAL on the
+// wire; in this public API absence is represented by a nil slice.
+// A non-nil empty slice (len == 0) is rejected as a size violation —
+// callers must use nil rather than `SpecificAPNInfoList{}` to mean
+// "absent". This matches the package convention for OPTIONAL
+// SEQUENCE OF lists with SIZE (1..N) constraints (e.g.
+// CSGSubscriptionDataList, EPSDataList, GPRSDataList).
 type SpecificAPNInfoList []SpecificAPNInfo
 
 // WLANOffloadability (SEQUENCE) per TS 29.002. Both fields optional.
@@ -2089,9 +2095,12 @@ type EPSSubscriptionData struct {
 	RfspId                  *int                     // [2] optional, INTEGER 1..256
 	Ambr                    *AMBR                    // [3] optional
 	ApnConfigurationProfile *APNConfigurationProfile // [4] optional
-	StnSr                   string                   // [6] optional, ISDN-AddressString digits (empty = absent)
-	StnSrNature             uint8                    // ISDN-AddressString nature-of-address octet
-	StnSrPlan               uint8                    // ISDN-AddressString numbering-plan octet
+	// StnSr [6] OPTIONAL ISDN-AddressString. Empty digits string means
+	// absent; a present wire frame that decodes to empty digits is
+	// rejected on the decode path to keep round-trip semantics stable.
+	StnSr       string // [6] optional, ISDN-AddressString digits
+	StnSrNature uint8  // ISDN-AddressString nature-of-address octet
+	StnSrPlan   uint8  // ISDN-AddressString numbering-plan octet
 	MpsCSPriority           bool                     // [7] optional NULL — true when present
 	MpsEPSPriority          bool                     // [8] optional NULL — true when present
 	SubscribedVsrvcc        bool                     // [9] optional NULL — true when present

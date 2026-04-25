@@ -701,6 +701,12 @@ func convertWireToEPSSubscriptionData(w *gsm_map.EPSSubscriptionData) (*EPSSubsc
 		if err != nil {
 			return nil, fmt.Errorf("decoding EPSSubscriptionData.StnSr: %w", err)
 		}
+		// The public type uses StnSr == "" to mean absent. If a present
+		// wire frame decodes to empty digits, reject explicitly to avoid
+		// silently losing the field on a round-trip re-encode.
+		if s == "" {
+			return nil, fmt.Errorf("decoding EPSSubscriptionData.StnSr: present wire field decoded to empty digits; presence cannot round-trip through string-based API")
+		}
 		out.StnSr = s
 		out.StnSrNature = nature
 		out.StnSrPlan = plan
