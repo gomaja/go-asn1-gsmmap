@@ -2118,6 +2118,211 @@ type EPSSubscriptionData struct {
 // defined here pending upstream surfacing.
 const MaxRFSPID = 256
 
+// ============================================================================
+// LCS-Information (TS 29.002 MAP-MS-DataTypes.asn:1490)
+// ============================================================================
+
+// GMLCRestriction (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:2027.
+// Aliased from go-asn1.
+type GMLCRestriction = gsm_map.GMLCRestriction
+
+const (
+	GMLCRestrictionGmlcList    = gsm_map.GMLCRestrictionGmlcList
+	GMLCRestrictionHomeCountry = gsm_map.GMLCRestrictionHomeCountry
+)
+
+// NotificationToMSUser (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:2035.
+// Aliased from go-asn1.
+type NotificationToMSUser = gsm_map.NotificationToMSUser
+
+const (
+	NotifyLocationAllowed                         = gsm_map.NotificationToMSUserNotifyLocationAllowed
+	NotifyAndVerifyLocationAllowedIfNoResponse    = gsm_map.NotificationToMSUserNotifyAndVerifyLocationAllowedIfNoResponse
+	NotifyAndVerifyLocationNotAllowedIfNoResponse = gsm_map.NotificationToMSUserNotifyAndVerifyLocationNotAllowedIfNoResponse
+	NotificationLocationNotAllowed                = gsm_map.NotificationToMSUserLocationNotAllowed
+)
+
+// LCSClientInternalID (ENUMERATED) per TS 29.002
+// MAP-CommonDataTypes.asn (gsm_map.LCSClientInternalID).
+// Aliased from go-asn1.
+type LCSClientInternalID = gsm_map.LCSClientInternalID
+
+const (
+	LCSClientBroadcastService          = gsm_map.LCSClientInternalIDBroadcastService
+	LCSClientOAndMHPLMN                = gsm_map.LCSClientInternalIDOAndMHPLMN
+	LCSClientOAndMVPLMN                = gsm_map.LCSClientInternalIDOAndMVPLMN
+	LCSClientAnonymousLocation         = gsm_map.LCSClientInternalIDAnonymousLocation
+	LCSClientTargetMSsubscribedService = gsm_map.LCSClientInternalIDTargetMSsubscribedService
+)
+
+// LCSClientExternalID (SEQUENCE) per TS 29.002 MAP-CommonDataTypes.asn:642
+// in the go-asn1 library. Surfaces the optional ISDN-AddressString as a
+// digits string + nature/plan triple consistent with the rest of the
+// public API.
+type LCSClientExternalID struct {
+	ExternalAddress       string // optional ISDN-AddressString digits (empty = absent)
+	ExternalAddressNature uint8
+	ExternalAddressPlan   uint8
+}
+
+// ExternalClient (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2018.
+type ExternalClient struct {
+	ClientIdentity       LCSClientExternalID  // mandatory
+	GmlcRestriction      *GMLCRestriction     // [0] optional
+	NotificationToMSUser *NotificationToMSUser // [1] optional
+}
+
+// ExternalClientList (SEQUENCE SIZE 0..5 OF ExternalClient) per
+// TS 29.002 MAP-MS-DataTypes.asn:2003.
+//
+// Note: spec allows 0 entries (the only such list in the package),
+// so an empty slice is valid here unlike elsewhere.
+type ExternalClientList []ExternalClient
+
+// ExtExternalClientList (SEQUENCE SIZE 1..35 OF ExternalClient) per
+// TS 29.002 MAP-MS-DataTypes.asn:2013.
+type ExtExternalClientList []ExternalClient
+
+// PLMNClientList (SEQUENCE SIZE 1..5 OF LCSClientInternalID) per
+// TS 29.002 MAP-MS-DataTypes.asn:2008.
+type PLMNClientList []LCSClientInternalID
+
+// ServiceType (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2050.
+type ServiceType struct {
+	ServiceTypeIdentity  int                   // mandatory, LCSServiceTypeID INTEGER
+	GmlcRestriction      *GMLCRestriction      // [0] optional
+	NotificationToMSUser *NotificationToMSUser // [1] optional
+}
+
+// ServiceTypeList (SEQUENCE SIZE 1..32 OF ServiceType) per TS 29.002
+// MAP-MS-DataTypes.asn:2045.
+type ServiceTypeList []ServiceType
+
+// LCSPrivacyClass (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1976.
+// SsCode is a single-octet SS-Code; SsStatus is the Ext-SS-Status
+// OCTET STRING (SIZE 1..5) shared with PR D's Ext-SS-Info tree.
+type LCSPrivacyClass struct {
+	SsCode                SsCode                // mandatory
+	SsStatus              HexBytes              // mandatory, Ext-SS-Status 1..5 octets
+	NotificationToMSUser  *NotificationToMSUser // [0] optional
+	ExternalClientList    ExternalClientList    // [1] optional, 0..5 entries
+	PlmnClientList        PLMNClientList        // [2] optional, 1..5 entries when present
+	ExtExternalClientList ExtExternalClientList // [4] optional, 1..35 entries when present
+	ServiceTypeList       ServiceTypeList       // [5] optional, 1..32 entries when present
+}
+
+// LCSPrivacyExceptionList (SEQUENCE SIZE 1..4 OF LCS-PrivacyClass) per
+// TS 29.002 MAP-MS-DataTypes.asn:1971.
+type LCSPrivacyExceptionList []LCSPrivacyClass
+
+// MOLRClass (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2064.
+type MOLRClass struct {
+	SsCode   SsCode   // mandatory
+	SsStatus HexBytes // mandatory, Ext-SS-Status 1..5 octets
+}
+
+// MOLRList (SEQUENCE SIZE 1..3 OF MOLR-Class) per TS 29.002
+// MAP-MS-DataTypes.asn:2059.
+type MOLRList []MOLRClass
+
+// GMLCAddress represents an ISDN-AddressString entry in a GMLC-List.
+type GMLCAddress struct {
+	Address string // mandatory ISDN-AddressString digits
+	Nature  uint8
+	Plan    uint8
+}
+
+// GMLCList (SEQUENCE SIZE 1..5 OF ISDN-AddressString) per TS 29.002
+// MAP-MS-DataTypes.asn:1503.
+type GMLCList []GMLCAddress
+
+// LCSInformation (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1490.
+// All four lists are OPTIONAL. AddLcsPrivacyExceptionList may only be
+// present alongside LcsPrivacyExceptionList (extension list per LCS
+// release). Callers requiring that invariant should validate at their
+// layer.
+type LCSInformation struct {
+	GmlcList                   GMLCList                // [0] optional, 1..5 entries when present
+	LcsPrivacyExceptionList    LCSPrivacyExceptionList // [1] optional, 1..4 entries when present
+	MolrList                   MOLRList                // [2] optional, 1..3 entries when present
+	AddLcsPrivacyExceptionList LCSPrivacyExceptionList // [3] optional, 1..4 entries when present
+}
+
+// ============================================================================
+// SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
+// ============================================================================
+
+// GPRSTriggerDetectionPoint (ENUMERATED) per TS 29.002
+// MAP-MS-DataTypes.asn (extensible enum). Aliased from go-asn1.
+type GPRSTriggerDetectionPoint = gsm_map.GPRSTriggerDetectionPoint
+
+const (
+	GPRSTDPAttach                                 = gsm_map.GPRSTriggerDetectionPointAttach
+	GPRSTDPAttachChangeOfPosition                 = gsm_map.GPRSTriggerDetectionPointAttachChangeOfPosition
+	GPRSTDPPdpContextEstablishment                = gsm_map.GPRSTriggerDetectionPointPdpContextEstablishment
+	GPRSTDPPdpContextEstablishmentAcknowledgement = gsm_map.GPRSTriggerDetectionPointPdpContextEstablishmentAcknowledgement
+	GPRSTDPPdpContextChangeOfPosition             = gsm_map.GPRSTriggerDetectionPointPdpContextChangeOfPosition
+)
+
+// DefaultGPRSHandling (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1634.
+// Per spec exception clause, decoders MUST treat values >1 as
+// releaseTransaction. Aliased from go-asn1; the lenient remap happens
+// in the decoder.
+type DefaultGPRSHandling = gsm_map.DefaultGPRSHandling
+
+const (
+	DefaultGPRSContinueTransaction = gsm_map.DefaultGPRSHandlingContinueTransaction
+	DefaultGPRSReleaseTransaction  = gsm_map.DefaultGPRSHandlingReleaseTransaction
+)
+
+// GPRSCamelTDPData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1625.
+// All four fields are mandatory per spec.
+type GPRSCamelTDPData struct {
+	GprsTriggerDetectionPoint GPRSTriggerDetectionPoint // [0] mandatory
+	ServiceKey                int                       // [1] mandatory
+	GsmSCFAddress             string                    // [2] mandatory ISDN-AddressString digits
+	GsmSCFAddressNature       uint8
+	GsmSCFAddressPlan         uint8
+	DefaultSessionHandling    DefaultGPRSHandling // [3] mandatory
+}
+
+// GPRSCamelTDPDataList (SEQUENCE SIZE 1..10 OF GPRS-CamelTDPData) per
+// TS 29.002 MAP-MS-DataTypes.asn:1620.
+type GPRSCamelTDPDataList []GPRSCamelTDPData
+
+// GPRSCSI (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1606.
+// Per spec clause 8.8.x, when GPRSCSI is present both
+// GprsCamelTDPDataList and CamelCapabilityHandling SHALL be set;
+// otherwise all fields are optional.
+type GPRSCSI struct {
+	GprsCamelTDPDataList    GPRSCamelTDPDataList // [0] optional, 1..10 entries when present
+	CamelCapabilityHandling *int                 // [1] optional, CAMEL phase 1..4
+	NotificationToCSE       bool                 // [3] optional NULL — true when present
+	CsiActive               bool                 // [4] optional NULL — true when present
+}
+
+// MGCSI (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2528.
+// MobilityTriggers SIZE 1..10, each entry MM-Code SIZE 1.
+type MGCSI struct {
+	MobilityTriggers   []HexBytes // mandatory, 1..10 entries; each MM-Code SIZE 1
+	ServiceKey         int        // mandatory
+	GsmSCFAddress      string     // [0] mandatory ISDN-AddressString digits
+	GsmSCFAddressNature uint8
+	GsmSCFAddressPlan   uint8
+	NotificationToCSE  bool // [2] optional NULL — true when present
+	CsiActive          bool // [3] optional NULL — true when present
+}
+
+// SGSNCAMELSubscriptionInfo (SEQUENCE) per TS 29.002
+// MAP-MS-DataTypes.asn:1596. All fields optional.
+type SGSNCAMELSubscriptionInfo struct {
+	GprsCSI                   *GPRSCSI                // [0] optional
+	MoSmsCSI                  *SMSCSI                 // [1] optional, reuses PR C type
+	MtSmsCSI                  *SMSCSI                 // [3] optional, reuses PR C type
+	MtSmsCAMELTDPCriteriaList []MTSmsCAMELTDPCriteria // [4] optional, reuses PR C type
+	MgCsi                     *MGCSI                  // [5] optional
+}
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -2309,4 +2514,23 @@ var (
 	ErrSpecificAPNInfoListSize      = errors.New("specificAPNInfoList: must contain 1..50 entries (maxNumOfSpecificAPNInfos) per TS 29.002")
 	ErrEPSDataListSize              = errors.New("epsDataList: must contain 1..50 entries (maxNumOfAPN-Configurations) per TS 29.002")
 	ErrAPNConfigurationProfileMissingList = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")
+
+	ErrGMLCListSize                       = errors.New("gmlcList: must contain 1..5 entries (maxNumOfGMLC) per TS 29.002")
+	ErrLCSPrivacyExceptionListSize        = errors.New("lcsPrivacyExceptionList: must contain 1..4 entries (maxNumOfPrivacyClass) per TS 29.002")
+	ErrExternalClientListSize             = errors.New("externalClientList: must contain 0..5 entries (maxNumOfExternalClient) per TS 29.002")
+	ErrPLMNClientListSize                 = errors.New("plmnClientList: must contain 1..5 entries (maxNumOfPLMNClient) per TS 29.002")
+	ErrExtExternalClientListSize          = errors.New("extExternalClientList: must contain 1..35 entries (maxNumOfExt-ExternalClient) per TS 29.002")
+	ErrServiceTypeListSize                = errors.New("serviceTypeList: must contain 1..32 entries (maxNumOfServiceType) per TS 29.002")
+	ErrMOLRListSize                       = errors.New("molrList: must contain 1..3 entries (maxNumOfMOLR-Class) per TS 29.002")
+	ErrGMLCRestrictionInvalid             = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
+	ErrNotificationToMSUserInvalid        = errors.New("notificationToMSUser: must be 0..3 per TS 29.002 MAP-MS-DataTypes.asn:2035")
+	ErrLCSClientInternalIDInvalid         = errors.New("plmnClientList: LCSClientInternalID must be 0..4 per TS 29.002 MAP-CommonDataTypes.asn")
+
+	ErrGPRSCamelTDPDataListSize           = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
+	ErrGPRSTriggerDetectionPointInvalid   = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be 1, 2, 11, 12, or 14 per TS 29.002 (extensible enum: unknown values preserved on decode)")
+	ErrDefaultGPRSHandlingInvalid         = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder remaps unknown values >1 to releaseTransaction per spec exception clause")
+	ErrCamelCapabilityHandlingOutOfRange  = errors.New("gprsCSI/mgCSI: CamelCapabilityHandling must be 1..4 per TS 29.078")
+	ErrGPRSCSIRequiresTDPListAndPhase     = errors.New("gprsCSI: GprsCamelTDPDataList and CamelCapabilityHandling SHALL both be present per TS 29.002 clause 8.8")
+	ErrMobilityTriggersSize               = errors.New("mgCSI: MobilityTriggers must contain 1..10 entries (maxNumOfMobilityTriggers) per TS 29.002")
+	ErrMMCodeInvalidSize                  = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
 )
