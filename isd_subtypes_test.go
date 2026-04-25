@@ -81,8 +81,8 @@ func TestMCSSInfo_DecodeRejectsMissingSsCode(t *testing.T) {
 		NbrUser:  1,
 	}
 	_, err := convertWireToMCSSInfo(w)
-	if !errors.Is(err, ErrMCSSInfoMissingSsCode) {
-		t.Fatalf("want ErrMCSSInfoMissingSsCode, got %v", err)
+	if !errors.Is(err, ErrMCSSInfoSsCodeInvalidSize) {
+		t.Fatalf("want ErrMCSSInfoSsCodeInvalidSize, got %v", err)
 	}
 }
 
@@ -229,6 +229,21 @@ func TestVPLMNCSGSubscriptionDataList_RoundTrip(t *testing.T) {
 	}
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch")
+	}
+}
+
+func TestVPLMNCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
+	_, err := convertVPLMNCSGSubscriptionDataListToWire(VPLMNCSGSubscriptionDataList{})
+	if !errors.Is(err, ErrCSGSubscriptionDataListSize) {
+		t.Fatalf("empty: want size error, got %v", err)
+	}
+	too := make(VPLMNCSGSubscriptionDataList, MaxNumOfCSGSubscriptions+1)
+	for i := range too {
+		too[i] = makeCSGEntry()
+	}
+	_, err = convertVPLMNCSGSubscriptionDataListToWire(too)
+	if !errors.Is(err, ErrCSGSubscriptionDataListSize) {
+		t.Fatalf("over-max: want size error, got %v", err)
 	}
 }
 
@@ -387,7 +402,7 @@ func TestIMSIGroupIdList_RoundTrip(t *testing.T) {
 
 func TestEDRXCycleLength_RoundTrip(t *testing.T) {
 	in := &EDRXCycleLength{
-		RatType:              UsedRATTypeEUtran,
+		RatType:              UsedRatEUTRAN,
 		EDRXCycleLengthValue: HexBytes{0x09},
 	}
 	w, err := convertEDRXCycleLengthToWire(in)
@@ -406,7 +421,7 @@ func TestEDRXCycleLength_RoundTrip(t *testing.T) {
 func TestEDRXCycleLength_ValueWrongSize(t *testing.T) {
 	cases := []HexBytes{{}, {0x01, 0x02}}
 	for _, v := range cases {
-		in := &EDRXCycleLength{RatType: UsedRATTypeNbIot, EDRXCycleLengthValue: v}
+		in := &EDRXCycleLength{RatType: UsedRatNBIOT, EDRXCycleLengthValue: v}
 		_, err := convertEDRXCycleLengthToWire(in)
 		if !errors.Is(err, ErrEDRXCycleLengthValueSize) {
 			t.Fatalf("len=%d: want ErrEDRXCycleLengthValueSize, got %v", len(v), err)
@@ -416,7 +431,7 @@ func TestEDRXCycleLength_ValueWrongSize(t *testing.T) {
 
 func TestEDRXCycleLength_PreservesUnknownRAT(t *testing.T) {
 	// Postel's law: spec is extensible — preserve unknown values.
-	in := &EDRXCycleLength{RatType: UsedRATType(99), EDRXCycleLengthValue: HexBytes{0xff}}
+	in := &EDRXCycleLength{RatType: UsedRatType(99), EDRXCycleLengthValue: HexBytes{0xff}}
 	w, err := convertEDRXCycleLengthToWire(in)
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
@@ -437,7 +452,7 @@ func TestEDRXCycleLengthList_BoundsRejected(t *testing.T) {
 	}
 	too := make(EDRXCycleLengthList, MaxNumOfEDRXCycleLength+1)
 	for i := range too {
-		too[i] = EDRXCycleLength{RatType: UsedRATTypeEUtran, EDRXCycleLengthValue: HexBytes{0x09}}
+		too[i] = EDRXCycleLength{RatType: UsedRatEUTRAN, EDRXCycleLengthValue: HexBytes{0x09}}
 	}
 	_, err = convertEDRXCycleLengthListToWire(too)
 	if !errors.Is(err, ErrEDRXCycleLengthListSize) {
@@ -447,8 +462,8 @@ func TestEDRXCycleLengthList_BoundsRejected(t *testing.T) {
 
 func TestEDRXCycleLengthList_RoundTrip(t *testing.T) {
 	in := EDRXCycleLengthList{
-		{RatType: UsedRATTypeEUtran, EDRXCycleLengthValue: HexBytes{0x05}},
-		{RatType: UsedRATTypeNbIot, EDRXCycleLengthValue: HexBytes{0x0a}},
+		{RatType: UsedRatEUTRAN, EDRXCycleLengthValue: HexBytes{0x05}},
+		{RatType: UsedRatNBIOT, EDRXCycleLengthValue: HexBytes{0x0a}},
 	}
 	w, err := convertEDRXCycleLengthListToWire(in)
 	if err != nil {

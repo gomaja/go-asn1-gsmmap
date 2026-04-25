@@ -47,8 +47,8 @@ func convertWireToMCSSInfo(w *gsm_map.MCSSInfo) (*MCSSInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(w.SsCode) == 0 {
-		return nil, ErrMCSSInfoMissingSsCode
+	if len(w.SsCode) != 1 {
+		return nil, fmt.Errorf("%w (got %d)", ErrMCSSInfoSsCodeInvalidSize, len(w.SsCode))
 	}
 	return &MCSSInfo{
 		SsCode:   SsCode(w.SsCode[0]),
@@ -108,8 +108,8 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubsc
 	if w == nil {
 		return nil, nil
 	}
-	if w.CsgId.BitLength != CSGIdBitLength {
-		return nil, fmt.Errorf("%w (got %d bits)", ErrCSGIdInvalidSize, w.CsgId.BitLength)
+	if w.CsgId.BitLength != CSGIdBitLength || len(w.CsgId.Bytes) != (CSGIdBitLength+7)/8 {
+		return nil, fmt.Errorf("%w (got %d octets, %d bits)", ErrCSGIdInvalidSize, len(w.CsgId.Bytes), w.CsgId.BitLength)
 	}
 	out := &CSGSubscriptionData{
 		CsgId:          HexBytes(append([]byte(nil), w.CsgId.Bytes...)),
@@ -366,9 +366,15 @@ func convertWireToEDRXCycleLength(w *gsm_map.EDRXCycleLength) (*EDRXCycleLength,
 	if len(w.EDRXCycleLengthValue) != 1 {
 		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthValueSize, len(w.EDRXCycleLengthValue))
 	}
-	// UsedRATType is extensible — preserve unknown values (Postel's law).
+	// UsedRatType is an extensible enum — preserve unknown values (Postel's
+	// law) but go through narrowInt64 so a wire value that does not fit in
+	// platform int (32-bit builds) is rejected rather than silently truncated.
+	rt, err := narrowInt64(int64(w.RatType))
+	if err != nil {
+		return nil, fmt.Errorf("EDRXCycleLength.RatType: %w", err)
+	}
 	return &EDRXCycleLength{
-		RatType:              UsedRATType(w.RatType),
+		RatType:              UsedRatType(rt),
 		EDRXCycleLengthValue: HexBytes(w.EDRXCycleLengthValue),
 	}, nil
 }

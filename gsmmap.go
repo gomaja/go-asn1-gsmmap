@@ -1760,10 +1760,10 @@ type MCSSInfo struct {
 // CSGSubscriptionData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1262.
 // CsgId is a 27-bit Closed Subscriber Group identifier per TS 23.003.
 type CSGSubscriptionData struct {
-	CsgId              HexBytes // mandatory: 27-bit BIT STRING (4 octets carrying 27 bits)
-	CsgIdBitLength     int      // 0 means 27 (the spec-mandated default)
-	ExpirationDate     HexBytes // optional: Time (UTCTime/GeneralizedTime BER-encoded)
-	LipaAllowedAPNList []HexBytes // [0] optional: list of APN OCTET STRINGs (SIZE 2..63)
+	CsgId              HexBytes   // mandatory: 27-bit BIT STRING (4 octets carrying 27 bits)
+	CsgIdBitLength     int        // mandatory: must be set to 27; any other value (including 0) is rejected by the encoder
+	ExpirationDate     HexBytes   // optional: Time (UTCTime/GeneralizedTime BER-encoded)
+	LipaAllowedAPNList []HexBytes // [0] optional: list of APN OCTET STRINGs (SIZE 2..63), 1..50 entries when present
 	PlmnId             HexBytes   // [1] optional: PLMN-Id (3 octets)
 }
 
@@ -1816,7 +1816,10 @@ const MaxNumOfIMSIGroupId = 50
 // EDRXCycleLength (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1210.
 // EDRXCycleLengthValue is a single-octet code per 3GPP TS 29.272 clause 7.3.216.
 type EDRXCycleLength struct {
-	RatType              UsedRATType // [0] mandatory: 0..5
+	// RatType: currently defined values are 0..5 (UsedRatUTRAN..UsedRatNBIOT);
+	// the spec marks the enum as extensible, so unknown values are preserved
+	// across round-trip per Postel's law.
+	RatType              UsedRatType // [0] mandatory
 	EDRXCycleLengthValue HexBytes    // [1] mandatory: exactly 1 octet
 }
 
@@ -1826,20 +1829,6 @@ type EDRXCycleLengthList []EDRXCycleLength
 
 // MaxNumOfEDRXCycleLength is the upper bound on EDRXCycleLengthList per TS 29.002.
 const MaxNumOfEDRXCycleLength = 8
-
-// UsedRATType (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:4241 in the
-// go-asn1 library. Values are extensible per spec; unknown values must be
-// preserved on round-trip per Postel's law.
-type UsedRATType int
-
-const (
-	UsedRATTypeUtran          UsedRATType = 0
-	UsedRATTypeGeran          UsedRATType = 1
-	UsedRATTypeGan            UsedRATType = 2
-	UsedRATTypeIHspaEvolution UsedRATType = 3
-	UsedRATTypeEUtran         UsedRATType = 4
-	UsedRATTypeNbIot          UsedRATType = 5
-)
 
 // ResetIdList (SEQUENCE SIZE 1..50 OF Reset-Id) per TS 29.002
 // MAP-MS-DataTypes.asn:1223. Each Reset-Id is an OCTET STRING (SIZE 1..4)
@@ -1986,7 +1975,7 @@ var (
 
 	ErrMCSSInfoNbrSBOutOfRange   = errors.New("mcSSInfo: NbrSB (MaxMC-Bearers) must be 2..7 per TS 29.002")
 	ErrMCSSInfoNbrUserOutOfRange = errors.New("mcSSInfo: NbrUser (MC-Bearers) must be 1..7 per TS 29.002")
-	ErrMCSSInfoMissingSsCode     = errors.New("mcSSInfo: SsCode is mandatory ([0]) and must be present on the wire")
+	ErrMCSSInfoSsCodeInvalidSize = errors.New("mcSSInfo: SsCode must be exactly 1 octet per TS 29.002 (mandatory tag [0])")
 
 	ErrCSGIdInvalidSize            = errors.New("csgSubscriptionData: CsgId BIT STRING (SIZE 27) requires exactly 4 octets carrying 27 bits; CsgIdBitLength must be set to 27")
 	ErrCSGSubscriptionDataListSize = errors.New("csgSubscriptionDataList: must contain 1..50 entries when present")
