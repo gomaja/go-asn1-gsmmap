@@ -1842,6 +1842,131 @@ const MaxNumOfResetId = 50
 // (OCTET STRING SIZE 1..4).
 const MaxResetIdOctets = 4
 
+// AMBR (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1386. The two
+// mandatory bandwidth fields are Bandwidth INTEGER (bits per second);
+// the extended pair carries kbps values for >4 Gbps profiles.
+type AMBR struct {
+	MaxRequestedBandwidthUL         int64 // [0] mandatory, bits per second
+	MaxRequestedBandwidthDL         int64 // [1] mandatory, bits per second
+	ExtendedMaxRequestedBandwidthUL *int64 // [3] optional, kilobits per second
+	ExtendedMaxRequestedBandwidthDL *int64 // [4] optional, kilobits per second
+}
+
+// SIPTOPermission (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1567.
+// Constants alias the go-asn1 spec exports per project rule "GSM-MAP
+// spec constants must come from go-asn1 library, not defined locally".
+type SIPTOPermission = gsm_map.SIPTOPermission
+
+const (
+	SIPTOAboveRanAllowed    = gsm_map.SIPTOPermissionSiptoAboveRanAllowed
+	SIPTOAboveRanNotAllowed = gsm_map.SIPTOPermissionSiptoAboveRanNotAllowed
+)
+
+// SIPTOLocalNetworkPermission (ENUMERATED) per TS 29.002
+// MAP-MS-DataTypes.asn:1572. Aliased from go-asn1.
+type SIPTOLocalNetworkPermission = gsm_map.SIPTOLocalNetworkPermission
+
+const (
+	SIPTOAtLocalNetworkAllowed    = gsm_map.SIPTOLocalNetworkPermissionSiptoAtLocalNetworkAllowed
+	SIPTOAtLocalNetworkNotAllowed = gsm_map.SIPTOLocalNetworkPermissionSiptoAtLocalNetworkNotAllowed
+)
+
+// LIPAPermission (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1577.
+// Aliased from go-asn1.
+type LIPAPermission = gsm_map.LIPAPermission
+
+const (
+	LIPAProhibited  = gsm_map.LIPAPermissionLipaProhibited
+	LIPAOnly        = gsm_map.LIPAPermissionLipaOnly
+	LIPAConditional = gsm_map.LIPAPermissionLipaConditional
+)
+
+// NIDDMechanism (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1362.
+// Default (when absent) is sGi-based-data-delivery (0) per spec.
+// Aliased from go-asn1.
+type NIDDMechanism = gsm_map.NIDDMechanism
+
+const (
+	NIDDSGiBasedDataDelivery  = gsm_map.NIDDMechanismSGiBasedDataDelivery
+	NIDDSCEFBasedDataDelivery = gsm_map.NIDDMechanismSCEFBasedDataDelivery
+)
+
+// PDPContext (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1522.
+// Mandatory fields: PdpContextId, PdpType, QosSubscribed, Apn.
+// VplmnAddressAllowed is an OPTIONAL ASN.1 NULL — true means present.
+// All other fields are optional pointers / slices; the zero-value
+// (nil pointer, nil slice, false bool) means the field is omitted from
+// the wire encoding.
+//
+// Field ordering follows the ASN.1 tag order from the spec
+// (mandatory base fields first, then extensions [0]..[14]).
+//
+// The Ext-QoS-Subscribed extension chain is hierarchical per
+// MAP-MS-DataTypes.asn:1534-1538: Ext2 requires Ext, Ext3 requires
+// Ext2, Ext4 requires Ext3.
+type PDPContext struct {
+	PdpContextId        int      // mandatory, ContextId 1..50
+	PdpType             HexBytes // [16] mandatory, OCTET STRING SIZE 2
+	PdpAddress          HexBytes // [17] optional, OCTET STRING SIZE 1..16 (nil = absent)
+	QosSubscribed       HexBytes // [18] mandatory, OCTET STRING SIZE 3
+	VplmnAddressAllowed bool     // [19] optional NULL — true when present
+	Apn                 HexBytes // [20] mandatory, OCTET STRING SIZE 2..63
+
+	ExtQoSSubscribed            HexBytes                     // [0] optional, SIZE 1..9
+	PdpChargingCharacteristics  HexBytes                     // [1] optional, SIZE 2
+	Ext2QoSSubscribed           HexBytes                     // [2] optional, SIZE 1..3 (requires ExtQoSSubscribed)
+	Ext3QoSSubscribed           HexBytes                     // [3] optional, SIZE 1..2 (requires Ext2QoSSubscribed)
+	Ext4QoSSubscribed           HexBytes                     // [4] optional, SIZE 1 (requires Ext3QoSSubscribed)
+	ApnOiReplacement            HexBytes                     // [5] optional, SIZE 9..100
+	ExtPdpType                  HexBytes                     // [6] optional, SIZE 2
+	ExtPdpAddress               HexBytes                     // [7] optional, SIZE 1..16
+	SiptoPermission             *SIPTOPermission             // [8] optional
+	LipaPermission              *LIPAPermission              // [9] optional
+	Ambr                        *AMBR                        // [10] optional
+	RestorationPriority         HexBytes                     // [11] optional, SIZE 1
+	SiptoLocalNetworkPermission *SIPTOLocalNetworkPermission // [12] optional
+	NIDDMechanism               *NIDDMechanism               // [13] optional
+	SCEFID                      HexBytes                     // [14] optional, FQDN SIZE 9..255
+}
+
+// GPRSDataList (SEQUENCE SIZE 1..50 OF PDP-Context) per TS 29.002
+// MAP-MS-DataTypes.asn:1517.
+type GPRSDataList []PDPContext
+
+// GPRSSubscriptionData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1585.
+type GPRSSubscriptionData struct {
+	CompleteDataListIncluded bool         // optional NULL — true when present
+	GprsDataList             GPRSDataList // [1] mandatory, 1..50 entries
+	ApnOiReplacement         HexBytes     // [3] optional, OCTET STRING SIZE 9..100
+}
+
+// LSAOnlyAccessIndicator (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1702.
+// Aliased from go-asn1.
+type LSAOnlyAccessIndicator = gsm_map.LSAOnlyAccessIndicator
+
+const (
+	LSAAccessOutsideAllowed    = gsm_map.LSAOnlyAccessIndicatorAccessOutsideLSAsAllowed
+	LSAAccessOutsideRestricted = gsm_map.LSAOnlyAccessIndicatorAccessOutsideLSAsRestricted
+)
+
+// LSAData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1711.
+type LSAData struct {
+	LsaIdentity            HexBytes // [0] mandatory, OCTET STRING SIZE 3
+	LsaAttributes          HexBytes // [1] mandatory, OCTET STRING SIZE 1
+	LsaActiveModeIndicator bool     // [2] optional NULL — true when present
+}
+
+// LSADataList (SEQUENCE SIZE 1..20 OF LSAData) per TS 29.002
+// MAP-MS-DataTypes.asn:1706.
+type LSADataList []LSAData
+
+// LSAInformation (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1718.
+type LSAInformation struct {
+	CompleteDataListIncluded bool                    // optional NULL — true when present
+	LsaOnlyAccessIndicator   *LSAOnlyAccessIndicator // [1] optional
+	LsaDataList              LSADataList             // [2] optional, 1..20 entries when present
+}
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -1994,4 +2119,33 @@ var (
 
 	ErrResetIdListSize     = errors.New("resetIdList: must contain 1..50 entries when present")
 	ErrResetIdInvalidSize  = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")
+
+	ErrPDPContextIdOutOfRange       = errors.New("pdpContext: PdpContextId must be 1..50 (maxNumOfPDP-Contexts) per TS 29.002")
+	ErrPDPTypeInvalidSize           = errors.New("pdpContext: PdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1657")
+	ErrQoSSubscribedInvalidSize     = errors.New("pdpContext: QosSubscribed must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1673 (mandatory tag [18])")
+	ErrExtQoSSubscribedInvalidSize  = errors.New("pdpContext: ExtQoSSubscribed must be 1..9 octets per TS 29.002 MAP-MS-DataTypes.asn:1677")
+	ErrExt2QoSSubscribedInvalidSize = errors.New("pdpContext: Ext2QoSSubscribed must be 1..3 octets per TS 29.002 MAP-MS-DataTypes.asn:1685")
+	ErrExt3QoSSubscribedInvalidSize = errors.New("pdpContext: Ext3QoSSubscribed must be 1..2 octets per TS 29.002 MAP-MS-DataTypes.asn:1690")
+	ErrExt4QoSSubscribedInvalidSize = errors.New("pdpContext: Ext4QoSSubscribed must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1693")
+	ErrExtQoSHierarchyViolated      = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per TS 29.002 MAP-MS-DataTypes.asn:1534-1538 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
+	ErrExtPDPAddressWithoutPDPAddress = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per TS 29.002 MAP-MS-DataTypes.asn:1549")
+	ErrExtPDPTypeInvalidSize        = errors.New("pdpContext: ExtPdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1661")
+	ErrPDPAddressInvalidSize      = errors.New("pdpContext: PdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665")
+	ErrExtPDPAddressInvalidSize   = errors.New("pdpContext: ExtPdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665 (PDP-Address)")
+	ErrPDPChargingCharsInvalidSize = errors.New("pdpContext: PdpChargingCharacteristics must be exactly 2 octets per TS 29.002")
+	ErrAPNOIReplacementInvalidSize = errors.New("apnOIReplacement: must be 9..100 octets per TS 29.002 MAP-MS-DataTypes.asn:1303")
+	ErrFQDNInvalidSize            = errors.New("fqdn: must be 9..255 octets per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrRestorationPriorityInvalidSize = errors.New("pdpContext: RestorationPriority must be exactly 1 octet per TS 29.002")
+	ErrGPRSDataListSize           = errors.New("gprsDataList: must contain 1..50 entries (maxNumOfPDP-Contexts) per TS 29.002")
+	ErrGPRSSubscriptionDataMissingList = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
+	ErrAMBRBandwidthOutOfRange    = errors.New("ambr: bandwidth fields must be non-negative")
+	ErrSIPTOPermissionInvalid     = errors.New("pdpContext: SiptoPermission must be siptoAboveRanAllowed(0) or siptoAboveRanNotAllowed(1)")
+	ErrSIPTOLocalNetworkPermissionInvalid = errors.New("pdpContext: SiptoLocalNetworkPermission must be siptoAtLocalNetworkAllowed(0) or siptoAtLocalNetworkNotAllowed(1)")
+	ErrLIPAPermissionInvalid      = errors.New("pdpContext: LipaPermission must be lipaProhibited(0), lipaOnly(1), or lipaConditional(2)")
+	ErrNIDDMechanismInvalid       = errors.New("pdpContext: NIDDMechanism must be sGi-based-data-delivery(0) or sCEF-based-data-delivery(1)")
+
+	ErrLSAIdentityInvalidSize       = errors.New("lsaData: LsaIdentity must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1728")
+	ErrLSAAttributesInvalidSize     = errors.New("lsaData: LsaAttributes must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1731")
+	ErrLSADataListSize              = errors.New("lsaDataList: must contain 1..20 entries (maxNumOfLSAs) per TS 29.002")
+	ErrLSAOnlyAccessIndicatorInvalid = errors.New("lsaInformation: LsaOnlyAccessIndicator must be accessOutsideLSAsAllowed(0) or accessOutsideLSAsRestricted(1)")
 )
