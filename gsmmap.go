@@ -1853,38 +1853,42 @@ type AMBR struct {
 }
 
 // SIPTOPermission (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1567.
-type SIPTOPermission int64
+// Constants alias the go-asn1 spec exports per project rule "GSM-MAP
+// spec constants must come from go-asn1 library, not defined locally".
+type SIPTOPermission = gsm_map.SIPTOPermission
 
 const (
-	SIPTOAboveRanAllowed    SIPTOPermission = 0
-	SIPTOAboveRanNotAllowed SIPTOPermission = 1
+	SIPTOAboveRanAllowed    = gsm_map.SIPTOPermissionSiptoAboveRanAllowed
+	SIPTOAboveRanNotAllowed = gsm_map.SIPTOPermissionSiptoAboveRanNotAllowed
 )
 
 // SIPTOLocalNetworkPermission (ENUMERATED) per TS 29.002
-// MAP-MS-DataTypes.asn:1572.
-type SIPTOLocalNetworkPermission int64
+// MAP-MS-DataTypes.asn:1572. Aliased from go-asn1.
+type SIPTOLocalNetworkPermission = gsm_map.SIPTOLocalNetworkPermission
 
 const (
-	SIPTOAtLocalNetworkAllowed    SIPTOLocalNetworkPermission = 0
-	SIPTOAtLocalNetworkNotAllowed SIPTOLocalNetworkPermission = 1
+	SIPTOAtLocalNetworkAllowed    = gsm_map.SIPTOLocalNetworkPermissionSiptoAtLocalNetworkAllowed
+	SIPTOAtLocalNetworkNotAllowed = gsm_map.SIPTOLocalNetworkPermissionSiptoAtLocalNetworkNotAllowed
 )
 
 // LIPAPermission (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1577.
-type LIPAPermission int64
+// Aliased from go-asn1.
+type LIPAPermission = gsm_map.LIPAPermission
 
 const (
-	LIPAProhibited   LIPAPermission = 0
-	LIPAOnly         LIPAPermission = 1
-	LIPAConditional  LIPAPermission = 2
+	LIPAProhibited  = gsm_map.LIPAPermissionLipaProhibited
+	LIPAOnly        = gsm_map.LIPAPermissionLipaOnly
+	LIPAConditional = gsm_map.LIPAPermissionLipaConditional
 )
 
 // NIDDMechanism (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1362.
 // Default (when absent) is sGi-based-data-delivery (0) per spec.
-type NIDDMechanism int64
+// Aliased from go-asn1.
+type NIDDMechanism = gsm_map.NIDDMechanism
 
 const (
-	NIDDSGiBasedDataDelivery  NIDDMechanism = 0
-	NIDDSCEFBasedDataDelivery NIDDMechanism = 1
+	NIDDSGiBasedDataDelivery  = gsm_map.NIDDMechanismSGiBasedDataDelivery
+	NIDDSCEFBasedDataDelivery = gsm_map.NIDDMechanismSCEFBasedDataDelivery
 )
 
 // PDPContext (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1522.
@@ -1927,11 +1931,12 @@ type GPRSSubscriptionData struct {
 }
 
 // LSAOnlyAccessIndicator (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1702.
-type LSAOnlyAccessIndicator int64
+// Aliased from go-asn1.
+type LSAOnlyAccessIndicator = gsm_map.LSAOnlyAccessIndicator
 
 const (
-	LSAAccessOutsideAllowed    LSAOnlyAccessIndicator = 0
-	LSAAccessOutsideRestricted LSAOnlyAccessIndicator = 1
+	LSAAccessOutsideAllowed    = gsm_map.LSAOnlyAccessIndicatorAccessOutsideLSAsAllowed
+	LSAAccessOutsideRestricted = gsm_map.LSAOnlyAccessIndicatorAccessOutsideLSAsRestricted
 )
 
 // LSAData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1711.
@@ -2105,9 +2110,14 @@ var (
 	ErrResetIdListSize     = errors.New("resetIdList: must contain 1..50 entries when present")
 	ErrResetIdInvalidSize  = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")
 
-	ErrPDPContextIdOutOfRange     = errors.New("pdpContext: PdpContextId must be 1..50 (maxNumOfPDP-Contexts) per TS 29.002")
-	ErrPDPTypeInvalidSize         = errors.New("pdpContext: PdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1657")
-	ErrExtPDPTypeInvalidSize      = errors.New("pdpContext: ExtPdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1661")
+	ErrPDPContextIdOutOfRange       = errors.New("pdpContext: PdpContextId must be 1..50 (maxNumOfPDP-Contexts) per TS 29.002")
+	ErrPDPTypeInvalidSize           = errors.New("pdpContext: PdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1657")
+	ErrQoSSubscribedInvalidSize     = errors.New("pdpContext: QosSubscribed must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1673 (mandatory tag [18])")
+	ErrExtQoSSubscribedInvalidSize  = errors.New("pdpContext: ExtQoSSubscribed must be 1..9 octets per TS 29.002 MAP-MS-DataTypes.asn:1677")
+	ErrExt2QoSSubscribedInvalidSize = errors.New("pdpContext: Ext2QoSSubscribed must be 1..3 octets per TS 29.002 MAP-MS-DataTypes.asn:1685")
+	ErrExt3QoSSubscribedInvalidSize = errors.New("pdpContext: Ext3QoSSubscribed must be 1..2 octets per TS 29.002 MAP-MS-DataTypes.asn:1690")
+	ErrExt4QoSSubscribedInvalidSize = errors.New("pdpContext: Ext4QoSSubscribed must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1693")
+	ErrExtPDPTypeInvalidSize        = errors.New("pdpContext: ExtPdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1661")
 	ErrPDPAddressInvalidSize      = errors.New("pdpContext: PdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665")
 	ErrExtPDPAddressInvalidSize   = errors.New("pdpContext: ExtPdpAddress must be 1..16 octets per TS 29.002")
 	ErrPDPChargingCharsInvalidSize = errors.New("pdpContext: PdpChargingCharacteristics must be exactly 2 octets per TS 29.002")

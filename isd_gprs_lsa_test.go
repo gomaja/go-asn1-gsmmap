@@ -116,7 +116,7 @@ func TestPDPContext_MinimalRoundTrip(t *testing.T) {
 	in := PDPContext{
 		PdpContextId:  1,
 		PdpType:       HexBytes{0xf1, 0x21},
-		QosSubscribed: HexBytes{0x09},
+		QosSubscribed: HexBytes{0x09, 0x00, 0x00},
 		Apn:           HexBytes{'a', 'p'},
 	}
 	w, err := convertPDPContextToWire(&in)
@@ -150,6 +150,17 @@ func TestPDPContext_FieldSizeViolations(t *testing.T) {
 		want  error
 	}{
 		{"PdpType wrong size", func(p *PDPContext) { p.PdpType = HexBytes{0x01} }, ErrPDPTypeInvalidSize},
+		{"QosSubscribed empty", func(p *PDPContext) { p.QosSubscribed = HexBytes{} }, ErrQoSSubscribedInvalidSize},
+		{"QosSubscribed too short", func(p *PDPContext) { p.QosSubscribed = HexBytes{0x01, 0x02} }, ErrQoSSubscribedInvalidSize},
+		{"QosSubscribed too long", func(p *PDPContext) { p.QosSubscribed = HexBytes{0x01, 0x02, 0x03, 0x04} }, ErrQoSSubscribedInvalidSize},
+		{"ExtQoSSubscribed empty", func(p *PDPContext) { p.ExtQoSSubscribed = HexBytes{} }, ErrExtQoSSubscribedInvalidSize},
+		{"ExtQoSSubscribed too long", func(p *PDPContext) { p.ExtQoSSubscribed = make(HexBytes, 10) }, ErrExtQoSSubscribedInvalidSize},
+		{"Ext2QoSSubscribed empty", func(p *PDPContext) { p.Ext2QoSSubscribed = HexBytes{} }, ErrExt2QoSSubscribedInvalidSize},
+		{"Ext2QoSSubscribed too long", func(p *PDPContext) { p.Ext2QoSSubscribed = HexBytes{0x01, 0x02, 0x03, 0x04} }, ErrExt2QoSSubscribedInvalidSize},
+		{"Ext3QoSSubscribed empty", func(p *PDPContext) { p.Ext3QoSSubscribed = HexBytes{} }, ErrExt3QoSSubscribedInvalidSize},
+		{"Ext3QoSSubscribed too long", func(p *PDPContext) { p.Ext3QoSSubscribed = HexBytes{0x01, 0x02, 0x03} }, ErrExt3QoSSubscribedInvalidSize},
+		{"Ext4QoSSubscribed empty", func(p *PDPContext) { p.Ext4QoSSubscribed = HexBytes{} }, ErrExt4QoSSubscribedInvalidSize},
+		{"Ext4QoSSubscribed too long", func(p *PDPContext) { p.Ext4QoSSubscribed = HexBytes{0x01, 0x02} }, ErrExt4QoSSubscribedInvalidSize},
 		{"PdpAddress empty", func(p *PDPContext) { p.PdpAddress = HexBytes{} }, ErrPDPAddressInvalidSize},
 		{"PdpAddress too long", func(p *PDPContext) { p.PdpAddress = make(HexBytes, 17) }, ErrPDPAddressInvalidSize},
 		{"ExtPdpType wrong", func(p *PDPContext) { p.ExtPdpType = HexBytes{0x01} }, ErrExtPDPTypeInvalidSize},

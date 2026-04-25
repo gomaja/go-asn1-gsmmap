@@ -121,3 +121,25 @@ func validateAPN(b HexBytes, field string) error {
 	}
 	return nil
 }
+
+// validateAPNOIReplacement checks the APN-OI-Replacement OCTET STRING
+// (SIZE 9..100) constraint per TS 29.002 MAP-MS-DataTypes.asn:1303.
+// Reused by GPRSSubscriptionData and PDPContext (PR E1b1) and
+// APN-Configuration (PR E1b2).
+func validateAPNOIReplacement(b HexBytes, field string) error {
+	if len(b) < 9 || len(b) > 100 {
+		return fmt.Errorf("%s: %w (got %d)", field, ErrAPNOIReplacementInvalidSize, len(b))
+	}
+	return nil
+}
+
+// validateFQDN checks the FQDN OCTET STRING (SIZE 9..255) constraint per
+// TS 29.002 MAP-MS-DataTypes.asn:1434. Reused by PDPContext.SCEFID
+// (PR E1b1), APN-Configuration (PR E1b2), and LCSClientExternalID
+// (PR E1b3).
+func validateFQDN(b HexBytes, field string) error {
+	if len(b) < 9 || len(b) > 255 {
+		return fmt.Errorf("%s: %w (got %d)", field, ErrFQDNInvalidSize, len(b))
+	}
+	return nil
+}

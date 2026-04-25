@@ -7,24 +7,6 @@ import (
 )
 
 // ============================================================================
-// Shared validators
-// ============================================================================
-
-func validateAPNOIReplacement(b HexBytes, field string) error {
-	if len(b) < 9 || len(b) > 100 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrAPNOIReplacementInvalidSize, len(b))
-	}
-	return nil
-}
-
-func validateFQDN(b HexBytes, field string) error {
-	if len(b) < 9 || len(b) > 255 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrFQDNInvalidSize, len(b))
-	}
-	return nil
-}
-
-// ============================================================================
 // AMBR — TS 29.002 MAP-MS-DataTypes.asn:1386
 // ============================================================================
 
@@ -98,11 +80,23 @@ func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
 	if len(p.PdpType) != 2 {
 		return nil, fmt.Errorf("%w (got %d)", ErrPDPTypeInvalidSize, len(p.PdpType))
 	}
-	if len(p.QosSubscribed) == 0 {
-		return nil, fmt.Errorf("pdpContext: QosSubscribed is mandatory")
+	if len(p.QosSubscribed) != 3 {
+		return nil, fmt.Errorf("%w (got %d)", ErrQoSSubscribedInvalidSize, len(p.QosSubscribed))
 	}
 	if err := validateAPN(p.Apn, "PDPContext.Apn"); err != nil {
 		return nil, err
+	}
+	if p.ExtQoSSubscribed != nil && (len(p.ExtQoSSubscribed) < 1 || len(p.ExtQoSSubscribed) > 9) {
+		return nil, fmt.Errorf("%w (got %d)", ErrExtQoSSubscribedInvalidSize, len(p.ExtQoSSubscribed))
+	}
+	if p.Ext2QoSSubscribed != nil && (len(p.Ext2QoSSubscribed) < 1 || len(p.Ext2QoSSubscribed) > 3) {
+		return nil, fmt.Errorf("%w (got %d)", ErrExt2QoSSubscribedInvalidSize, len(p.Ext2QoSSubscribed))
+	}
+	if p.Ext3QoSSubscribed != nil && (len(p.Ext3QoSSubscribed) < 1 || len(p.Ext3QoSSubscribed) > 2) {
+		return nil, fmt.Errorf("%w (got %d)", ErrExt3QoSSubscribedInvalidSize, len(p.Ext3QoSSubscribed))
+	}
+	if p.Ext4QoSSubscribed != nil && len(p.Ext4QoSSubscribed) != 1 {
+		return nil, fmt.Errorf("%w (got %d)", ErrExt4QoSSubscribedInvalidSize, len(p.Ext4QoSSubscribed))
 	}
 	if p.PdpAddress != nil && (len(p.PdpAddress) < 1 || len(p.PdpAddress) > 16) {
 		return nil, fmt.Errorf("%w (got %d)", ErrPDPAddressInvalidSize, len(p.PdpAddress))
@@ -240,11 +234,23 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 	if len(w.PdpType) != 2 {
 		return nil, fmt.Errorf("%w (got %d)", ErrPDPTypeInvalidSize, len(w.PdpType))
 	}
-	if len(w.QosSubscribed) == 0 {
-		return nil, fmt.Errorf("pdpContext: QosSubscribed is mandatory")
+	if len(w.QosSubscribed) != 3 {
+		return nil, fmt.Errorf("%w (got %d)", ErrQoSSubscribedInvalidSize, len(w.QosSubscribed))
 	}
 	if err := validateAPN(HexBytes(w.Apn), "PDPContext.Apn"); err != nil {
 		return nil, err
+	}
+	if w.ExtQoSSubscribed != nil && (len(*w.ExtQoSSubscribed) < 1 || len(*w.ExtQoSSubscribed) > 9) {
+		return nil, fmt.Errorf("%w (got %d)", ErrExtQoSSubscribedInvalidSize, len(*w.ExtQoSSubscribed))
+	}
+	if w.Ext2QoSSubscribed != nil && (len(*w.Ext2QoSSubscribed) < 1 || len(*w.Ext2QoSSubscribed) > 3) {
+		return nil, fmt.Errorf("%w (got %d)", ErrExt2QoSSubscribedInvalidSize, len(*w.Ext2QoSSubscribed))
+	}
+	if w.Ext3QoSSubscribed != nil && (len(*w.Ext3QoSSubscribed) < 1 || len(*w.Ext3QoSSubscribed) > 2) {
+		return nil, fmt.Errorf("%w (got %d)", ErrExt3QoSSubscribedInvalidSize, len(*w.Ext3QoSSubscribed))
+	}
+	if w.Ext4QoSSubscribed != nil && len(*w.Ext4QoSSubscribed) != 1 {
+		return nil, fmt.Errorf("%w (got %d)", ErrExt4QoSSubscribedInvalidSize, len(*w.Ext4QoSSubscribed))
 	}
 	out := &PDPContext{
 		PdpContextId:        id,
