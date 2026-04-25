@@ -1697,8 +1697,6 @@ var (
 	ErrCamelMissingDestinationNumber         = errors.New("camel: DestinationNumberList entry must have non-empty Digits")
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
 	ErrCamelInvalidCriteriaListSize          = errors.New("camel: TDP-CriteriaList must contain 1..10 entries when present")
-	ErrCamelMissingGsmSCFAddressShort        = errors.New("camel: GsmSCFAddress is mandatory and must be non-empty")
-	ErrCamelInvalidServiceKeyRange           = errors.New("camel: ServiceKey must be 0..2147483647")
 	ErrCamelInvalidSSEventListSize           = errors.New("camel: SsEventList must contain 1..10 entries")
 	ErrCamelInvalidMobilityTriggersSize      = errors.New("camel: MobilityTriggers must contain 1..10 single-octet entries")
 	ErrCamelInvalidMobilityTriggerOctet      = errors.New("camel: each MobilityTriggers entry must be exactly 1 octet")

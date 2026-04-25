@@ -81,8 +81,8 @@ func TestSSCSIValidation(t *testing.T) {
 	})
 	t.Run("missingGsmSCF", func(t *testing.T) {
 		_, err := convertSSCSIToWire(&SSCSI{SsEventList: []SsCode{0x31}})
-		if !errors.Is(err, ErrCamelMissingGsmSCFAddressShort) {
-			t.Errorf("want ErrCamelMissingGsmSCFAddressShort, got %v", err)
+		if !errors.Is(err, ErrCamelMissingGsmSCFAddress) {
+			t.Errorf("want ErrCamelMissingGsmSCFAddress, got %v", err)
 		}
 	})
 }
@@ -130,14 +130,14 @@ func TestMCSIValidation(t *testing.T) {
 			ServiceKey:       -1,
 			GsmSCFAddress:    "1",
 		})
-		if !errors.Is(err, ErrCamelInvalidServiceKeyRange) {
-			t.Errorf("want ErrCamelInvalidServiceKeyRange, got %v", err)
+		if !errors.Is(err, ErrCamelInvalidServiceKey) {
+			t.Errorf("want ErrCamelInvalidServiceKey, got %v", err)
 		}
 	})
 	t.Run("missingGsmSCF", func(t *testing.T) {
 		_, err := convertMCSIToWire(&MCSI{MobilityTriggers: []byte{0x00}})
-		if !errors.Is(err, ErrCamelMissingGsmSCFAddressShort) {
-			t.Errorf("want ErrCamelMissingGsmSCFAddressShort, got %v", err)
+		if !errors.Is(err, ErrCamelMissingGsmSCFAddress) {
+			t.Errorf("want ErrCamelMissingGsmSCFAddress, got %v", err)
 		}
 	})
 }
@@ -181,7 +181,27 @@ func TestSMSCSIRoundTrip(t *testing.T) {
 func TestSMSCSIValidation(t *testing.T) {
 	cch := 2
 	t.Run("missingTDPList", func(t *testing.T) {
+		// Empty TDP list: per spec §8.8.1 the field is required, so the
+		// "missing" sentinel applies (not the size sentinel).
 		_, err := convertSMSCSIToWire(&SMSCSI{CamelCapabilityHandling: &cch})
+		if !errors.Is(err, ErrCamelSMSCSIMissingTDPData) {
+			t.Errorf("want ErrCamelSMSCSIMissingTDPData, got %v", err)
+		}
+	})
+	t.Run("oversizeTDPList", func(t *testing.T) {
+		// 11 entries: above SIZE(1..10), so the size sentinel applies.
+		big := make([]SMSCAMELTDPData, 11)
+		for i := range big {
+			big[i] = SMSCAMELTDPData{
+				SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsCollectedInfo,
+				GsmSCFAddress:            "1",
+				DefaultSMSHandling:       DefaultSMSHandlingContinueTransaction,
+			}
+		}
+		_, err := convertSMSCSIToWire(&SMSCSI{
+			SmsCAMELTDPDataList:     big,
+			CamelCapabilityHandling: &cch,
+		})
 		if !errors.Is(err, ErrCamelInvalidSMSTDPDataListSize) {
 			t.Errorf("want ErrCamelInvalidSMSTDPDataListSize, got %v", err)
 		}
@@ -432,6 +452,42 @@ func TestVlrCamelSubscriptionInfoCriteriaListBoundaries(t *testing.T) {
 		_, err := convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{MtSmsCAMELTDPCriteriaList: big})
 		if !errors.Is(err, ErrCamelInvalidMTSmsCAMELCriteriaSize) {
 			t.Errorf("want ErrCamelInvalidMTSmsCAMELCriteriaSize, got %v", err)
+		}
+	})
+
+	// PR #29 pattern: a non-nil but empty optional list violates SIZE(1..N)
+	// and must be rejected at both encode and decode.
+	t.Run("OBcsmCriteriaListEmptyRejected", func(t *testing.T) {
+		_, err := convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{
+			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{},
+		})
+		if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
+			t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
+		}
+	})
+	t.Run("TBcsmCriteriaListEmptyRejected", func(t *testing.T) {
+		_, err := convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{
+			TBcsmCamelTDPCriteriaList: []TBcsmCamelTDPCriteria{},
+		})
+		if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
+			t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
+		}
+	})
+	t.Run("MtSmsCAMELTDPCriteriaListEmptyRejected", func(t *testing.T) {
+		_, err := convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{
+			MtSmsCAMELTDPCriteriaList: []MTSmsCAMELTDPCriteria{},
+		})
+		if !errors.Is(err, ErrCamelInvalidMTSmsCAMELCriteriaSize) {
+			t.Errorf("want ErrCamelInvalidMTSmsCAMELCriteriaSize, got %v", err)
+		}
+	})
+	t.Run("TpduTypeCriterionEmptyRejected", func(t *testing.T) {
+		_, err := convertMTSmsCAMELTDPCriteriaToWire(&MTSmsCAMELTDPCriteria{
+			SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest,
+			TpduTypeCriterion:        []MTSMSTPDUType{}, // non-nil, empty
+		})
+		if !errors.Is(err, ErrCamelInvalidTPDUTypeCriterionSize) {
+			t.Errorf("want ErrCamelInvalidTPDUTypeCriterionSize, got %v", err)
 		}
 	})
 }
