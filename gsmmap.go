@@ -1967,6 +1967,142 @@ type LSAInformation struct {
 	LsaDataList              LSADataList             // [2] optional, 1..20 entries when present
 }
 
+// PDNConnectionContinuity (ENUMERATED) per TS 29.002
+// MAP-MS-DataTypes.asn:1356. Aliased from go-asn1.
+type PDNConnectionContinuity = gsm_map.PDNConnectionContinuity
+
+const (
+	PDNConnectionMaintain                            = gsm_map.PDNConnectionContinuityMaintainPDNConnection
+	PDNConnectionDisconnectWithReactivationRequest   = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithReactivationRequest
+	PDNConnectionDisconnectWithoutReactivationRequest = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithoutReactivationRequest
+)
+
+// PDNGWAllocationType (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1437.
+// Aliased from go-asn1.
+type PDNGWAllocationType = gsm_map.PDNGWAllocationType
+
+const (
+	PDNGWAllocationStatic  = gsm_map.PDNGWAllocationTypeStatic
+	PDNGWAllocationDynamic = gsm_map.PDNGWAllocationTypeDynamic
+)
+
+// WLANOffloadabilityIndication (ENUMERATED) per TS 29.002.
+// Aliased from go-asn1.
+type WLANOffloadabilityIndication = gsm_map.WLANOffloadabilityIndication
+
+const (
+	WLANOffloadabilityNotAllowed = gsm_map.WLANOffloadabilityIndicationNotAllowed
+	WLANOffloadabilityAllowed    = gsm_map.WLANOffloadabilityIndicationAllowed
+)
+
+// AllocationRetentionPriority (SEQUENCE) per TS 29.002
+// MAP-MS-DataTypes.asn:1420. PriorityLevel is an opaque INTEGER per spec
+// (3GPP TS 29.212 defines actual semantics). Pre-emption flags are
+// optional BOOLEANs.
+type AllocationRetentionPriority struct {
+	PriorityLevel           int64 // [0] mandatory
+	PreEmptionCapability    *bool // [1] optional
+	PreEmptionVulnerability *bool // [2] optional
+}
+
+// EPSQoSSubscribed (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1380.
+// QoS-Class-Identifier is INTEGER (1..9) per asn:1415.
+type EPSQoSSubscribed struct {
+	QosClassIdentifier          int                         // [0] mandatory, 1..9
+	AllocationRetentionPriority AllocationRetentionPriority // [1] mandatory
+}
+
+// PDNGWIdentity (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2861 in
+// the go-asn1 library. All fields optional.
+type PDNGWIdentity struct {
+	PdnGwIpv4Address HexBytes // [0] optional, PDP-Address SIZE 1..16
+	PdnGwIpv6Address HexBytes // [1] optional, PDP-Address SIZE 1..16
+	PdnGwName        HexBytes // [2] optional, FQDN SIZE 9..255
+}
+
+// SpecificAPNInfo (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1403.
+type SpecificAPNInfo struct {
+	Apn           HexBytes      // [0] mandatory, APN SIZE 2..63
+	PdnGwIdentity PDNGWIdentity // [1] mandatory
+}
+
+// SpecificAPNInfoList (SEQUENCE SIZE 1..50 OF SpecificAPNInfo) per
+// TS 29.002 MAP-MS-DataTypes.asn:1398.
+type SpecificAPNInfoList []SpecificAPNInfo
+
+// WLANOffloadability (SEQUENCE) per TS 29.002. Both fields optional.
+type WLANOffloadability struct {
+	WlanOffloadabilityEUTRAN *WLANOffloadabilityIndication // [0] optional
+	WlanOffloadabilityUTRAN  *WLANOffloadabilityIndication // [1] optional
+}
+
+// APNConfiguration (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1327.
+// Mandatory fields: ContextId, PdnType, Apn, EpsQosSubscribed.
+// VplmnAddressAllowed and NonIPPDNTypeIndicator are OPTIONAL ASN.1 NULL
+// fields modeled as bool (true means present).
+//
+// Field ordering follows the ASN.1 tag order [0]..[22].
+type APNConfiguration struct {
+	ContextId                int              // [0] mandatory, ContextId 1..50
+	PdnType                  HexBytes         // [1] mandatory, OCTET STRING SIZE 1
+	ServedPartyIPIPv4Address HexBytes         // [2] optional, PDP-Address SIZE 1..16
+	Apn                      HexBytes         // [3] mandatory, APN SIZE 2..63
+	EpsQosSubscribed         EPSQoSSubscribed // [4] mandatory
+	PdnGwIdentity            *PDNGWIdentity   // [5] optional
+	PdnGwAllocationType      *PDNGWAllocationType // [6] optional
+	VplmnAddressAllowed      bool             // [7] optional NULL — true when present
+	ChargingCharacteristics  HexBytes         // [8] optional, OCTET STRING SIZE 2
+	Ambr                     *AMBR            // [9] optional
+	SpecificAPNInfoList      SpecificAPNInfoList // [10] optional, 1..50 entries when present
+	ServedPartyIPIPv6Address HexBytes                     // [12] optional, PDP-Address SIZE 1..16
+	ApnOiReplacement         HexBytes                     // [13] optional, SIZE 9..100
+	SiptoPermission          *SIPTOPermission             // [14] optional
+	LipaPermission           *LIPAPermission              // [15] optional
+	RestorationPriority      HexBytes                     // [16] optional, SIZE 1
+	SiptoLocalNetworkPermission *SIPTOLocalNetworkPermission // [17] optional
+	WlanOffloadability       *WLANOffloadability          // [18] optional
+	NonIPPDNTypeIndicator    bool                         // [19] optional NULL — true when present
+	NIDDMechanism            *NIDDMechanism               // [20] optional
+	SCEFID                   HexBytes                     // [21] optional, FQDN SIZE 9..255
+	PdnConnectionContinuity  *PDNConnectionContinuity     // [22] optional
+}
+
+// EPSDataList (SEQUENCE SIZE 1..50 OF APN-Configuration) per TS 29.002
+// MAP-MS-DataTypes.asn:1320.
+type EPSDataList []APNConfiguration
+
+// APNConfigurationProfile (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1308.
+type APNConfigurationProfile struct {
+	DefaultContext           int         // mandatory, ContextId 1..50
+	CompleteDataListIncluded bool        // optional NULL — true when present
+	EpsDataList              EPSDataList // [1] mandatory, 1..50 entries
+	AdditionalDefaultContext *int        // [3] optional, ContextId 1..50
+}
+
+// EPSSubscriptionData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1283.
+// Only ApnConfigurationProfile carries the substantive payload — all
+// other fields are optional auxiliary data. The MpsCSPriority,
+// MpsEPSPriority, and SubscribedVsrvcc fields are OPTIONAL ASN.1 NULL
+// flags modeled as bool.
+type EPSSubscriptionData struct {
+	ApnOiReplacement        HexBytes                 // [0] optional, SIZE 9..100
+	RfspId                  *int                     // [2] optional, INTEGER 1..256
+	Ambr                    *AMBR                    // [3] optional
+	ApnConfigurationProfile *APNConfigurationProfile // [4] optional
+	StnSr                   string                   // [6] optional, ISDN-AddressString digits (empty = absent)
+	StnSrNature             uint8                    // ISDN-AddressString nature-of-address octet
+	StnSrPlan               uint8                    // ISDN-AddressString numbering-plan octet
+	MpsCSPriority           bool                     // [7] optional NULL — true when present
+	MpsEPSPriority          bool                     // [8] optional NULL — true when present
+	SubscribedVsrvcc        bool                     // [9] optional NULL — true when present
+}
+
+// MaxNumOfAPNConfigurations / MaxNumOfSpecificAPNInfos are aliases of
+// the go-asn1 spec exports — see gsm_map.MaxNumOfAPNConfigurations and
+// gsm_map.MaxNumOfSpecificAPNInfos. Use the upstream constants in
+// converters; these aliases exist purely for godoc cross-references in
+// the public types above.
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -2148,4 +2284,15 @@ var (
 	ErrLSAAttributesInvalidSize     = errors.New("lsaData: LsaAttributes must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1731")
 	ErrLSADataListSize              = errors.New("lsaDataList: must contain 1..20 entries (maxNumOfLSAs) per TS 29.002")
 	ErrLSAOnlyAccessIndicatorInvalid = errors.New("lsaInformation: LsaOnlyAccessIndicator must be accessOutsideLSAsAllowed(0) or accessOutsideLSAsRestricted(1)")
+
+	ErrPDNTypeInvalidSize           = errors.New("apnConfiguration: PdnType must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1369")
+	ErrQoSClassIdentifierOutOfRange = errors.New("epsQoSSubscribed: QosClassIdentifier must be 1..9 per TS 29.002 MAP-MS-DataTypes.asn:1415")
+	ErrRFSPIDOutOfRange             = errors.New("epsSubscriptionData: RfspId must be 1..256 per TS 29.002 MAP-MS-DataTypes.asn:1306")
+	ErrPDNGWAllocationTypeInvalid   = errors.New("apnConfiguration: PdnGwAllocationType must be static(0) or dynamic(1) per TS 29.002 MAP-MS-DataTypes.asn:1437")
+	ErrPDNConnectionContinuityInvalid = errors.New("apnConfiguration: PdnConnectionContinuity must be 0..2 per TS 29.002 MAP-MS-DataTypes.asn:1356")
+	ErrWLANOffloadabilityIndicationInvalid = errors.New("wlanOffloadability: WLAN-Offloadability-Indication must be notAllowed(0) or allowed(1)")
+	ErrSpecificAPNInfoListSize      = errors.New("specificAPNInfoList: must contain 1..50 entries (maxNumOfSpecificAPNInfos) per TS 29.002")
+	ErrEPSDataListSize              = errors.New("epsDataList: must contain 1..50 entries (maxNumOfAPN-Configurations) per TS 29.002")
+	ErrEPSSubscriptionMissingProfile = errors.New("epsSubscriptionData: ApnConfigurationProfile carries the only payload and is the canonical mandatory field for round-trip; treat absence as a decoder hint, not silent zero")
+	ErrAPNConfigurationProfileMissingList = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")
 )
