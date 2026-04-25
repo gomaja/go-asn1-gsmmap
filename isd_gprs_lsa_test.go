@@ -183,6 +183,27 @@ func TestPDPContext_FieldSizeViolations(t *testing.T) {
 	}
 }
 
+func TestPDPContext_ExtQoSHierarchy(t *testing.T) {
+	cases := []struct {
+		name string
+		mut  func(*PDPContext)
+	}{
+		{"Ext2 without Ext", func(p *PDPContext) { p.ExtQoSSubscribed = nil }},
+		{"Ext3 without Ext2", func(p *PDPContext) { p.Ext2QoSSubscribed = nil }},
+		{"Ext4 without Ext3", func(p *PDPContext) { p.Ext3QoSSubscribed = nil }},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			in := makePDPContext()
+			tc.mut(&in)
+			_, err := convertPDPContextToWire(&in)
+			if !errors.Is(err, ErrExtQoSHierarchyViolated) {
+				t.Fatalf("want ErrExtQoSHierarchyViolated, got %v", err)
+			}
+		})
+	}
+}
+
 func TestPDPContext_EnumOutOfRange(t *testing.T) {
 	cases := []struct {
 		name string

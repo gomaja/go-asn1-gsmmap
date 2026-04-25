@@ -1893,27 +1893,37 @@ const (
 
 // PDPContext (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1522.
 // Mandatory fields: PdpContextId, PdpType, QosSubscribed, Apn.
-// All other fields are optional and may be set to nil.
+// VplmnAddressAllowed is an OPTIONAL ASN.1 NULL — true means present.
+// All other fields are optional pointers / slices; the zero-value
+// (nil pointer, nil slice, false bool) means the field is omitted from
+// the wire encoding.
+//
+// Field ordering follows the ASN.1 tag order from the spec
+// (mandatory base fields first, then extensions [0]..[14]).
+//
+// The Ext-QoS-Subscribed extension chain is hierarchical per
+// MAP-MS-DataTypes.asn:1534-1538: Ext2 requires Ext, Ext3 requires
+// Ext2, Ext4 requires Ext3.
 type PDPContext struct {
-	PdpContextId                int      // mandatory, ContextId 1..50
-	PdpType                     HexBytes // [16] mandatory, OCTET STRING SIZE 2
-	PdpAddress                  HexBytes // [17] optional, OCTET STRING SIZE 1..16 (nil = absent)
-	QosSubscribed               HexBytes // [18] mandatory, opaque OCTET STRING
-	VplmnAddressAllowed         bool     // [19] optional NULL — true when present
-	Apn                         HexBytes // [20] mandatory, OCTET STRING SIZE 2..63
+	PdpContextId        int      // mandatory, ContextId 1..50
+	PdpType             HexBytes // [16] mandatory, OCTET STRING SIZE 2
+	PdpAddress          HexBytes // [17] optional, OCTET STRING SIZE 1..16 (nil = absent)
+	QosSubscribed       HexBytes // [18] mandatory, OCTET STRING SIZE 3
+	VplmnAddressAllowed bool     // [19] optional NULL — true when present
+	Apn                 HexBytes // [20] mandatory, OCTET STRING SIZE 2..63
 
-	ExtQoSSubscribed            HexBytes // [0] optional
-	PdpChargingCharacteristics  HexBytes // [1] optional, OCTET STRING SIZE 2
-	Ext2QoSSubscribed           HexBytes // [2] optional
-	Ext3QoSSubscribed           HexBytes // [3] optional
-	Ext4QoSSubscribed           HexBytes // [4] optional
-	ApnOiReplacement            HexBytes // [5] optional, OCTET STRING SIZE 9..100
-	ExtPdpType                  HexBytes // [6] optional, OCTET STRING SIZE 2
-	ExtPdpAddress               HexBytes // [7] optional, OCTET STRING SIZE 1..16
-	Ambr                        *AMBR    // [10] optional
+	ExtQoSSubscribed            HexBytes                     // [0] optional, SIZE 1..9
+	PdpChargingCharacteristics  HexBytes                     // [1] optional, SIZE 2
+	Ext2QoSSubscribed           HexBytes                     // [2] optional, SIZE 1..3 (requires ExtQoSSubscribed)
+	Ext3QoSSubscribed           HexBytes                     // [3] optional, SIZE 1..2 (requires Ext2QoSSubscribed)
+	Ext4QoSSubscribed           HexBytes                     // [4] optional, SIZE 1 (requires Ext3QoSSubscribed)
+	ApnOiReplacement            HexBytes                     // [5] optional, SIZE 9..100
+	ExtPdpType                  HexBytes                     // [6] optional, SIZE 2
+	ExtPdpAddress               HexBytes                     // [7] optional, SIZE 1..16
 	SiptoPermission             *SIPTOPermission             // [8] optional
 	LipaPermission              *LIPAPermission              // [9] optional
-	RestorationPriority         HexBytes                     // [11] optional, OCTET STRING SIZE 1
+	Ambr                        *AMBR                        // [10] optional
+	RestorationPriority         HexBytes                     // [11] optional, SIZE 1
 	SiptoLocalNetworkPermission *SIPTOLocalNetworkPermission // [12] optional
 	NIDDMechanism               *NIDDMechanism               // [13] optional
 	SCEFID                      HexBytes                     // [14] optional, FQDN SIZE 9..255
@@ -2117,16 +2127,17 @@ var (
 	ErrExt2QoSSubscribedInvalidSize = errors.New("pdpContext: Ext2QoSSubscribed must be 1..3 octets per TS 29.002 MAP-MS-DataTypes.asn:1685")
 	ErrExt3QoSSubscribedInvalidSize = errors.New("pdpContext: Ext3QoSSubscribed must be 1..2 octets per TS 29.002 MAP-MS-DataTypes.asn:1690")
 	ErrExt4QoSSubscribedInvalidSize = errors.New("pdpContext: Ext4QoSSubscribed must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1693")
+	ErrExtQoSHierarchyViolated      = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per TS 29.002 MAP-MS-DataTypes.asn:1534-1538 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
 	ErrExtPDPTypeInvalidSize        = errors.New("pdpContext: ExtPdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1661")
 	ErrPDPAddressInvalidSize      = errors.New("pdpContext: PdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665")
-	ErrExtPDPAddressInvalidSize   = errors.New("pdpContext: ExtPdpAddress must be 1..16 octets per TS 29.002")
+	ErrExtPDPAddressInvalidSize   = errors.New("pdpContext: ExtPdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665 (PDP-Address)")
 	ErrPDPChargingCharsInvalidSize = errors.New("pdpContext: PdpChargingCharacteristics must be exactly 2 octets per TS 29.002")
-	ErrAPNOIReplacementInvalidSize = errors.New("APNOIReplacement: must be 9..100 octets per TS 29.002 MAP-MS-DataTypes.asn:1303")
-	ErrFQDNInvalidSize            = errors.New("FQDN: must be 9..255 octets per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrAPNOIReplacementInvalidSize = errors.New("apnOIReplacement: must be 9..100 octets per TS 29.002 MAP-MS-DataTypes.asn:1303")
+	ErrFQDNInvalidSize            = errors.New("fqdn: must be 9..255 octets per TS 29.002 MAP-MS-DataTypes.asn:1434")
 	ErrRestorationPriorityInvalidSize = errors.New("pdpContext: RestorationPriority must be exactly 1 octet per TS 29.002")
 	ErrGPRSDataListSize           = errors.New("gprsDataList: must contain 1..50 entries (maxNumOfPDP-Contexts) per TS 29.002")
 	ErrGPRSSubscriptionDataMissingList = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
-	ErrAMBRBandwidthOutOfRange    = errors.New("AMBR: bandwidth fields must be non-negative")
+	ErrAMBRBandwidthOutOfRange    = errors.New("ambr: bandwidth fields must be non-negative")
 	ErrSIPTOPermissionInvalid     = errors.New("pdpContext: SiptoPermission must be siptoAboveRanAllowed(0) or siptoAboveRanNotAllowed(1)")
 	ErrSIPTOLocalNetworkPermissionInvalid = errors.New("pdpContext: SiptoLocalNetworkPermission must be siptoAtLocalNetworkAllowed(0) or siptoAtLocalNetworkNotAllowed(1)")
 	ErrLIPAPermissionInvalid      = errors.New("pdpContext: LipaPermission must be lipaProhibited(0), lipaOnly(1), or lipaConditional(2)")

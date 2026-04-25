@@ -6,6 +6,23 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
+// validateExtQoSHierarchy enforces the spec hierarchy from
+// MAP-MS-DataTypes.asn:1534-1538: Ext2 requires Ext, Ext3 requires
+// Ext2, Ext4 requires Ext3. Each parameter is true when the
+// corresponding Ext{N}-QoS-Subscribed field is present.
+func validateExtQoSHierarchy(ext, ext2, ext3, ext4 bool) error {
+	if ext2 && !ext {
+		return fmt.Errorf("%w: Ext2 set without Ext", ErrExtQoSHierarchyViolated)
+	}
+	if ext3 && !ext2 {
+		return fmt.Errorf("%w: Ext3 set without Ext2", ErrExtQoSHierarchyViolated)
+	}
+	if ext4 && !ext3 {
+		return fmt.Errorf("%w: Ext4 set without Ext3", ErrExtQoSHierarchyViolated)
+	}
+	return nil
+}
+
 // ============================================================================
 // AMBR — TS 29.002 MAP-MS-DataTypes.asn:1386
 // ============================================================================
@@ -97,6 +114,14 @@ func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
 	}
 	if p.Ext4QoSSubscribed != nil && len(p.Ext4QoSSubscribed) != 1 {
 		return nil, fmt.Errorf("%w (got %d)", ErrExt4QoSSubscribedInvalidSize, len(p.Ext4QoSSubscribed))
+	}
+	if err := validateExtQoSHierarchy(
+		p.ExtQoSSubscribed != nil,
+		p.Ext2QoSSubscribed != nil,
+		p.Ext3QoSSubscribed != nil,
+		p.Ext4QoSSubscribed != nil,
+	); err != nil {
+		return nil, err
 	}
 	if p.PdpAddress != nil && (len(p.PdpAddress) < 1 || len(p.PdpAddress) > 16) {
 		return nil, fmt.Errorf("%w (got %d)", ErrPDPAddressInvalidSize, len(p.PdpAddress))
@@ -251,6 +276,14 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 	}
 	if w.Ext4QoSSubscribed != nil && len(*w.Ext4QoSSubscribed) != 1 {
 		return nil, fmt.Errorf("%w (got %d)", ErrExt4QoSSubscribedInvalidSize, len(*w.Ext4QoSSubscribed))
+	}
+	if err := validateExtQoSHierarchy(
+		w.ExtQoSSubscribed != nil,
+		w.Ext2QoSSubscribed != nil,
+		w.Ext3QoSSubscribed != nil,
+		w.Ext4QoSSubscribed != nil,
+	); err != nil {
+		return nil, err
 	}
 	out := &PDPContext{
 		PdpContextId:        id,
