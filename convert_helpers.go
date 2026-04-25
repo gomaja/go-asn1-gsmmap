@@ -143,3 +143,14 @@ func validateFQDN(b HexBytes, field string) error {
 	}
 	return nil
 }
+
+// validatePDPAddress checks the PDP-Address OCTET STRING (SIZE 1..16)
+// constraint per TS 29.002 MAP-MS-DataTypes.asn:1665. Reused by
+// PDPContext (PdpAddress, ExtPdpAddress) and APN-Configuration
+// (ServedPartyIPIPv4Address, ServedPartyIPIPv6Address).
+func validatePDPAddress(b HexBytes, field string) error {
+	if len(b) < 1 || len(b) > 16 {
+		return fmt.Errorf("%s: %w (got %d)", field, ErrPDPAddressInvalidSize, len(b))
+	}
+	return nil
+}

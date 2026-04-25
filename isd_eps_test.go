@@ -60,45 +60,16 @@ func TestEPSQoSSubscribed_QCIOutOfRange(t *testing.T) {
 }
 
 // ----------------------------------------------------------------------------
-// PDNGWIdentity
-// ----------------------------------------------------------------------------
-
-func TestPDNGWIdentity_RoundTrip(t *testing.T) {
-	in := &PDNGWIdentity{
-		PdnGwIpv4Address: HexBytes{0x0a, 0x01, 0x02, 0x03},
-		PdnGwIpv6Address: HexBytes{0x20, 0x01, 0x0d, 0xb8},
-		PdnGwName:        HexBytes("pgw.example.com"),
-	}
-	w, err := convertPDNGWIdentityToWire(in)
-	if err != nil {
-		t.Fatalf("toWire: %v", err)
-	}
-	out, err := convertWireToPDNGWIdentity(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
-	if !reflect.DeepEqual(in, out) {
-		t.Fatalf("mismatch")
-	}
-}
-
-func TestPDNGWIdentity_InvalidName(t *testing.T) {
-	in := &PDNGWIdentity{PdnGwName: HexBytes("short")}
-	_, err := convertPDNGWIdentityToWire(in)
-	if !errors.Is(err, ErrFQDNInvalidSize) {
-		t.Fatalf("want ErrFQDNInvalidSize, got %v", err)
-	}
-}
-
-// ----------------------------------------------------------------------------
-// SpecificAPNInfoList
+// SpecificAPNInfoList — uses the pre-existing PdnGwIdentity from
+// convert_updategprsloc.go (gsmmap.go:366), which enforces strict spec
+// sizes (IPv4=4, IPv6=16) and the at-least-one-set rule.
 // ----------------------------------------------------------------------------
 
 func makeSpecificAPNInfo() SpecificAPNInfo {
 	return SpecificAPNInfo{
 		Apn: HexBytes{'a', 'p', 'n', '.', 'e', 'x'},
-		PdnGwIdentity: PDNGWIdentity{
-			PdnGwIpv4Address: HexBytes{0x0a, 0x01, 0x02, 0x03},
+		PdnGwIdentity: PdnGwIdentity{
+			IPv4Address: HexBytes{0x0a, 0x01, 0x02, 0x03},
 		},
 	}
 }
@@ -191,7 +162,7 @@ func makeAPNConfiguration() APNConfiguration {
 				PreEmptionVulnerability: ptrBool(false),
 			},
 		},
-		PdnGwIdentity:           &PDNGWIdentity{PdnGwIpv4Address: HexBytes{0x0a, 0x01, 0x02, 0x04}},
+		PdnGwIdentity:           &PdnGwIdentity{IPv4Address: HexBytes{0x0a, 0x01, 0x02, 0x04}},
 		PdnGwAllocationType:     &pgwAlloc,
 		VplmnAddressAllowed:     true,
 		ChargingCharacteristics: HexBytes{0x08, 0x00},
