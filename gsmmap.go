@@ -1842,6 +1842,116 @@ const MaxNumOfResetId = 50
 // (OCTET STRING SIZE 1..4).
 const MaxResetIdOctets = 4
 
+// AMBR (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1386. The two
+// mandatory bandwidth fields are Bandwidth INTEGER (bits per second);
+// the extended pair carries kbps values for >4 Gbps profiles.
+type AMBR struct {
+	MaxRequestedBandwidthUL         int64 // [0] mandatory, bits per second
+	MaxRequestedBandwidthDL         int64 // [1] mandatory, bits per second
+	ExtendedMaxRequestedBandwidthUL *int64 // [3] optional, kilobits per second
+	ExtendedMaxRequestedBandwidthDL *int64 // [4] optional, kilobits per second
+}
+
+// SIPTOPermission (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1567.
+type SIPTOPermission int64
+
+const (
+	SIPTOAboveRanAllowed    SIPTOPermission = 0
+	SIPTOAboveRanNotAllowed SIPTOPermission = 1
+)
+
+// SIPTOLocalNetworkPermission (ENUMERATED) per TS 29.002
+// MAP-MS-DataTypes.asn:1572.
+type SIPTOLocalNetworkPermission int64
+
+const (
+	SIPTOAtLocalNetworkAllowed    SIPTOLocalNetworkPermission = 0
+	SIPTOAtLocalNetworkNotAllowed SIPTOLocalNetworkPermission = 1
+)
+
+// LIPAPermission (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1577.
+type LIPAPermission int64
+
+const (
+	LIPAProhibited   LIPAPermission = 0
+	LIPAOnly         LIPAPermission = 1
+	LIPAConditional  LIPAPermission = 2
+)
+
+// NIDDMechanism (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1362.
+// Default (when absent) is sGi-based-data-delivery (0) per spec.
+type NIDDMechanism int64
+
+const (
+	NIDDSGiBasedDataDelivery  NIDDMechanism = 0
+	NIDDSCEFBasedDataDelivery NIDDMechanism = 1
+)
+
+// PDPContext (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1522.
+// Mandatory fields: PdpContextId, PdpType, QosSubscribed, Apn.
+// All other fields are optional and may be set to nil.
+type PDPContext struct {
+	PdpContextId                int      // mandatory, ContextId 1..50
+	PdpType                     HexBytes // [16] mandatory, OCTET STRING SIZE 2
+	PdpAddress                  HexBytes // [17] optional, OCTET STRING SIZE 1..16 (nil = absent)
+	QosSubscribed               HexBytes // [18] mandatory, opaque OCTET STRING
+	VplmnAddressAllowed         bool     // [19] optional NULL — true when present
+	Apn                         HexBytes // [20] mandatory, OCTET STRING SIZE 2..63
+
+	ExtQoSSubscribed            HexBytes // [0] optional
+	PdpChargingCharacteristics  HexBytes // [1] optional, OCTET STRING SIZE 2
+	Ext2QoSSubscribed           HexBytes // [2] optional
+	Ext3QoSSubscribed           HexBytes // [3] optional
+	Ext4QoSSubscribed           HexBytes // [4] optional
+	ApnOiReplacement            HexBytes // [5] optional, OCTET STRING SIZE 9..100
+	ExtPdpType                  HexBytes // [6] optional, OCTET STRING SIZE 2
+	ExtPdpAddress               HexBytes // [7] optional, OCTET STRING SIZE 1..16
+	Ambr                        *AMBR    // [10] optional
+	SiptoPermission             *SIPTOPermission             // [8] optional
+	LipaPermission              *LIPAPermission              // [9] optional
+	RestorationPriority         HexBytes                     // [11] optional, OCTET STRING SIZE 1
+	SiptoLocalNetworkPermission *SIPTOLocalNetworkPermission // [12] optional
+	NIDDMechanism               *NIDDMechanism               // [13] optional
+	SCEFID                      HexBytes                     // [14] optional, FQDN SIZE 9..255
+}
+
+// GPRSDataList (SEQUENCE SIZE 1..50 OF PDP-Context) per TS 29.002
+// MAP-MS-DataTypes.asn:1517.
+type GPRSDataList []PDPContext
+
+// GPRSSubscriptionData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1585.
+type GPRSSubscriptionData struct {
+	CompleteDataListIncluded bool         // optional NULL — true when present
+	GprsDataList             GPRSDataList // [1] mandatory, 1..50 entries
+	ApnOiReplacement         HexBytes     // [3] optional, OCTET STRING SIZE 9..100
+}
+
+// LSAOnlyAccessIndicator (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1702.
+type LSAOnlyAccessIndicator int64
+
+const (
+	LSAAccessOutsideAllowed    LSAOnlyAccessIndicator = 0
+	LSAAccessOutsideRestricted LSAOnlyAccessIndicator = 1
+)
+
+// LSAData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1711.
+type LSAData struct {
+	LsaIdentity            HexBytes // [0] mandatory, OCTET STRING SIZE 3
+	LsaAttributes          HexBytes // [1] mandatory, OCTET STRING SIZE 1
+	LsaActiveModeIndicator bool     // [2] optional NULL — true when present
+}
+
+// LSADataList (SEQUENCE SIZE 1..20 OF LSAData) per TS 29.002
+// MAP-MS-DataTypes.asn:1706.
+type LSADataList []LSAData
+
+// LSAInformation (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1718.
+type LSAInformation struct {
+	CompleteDataListIncluded bool                    // optional NULL — true when present
+	LsaOnlyAccessIndicator   *LSAOnlyAccessIndicator // [1] optional
+	LsaDataList              LSADataList             // [2] optional, 1..20 entries when present
+}
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -1994,4 +2104,26 @@ var (
 
 	ErrResetIdListSize     = errors.New("resetIdList: must contain 1..50 entries when present")
 	ErrResetIdInvalidSize  = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")
+
+	ErrPDPContextIdOutOfRange     = errors.New("pdpContext: PdpContextId must be 1..50 (maxNumOfPDP-Contexts) per TS 29.002")
+	ErrPDPTypeInvalidSize         = errors.New("pdpContext: PdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1657")
+	ErrExtPDPTypeInvalidSize      = errors.New("pdpContext: ExtPdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1661")
+	ErrPDPAddressInvalidSize      = errors.New("pdpContext: PdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665")
+	ErrExtPDPAddressInvalidSize   = errors.New("pdpContext: ExtPdpAddress must be 1..16 octets per TS 29.002")
+	ErrPDPChargingCharsInvalidSize = errors.New("pdpContext: PdpChargingCharacteristics must be exactly 2 octets per TS 29.002")
+	ErrAPNOIReplacementInvalidSize = errors.New("APNOIReplacement: must be 9..100 octets per TS 29.002 MAP-MS-DataTypes.asn:1303")
+	ErrFQDNInvalidSize            = errors.New("FQDN: must be 9..255 octets per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrRestorationPriorityInvalidSize = errors.New("pdpContext: RestorationPriority must be exactly 1 octet per TS 29.002")
+	ErrGPRSDataListSize           = errors.New("gprsDataList: must contain 1..50 entries (maxNumOfPDP-Contexts) per TS 29.002")
+	ErrGPRSSubscriptionDataMissingList = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
+	ErrAMBRBandwidthOutOfRange    = errors.New("AMBR: bandwidth fields must be non-negative")
+	ErrSIPTOPermissionInvalid     = errors.New("pdpContext: SiptoPermission must be siptoAboveRanAllowed(0) or siptoAboveRanNotAllowed(1)")
+	ErrSIPTOLocalNetworkPermissionInvalid = errors.New("pdpContext: SiptoLocalNetworkPermission must be siptoAtLocalNetworkAllowed(0) or siptoAtLocalNetworkNotAllowed(1)")
+	ErrLIPAPermissionInvalid      = errors.New("pdpContext: LipaPermission must be lipaProhibited(0), lipaOnly(1), or lipaConditional(2)")
+	ErrNIDDMechanismInvalid       = errors.New("pdpContext: NIDDMechanism must be sGi-based-data-delivery(0) or sCEF-based-data-delivery(1)")
+
+	ErrLSAIdentityInvalidSize       = errors.New("lsaData: LsaIdentity must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1728")
+	ErrLSAAttributesInvalidSize     = errors.New("lsaData: LsaAttributes must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1731")
+	ErrLSADataListSize              = errors.New("lsaDataList: must contain 1..20 entries (maxNumOfLSAs) per TS 29.002")
+	ErrLSAOnlyAccessIndicatorInvalid = errors.New("lsaInformation: LsaOnlyAccessIndicator must be accessOutsideLSAsAllowed(0) or accessOutsideLSAsRestricted(1)")
 )
