@@ -2660,6 +2660,7 @@ var (
 	ErrIsdProvisionedSSListSize        = errors.New("insertSubscriberDataArg: ProvisionedSS must contain 1..30 entries (maxNumOfSS) per TS 29.002 MAP-MS-DataTypes.asn:1508")
 	ErrIsdResSsListSize                = errors.New("insertSubscriberDataRes: SsList entries must each be exactly 1 octet (SS-Code) per TS 29.002")
 	ErrIsdMSISDNDecodedEmpty           = errors.New("insertSubscriberDataArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrIsdIMSIInvalidSize              = errors.New("insertSubscriberDataArg: IMSI must be 3..8 octets per TS 29.002 MAP-CommonDataTypes.asn:327 (TBCD-STRING SIZE 3..8)")
 
 	ErrGPRSCamelTDPDataListSize           = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
 	ErrGPRSTriggerDetectionPointInvalid   = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be 1, 2, 11, 12, or 14 per TS 29.002 (extensible enum: unknown values preserved on decode)")

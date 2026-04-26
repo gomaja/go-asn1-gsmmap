@@ -70,6 +70,9 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	}
 
 	if len(a.IMSI) > 0 {
+		if len(a.IMSI) < 3 || len(a.IMSI) > 8 {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdIMSIInvalidSize, len(a.IMSI))
+		}
 		v := gsm_map.IMSI(a.IMSI)
 		out.Imsi = &v
 	}
@@ -351,6 +354,9 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 	}
 
 	if w.Imsi != nil {
+		if len(*w.Imsi) < 3 || len(*w.Imsi) > 8 {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdIMSIInvalidSize, len(*w.Imsi))
+		}
 		out.IMSI = HexBytes(*w.Imsi)
 	}
 	if w.Msisdn != nil {
