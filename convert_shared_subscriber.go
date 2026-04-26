@@ -85,12 +85,11 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 		si.LastUEActivityTime = &t
 	}
 
-	// LastRATType — Used-RAT-Type 0..5 per TS 29.002.
+	// LastRATType — Used-RAT-Type per TS 29.002 MAP-MS-DataTypes.asn:582.
+	// Spec marks the enum extensible (`...`), so unknown values are
+	// preserved through the codec (Postel's law).
 	if s.LastRATType != nil {
-		if *s.LastRATType < 0 || *s.LastRATType > 5 {
-			return nil, fmt.Errorf("LastRATType out of range 0..5: %d", *s.LastRATType)
-		}
-		v := gsm_map.UsedRATType(int64(*s.LastRATType))
+		v := *s.LastRATType
 		si.LastRATType = &v
 	}
 
@@ -214,14 +213,11 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 		out.LastUEActivityTime = []byte(*si.LastUEActivityTime)
 	}
 
-	// LastRATType — Used-RAT-Type 0..5 per TS 29.002.
+	// LastRATType — Used-RAT-Type per TS 29.002 (extensible enum;
+	// preserve unknown values per Postel's law).
 	if si.LastRATType != nil {
-		v, err := narrowInt64Range(int64(*si.LastRATType), 0, 5, "LastRATType")
-		if err != nil {
-			return nil, err
-		}
-		ur := UsedRatType(v)
-		out.LastRATType = &ur
+		v := *si.LastRATType
+		out.LastRATType = &v
 	}
 
 	if si.EpsSubscriberState != nil {
@@ -630,12 +626,10 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 		out.LocaltimeZone = &tz
 	}
 
-	// RatType — Used-RAT-Type 0..5 per TS 29.002.
+	// RatType — Used-RAT-Type per TS 29.002 (extensible enum;
+	// preserve unknown values per Postel's law).
 	if l.RatType != nil {
-		if *l.RatType < 0 || *l.RatType > 5 {
-			return nil, fmt.Errorf("LocationInformation5GS.RatType out of range 0..5: %d", *l.RatType)
-		}
-		v := gsm_map.UsedRATType(int64(*l.RatType))
+		v := *l.RatType
 		out.RatType = &v
 	}
 
@@ -697,14 +691,11 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 		out.LocalTimeZone = []byte(*w.LocaltimeZone)
 	}
 
-	// RatType — Used-RAT-Type 0..5 per TS 29.002.
+	// RatType — Used-RAT-Type per TS 29.002 (extensible enum;
+	// preserve unknown values per Postel's law).
 	if w.RatType != nil {
-		v, err := narrowInt64Range(int64(*w.RatType), 0, 5, "RatType")
-		if err != nil {
-			return nil, err
-		}
-		ur := UsedRatType(v)
-		out.RatType = &ur
+		v := *w.RatType
+		out.RatType = &v
 	}
 
 	if w.NrTrackingAreaIdentity != nil {
