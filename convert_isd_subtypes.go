@@ -354,7 +354,7 @@ func convertEDRXCycleLengthToWire(e *EDRXCycleLength) (*gsm_map.EDRXCycleLength,
 		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthValueSize, len(e.EDRXCycleLengthValue))
 	}
 	return &gsm_map.EDRXCycleLength{
-		RatType:              gsm_map.UsedRATType(e.RatType),
+		RatType:              e.RatType,
 		EDRXCycleLengthValue: gsm_map.EDRXCycleLengthValue(e.EDRXCycleLengthValue),
 	}, nil
 }
@@ -366,15 +366,12 @@ func convertWireToEDRXCycleLength(w *gsm_map.EDRXCycleLength) (*EDRXCycleLength,
 	if len(w.EDRXCycleLengthValue) != 1 {
 		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthValueSize, len(w.EDRXCycleLengthValue))
 	}
-	// UsedRatType is an extensible enum — preserve unknown values (Postel's
-	// law) but go through narrowInt64 so a wire value that does not fit in
-	// platform int (32-bit builds) is rejected rather than silently truncated.
-	rt, err := narrowInt64(int64(w.RatType))
-	if err != nil {
-		return nil, fmt.Errorf("EDRXCycleLength.RatType: %w", err)
-	}
+	// UsedRatType is an extensible enum (Postel's law) — preserve unknown
+	// values via direct assignment. The local type is now an `=` alias of
+	// the upstream gsm_map type (both int64-backed), so no narrowing is
+	// needed here.
 	return &EDRXCycleLength{
-		RatType:              UsedRatType(rt),
+		RatType:              w.RatType,
 		EDRXCycleLengthValue: HexBytes(w.EDRXCycleLengthValue),
 	}, nil
 }

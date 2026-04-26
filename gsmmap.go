@@ -316,33 +316,35 @@ type UpdateLocationRes struct {
 	PagingAreaCapability bool  // [0] NULL
 }
 
-// UsedRatType per 3GPP TS 29.002 (opCode 23).
-type UsedRatType int
+// UsedRatType per 3GPP TS 29.002 (opCode 23). Aliased from go-asn1 per
+// project rule "GSM-MAP spec constants must come from go-asn1 library,
+// not defined locally".
+type UsedRatType = gsm_map.UsedRATType
 
 const (
-	UsedRatUTRAN          UsedRatType = 0
-	UsedRatGERAN          UsedRatType = 1
-	UsedRatGAN            UsedRatType = 2
-	UsedRatIHSPAEvolution UsedRatType = 3
-	UsedRatEUTRAN         UsedRatType = 4
-	UsedRatNBIOT          UsedRatType = 5
+	UsedRatUTRAN          = gsm_map.UsedRATTypeUtran
+	UsedRatGERAN          = gsm_map.UsedRATTypeGeran
+	UsedRatGAN            = gsm_map.UsedRATTypeGan
+	UsedRatIHSPAEvolution = gsm_map.UsedRATTypeIHspaEvolution
+	UsedRatEUTRAN         = gsm_map.UsedRATTypeEUtran
+	UsedRatNBIOT          = gsm_map.UsedRATTypeNbIot
 )
 
-// UeSrvccCapability per 3GPP TS 29.002 (opCode 23).
-type UeSrvccCapability int
+// UeSrvccCapability per 3GPP TS 29.002 (opCode 23). Aliased from go-asn1.
+type UeSrvccCapability = gsm_map.UESRVCCCapability
 
 const (
-	UeSrvccNotSupported UeSrvccCapability = 0
-	UeSrvccSupported    UeSrvccCapability = 1
+	UeSrvccNotSupported = gsm_map.UESRVCCCapabilityUeSrvccNotSupported
+	UeSrvccSupported    = gsm_map.UESRVCCCapabilityUeSrvccSupported
 )
 
-// SmsRegisterRequest per 3GPP TS 29.002 (opCode 23).
-type SmsRegisterRequest int
+// SmsRegisterRequest per 3GPP TS 29.002 (opCode 23). Aliased from go-asn1.
+type SmsRegisterRequest = gsm_map.SMSRegisterRequest
 
 const (
-	SmsRegistrationRequired     SmsRegisterRequest = 0
-	SmsRegistrationNotPreferred SmsRegisterRequest = 1
-	SmsRegistrationNoPreference SmsRegisterRequest = 2
+	SmsRegistrationRequired     = gsm_map.SMSRegisterRequestSmsRegistrationRequired
+	SmsRegistrationNotPreferred = gsm_map.SMSRegisterRequestSmsRegistrationNotPreferred
+	SmsRegistrationNoPreference = gsm_map.SMSRegisterRequestNoPreference
 )
 
 // EpsInfo is the EPS-Info CHOICE (opCode 23).

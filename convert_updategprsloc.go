@@ -88,7 +88,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		if *u.UsedRatType < 0 || *u.UsedRatType > 5 {
 			return nil, fmt.Errorf("UsedRATType out of range 0..5: %d", *u.UsedRatType)
 		}
-		v := gsm_map.UsedRATType(int64(*u.UsedRatType))
+		v := *u.UsedRatType
 		arg.UsedRATType = &v
 	}
 
@@ -103,7 +103,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		if *u.UeSrvccCapability < 0 || *u.UeSrvccCapability > 1 {
 			return nil, fmt.Errorf("UeSrvccCapability out of range 0..1: %d", *u.UeSrvccCapability)
 		}
-		v := gsm_map.UESRVCCCapability(int64(*u.UeSrvccCapability))
+		v := *u.UeSrvccCapability
 		arg.UeSrvccCapability = &v
 	}
 
@@ -134,7 +134,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		if *u.SmsRegisterRequest < 0 || *u.SmsRegisterRequest > 2 {
 			return nil, fmt.Errorf("SmsRegisterRequest out of range 0..2: %d", *u.SmsRegisterRequest)
 		}
-		v := gsm_map.SMSRegisterRequest(int64(*u.SmsRegisterRequest))
+		v := *u.SmsRegisterRequest
 		arg.SmsRegisterRequest = &v
 	}
 
@@ -240,14 +240,10 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.SkipSubscriberDataUpdate = nullPtrToBool(arg.SkipSubscriberDataUpdate)
 
 	if arg.UsedRATType != nil {
-		// Range-check the int64 wire value before narrowing to Go int so
-		// 32-bit builds can't truncate out-of-range values into the valid
-		// enum window.
-		v64 := int64(*arg.UsedRATType)
-		if v64 < 0 || v64 > 5 {
-			return nil, fmt.Errorf("UsedRATType out of range 0..5: %d", v64)
+		v := *arg.UsedRATType
+		if v < 0 || v > 5 {
+			return nil, fmt.Errorf("UsedRATType out of range 0..5: %d", v)
 		}
-		v := UsedRatType(v64)
 		u.UsedRatType = &v
 	}
 
@@ -258,11 +254,10 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.EpsSubscriptionDataNotNeeded = nullPtrToBool(arg.EpsSubscriptionDataNotNeeded)
 
 	if arg.UeSrvccCapability != nil {
-		v64 := int64(*arg.UeSrvccCapability)
-		if v64 < 0 || v64 > 1 {
-			return nil, fmt.Errorf("UeSrvccCapability out of range 0..1: %d", v64)
+		v := *arg.UeSrvccCapability
+		if v < 0 || v > 1 {
+			return nil, fmt.Errorf("UeSrvccCapability out of range 0..1: %d", v)
 		}
-		v := UeSrvccCapability(v64)
 		u.UeSrvccCapability = &v
 	}
 
@@ -288,11 +283,10 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	}
 
 	if arg.SmsRegisterRequest != nil {
-		v64 := int64(*arg.SmsRegisterRequest)
-		if v64 < 0 || v64 > 2 {
-			return nil, fmt.Errorf("SmsRegisterRequest out of range 0..2: %d", v64)
+		v := *arg.SmsRegisterRequest
+		if v < 0 || v > 2 {
+			return nil, fmt.Errorf("SmsRegisterRequest out of range 0..2: %d", v)
 		}
-		v := SmsRegisterRequest(v64)
 		u.SmsRegisterRequest = &v
 	}
 

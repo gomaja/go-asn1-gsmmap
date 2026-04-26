@@ -90,7 +90,7 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 		if *s.LastRATType < 0 || *s.LastRATType > 5 {
 			return nil, fmt.Errorf("LastRATType out of range 0..5: %d", *s.LastRATType)
 		}
-		v := gsm_map.UsedRATType(int64(*s.LastRATType))
+		v := *s.LastRATType
 		si.LastRATType = &v
 	}
 
@@ -216,12 +216,11 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 
 	// LastRATType — Used-RAT-Type 0..5 per TS 29.002.
 	if si.LastRATType != nil {
-		v, err := narrowInt64Range(int64(*si.LastRATType), 0, 5, "LastRATType")
-		if err != nil {
-			return nil, err
+		v := *si.LastRATType
+		if v < 0 || v > 5 {
+			return nil, fmt.Errorf("LastRATType out of range 0..5: %d", v)
 		}
-		ur := UsedRatType(v)
-		out.LastRATType = &ur
+		out.LastRATType = &v
 	}
 
 	if si.EpsSubscriberState != nil {
@@ -635,7 +634,7 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 		if *l.RatType < 0 || *l.RatType > 5 {
 			return nil, fmt.Errorf("LocationInformation5GS.RatType out of range 0..5: %d", *l.RatType)
 		}
-		v := gsm_map.UsedRATType(int64(*l.RatType))
+		v := *l.RatType
 		out.RatType = &v
 	}
 
@@ -699,12 +698,11 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 
 	// RatType — Used-RAT-Type 0..5 per TS 29.002.
 	if w.RatType != nil {
-		v, err := narrowInt64Range(int64(*w.RatType), 0, 5, "RatType")
-		if err != nil {
-			return nil, err
+		v := *w.RatType
+		if v < 0 || v > 5 {
+			return nil, fmt.Errorf("LocationInformation5GS.RatType out of range 0..5: %d", v)
 		}
-		ur := UsedRatType(v)
-		out.RatType = &ur
+		out.RatType = &v
 	}
 
 	if w.NrTrackingAreaIdentity != nil {
