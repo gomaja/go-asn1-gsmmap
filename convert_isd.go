@@ -628,19 +628,25 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 	}
 	out := &gsm_map.InsertSubscriberDataRes{}
 	if r.TeleserviceList != nil {
+		if int64(len(r.TeleserviceList)) < 1 || int64(len(r.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(r.TeleserviceList))
+		}
 		out.TeleserviceList = make(gsm_map.TeleserviceList, len(r.TeleserviceList))
 		for i, t := range r.TeleserviceList {
 			if len(t) < 1 || len(t) > 5 {
-				return nil, fmt.Errorf("Res.TeleserviceList[%d]: must be 1..5 octets (got %d)", i, len(t))
+				return nil, fmt.Errorf("Res.TeleserviceList[%d]: %w (got %d)", i, ErrIsdTeleserviceCodeSize, len(t))
 			}
 			out.TeleserviceList[i] = gsm_map.ExtTeleserviceCode(t)
 		}
 	}
 	if r.BearerServiceList != nil {
+		if int64(len(r.BearerServiceList)) < 1 || int64(len(r.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(r.BearerServiceList))
+		}
 		out.BearerServiceList = make(gsm_map.BearerServiceList, len(r.BearerServiceList))
 		for i, b := range r.BearerServiceList {
 			if len(b) < 1 || len(b) > 5 {
-				return nil, fmt.Errorf("Res.BearerServiceList[%d]: must be 1..5 octets (got %d)", i, len(b))
+				return nil, fmt.Errorf("Res.BearerServiceList[%d]: %w (got %d)", i, ErrIsdBearerServiceCodeSize, len(b))
 			}
 			out.BearerServiceList[i] = gsm_map.ExtBearerServiceCode(b)
 		}
@@ -684,19 +690,25 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 	}
 	out := &InsertSubscriberDataRes{}
 	if w.TeleserviceList != nil {
+		if int64(len(w.TeleserviceList)) < 1 || int64(len(w.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(w.TeleserviceList))
+		}
 		out.TeleserviceList = make([]HexBytes, len(w.TeleserviceList))
 		for i, t := range w.TeleserviceList {
 			if len(t) < 1 || len(t) > 5 {
-				return nil, fmt.Errorf("Res.TeleserviceList[%d]: must be 1..5 octets (got %d)", i, len(t))
+				return nil, fmt.Errorf("Res.TeleserviceList[%d]: %w (got %d)", i, ErrIsdTeleserviceCodeSize, len(t))
 			}
 			out.TeleserviceList[i] = HexBytes(t)
 		}
 	}
 	if w.BearerServiceList != nil {
+		if int64(len(w.BearerServiceList)) < 1 || int64(len(w.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(w.BearerServiceList))
+		}
 		out.BearerServiceList = make([]HexBytes, len(w.BearerServiceList))
 		for i, b := range w.BearerServiceList {
 			if len(b) < 1 || len(b) > 5 {
-				return nil, fmt.Errorf("Res.BearerServiceList[%d]: must be 1..5 octets (got %d)", i, len(b))
+				return nil, fmt.Errorf("Res.BearerServiceList[%d]: %w (got %d)", i, ErrIsdBearerServiceCodeSize, len(b))
 			}
 			out.BearerServiceList[i] = HexBytes(b)
 		}
