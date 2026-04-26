@@ -231,7 +231,7 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 		arg.CorrelationID = cid
 	}
 	if m.SmDeliveryOutcome != nil {
-		v := gsm_map.SMDeliveryOutcome(*m.SmDeliveryOutcome)
+		v := *m.SmDeliveryOutcome
 		arg.SmDeliveryOutcome = &v
 	}
 

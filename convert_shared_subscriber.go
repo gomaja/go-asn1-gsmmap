@@ -76,7 +76,7 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 		if *s.ImsVoiceOverPSSessionsIndication < 0 || *s.ImsVoiceOverPSSessionsIndication > 2 {
 			return nil, fmt.Errorf("ImsVoiceOverPSSessionsIndication out of range 0..2: %d", *s.ImsVoiceOverPSSessionsIndication)
 		}
-		v := gsm_map.IMSVoiceOverPSSessionsInd(int64(*s.ImsVoiceOverPSSessionsIndication))
+		v := *s.ImsVoiceOverPSSessionsIndication
 		si.ImsVoiceOverPSSessionsIndication = &v
 	}
 
@@ -451,7 +451,7 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 		default:
 			return nil, fmt.Errorf("MnpInfoRes: NumberPortabilityStatus has undefined value %d", *m.NumberPortabilityStatus)
 		}
-		v := gsm_map.NumberPortabilityStatus(int64(*m.NumberPortabilityStatus))
+		v := *m.NumberPortabilityStatus
 		out.NumberPortabilityStatus = &v
 	}
 
@@ -490,11 +490,11 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 		// Match against the defined set in int64 space so wire values that
 		// exceed platform int are also treated as unknown (ignored), not as
 		// decode errors — consistent with the spec's "ignore" mandate.
-		switch int64(*w.NumberPortabilityStatus) {
-		case int64(MnpNotKnownToBePorted), int64(MnpOwnNumberPortedOut),
-			int64(MnpForeignNumberPortedToForeignNetwork),
-			int64(MnpOwnNumberNotPortedOut), int64(MnpForeignNumberPortedIn):
-			v := NumberPortabilityStatus(int64(*w.NumberPortabilityStatus))
+		switch *w.NumberPortabilityStatus {
+		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut,
+			MnpForeignNumberPortedToForeignNetwork,
+			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
+			v := *w.NumberPortabilityStatus
 			out.NumberPortabilityStatus = &v
 		}
 		// Unknown value: leave field nil per spec.

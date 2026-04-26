@@ -61,7 +61,7 @@ func buildMSRequestedInfo(ri *RequestedInfo) gsm_map.MSRequestedInfo {
 		msri.CurrentLocation = nullMarker
 	}
 	if ri.RequestedDomain != nil {
-		dt := gsm_map.DomainType(*ri.RequestedDomain)
+		dt := *ri.RequestedDomain
 		msri.RequestedDomain = &dt
 	}
 	if ri.MsClassmark {
@@ -169,7 +169,7 @@ func buildRequestedInfoFromWire(ri *gsm_map.MSRequestedInfo) RequestedInfo {
 	out.LocalTimeZoneRequest = ri.LocalTimeZoneRequest != nil
 
 	if ri.RequestedDomain != nil {
-		domain := DomainType(*ri.RequestedDomain)
+		domain := *ri.RequestedDomain
 		// Per spec: values > 1 shall be mapped to cs-Domain
 		if domain > PsDomain {
 			domain = CsDomain

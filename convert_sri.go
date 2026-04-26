@@ -65,7 +65,7 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	arg := &gsm_map.SendRoutingInfoArg{
 		Msisdn:              gsm_map.ISDNAddressString(msisdn),
-		InterrogationType:   gsm_map.InterrogationType(int64(s.InterrogationType)),
+		InterrogationType:   s.InterrogationType,
 		GmscOrGsmSCFAddress: gsm_map.ISDNAddressString(gmsc),
 	}
 
@@ -97,7 +97,7 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// ForwardingReason
 	if s.ForwardingReason != nil {
-		v := gsm_map.ForwardingReason(int64(*s.ForwardingReason))
+		v := *s.ForwardingReason
 		arg.ForwardingReason = &v
 	}
 
@@ -493,7 +493,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 		default:
 			return nil, fmt.Errorf("NumberPortabilityStatus has undefined value %d", *s.NumberPortabilityStatus)
 		}
-		v := gsm_map.NumberPortabilityStatus(int64(*s.NumberPortabilityStatus))
+		v := *s.NumberPortabilityStatus
 		out.NumberPortabilityStatus = &v
 	}
 
@@ -549,7 +549,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 		if *s.UnavailabilityCause < 1 || *s.UnavailabilityCause > 6 {
 			return nil, fmt.Errorf("UnavailabilityCause out of range 1..6: %d", *s.UnavailabilityCause)
 		}
-		v := gsm_map.UnavailabilityCause(int64(*s.UnavailabilityCause))
+		v := *s.UnavailabilityCause
 		out.UnavailabilityCause = &v
 	}
 
@@ -664,11 +664,11 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	// exceed platform int are also treated as unknown (ignored), not as
 	// decode errors — consistent with the spec's "ignore" mandate.
 	if res.NumberPortabilityStatus != nil {
-		switch int64(*res.NumberPortabilityStatus) {
-		case int64(MnpNotKnownToBePorted), int64(MnpOwnNumberPortedOut),
-			int64(MnpForeignNumberPortedToForeignNetwork),
-			int64(MnpOwnNumberNotPortedOut), int64(MnpForeignNumberPortedIn):
-			v := NumberPortabilityStatus(int64(*res.NumberPortabilityStatus))
+		switch *res.NumberPortabilityStatus {
+		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut,
+			MnpForeignNumberPortedToForeignNetwork,
+			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
+			v := *res.NumberPortabilityStatus
 			out.NumberPortabilityStatus = &v
 		}
 		// Unknown value: leave field nil per spec.

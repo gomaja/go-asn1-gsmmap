@@ -280,7 +280,7 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 		if !isValidRequestingNodeType(*s.RequestingNodeType) {
 			return nil, fmt.Errorf("%w: got %d", ErrSaiInvalidRequestingNodeType, *s.RequestingNodeType)
 		}
-		v := gsm_map.RequestingNodeType(*s.RequestingNodeType)
+		v := *s.RequestingNodeType
 		arg.RequestingNodeType = &v
 	}
 	if len(s.RequestingPLMNId) > 0 {

@@ -43,11 +43,11 @@ func (h *HexBytes) UnmarshalJSON(data []byte) error {
 }
 
 // SmDeliveryNotIntended per 3GPP TS 29.002.
-type SmDeliveryNotIntended int
+type SmDeliveryNotIntended = gsm_map.SMDeliveryNotIntended
 
 const (
-	SmDeliveryOnlyIMSIRequested   SmDeliveryNotIntended = 0
-	SmDeliveryOnlyMCCMNCRequested SmDeliveryNotIntended = 1
+	SmDeliveryOnlyIMSIRequested   = gsm_map.SMDeliveryNotIntendedOnlyIMSIRequested
+	SmDeliveryOnlyMCCMNCRequested = gsm_map.SMDeliveryNotIntendedOnlyMCCMNCRequested
 )
 
 // SriSmCorrelationID corresponds to CorrelationID SEQUENCE.
@@ -162,12 +162,12 @@ type MtFsmResp struct {
 }
 
 // SmDeliveryOutcome per 3GPP TS 29.002.
-type SmDeliveryOutcome int
+type SmDeliveryOutcome = gsm_map.SMDeliveryOutcome
 
 const (
-	SmDeliveryMemoryCapacityExceeded SmDeliveryOutcome = 0
-	SmDeliveryAbsentSubscriber       SmDeliveryOutcome = 1
-	SmDeliverySuccessfulTransfer     SmDeliveryOutcome = 2
+	SmDeliveryMemoryCapacityExceeded = gsm_map.SMDeliveryOutcomeMemoryCapacityExceeded
+	SmDeliveryAbsentSubscriber       = gsm_map.SMDeliveryOutcomeAbsentSubscriber
+	SmDeliverySuccessfulTransfer     = gsm_map.SMDeliveryOutcomeSuccessfulTransfer
 )
 
 // SmRpDa represents the SM-RP-DA CHOICE (destination address).
@@ -443,11 +443,11 @@ type UpdateGprsLocationRes struct {
 }
 
 // DomainType represents the requested domain.
-type DomainType int
+type DomainType = gsm_map.DomainType
 
 const (
-	CsDomain DomainType = 0
-	PsDomain DomainType = 1
+	CsDomain = gsm_map.DomainTypeCsDomain
+	PsDomain = gsm_map.DomainTypePsDomain
 )
 
 // RequestedNodes indicates which network nodes are requested.
@@ -552,12 +552,12 @@ type MnpInfoRes struct {
 }
 
 // ImsVoiceOverPSSessionsIndication per 3GPP TS 29.002 (opCode 71).
-type ImsVoiceOverPSSessionsIndication int
+type ImsVoiceOverPSSessionsIndication = gsm_map.IMSVoiceOverPSSessionsInd
 
 const (
-	IMSVoiceOverPSNotSupported ImsVoiceOverPSSessionsIndication = 0
-	IMSVoiceOverPSSupported    ImsVoiceOverPSSessionsIndication = 1
-	IMSVoiceOverPSUnknown      ImsVoiceOverPSSessionsIndication = 2
+	IMSVoiceOverPSNotSupported = gsm_map.IMSVoiceOverPSSessionsIndImsVoiceOverPSSessionsNotSupported
+	IMSVoiceOverPSSupported    = gsm_map.IMSVoiceOverPSSessionsIndImsVoiceOverPSSessionsSupported
+	IMSVoiceOverPSUnknown      = gsm_map.IMSVoiceOverPSSessionsIndUnknown
 )
 
 // GprsMSClass is the GPRSMSClass SEQUENCE (opCode 71).
@@ -665,43 +665,43 @@ type GPRSLocationInformation struct {
 // --- SendRoutingInfo (opCode 22) supporting types ---
 
 // InterrogationType per 3GPP TS 29.002 clause 17.6.2.
-type InterrogationType int
+type InterrogationType = gsm_map.InterrogationType
 
 const (
-	InterrogationBasicCall  InterrogationType = 0
-	InterrogationForwarding InterrogationType = 1
+	InterrogationBasicCall  = gsm_map.InterrogationTypeBasicCall
+	InterrogationForwarding = gsm_map.InterrogationTypeForwarding
 )
 
 // ForwardingReason per 3GPP TS 29.002.
-type ForwardingReason int
+type ForwardingReason = gsm_map.ForwardingReason
 
 const (
-	ForwardingNotReachable ForwardingReason = 0
-	ForwardingBusy         ForwardingReason = 1
-	ForwardingNoReply      ForwardingReason = 2
+	ForwardingNotReachable = gsm_map.ForwardingReasonNotReachable
+	ForwardingBusy         = gsm_map.ForwardingReasonBusy
+	ForwardingNoReply      = gsm_map.ForwardingReasonNoReply
 )
 
 // NumberPortabilityStatus per 3GPP TS 29.002.
-type NumberPortabilityStatus int
+type NumberPortabilityStatus = gsm_map.NumberPortabilityStatus
 
 const (
-	MnpNotKnownToBePorted                  NumberPortabilityStatus = 0
-	MnpOwnNumberPortedOut                  NumberPortabilityStatus = 1
-	MnpForeignNumberPortedToForeignNetwork NumberPortabilityStatus = 2
-	MnpOwnNumberNotPortedOut               NumberPortabilityStatus = 4
-	MnpForeignNumberPortedIn               NumberPortabilityStatus = 5
+	MnpNotKnownToBePorted                  = gsm_map.NumberPortabilityStatusNotKnownToBePorted
+	MnpOwnNumberPortedOut                  = gsm_map.NumberPortabilityStatusOwnNumberPortedOut
+	MnpForeignNumberPortedToForeignNetwork = gsm_map.NumberPortabilityStatusForeignNumberPortedToForeignNetwork
+	MnpOwnNumberNotPortedOut               = gsm_map.NumberPortabilityStatusOwnNumberNotPortedOut
+	MnpForeignNumberPortedIn               = gsm_map.NumberPortabilityStatusForeignNumberPortedIn
 )
 
 // UnavailabilityCause per 3GPP TS 29.002.
-type UnavailabilityCause int
+type UnavailabilityCause = gsm_map.UnavailabilityCause
 
 const (
-	UnavailBearerServiceNotProvisioned UnavailabilityCause = 1
-	UnavailTeleserviceNotProvisioned   UnavailabilityCause = 2
-	UnavailAbsentSubscriber            UnavailabilityCause = 3
-	UnavailBusySubscriber              UnavailabilityCause = 4
-	UnavailCallBarred                  UnavailabilityCause = 5
-	UnavailCugReject                   UnavailabilityCause = 6
+	UnavailBearerServiceNotProvisioned = gsm_map.UnavailabilityCauseBearerServiceNotProvisioned
+	UnavailTeleserviceNotProvisioned   = gsm_map.UnavailabilityCauseTeleserviceNotProvisioned
+	UnavailAbsentSubscriber            = gsm_map.UnavailabilityCauseAbsentSubscriber
+	UnavailBusySubscriber              = gsm_map.UnavailabilityCauseBusySubscriber
+	UnavailCallBarred                  = gsm_map.UnavailabilityCauseCallBarred
+	UnavailCugReject                   = gsm_map.UnavailabilityCauseCugReject
 )
 
 // SuppressMTSSFlags is the SuppressMTSS BIT STRING (bits 0..1 defined).
@@ -782,44 +782,44 @@ type CamelRoutingInfo struct {
 
 // OBcsmTriggerDetectionPoint per 3GPP TS 29.002. Subset of values used in
 // the MAP CAMEL subscription info; additional TDPs exist in CAP itself.
-type OBcsmTriggerDetectionPoint int
+type OBcsmTriggerDetectionPoint = gsm_map.OBcsmTriggerDetectionPoint
 
 const (
-	OBcsmTriggerCollectedInfo      OBcsmTriggerDetectionPoint = 2
-	OBcsmTriggerRouteSelectFailure OBcsmTriggerDetectionPoint = 4
+	OBcsmTriggerCollectedInfo      = gsm_map.OBcsmTriggerDetectionPointCollectedInfo
+	OBcsmTriggerRouteSelectFailure = gsm_map.OBcsmTriggerDetectionPointRouteSelectFailure
 )
 
 // TBcsmTriggerDetectionPoint per 3GPP TS 29.002.
-type TBcsmTriggerDetectionPoint int
+type TBcsmTriggerDetectionPoint = gsm_map.TBcsmTriggerDetectionPoint
 
 const (
-	TBcsmTriggerTermAttemptAuthorized TBcsmTriggerDetectionPoint = 12
-	TBcsmTriggerTBusy                 TBcsmTriggerDetectionPoint = 13
-	TBcsmTriggerTNoAnswer             TBcsmTriggerDetectionPoint = 14
+	TBcsmTriggerTermAttemptAuthorized = gsm_map.TBcsmTriggerDetectionPointTermAttemptAuthorized
+	TBcsmTriggerTBusy                 = gsm_map.TBcsmTriggerDetectionPointTBusy
+	TBcsmTriggerTNoAnswer             = gsm_map.TBcsmTriggerDetectionPointTNoAnswer
 )
 
 // DefaultCallHandling per 3GPP TS 29.002.
-type DefaultCallHandling int
+type DefaultCallHandling = gsm_map.DefaultCallHandling
 
 const (
-	DefaultCallHandlingContinueCall DefaultCallHandling = 0
-	DefaultCallHandlingReleaseCall  DefaultCallHandling = 1
+	DefaultCallHandlingContinueCall = gsm_map.DefaultCallHandlingContinueCall
+	DefaultCallHandlingReleaseCall  = gsm_map.DefaultCallHandlingReleaseCall
 )
 
 // CallTypeCriteria per 3GPP TS 29.002 (O-BcsmCamelTDP-Criteria).
-type CallTypeCriteria int
+type CallTypeCriteria = gsm_map.CallTypeCriteria
 
 const (
-	CallTypeCriteriaForwarded    CallTypeCriteria = 0
-	CallTypeCriteriaNotForwarded CallTypeCriteria = 1
+	CallTypeCriteriaForwarded    = gsm_map.CallTypeCriteriaForwarded
+	CallTypeCriteriaNotForwarded = gsm_map.CallTypeCriteriaNotForwarded
 )
 
 // MatchType per 3GPP TS 29.002 (DestinationNumberCriteria).
-type MatchType int
+type MatchType = gsm_map.MatchType
 
 const (
-	MatchTypeInhibiting MatchType = 0
-	MatchTypeEnabling   MatchType = 1
+	MatchTypeInhibiting = gsm_map.MatchTypeInhibiting
+	MatchTypeEnabling   = gsm_map.MatchTypeEnabling
 )
 
 // DestinationNumberCriteria per 3GPP TS 29.002.
@@ -961,20 +961,20 @@ type MCSI struct {
 // continueTransaction and values > 31 as releaseTransaction on decode —
 // the decoder maps them accordingly and the encoder rejects anything
 // outside 0..1.
-type DefaultSMSHandling int
+type DefaultSMSHandling = gsm_map.DefaultSMSHandling
 
 const (
-	DefaultSMSHandlingContinueTransaction DefaultSMSHandling = 0
-	DefaultSMSHandlingReleaseTransaction  DefaultSMSHandling = 1
+	DefaultSMSHandlingContinueTransaction = gsm_map.DefaultSMSHandlingContinueTransaction
+	DefaultSMSHandlingReleaseTransaction  = gsm_map.DefaultSMSHandlingReleaseTransaction
 )
 
 // SMSTriggerDetectionPoint per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2487.
 // ENUMERATED { sms-CollectedInfo(1), sms-DeliveryRequest(2), ... }.
-type SMSTriggerDetectionPoint int
+type SMSTriggerDetectionPoint = gsm_map.SMSTriggerDetectionPoint
 
 const (
-	SMSTriggerDetectionPointSmsCollectedInfo   SMSTriggerDetectionPoint = 1
-	SMSTriggerDetectionPointSmsDeliveryRequest SMSTriggerDetectionPoint = 2
+	SMSTriggerDetectionPointSmsCollectedInfo   = gsm_map.SMSTriggerDetectionPointSmsCollectedInfo
+	SMSTriggerDetectionPointSmsDeliveryRequest = gsm_map.SMSTriggerDetectionPointSmsDeliveryRequest
 )
 
 // SMSCAMELTDPData per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2478.
@@ -1003,12 +1003,12 @@ type SMSCSI struct {
 
 // MTSMSTPDUType per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2213.
 // ENUMERATED { sms-DELIVER(0), sms-SUBMIT-REPORT(1), sms-STATUS-REPORT(2), ... }.
-type MTSMSTPDUType int
+type MTSMSTPDUType = gsm_map.MTSMSTPDUType
 
 const (
-	MTSMSTPDUTypeSmsDELIVER      MTSMSTPDUType = 0
-	MTSMSTPDUTypeSmsSUBMITREPORT MTSMSTPDUType = 1
-	MTSMSTPDUTypeSmsSTATUSREPORT MTSMSTPDUType = 2
+	MTSMSTPDUTypeSmsDELIVER      = gsm_map.MTSMSTPDUTypeSmsDELIVER
+	MTSMSTPDUTypeSmsSUBMITREPORT = gsm_map.MTSMSTPDUTypeSmsSUBMITREPORT
+	MTSMSTPDUTypeSmsSTATUSREPORT = gsm_map.MTSMSTPDUTypeSmsSTATUSREPORT
 )
 
 // MTSmsCAMELTDPCriteria per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2202.
@@ -1052,21 +1052,21 @@ const MaxNumOfCUG = 10
 // CliRestrictionOption per TS 29.002 MAP-SS-DataTypes.asn:177.
 // ENUMERATED { permanent(0), temporaryDefaultRestricted(1),
 // temporaryDefaultAllowed(2) }.
-type CliRestrictionOption int
+type CliRestrictionOption = gsm_map.CliRestrictionOption
 
 const (
-	CliRestrictionPermanent                  CliRestrictionOption = 0
-	CliRestrictionTemporaryDefaultRestricted CliRestrictionOption = 1
-	CliRestrictionTemporaryDefaultAllowed    CliRestrictionOption = 2
+	CliRestrictionPermanent                  = gsm_map.CliRestrictionOptionPermanent
+	CliRestrictionTemporaryDefaultRestricted = gsm_map.CliRestrictionOptionTemporaryDefaultRestricted
+	CliRestrictionTemporaryDefaultAllowed    = gsm_map.CliRestrictionOptionTemporaryDefaultAllowed
 )
 
 // OverrideCategory per TS 29.002 MAP-SS-DataTypes.asn:182.
 // ENUMERATED { overrideEnabled(0), overrideDisabled(1) }.
-type OverrideCategory int
+type OverrideCategory = gsm_map.OverrideCategory
 
 const (
-	OverrideEnabled  OverrideCategory = 0
-	OverrideDisabled OverrideCategory = 1
+	OverrideEnabled  = gsm_map.OverrideCategoryOverrideEnabled
+	OverrideDisabled = gsm_map.OverrideCategoryOverrideDisabled
 )
 
 // SSSubscriptionOption is the SS-SubscriptionOption CHOICE
@@ -1079,12 +1079,12 @@ type SSSubscriptionOption struct {
 // IntraCUGOptions per TS 29.002 MAP-MS-DataTypes.asn:1929.
 // ENUMERATED { noCUG-Restrictions(0), cugIC-CallBarred(1),
 // cugOG-CallBarred(2) }.
-type IntraCUGOptions int
+type IntraCUGOptions = gsm_map.IntraCUGOptions
 
 const (
-	IntraCUGNoRestrictions IntraCUGOptions = 0
-	IntraCUGICCallBarred   IntraCUGOptions = 1
-	IntraCUGOGCallBarred   IntraCUGOptions = 2
+	IntraCUGNoRestrictions = gsm_map.IntraCUGOptionsNoCUGRestrictions
+	IntraCUGICCallBarred   = gsm_map.IntraCUGOptionsCugICCallBarred
+	IntraCUGOGCallBarred   = gsm_map.IntraCUGOptionsCugOGCallBarred
 )
 
 // CUGSubscription per TS 29.002 MAP-MS-DataTypes.asn:1916.
@@ -1290,11 +1290,11 @@ type MwStatusFlags struct {
 }
 
 // SmsGmscAlertEvent per 3GPP TS 29.002 (opCode 64).
-type SmsGmscAlertEvent int
+type SmsGmscAlertEvent = gsm_map.SmsGmscAlertEvent
 
 const (
-	SmsGmscAlertMsAvailableForMtSms   SmsGmscAlertEvent = 0
-	SmsGmscAlertMsUnderNewServingNode SmsGmscAlertEvent = 1
+	SmsGmscAlertMsAvailableForMtSms   = gsm_map.SmsGmscAlertEventMsAvailableForMtSms
+	SmsGmscAlertMsUnderNewServingNode = gsm_map.SmsGmscAlertEventMsUnderNewServingNode
 )
 
 // AlertServiceCentre represents an AlertServiceCentre request (opCode 64)
@@ -1372,17 +1372,17 @@ type PurgeMSRes struct {
 }
 
 // RequestingNodeType per 3GPP TS 29.002 (opCode 56).
-type RequestingNodeType int
+type RequestingNodeType = gsm_map.RequestingNodeType
 
 const (
-	RequestingNodeVlr           RequestingNodeType = 0
-	RequestingNodeSgsn          RequestingNodeType = 1
-	RequestingNodeSCscf         RequestingNodeType = 2
-	RequestingNodeBsf           RequestingNodeType = 3
-	RequestingNodeGanAAAServer  RequestingNodeType = 4
-	RequestingNodeWlanAAAServer RequestingNodeType = 5
-	RequestingNodeMme           RequestingNodeType = 16
-	RequestingNodeMmeSgsn       RequestingNodeType = 17
+	RequestingNodeVlr           = gsm_map.RequestingNodeTypeVlr
+	RequestingNodeSgsn          = gsm_map.RequestingNodeTypeSgsn
+	RequestingNodeSCscf         = gsm_map.RequestingNodeTypeSCscf
+	RequestingNodeBsf           = gsm_map.RequestingNodeTypeBsf
+	RequestingNodeGanAAAServer  = gsm_map.RequestingNodeTypeGanAaaServer
+	RequestingNodeWlanAAAServer = gsm_map.RequestingNodeTypeWlanAaaServer
+	RequestingNodeMme           = gsm_map.RequestingNodeTypeMme
+	RequestingNodeMmeSgsn       = gsm_map.RequestingNodeTypeMmeSgsn
 )
 
 // ReSynchronisationInfo per 3GPP TS 29.002 (opCode 56).
@@ -1457,23 +1457,23 @@ type SendAuthenticationInfoRes struct {
 
 // CancellationType per 3GPP TS 29.002 (opCode 3). Indicates why the HLR
 // is asking the VLR/SGSN to cancel the subscriber's location record.
-type CancellationType int
+type CancellationType = gsm_map.CancellationType
 
 const (
-	CancellationTypeUpdateProcedure        CancellationType = 0
-	CancellationTypeSubscriptionWithdraw   CancellationType = 1
-	CancellationTypeInitialAttachProcedure CancellationType = 2
+	CancellationTypeUpdateProcedure        = gsm_map.CancellationTypeUpdateProcedure
+	CancellationTypeSubscriptionWithdraw   = gsm_map.CancellationTypeSubscriptionWithdraw
+	CancellationTypeInitialAttachProcedure = gsm_map.CancellationTypeInitialAttachProcedure
 )
 
 // TypeOfUpdate per 3GPP TS 29.002 (opCode 3). This field is only valid
 // when CancellationType is updateProcedure or initialAttachProcedure.
 // The constraint is enforced on both the encode and decode paths and
 // returns ErrCancelLocTypeOfUpdateNotApplicable when violated.
-type TypeOfUpdate int
+type TypeOfUpdate = gsm_map.TypeOfUpdate
 
 const (
-	TypeOfUpdateSgsnChange TypeOfUpdate = 0
-	TypeOfUpdateMmeChange  TypeOfUpdate = 1
+	TypeOfUpdateSgsnChange = gsm_map.TypeOfUpdateSgsnChange
+	TypeOfUpdateMmeChange  = gsm_map.TypeOfUpdateMmeChange
 )
 
 // CancelLocationIdentity is the CHOICE between IMSI alone and IMSI+LMSI.
@@ -1516,33 +1516,33 @@ type CancelLocation struct {
 
 // SubscriberStatus per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:1756).
 // ENUMERATED { serviceGranted(0), operatorDeterminedBarring(1) }.
-type SubscriberStatus int
+type SubscriberStatus = gsm_map.SubscriberStatus
 
 const (
-	SubscriberStatusServiceGranted            SubscriberStatus = 0
-	SubscriberStatusOperatorDeterminedBarring SubscriberStatus = 1
+	SubscriberStatusServiceGranted            = gsm_map.SubscriberStatusServiceGranted
+	SubscriberStatusOperatorDeterminedBarring = gsm_map.SubscriberStatusOperatorDeterminedBarring
 )
 
 // NetworkAccessMode per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:1509).
 // ENUMERATED { packetAndCircuit(0), onlyCircuit(1), onlyPacket(2) }.
-type NetworkAccessMode int
+type NetworkAccessMode = gsm_map.NetworkAccessMode
 
 const (
-	NetworkAccessModePacketAndCircuit NetworkAccessMode = 0
-	NetworkAccessModeOnlyCircuit      NetworkAccessMode = 1
-	NetworkAccessModeOnlyPacket       NetworkAccessMode = 2
+	NetworkAccessModePacketAndCircuit = gsm_map.NetworkAccessModePacketAndCircuit
+	NetworkAccessModeOnlyCircuit      = gsm_map.NetworkAccessModeOnlyCircuit
+	NetworkAccessModeOnlyPacket       = gsm_map.NetworkAccessModeOnlyPacket
 )
 
 // RegionalSubscriptionResponse per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:2091).
 // ENUMERATED { networkNode-AreaRestricted(0), tooManyZoneCodes(1),
 // zoneCodesConflict(2), regionalSubscNotSupported(3) }.
-type RegionalSubscriptionResponse int
+type RegionalSubscriptionResponse = gsm_map.RegionalSubscriptionResponse
 
 const (
-	RegionalSubscriptionResponseNetworkNodeAreaRestricted RegionalSubscriptionResponse = 0
-	RegionalSubscriptionResponseTooManyZoneCodes          RegionalSubscriptionResponse = 1
-	RegionalSubscriptionResponseZoneCodesConflict         RegionalSubscriptionResponse = 2
-	RegionalSubscriptionResponseRegionalSubscNotSupported RegionalSubscriptionResponse = 3
+	RegionalSubscriptionResponseNetworkNodeAreaRestricted = gsm_map.RegionalSubscriptionResponseNetworkNodeAreaRestricted
+	RegionalSubscriptionResponseTooManyZoneCodes          = gsm_map.RegionalSubscriptionResponseTooManyZoneCodes
+	RegionalSubscriptionResponseZoneCodesConflict         = gsm_map.RegionalSubscriptionResponseZoneCodesConflict
+	RegionalSubscriptionResponseRegionalSubscNotSupported = gsm_map.RegionalSubscriptionResponseRegionalSubscNotSupported
 )
 
 // ODBGeneralData (BIT STRING SIZE 15..32) per TS 29.002 MAP-MS-DataTypes.asn:1776.

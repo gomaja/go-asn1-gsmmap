@@ -87,10 +87,10 @@ func convertOBcsmTDPDataToWire(d *OBcsmCamelTDPData) (gsm_map.OBcsmCamelTDPData,
 		return gsm_map.OBcsmCamelTDPData{}, fmt.Errorf("encoding GsmSCFAddress: %w", err)
 	}
 	return gsm_map.OBcsmCamelTDPData{
-		OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPoint(d.OBcsmTriggerDetectionPoint),
+		OBcsmTriggerDetectionPoint: d.OBcsmTriggerDetectionPoint,
 		ServiceKey:                 gsm_map.ServiceKey(d.ServiceKey),
 		GsmSCFAddress:              gsm_map.ISDNAddressString(addr),
-		DefaultCallHandling:        gsm_map.DefaultCallHandling(d.DefaultCallHandling),
+		DefaultCallHandling:        d.DefaultCallHandling,
 	}, nil
 }
 
@@ -146,10 +146,10 @@ func convertTBcsmTDPDataToWire(d *TBcsmCamelTDPData) (gsm_map.TBcsmCamelTDPData,
 		return gsm_map.TBcsmCamelTDPData{}, fmt.Errorf("encoding GsmSCFAddress: %w", err)
 	}
 	return gsm_map.TBcsmCamelTDPData{
-		TBcsmTriggerDetectionPoint: gsm_map.TBcsmTriggerDetectionPoint(d.TBcsmTriggerDetectionPoint),
+		TBcsmTriggerDetectionPoint: d.TBcsmTriggerDetectionPoint,
 		ServiceKey:                 gsm_map.ServiceKey(d.ServiceKey),
 		GsmSCFAddress:              gsm_map.ISDNAddressString(addr),
-		DefaultCallHandling:        gsm_map.DefaultCallHandling(d.DefaultCallHandling),
+		DefaultCallHandling:        d.DefaultCallHandling,
 	}, nil
 }
 
@@ -194,7 +194,7 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 		return nil, ErrCamelMissingDestinationNumberCriteria
 	}
 	out := &gsm_map.DestinationNumberCriteria{
-		MatchType: gsm_map.MatchType(c.MatchType),
+		MatchType: c.MatchType,
 	}
 	if len(c.DestinationNumberList) > 0 {
 		list := make(gsm_map.DestinationNumberList, len(c.DestinationNumberList))
@@ -268,7 +268,7 @@ func convertOBcsmTDPCriteriaToWire(c *OBcsmCamelTDPCriteria) (gsm_map.OBcsmCamel
 		return gsm_map.OBcsmCamelTDPCriteria{}, ErrCamelInvalidOTriggerPoint
 	}
 	out := gsm_map.OBcsmCamelTDPCriteria{
-		OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPoint(c.OBcsmTriggerDetectionPoint),
+		OBcsmTriggerDetectionPoint: c.OBcsmTriggerDetectionPoint,
 	}
 	if c.DestinationNumberCriteria != nil {
 		dnc, err := convertDestinationNumberCriteriaToWire(c.DestinationNumberCriteria)
@@ -292,7 +292,7 @@ func convertOBcsmTDPCriteriaToWire(c *OBcsmCamelTDPCriteria) (gsm_map.OBcsmCamel
 		if !isValidCallTypeCriteria(*c.CallTypeCriteria) {
 			return gsm_map.OBcsmCamelTDPCriteria{}, ErrCamelInvalidCallTypeCriteria
 		}
-		ctc := gsm_map.CallTypeCriteria(*c.CallTypeCriteria)
+		ctc := *c.CallTypeCriteria
 		out.CallTypeCriteria = &ctc
 	}
 	if len(c.OCauseValueCriteria) > 0 {
@@ -374,7 +374,7 @@ func convertTBcsmTDPCriteriaToWire(c *TBcsmCamelTDPCriteria) (gsm_map.TBCSMCAMEL
 		return gsm_map.TBCSMCAMELTDPCriteria{}, ErrCamelInvalidTTriggerPoint
 	}
 	out := gsm_map.TBCSMCAMELTDPCriteria{
-		TBCSMTriggerDetectionPoint: gsm_map.TBcsmTriggerDetectionPoint(c.TBcsmTriggerDetectionPoint),
+		TBCSMTriggerDetectionPoint: c.TBcsmTriggerDetectionPoint,
 	}
 	if len(c.BasicServiceCriteria) > 0 {
 		bsc := make(gsm_map.BasicServiceCriteria, len(c.BasicServiceCriteria))
@@ -578,7 +578,7 @@ func convertDPAnalysedInfoCriteriumToWire(c *DPAnalysedInfoCriterium) (gsm_map.D
 		DialledNumber:       gsm_map.ISDNAddressString(dn),
 		ServiceKey:          gsm_map.ServiceKey(c.ServiceKey),
 		GsmSCFAddress:       gsm_map.ISDNAddressString(sc),
-		DefaultCallHandling: gsm_map.DefaultCallHandling(c.DefaultCallHandling),
+		DefaultCallHandling: c.DefaultCallHandling,
 	}, nil
 }
 
@@ -956,10 +956,10 @@ func convertSMSCAMELTDPDataToWire(d *SMSCAMELTDPData) (gsm_map.SMSCAMELTDPData, 
 		return gsm_map.SMSCAMELTDPData{}, fmt.Errorf("encoding SMS-CAMEL-TDP-Data.GsmSCFAddress: %w", err)
 	}
 	return gsm_map.SMSCAMELTDPData{
-		SmsTriggerDetectionPoint: gsm_map.SMSTriggerDetectionPoint(d.SmsTriggerDetectionPoint),
+		SmsTriggerDetectionPoint: d.SmsTriggerDetectionPoint,
 		ServiceKey:               gsm_map.ServiceKey(d.ServiceKey),
 		GsmSCFAddress:            gsm_map.ISDNAddressString(addr),
-		DefaultSMSHandling:       gsm_map.DefaultSMSHandling(d.DefaultSMSHandling),
+		DefaultSMSHandling:       d.DefaultSMSHandling,
 	}, nil
 }
 
@@ -1099,7 +1099,7 @@ func convertMTSmsCAMELTDPCriteriaToWire(c *MTSmsCAMELTDPCriteria) (gsm_map.MTSms
 		return gsm_map.MTSmsCAMELTDPCriteria{}, ErrCamelInvalidSMSTriggerDetectionPoint
 	}
 	out := gsm_map.MTSmsCAMELTDPCriteria{
-		SmsTriggerDetectionPoint: gsm_map.SMSTriggerDetectionPoint(c.SmsTriggerDetectionPoint),
+		SmsTriggerDetectionPoint: c.SmsTriggerDetectionPoint,
 	}
 	if c.TpduTypeCriterion != nil {
 		if len(c.TpduTypeCriterion) < 1 || len(c.TpduTypeCriterion) > maxNumOfTPDUTypes {
@@ -1110,7 +1110,7 @@ func convertMTSmsCAMELTDPCriteriaToWire(c *MTSmsCAMELTDPCriteria) (gsm_map.MTSms
 			if !isValidMTSMSTPDUType(t) {
 				return gsm_map.MTSmsCAMELTDPCriteria{}, fmt.Errorf("TpduTypeCriterion[%d]: %w", i, ErrCamelInvalidMTSMSTPDUType)
 			}
-			tpdu[i] = gsm_map.MTSMSTPDUType(t)
+			tpdu[i] = t
 		}
 		out.TpduTypeCriterion = tpdu
 	}
