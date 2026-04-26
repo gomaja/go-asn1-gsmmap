@@ -15,8 +15,8 @@ func convertExtSSInfoListToWire(list []ExtSSInfo) (gsm_map.ExtSSInfoList, error)
 	if list == nil {
 		return nil, nil
 	}
-	if len(list) < 1 || len(list) > 30 {
-		return nil, fmt.Errorf("provisionedSS (Ext-SS-InfoList): must contain 1..30 entries (got %d)", len(list))
+	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfSS {
+		return nil, fmt.Errorf("%w (got %d)", ErrIsdProvisionedSSListSize, len(list))
 	}
 	out := make(gsm_map.ExtSSInfoList, len(list))
 	for i, e := range list {
@@ -33,8 +33,8 @@ func convertWireToExtSSInfoList(w gsm_map.ExtSSInfoList) ([]ExtSSInfo, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > 30 {
-		return nil, fmt.Errorf("provisionedSS (Ext-SS-InfoList): must contain 1..30 entries (got %d)", len(w))
+	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfSS {
+		return nil, fmt.Errorf("%w (got %d)", ErrIsdProvisionedSSListSize, len(w))
 	}
 	out := make([]ExtSSInfo, len(w))
 	for i, e := range w {
@@ -53,7 +53,7 @@ func convertWireToExtSSInfoList(w gsm_map.ExtSSInfoList) ([]ExtSSInfo, error) {
 
 func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.InsertSubscriberDataArg, error) {
 	if a == nil {
-		return nil, fmt.Errorf("InsertSubscriberDataArg: argument must not be nil")
+		return nil, ErrIsdArgNil
 	}
 	out := &gsm_map.InsertSubscriberDataArg{
 		RoamingRestrictionDueToUnsupportedFeature:      boolToNullPtr(a.RoamingRestrictionDueToUnsupportedFeature),
@@ -83,7 +83,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	}
 	if len(a.Category) > 0 {
 		if len(a.Category) != 1 {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.Category: must be exactly 1 octet (got %d)", len(a.Category))
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdCategoryInvalidSize, len(a.Category))
 		}
 		v := gsm_map.Category(a.Category)
 		out.Category = &v
@@ -93,19 +93,25 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.SubscriberStatus = &v
 	}
 	if a.BearerServiceList != nil {
+		if int64(len(a.BearerServiceList)) < 1 || int64(len(a.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(a.BearerServiceList))
+		}
 		out.BearerServiceList = make(gsm_map.BearerServiceList, len(a.BearerServiceList))
 		for i, b := range a.BearerServiceList {
 			if len(b) < 1 || len(b) > 5 {
-				return nil, fmt.Errorf("BearerServiceList[%d]: ExtBearerServiceCode must be 1..5 octets (got %d)", i, len(b))
+				return nil, fmt.Errorf("BearerServiceList[%d]: %w (got %d)", i, ErrIsdBearerServiceCodeSize, len(b))
 			}
 			out.BearerServiceList[i] = gsm_map.ExtBearerServiceCode(b)
 		}
 	}
 	if a.TeleserviceList != nil {
+		if int64(len(a.TeleserviceList)) < 1 || int64(len(a.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(a.TeleserviceList))
+		}
 		out.TeleserviceList = make(gsm_map.TeleserviceList, len(a.TeleserviceList))
 		for i, t := range a.TeleserviceList {
 			if len(t) < 1 || len(t) > 5 {
-				return nil, fmt.Errorf("TeleserviceList[%d]: ExtTeleserviceCode must be 1..5 octets (got %d)", i, len(t))
+				return nil, fmt.Errorf("TeleserviceList[%d]: %w (got %d)", i, ErrIsdTeleserviceCodeSize, len(t))
 			}
 			out.TeleserviceList[i] = gsm_map.ExtTeleserviceCode(t)
 		}
@@ -186,7 +192,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	}
 	if len(a.SuperChargerSupportedInHLR) > 0 {
 		if len(a.SuperChargerSupportedInHLR) < 1 || len(a.SuperChargerSupportedInHLR) > 6 {
-			return nil, fmt.Errorf("SuperChargerSupportedInHLR (AgeIndicator): must be 1..6 octets (got %d)", len(a.SuperChargerSupportedInHLR))
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdAgeIndicatorInvalidSize, len(a.SuperChargerSupportedInHLR))
 		}
 		v := gsm_map.AgeIndicator(a.SuperChargerSupportedInHLR)
 		out.SuperChargerSupportedInHLR = &v
@@ -200,7 +206,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	}
 	if len(a.CsAllocationRetentionPriority) > 0 {
 		if len(a.CsAllocationRetentionPriority) != 1 {
-			return nil, fmt.Errorf("CsAllocationRetentionPriority: must be exactly 1 octet (got %d)", len(a.CsAllocationRetentionPriority))
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdCsAllocRetentionInvalidSize, len(a.CsAllocationRetentionPriority))
 		}
 		v := gsm_map.CSAllocationRetentionPriority(a.CsAllocationRetentionPriority)
 		out.CsAllocationRetentionPriority = &v
@@ -214,7 +220,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	}
 	if len(a.ChargingCharacteristics) > 0 {
 		if len(a.ChargingCharacteristics) != 2 {
-			return nil, fmt.Errorf("ChargingCharacteristics: must be exactly 2 octets (got %d)", len(a.ChargingCharacteristics))
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdChargingCharsInvalidSize, len(a.ChargingCharacteristics))
 		}
 		v := gsm_map.ChargingCharacteristics(a.ChargingCharacteristics)
 		out.ChargingCharacteristics = &v
@@ -250,6 +256,9 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.SgsnNumber = &v
 	}
 	if len(a.MmeName) > 0 {
+		if err := validateFQDN(a.MmeName, "InsertSubscriberDataArg.MmeName"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.DiameterIdentity(a.MmeName)
 		out.MmeName = &v
 	}
@@ -325,7 +334,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 
 func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*InsertSubscriberDataArg, error) {
 	if w == nil {
-		return nil, fmt.Errorf("InsertSubscriberDataArg: wire pointer must not be nil")
+		return nil, ErrIsdArgNil
 	}
 	out := &InsertSubscriberDataArg{
 		RoamingRestrictionDueToUnsupportedFeature:      nullPtrToBool(w.RoamingRestrictionDueToUnsupportedFeature),
@@ -349,13 +358,16 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		if err != nil {
 			return nil, fmt.Errorf("decoding MSISDN: %w", err)
 		}
+		if s == "" {
+			return nil, fmt.Errorf("InsertSubscriberDataArg.MSISDN: %w", ErrIsdMSISDNDecodedEmpty)
+		}
 		out.MSISDN = s
 		out.MSISDNNature = nature
 		out.MSISDNPlan = plan
 	}
 	if w.Category != nil {
 		if len(*w.Category) != 1 {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.Category: must be exactly 1 octet (got %d)", len(*w.Category))
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdCategoryInvalidSize, len(*w.Category))
 		}
 		out.Category = HexBytes(*w.Category)
 	}
@@ -364,19 +376,25 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.SubscriberStatus = &v
 	}
 	if w.BearerServiceList != nil {
+		if int64(len(w.BearerServiceList)) < 1 || int64(len(w.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(w.BearerServiceList))
+		}
 		out.BearerServiceList = make([]HexBytes, len(w.BearerServiceList))
 		for i, b := range w.BearerServiceList {
 			if len(b) < 1 || len(b) > 5 {
-				return nil, fmt.Errorf("BearerServiceList[%d]: must be 1..5 octets (got %d)", i, len(b))
+				return nil, fmt.Errorf("BearerServiceList[%d]: %w (got %d)", i, ErrIsdBearerServiceCodeSize, len(b))
 			}
 			out.BearerServiceList[i] = HexBytes(b)
 		}
 	}
 	if w.TeleserviceList != nil {
+		if int64(len(w.TeleserviceList)) < 1 || int64(len(w.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(w.TeleserviceList))
+		}
 		out.TeleserviceList = make([]HexBytes, len(w.TeleserviceList))
 		for i, t := range w.TeleserviceList {
 			if len(t) < 1 || len(t) > 5 {
-				return nil, fmt.Errorf("TeleserviceList[%d]: must be 1..5 octets (got %d)", i, len(t))
+				return nil, fmt.Errorf("TeleserviceList[%d]: %w (got %d)", i, ErrIsdTeleserviceCodeSize, len(t))
 			}
 			out.TeleserviceList[i] = HexBytes(t)
 		}
@@ -453,7 +471,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 	}
 	if w.SuperChargerSupportedInHLR != nil {
 		if len(*w.SuperChargerSupportedInHLR) < 1 || len(*w.SuperChargerSupportedInHLR) > 6 {
-			return nil, fmt.Errorf("SuperChargerSupportedInHLR (AgeIndicator): must be 1..6 octets (got %d)", len(*w.SuperChargerSupportedInHLR))
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdAgeIndicatorInvalidSize, len(*w.SuperChargerSupportedInHLR))
 		}
 		out.SuperChargerSupportedInHLR = HexBytes(*w.SuperChargerSupportedInHLR)
 	}
@@ -466,7 +484,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 	}
 	if w.CsAllocationRetentionPriority != nil {
 		if len(*w.CsAllocationRetentionPriority) != 1 {
-			return nil, fmt.Errorf("CsAllocationRetentionPriority: must be exactly 1 octet (got %d)", len(*w.CsAllocationRetentionPriority))
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdCsAllocRetentionInvalidSize, len(*w.CsAllocationRetentionPriority))
 		}
 		out.CsAllocationRetentionPriority = HexBytes(*w.CsAllocationRetentionPriority)
 	}
@@ -479,7 +497,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 	}
 	if w.ChargingCharacteristics != nil {
 		if len(*w.ChargingCharacteristics) != 2 {
-			return nil, fmt.Errorf("ChargingCharacteristics: must be exactly 2 octets (got %d)", len(*w.ChargingCharacteristics))
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdChargingCharsInvalidSize, len(*w.ChargingCharacteristics))
 		}
 		out.ChargingCharacteristics = HexBytes(*w.ChargingCharacteristics)
 	}
@@ -509,11 +527,17 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		if err != nil {
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
+		if s == "" {
+			return nil, fmt.Errorf("InsertSubscriberDataArg.SgsnNumber: %w", ErrIsdMSISDNDecodedEmpty)
+		}
 		out.SgsnNumber = s
 		out.SgsnNumberNature = nature
 		out.SgsnNumberPlan = plan
 	}
 	if w.MmeName != nil {
+		if err := validateFQDN(HexBytes(*w.MmeName), "InsertSubscriberDataArg.MmeName"); err != nil {
+			return nil, err
+		}
 		out.MmeName = HexBytes(*w.MmeName)
 	}
 	if w.SubscribedPeriodicRAUTAUtimer != nil {
@@ -539,6 +563,9 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		s, nature, plan, err := decodeAddressField([]byte(*w.AdditionalMSISDN))
 		if err != nil {
 			return nil, fmt.Errorf("decoding AdditionalMSISDN: %w", err)
+		}
+		if s == "" {
+			return nil, fmt.Errorf("InsertSubscriberDataArg.AdditionalMSISDN: %w", ErrIsdMSISDNDecodedEmpty)
 		}
 		out.AdditionalMSISDN = s
 		out.AdditionalMSISDNNature = nature
@@ -591,7 +618,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 
 func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.InsertSubscriberDataRes, error) {
 	if r == nil {
-		return nil, fmt.Errorf("InsertSubscriberDataRes: argument must not be nil")
+		return nil, ErrIsdResNil
 	}
 	out := &gsm_map.InsertSubscriberDataRes{}
 	if r.TeleserviceList != nil {
@@ -647,7 +674,7 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 
 func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*InsertSubscriberDataRes, error) {
 	if w == nil {
-		return nil, fmt.Errorf("InsertSubscriberDataRes: wire pointer must not be nil")
+		return nil, ErrIsdResNil
 	}
 	out := &InsertSubscriberDataRes{}
 	if w.TeleserviceList != nil {
@@ -671,8 +698,8 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 	if w.SsList != nil {
 		out.SsList = make([]SsCode, len(w.SsList))
 		for i, c := range w.SsList {
-			if len(c) == 0 {
-				return nil, fmt.Errorf("Res.SsList[%d]: SS-Code must be present (1 octet)", i)
+			if len(c) != 1 {
+				return nil, fmt.Errorf("Res.SsList[%d]: %w (got %d)", i, ErrIsdResSsListSize, len(c))
 			}
 			out.SsList[i] = SsCode(c[0])
 		}
@@ -699,52 +726,6 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 	return out, nil
 }
 
-// ============================================================================
-// Public Parse + Marshal entry points (opCode 7)
-// ============================================================================
-
-// ParseInsertSubscriberData decodes BER-encoded bytes into an
-// InsertSubscriberDataArg.
-func ParseInsertSubscriberData(data []byte) (*InsertSubscriberDataArg, error) {
-	var arg gsm_map.InsertSubscriberDataArg
-	if err := arg.UnmarshalBER(data); err != nil {
-		return nil, fmt.Errorf("decoding InsertSubscriberDataArg: %w", err)
-	}
-	return convertWireToInsertSubscriberDataArg(&arg)
-}
-
-// ParseInsertSubscriberDataRes decodes BER-encoded bytes into an
-// InsertSubscriberDataRes.
-func ParseInsertSubscriberDataRes(data []byte) (*InsertSubscriberDataRes, error) {
-	var res gsm_map.InsertSubscriberDataRes
-	if err := res.UnmarshalBER(data); err != nil {
-		return nil, fmt.Errorf("decoding InsertSubscriberDataRes: %w", err)
-	}
-	return convertWireToInsertSubscriberDataRes(&res)
-}
-
-// Marshal encodes InsertSubscriberDataArg into BER-encoded bytes.
-func (a *InsertSubscriberDataArg) Marshal() ([]byte, error) {
-	arg, err := convertInsertSubscriberDataArgToWire(a)
-	if err != nil {
-		return nil, fmt.Errorf("converting InsertSubscriberDataArg: %w", err)
-	}
-	data, err := arg.MarshalBER()
-	if err != nil {
-		return nil, fmt.Errorf("encoding InsertSubscriberDataArg: %w", err)
-	}
-	return data, nil
-}
-
-// Marshal encodes InsertSubscriberDataRes into BER-encoded bytes.
-func (r *InsertSubscriberDataRes) Marshal() ([]byte, error) {
-	res, err := convertInsertSubscriberDataResToWire(r)
-	if err != nil {
-		return nil, fmt.Errorf("converting InsertSubscriberDataRes: %w", err)
-	}
-	data, err := res.MarshalBER()
-	if err != nil {
-		return nil, fmt.Errorf("encoding InsertSubscriberDataRes: %w", err)
-	}
-	return data, nil
-}
+// Public ParseInsertSubscriberData/Res functions live in parse.go;
+// Marshal methods live in marshal.go (matching the package convention
+// established by every other operation).

@@ -1,6 +1,7 @@
 package gsmmap
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -321,24 +322,92 @@ func TestInsertSubscriberDataRes_NilRejected(t *testing.T) {
 	}
 }
 
-func TestInsertSubscriberDataArg_BadFieldSizes(t *testing.T) {
+func TestInsertSubscriberDataArg_ListCardinalityRejected(t *testing.T) {
 	cases := []struct {
 		name string
 		mut  func(*InsertSubscriberDataArg)
+		want error
 	}{
-		{"Category wrong size", func(a *InsertSubscriberDataArg) { a.Category = HexBytes{0x01, 0x02} }},
-		{"ChargingChars wrong size", func(a *InsertSubscriberDataArg) { a.ChargingCharacteristics = HexBytes{0x01} }},
-		{"CsAllocationRetentionPriority wrong", func(a *InsertSubscriberDataArg) { a.CsAllocationRetentionPriority = HexBytes{0x01, 0x02} }},
-		{"AgeIndicator over-max", func(a *InsertSubscriberDataArg) { a.SuperChargerSupportedInHLR = make(HexBytes, 7) }},
-		{"BearerServiceList entry too long", func(a *InsertSubscriberDataArg) { a.BearerServiceList = []HexBytes{make(HexBytes, 6)} }},
-		{"TeleserviceList entry empty", func(a *InsertSubscriberDataArg) { a.TeleserviceList = []HexBytes{{}} }},
+		{"BearerServiceList over-max", func(a *InsertSubscriberDataArg) {
+			too := make([]HexBytes, 51)
+			for i := range too {
+				too[i] = HexBytes{0x10}
+			}
+			a.BearerServiceList = too
+		}, ErrIsdBearerServiceListSize},
+		{"BearerServiceList empty", func(a *InsertSubscriberDataArg) {
+			a.BearerServiceList = []HexBytes{}
+		}, ErrIsdBearerServiceListSize},
+		{"TeleserviceList over-max", func(a *InsertSubscriberDataArg) {
+			too := make([]HexBytes, 21)
+			for i := range too {
+				too[i] = HexBytes{0x11}
+			}
+			a.TeleserviceList = too
+		}, ErrIsdTeleserviceListSize},
+		{"TeleserviceList empty", func(a *InsertSubscriberDataArg) {
+			a.TeleserviceList = []HexBytes{}
+		}, ErrIsdTeleserviceListSize},
+		{"ProvisionedSS empty", func(a *InsertSubscriberDataArg) {
+			a.ProvisionedSS = []ExtSSInfo{}
+		}, ErrIsdProvisionedSSListSize},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := &InsertSubscriberDataArg{IMSI: HexBytes{0x12}}
 			tc.mut(in)
-			if _, err := in.Marshal(); err == nil {
-				t.Fatalf("want error, got nil")
+			_, err := in.Marshal()
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("want %v, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestInsertSubscriberDataArg_MmeNameFQDNValidation(t *testing.T) {
+	in := &InsertSubscriberDataArg{
+		IMSI:    HexBytes{0x12},
+		MmeName: HexBytes("short"), // < 9 octets
+	}
+	_, err := in.Marshal()
+	if !errors.Is(err, ErrFQDNInvalidSize) {
+		t.Fatalf("want ErrFQDNInvalidSize, got %v", err)
+	}
+}
+
+func TestInsertSubscriberDataArg_NilSentinel(t *testing.T) {
+	var a *InsertSubscriberDataArg
+	_, err := a.Marshal()
+	if !errors.Is(err, ErrIsdArgNil) {
+		t.Fatalf("Marshal(nil) Arg: want ErrIsdArgNil, got %v", err)
+	}
+	var r *InsertSubscriberDataRes
+	_, err = r.Marshal()
+	if !errors.Is(err, ErrIsdResNil) {
+		t.Fatalf("Marshal(nil) Res: want ErrIsdResNil, got %v", err)
+	}
+}
+
+func TestInsertSubscriberDataArg_BadFieldSizes(t *testing.T) {
+	cases := []struct {
+		name string
+		mut  func(*InsertSubscriberDataArg)
+		want error
+	}{
+		{"Category wrong size", func(a *InsertSubscriberDataArg) { a.Category = HexBytes{0x01, 0x02} }, ErrIsdCategoryInvalidSize},
+		{"ChargingChars wrong size", func(a *InsertSubscriberDataArg) { a.ChargingCharacteristics = HexBytes{0x01} }, ErrIsdChargingCharsInvalidSize},
+		{"CsAllocationRetentionPriority wrong", func(a *InsertSubscriberDataArg) { a.CsAllocationRetentionPriority = HexBytes{0x01, 0x02} }, ErrIsdCsAllocRetentionInvalidSize},
+		{"AgeIndicator over-max", func(a *InsertSubscriberDataArg) { a.SuperChargerSupportedInHLR = make(HexBytes, 7) }, ErrIsdAgeIndicatorInvalidSize},
+		{"BearerServiceList entry too long", func(a *InsertSubscriberDataArg) { a.BearerServiceList = []HexBytes{make(HexBytes, 6)} }, ErrIsdBearerServiceCodeSize},
+		{"TeleserviceList entry empty", func(a *InsertSubscriberDataArg) { a.TeleserviceList = []HexBytes{{}} }, ErrIsdTeleserviceCodeSize},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			in := &InsertSubscriberDataArg{IMSI: HexBytes{0x12}}
+			tc.mut(in)
+			_, err := in.Marshal()
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("want %v, got %v", tc.want, err)
 			}
 		})
 	}

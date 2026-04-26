@@ -308,3 +308,29 @@ func (r *CancelLocationRes) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes InsertSubscriberDataArg (opCode 7) into BER-encoded bytes.
+func (a *InsertSubscriberDataArg) Marshal() ([]byte, error) {
+	arg, err := convertInsertSubscriberDataArgToWire(a)
+	if err != nil {
+		return nil, fmt.Errorf("converting InsertSubscriberDataArg: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding InsertSubscriberDataArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes InsertSubscriberDataRes (opCode 7) into BER-encoded bytes.
+func (r *InsertSubscriberDataRes) Marshal() ([]byte, error) {
+	res, err := convertInsertSubscriberDataResToWire(r)
+	if err != nil {
+		return nil, fmt.Errorf("converting InsertSubscriberDataRes: %w", err)
+	}
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding InsertSubscriberDataRes: %w", err)
+	}
+	return data, nil
+}
