@@ -233,3 +233,23 @@ func ParseCancelLocationRes(data []byte) (*CancelLocationRes, error) {
 	}
 	return convertWireToCancelLocationRes(&res), nil
 }
+
+// ParseInsertSubscriberData decodes BER-encoded bytes into an
+// InsertSubscriberDataArg (opCode 7).
+func ParseInsertSubscriberData(data []byte) (*InsertSubscriberDataArg, error) {
+	var arg gsm_map.InsertSubscriberDataArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding InsertSubscriberDataArg: %w", err)
+	}
+	return convertWireToInsertSubscriberDataArg(&arg)
+}
+
+// ParseInsertSubscriberDataRes decodes BER-encoded bytes into an
+// InsertSubscriberDataRes (opCode 7).
+func ParseInsertSubscriberDataRes(data []byte) (*InsertSubscriberDataRes, error) {
+	var res gsm_map.InsertSubscriberDataRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding InsertSubscriberDataRes: %w", err)
+	}
+	return convertWireToInsertSubscriberDataRes(&res)
+}

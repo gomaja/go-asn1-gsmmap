@@ -2323,6 +2323,122 @@ type SGSNCAMELSubscriptionInfo struct {
 	MgCsi                     *MGCSI                  // [5] optional
 }
 
+// ============================================================================
+// InsertSubscriberData (opCode 7) — TS 29.002 MAP-MS-DataTypes.asn:1738
+// ============================================================================
+
+// InsertSubscriberDataArg (SEQUENCE) per TS 29.002. All fields are
+// OPTIONAL per spec. The sub-types covered by PRs E1a/E1b1/E1b2/E1b3
+// are referenced here with their public Go equivalents; opaque scalar
+// fields are surfaced as `HexBytes` or typed integers.
+type InsertSubscriberDataArg struct {
+	// Identification (typically present together)
+	IMSI                                           HexBytes // [0] optional, IMSI octets (TBCD-encoded)
+	MSISDN                                         string   // [1] optional, ISDN-AddressString digits ("" = absent)
+	MSISDNNature                                   uint8
+	MSISDNPlan                                     uint8
+
+	// Subscriber profile
+	Category         HexBytes          // [2] optional, OCTET STRING SIZE 1
+	SubscriberStatus *SubscriberStatus // [3] optional
+
+	// Service lists
+	BearerServiceList []HexBytes // [4] optional, list of Ext-BearerServiceCode (1..5 octets each)
+	TeleserviceList   []HexBytes // [6] optional, list of Ext-TeleserviceCode (1..5 octets each)
+	ProvisionedSS     []ExtSSInfo // [7] optional, ExtSSInfoList
+
+	// Operator-determined barring
+	OdbData                                   *ODBData // [8] optional
+	RoamingRestrictionDueToUnsupportedFeature bool     // [9] optional NULL
+
+	// Voice services and zones
+	RegionalSubscriptionData ZoneCodeList // [10] optional, 1..10 entries
+	VbsSubscriptionData      VBSDataList  // [11] optional, 1..50 entries
+	VgcsSubscriptionData     VGCSDataList // [12] optional, 1..50 entries
+
+	// CAMEL VLR-side
+	VlrCamelSubscriptionInfo *VlrCamelSubscriptionInfo // [13] optional
+
+	// PR E1a sub-types
+	NaeaPreferredCI *NaeaPreferredCI // [15] optional
+
+	// PR E1b1 sub-types
+	GprsSubscriptionData                           *GPRSSubscriptionData // [16] optional
+	RoamingRestrictedInSgsnDueToUnsupportedFeature bool                  // [23] optional NULL
+	NetworkAccessMode                              *NetworkAccessMode    // [24] optional
+	LsaInformation                                 *LSAInformation       // [25] optional
+
+	// LCS / IST / supercharger
+	LmuIndicator               bool                       // [21] optional NULL
+	LcsInformation             *LCSInformation            // [22] optional
+	IstAlertTimer              *int64                     // [26] optional, ISTAlertTimerValue
+	SuperChargerSupportedInHLR HexBytes                   // [27] optional, AgeIndicator OCTET STRING (SIZE 1..6)
+	McSSInfo                   *MCSSInfo                  // [28] optional
+	CsAllocationRetentionPriority HexBytes                // [29] optional, OCTET STRING SIZE 1
+	SgsnCAMELSubscriptionInfo  *SGSNCAMELSubscriptionInfo // [17] optional
+
+	// Charging / access restriction
+	ChargingCharacteristics HexBytes               // [18] optional, OCTET STRING SIZE 2
+	AccessRestrictionData   *AccessRestrictionData // [19] optional
+	IcsIndicator            *bool                  // [20] optional
+
+	// EPS subscription
+	EpsSubscriptionData     *EPSSubscriptionData    // [31] optional
+	CsgSubscriptionDataList CSGSubscriptionDataList // [32] optional, 1..50 entries
+
+	// Reachability + network identifiers
+	UeReachabilityRequestIndicator bool   // [33] optional NULL
+	SgsnNumber                     string // [34] optional ISDN-AddressString
+	SgsnNumberNature               uint8
+	SgsnNumberPlan                 uint8
+	MmeName                        HexBytes // [35] optional DiameterIdentity (FQDN)
+
+	SubscribedPeriodicRAUTAUtimer *int64 // [36] optional INTEGER
+	VplmnLIPAAllowed              bool   // [37] optional NULL
+	MdtUserConsent                *bool  // [38] optional
+	SubscribedPeriodicLAUtimer    *int64 // [39] optional INTEGER
+
+	// VPLMN CSG / additional MSISDN
+	VplmnCsgSubscriptionDataList VPLMNCSGSubscriptionDataList // [40] optional, 1..50 entries
+	AdditionalMSISDN             string                       // [41] optional ISDN-AddressString
+	AdditionalMSISDNNature       uint8
+	AdditionalMSISDNPlan         uint8
+
+	// Service provision flags (NULL)
+	PsAndSMSOnlyServiceProvision bool // [42]
+	SmsInSGSNAllowed             bool // [43]
+	CsToPsSRVCCAllowedIndicator  bool // [44]
+	PcscfRestorationRequest      bool // [45]
+
+	// PR E1a sub-types (continued)
+	AdjacentAccessRestrictionDataList AdjacentAccessRestrictionDataList // [46] optional, 1..50 entries
+	ImsiGroupIdList                   IMSIGroupIdList                   // [47] optional, 1..50 entries
+
+	UeUsageType                           HexBytes            // [48] optional OCTET STRING
+	UserPlaneIntegrityProtectionIndicator bool                // [49] optional NULL
+	DlBufferingSuggestedPacketCount       *int64              // [50] optional INTEGER
+	ResetIdList                           ResetIdList         // [51] optional, 1..50 entries
+	EDRXCycleLengthList                   EDRXCycleLengthList // [52] optional, 1..8 entries
+
+	ExtAccessRestrictionData     *ExtAccessRestrictionData // [53] optional
+	IabOperationAllowedIndicator bool                      // [54] optional NULL
+}
+
+// InsertSubscriberDataRes (SEQUENCE) per TS 29.002. All fields are
+// OPTIONAL per spec. Returns the HLR's view of the subscriber's
+// services + ODB + supported CAMEL phases / features.
+type InsertSubscriberDataRes struct {
+	TeleserviceList              []HexBytes                    // [1] optional, list of Ext-TeleserviceCode
+	BearerServiceList            []HexBytes                    // [2] optional, list of Ext-BearerServiceCode
+	SsList                       []SsCode                      // [3] optional, list of SS-Code
+	OdbGeneralData               *ODBGeneralData               // [4] optional
+	RegionalSubscriptionResponse *RegionalSubscriptionResponse // [5] optional
+	SupportedCamelPhases         *SupportedCamelPhases         // [6] optional
+	OfferedCamel4CSIs            *OfferedCamel4CSIs            // [8] optional
+	SupportedFeatures            *SupportedFeatures            // [9] optional
+	ExtSupportedFeatures         *ExtSupportedFeatures         // [10] optional
+}
+
 // MAP operation sentinel errors.
 var (
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
@@ -2530,6 +2646,21 @@ var (
 	ErrMOLRClassSsCodeInvalidSize         = errors.New("molrClass: SsCode must be exactly 1 octet per TS 29.002 (mandatory SS-Code)")
 	ErrGMLCAddressEmpty                   = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
 	ErrSGSNMtSmsCAMELTDPCriteriaListSize  = errors.New("sgsnCAMELSubscriptionInfo: MtSmsCAMELTDPCriteriaList must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002 MAP-MS-DataTypes.asn:2199")
+
+	ErrIsdArgNil                       = errors.New("insertSubscriberDataArg: argument must not be nil")
+	ErrIsdResNil                       = errors.New("insertSubscriberDataRes: argument must not be nil")
+	ErrIsdCategoryInvalidSize          = errors.New("insertSubscriberDataArg: Category must be exactly 1 octet per TS 29.002")
+	ErrIsdChargingCharsInvalidSize     = errors.New("insertSubscriberDataArg: ChargingCharacteristics must be exactly 2 octets per TS 29.002")
+	ErrIsdCsAllocRetentionInvalidSize  = errors.New("insertSubscriberDataArg: CsAllocationRetentionPriority must be exactly 1 octet per TS 29.002")
+	ErrIsdAgeIndicatorInvalidSize      = errors.New("insertSubscriberDataArg: SuperChargerSupportedInHLR (AgeIndicator) must be 1..6 octets per TS 29.002")
+	ErrIsdBearerServiceCodeSize        = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
+	ErrIsdTeleserviceCodeSize          = errors.New("insertSubscriberDataArg: each Ext-TeleserviceCode must be 1..5 octets per TS 29.002")
+	ErrIsdBearerServiceListSize        = errors.New("insertSubscriberDataArg: BearerServiceList must contain 1..50 entries (maxNumOfBearerServices) per TS 29.002")
+	ErrIsdTeleserviceListSize          = errors.New("insertSubscriberDataArg: TeleserviceList must contain 1..20 entries (maxNumOfTeleservices) per TS 29.002")
+	ErrIsdProvisionedSSListSize        = errors.New("insertSubscriberDataArg: ProvisionedSS must contain 1..30 entries (maxNumOfSS) per TS 29.002 MAP-MS-DataTypes.asn:1508")
+	ErrIsdResSsListSize                = errors.New("insertSubscriberDataRes: SsList entries must each be exactly 1 octet (SS-Code) per TS 29.002")
+	ErrIsdMSISDNDecodedEmpty           = errors.New("insertSubscriberDataArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrIsdIMSIInvalidSize              = errors.New("insertSubscriberDataArg: IMSI must be 3..8 octets per TS 29.002 MAP-CommonDataTypes.asn:327 (TBCD-STRING SIZE 3..8)")
 
 	ErrGPRSCamelTDPDataListSize           = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
 	ErrGPRSTriggerDetectionPointInvalid   = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be 1, 2, 11, 12, or 14 per TS 29.002 (extensible enum: unknown values preserved on decode)")
