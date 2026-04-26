@@ -92,7 +92,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.Category = &v
 	}
 	if a.SubscriberStatus != nil {
-		v := gsm_map.SubscriberStatus(*a.SubscriberStatus)
+		v := *a.SubscriberStatus
 		out.SubscriberStatus = &v
 	}
 	if a.BearerServiceList != nil {
@@ -172,7 +172,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.GprsSubscriptionData = w
 	}
 	if a.NetworkAccessMode != nil {
-		v := gsm_map.NetworkAccessMode(*a.NetworkAccessMode)
+		v := *a.NetworkAccessMode
 		out.NetworkAccessMode = &v
 	}
 	if a.LsaInformation != nil {
@@ -378,7 +378,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.Category = HexBytes(*w.Category)
 	}
 	if w.SubscriberStatus != nil {
-		v := SubscriberStatus(*w.SubscriberStatus)
+		v := *w.SubscriberStatus
 		out.SubscriberStatus = &v
 	}
 	if w.BearerServiceList != nil {
@@ -454,7 +454,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.GprsSubscriptionData = v
 	}
 	if w.NetworkAccessMode != nil {
-		v := NetworkAccessMode(*w.NetworkAccessMode)
+		v := *w.NetworkAccessMode
 		out.NetworkAccessMode = &v
 	}
 	if w.LsaInformation != nil {
@@ -662,7 +662,7 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 		out.OdbGeneralData = &bs
 	}
 	if r.RegionalSubscriptionResponse != nil {
-		v := gsm_map.RegionalSubscriptionResponse(*r.RegionalSubscriptionResponse)
+		v := *r.RegionalSubscriptionResponse
 		out.RegionalSubscriptionResponse = &v
 	}
 	if r.SupportedCamelPhases != nil {
@@ -726,7 +726,7 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 		out.OdbGeneralData = convertBitStringToODBGeneralData(*w.OdbGeneralData)
 	}
 	if w.RegionalSubscriptionResponse != nil {
-		v := RegionalSubscriptionResponse(*w.RegionalSubscriptionResponse)
+		v := *w.RegionalSubscriptionResponse
 		out.RegionalSubscriptionResponse = &v
 	}
 	if w.SupportedCamelPhases != nil {

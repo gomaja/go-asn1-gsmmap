@@ -159,12 +159,12 @@ func convertCancelLocationToArg(c *CancelLocation) (*gsm_map.CancelLocationArg, 
 	arg := &gsm_map.CancelLocationArg{Identity: id}
 
 	if c.CancellationType != nil {
-		ct := gsm_map.CancellationType(*c.CancellationType)
+		ct := *c.CancellationType
 		arg.CancellationType = &ct
 	}
 
 	if c.TypeOfUpdate != nil {
-		t := gsm_map.TypeOfUpdate(*c.TypeOfUpdate)
+		t := *c.TypeOfUpdate
 		arg.TypeOfUpdate = &t
 	}
 
@@ -213,7 +213,7 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 	out := &CancelLocation{Identity: id}
 
 	if arg.CancellationType != nil {
-		ct := CancellationType(*arg.CancellationType)
+		ct := *arg.CancellationType
 		if !isValidCancellationType(ct) {
 			return nil, ErrCancelLocInvalidCancellationType
 		}
@@ -221,7 +221,7 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 	}
 
 	if arg.TypeOfUpdate != nil {
-		t := TypeOfUpdate(*arg.TypeOfUpdate)
+		t := *arg.TypeOfUpdate
 		if !isValidTypeOfUpdate(t) {
 			return nil, ErrCancelLocInvalidTypeOfUpdate
 		}

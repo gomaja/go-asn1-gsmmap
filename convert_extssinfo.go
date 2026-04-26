@@ -42,13 +42,13 @@ func convertSSSubscriptionOptionToWire(o *SSSubscriptionOption) (*gsm_map.SSSubs
 		if !isValidCliRestrictionOption(*o.CliRestriction) {
 			return nil, ErrCliRestrictionOptionInvalidValue
 		}
-		v := gsm_map.NewSSSubscriptionOptionCliRestrictionOption(gsm_map.CliRestrictionOption(int64(*o.CliRestriction)))
+		v := gsm_map.NewSSSubscriptionOptionCliRestrictionOption(*o.CliRestriction)
 		return &v, nil
 	case hasOver:
 		if !isValidOverrideCategory(*o.Override) {
 			return nil, ErrOverrideCategoryInvalidValue
 		}
-		v := gsm_map.NewSSSubscriptionOptionOverrideCategory(gsm_map.OverrideCategory(int64(*o.Override)))
+		v := gsm_map.NewSSSubscriptionOptionOverrideCategory(*o.Override)
 		return &v, nil
 	default:
 		return nil, ErrSSSubscriptionOptionChoiceNoAlternative
@@ -404,7 +404,7 @@ func convertCUGSubscriptionToWire(s *CUGSubscription) (gsm_map.CUGSubscription, 
 	out := gsm_map.CUGSubscription{
 		CugIndex:        gsm_map.CUGIndex(int64(s.CugIndex)),
 		CugInterlock:    gsm_map.CUGInterlock(s.CugInterlock),
-		IntraCUGOptions: gsm_map.IntraCUGOptions(int64(s.IntraCUGOptions)),
+		IntraCUGOptions: s.IntraCUGOptions,
 	}
 	if s.BasicServiceGroupList != nil {
 		bsgl, err := convertExtBasicServiceGroupListToWire(s.BasicServiceGroupList)

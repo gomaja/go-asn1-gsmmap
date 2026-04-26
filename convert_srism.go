@@ -49,7 +49,7 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 	}
 
 	if s.SmDeliveryNotIntended != nil {
-		v := gsm_map.SMDeliveryNotIntended(*s.SmDeliveryNotIntended)
+		v := *s.SmDeliveryNotIntended
 		arg.SmDeliveryNotIntended = &v
 	}
 
