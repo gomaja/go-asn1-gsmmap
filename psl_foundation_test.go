@@ -7,6 +7,7 @@ package gsmmap
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
@@ -93,21 +94,23 @@ func TestPSLEnumsAliasUpstream(t *testing.T) {
 	}
 }
 
-// LCSPriority / LCSReferenceNumber are HexBytes aliases. They must accept
-// a 1-octet payload by construction; size enforcement happens in the
-// codec (PR D), but the alias relationship must hold today.
+// LCSPriority / LCSReferenceNumber are HexBytes aliases. The alias
+// relationship lets HexBytes flow through unchanged; tested by passing
+// a HexBytes value through a function whose parameter is typed as the
+// alias. Size enforcement happens in the codec (PR D).
 func TestPSLByteAliases(t *testing.T) {
-	var p LCSPriority = HexBytes{0x00}
-	if len(p) != 1 {
-		t.Fatalf("LCSPriority alias: want len 1, got %d", len(p))
+	priority := func(v LCSPriority) int { return len(v) }
+	if got := priority(HexBytes{0x00}); got != 1 {
+		t.Fatalf("LCSPriority alias: want len 1, got %d", got)
 	}
-	var r LCSReferenceNumber = HexBytes{0xff}
-	if len(r) != 1 {
-		t.Fatalf("LCSReferenceNumber alias: want len 1, got %d", len(r))
+	ref := func(v LCSReferenceNumber) int { return len(v) }
+	if got := ref(HexBytes{0xff}); got != 1 {
+		t.Fatalf("LCSReferenceNumber alias: want len 1, got %d", got)
 	}
 }
 
-// Sentinel errors must be defined and identifiable via errors.Is.
+// Sentinel errors must be non-nil, distinct, and detectable through
+// errors.Is when wrapped via %w (the typical caller pattern).
 func TestPSLSentinelErrors(t *testing.T) {
 	sentinels := []error{
 		ErrLocationEstimateTypeInvalid,
@@ -124,14 +127,21 @@ func TestPSLSentinelErrors(t *testing.T) {
 		ErrLCSClientNameNameStringSize,
 		ErrLCSRequestorIDStringSize,
 		ErrDeferredLocationEventTypeSize,
-		ErrLCSClientNameDialedByMSEmpty,
+		ErrLCSClientIDDialedByMSEmpty,
 	}
+	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {
 		if s == nil {
 			t.Errorf("sentinel #%d is nil", i)
+			continue
 		}
-		if !errors.Is(s, s) {
-			t.Errorf("sentinel #%d does not satisfy errors.Is(s, s)", i)
+		if j, dup := seen[s]; dup {
+			t.Errorf("sentinel #%d aliases sentinel #%d (same error value)", i, j)
+		}
+		seen[s] = i
+		wrapped := fmt.Errorf("psl wrapper: %w", s)
+		if !errors.Is(wrapped, s) {
+			t.Errorf("sentinel #%d not detectable through errors.Is when wrapped with %%w", i)
 		}
 	}
 }

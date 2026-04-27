@@ -2371,14 +2371,17 @@ type ResponseTime struct {
 // LCSQoS (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:237.
 // All fields optional. Horizontal/Vertical-Accuracy are 1-octet uncertainty
 // codes per 3GPP TS 23.032; surfaced as raw single-octet HexBytes.
+//
+// Note: the ASN.1 definition includes an optional ExtensionContainer at
+// tag [4]; this API does not currently surface it. A later PR adds the
+// field alongside the codec, consistent with the package-wide
+// ExtensionContainer handling pattern.
 type LCSQoS struct {
 	HorizontalAccuracy        HexBytes      // [0] optional, 1 octet per TS 23.032
 	VerticalCoordinateRequest bool          // [1] optional NULL
 	VerticalAccuracy          HexBytes      // [2] optional, 1 octet per TS 23.032
 	ResponseTime              *ResponseTime // [3] optional
-	// ExtensionContainer at [4] is preserved as opaque bytes; the codec
-	// surfaces it via the existing ExtensionContainer pattern in PR D.
-	VelocityRequest bool // [5] optional NULL, present only past the extensibility marker
+	VelocityRequest           bool          // [5] optional NULL, present only past the extensibility marker
 }
 
 // PrivacyCheckRelatedAction (ENUMERATED) per TS 29.002
@@ -2885,5 +2888,5 @@ var (
 	ErrLCSClientNameNameStringSize       = errors.New("lcsClientName: NameString must be 1..63 octets (maxNameStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:210")
 	ErrLCSRequestorIDStringSize          = errors.New("lcsRequestorID: RequestorIDString must be 1..63 octets (maxRequestorIDStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:220")
 	ErrDeferredLocationEventTypeSize     = errors.New("locationType: DeferredLocationEventType BIT STRING must be 1..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:165 (5 named bits, padded to multiple of 8 on the wire)")
-	ErrLCSClientNameDialedByMSEmpty      = errors.New("lcsClientID: when LcsClientDialedByMS digits are present alongside Nature/Plan, digits must not be empty (presence cannot round-trip through string-based API)")
+	ErrLCSClientIDDialedByMSEmpty        = errors.New("lcsClientID: when LcsClientDialedByMS digits are present alongside Nature/Plan, digits must not be empty (presence cannot round-trip through string-based API)")
 )
