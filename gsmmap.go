@@ -2319,6 +2319,10 @@ const (
 // NameString is a USSD-String of 1..63 octets per maxNameStringLength.
 // Surfaced as an opaque byte slice; the USSD-DataCodingScheme is preserved
 // verbatim so callers can decode per 3GPP TS 23.038 if needed.
+//
+// Note: the spec assigns tags [0]/[2]/[3] (skipping [1]) for these fields;
+// the gap is intentional in the ASN.1 module and is not an off-by-one in
+// this Go surface.
 type LCSClientName struct {
 	DataCodingScheme   uint8              // [0] mandatory, USSD-DataCodingScheme single octet
 	NameString         HexBytes           // [2] mandatory, NameString 1..63 octets
@@ -2889,5 +2893,5 @@ var (
 	ErrLCSRequestorIDStringSize          = errors.New("lcsRequestorID: RequestorIDString must be 1..63 octets (maxRequestorIDStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:220")
 	ErrDeferredLocationEventTypeSize     = errors.New("locationType: DeferredLocationEventType BIT STRING must be 1..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:165 (5 named bits, padded to multiple of 8 on the wire)")
 	ErrSupportedGADShapesSize            = errors.New("psl: SupportedGADShapes BIT STRING must be 7..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:280 (7 named bits, padded to multiple of 8 on the wire)")
-	ErrLCSClientIDDialedByMSEmpty        = errors.New("lcsClientID: when LcsClientDialedByMS digits are present alongside Nature/Plan, digits must not be empty (presence cannot round-trip through string-based API)")
+	ErrLCSClientIDDialedByMSEmpty        = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
 )
