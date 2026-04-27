@@ -127,6 +127,7 @@ func TestPSLSentinelErrors(t *testing.T) {
 		ErrLCSClientNameNameStringSize,
 		ErrLCSRequestorIDStringSize,
 		ErrDeferredLocationEventTypeSize,
+		ErrSupportedGADShapesSize,
 		ErrLCSClientIDDialedByMSEmpty,
 	}
 	seen := make(map[error]int, len(sentinels))
