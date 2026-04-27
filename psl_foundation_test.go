@@ -34,7 +34,8 @@ func TestPSLTypesCompile(t *testing.T) {
 	var _ LCSPriority
 	var _ LCSReferenceNumber
 
-	// Constants exist and resolve to the correct upstream values.
+	// Constants exist (compile-smoke). Numeric equivalence to upstream
+	// values is verified by TestPSLEnumsAliasUpstream below.
 	_ = LocationEstimateCurrentLocation
 	_ = LocationEstimateCurrentOrLastKnownLocation
 	_ = LocationEstimateInitialLocation
