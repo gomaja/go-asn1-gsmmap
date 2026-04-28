@@ -2476,7 +2476,7 @@ const RequestorIDStringMaxLen = 63
 // ExtGeographicalInformation (OCTET STRING SIZE 1..20) per TS 29.002
 // MAP-LCS-DataTypes.asn:462. Carries a 3GPP TS 23.032 geographical
 // information element; only a subset of TS 23.032 shapes is allowed
-// in this field (see the spec comment at line 466).
+// in this field (see TS 29.002 MAP-LCS-DataTypes.asn:466).
 type ExtGeographicalInformation = HexBytes
 
 // AddGeographicalInformation (OCTET STRING SIZE 1..91) per TS 29.002
@@ -2522,7 +2522,8 @@ type UtranCivicAddress = HexBytes
 // UtranBaroPressureMeas (INTEGER 30000..115000) per TS 29.002
 // MAP-LCS-DataTypes.asn:592. UTRAN BarometricPressureMeasurement per
 // 3GPP TS 25.413. Raw value per the cited spec; no scaling is applied
-// here. Aliased from go-asn1 to int64.
+// here. Aliased from go-asn1's gsm_map.UtranBaroPressureMeas, which is
+// int64-backed.
 type UtranBaroPressureMeas = gsm_map.UtranBaroPressureMeas
 
 // Size constants for PSL geographical / positioning data fields, per

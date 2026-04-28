@@ -31,43 +31,46 @@ func TestPSLGeoInfoTypesCompile(t *testing.T) {
 // required) — same pattern as TestPSLByteAliases in
 // psl_foundation_test.go.
 func TestPSLGeoInfoByteAliases(t *testing.T) {
-	input := HexBytes{0x01, 0x02, 0x03}
+	// 4 bytes satisfies the tightest spec lower bound in this set
+	// (VelocityEstimate SIZE 4..7), so the literal isn't accidentally
+	// mistaken for a malformed value of any of the underlying types.
+	input := HexBytes{0x01, 0x02, 0x03, 0x04}
 
 	ext := func(v ExtGeographicalInformation) int { return len(v) }
-	if got := ext(input); got != 3 {
-		t.Errorf("ExtGeographicalInformation alias: want len 3, got %d", got)
+	if got := ext(input); got != 4 {
+		t.Errorf("ExtGeographicalInformation alias: want len 4, got %d", got)
 	}
 	add := func(v AddGeographicalInformation) int { return len(v) }
-	if got := add(input); got != 3 {
-		t.Errorf("AddGeographicalInformation alias: want len 3, got %d", got)
+	if got := add(input); got != 4 {
+		t.Errorf("AddGeographicalInformation alias: want len 4, got %d", got)
 	}
 	vel := func(v VelocityEstimate) int { return len(v) }
-	if got := vel(input); got != 3 {
-		t.Errorf("VelocityEstimate alias: want len 3, got %d", got)
+	if got := vel(input); got != 4 {
+		t.Errorf("VelocityEstimate alias: want len 4, got %d", got)
 	}
 	pos := func(v PositioningDataInformation) int { return len(v) }
-	if got := pos(input); got != 3 {
-		t.Errorf("PositioningDataInformation alias: want len 3, got %d", got)
+	if got := pos(input); got != 4 {
+		t.Errorf("PositioningDataInformation alias: want len 4, got %d", got)
 	}
 	utpos := func(v UtranPositioningDataInfo) int { return len(v) }
-	if got := utpos(input); got != 3 {
-		t.Errorf("UtranPositioningDataInfo alias: want len 3, got %d", got)
+	if got := utpos(input); got != 4 {
+		t.Errorf("UtranPositioningDataInfo alias: want len 4, got %d", got)
 	}
 	geran := func(v GeranGANSSpositioningData) int { return len(v) }
-	if got := geran(input); got != 3 {
-		t.Errorf("GeranGANSSpositioningData alias: want len 3, got %d", got)
+	if got := geran(input); got != 4 {
+		t.Errorf("GeranGANSSpositioningData alias: want len 4, got %d", got)
 	}
 	utganss := func(v UtranGANSSpositioningData) int { return len(v) }
-	if got := utganss(input); got != 3 {
-		t.Errorf("UtranGANSSpositioningData alias: want len 3, got %d", got)
+	if got := utganss(input); got != 4 {
+		t.Errorf("UtranGANSSpositioningData alias: want len 4, got %d", got)
 	}
 	utadd := func(v UtranAdditionalPositioningData) int { return len(v) }
-	if got := utadd(input); got != 3 {
-		t.Errorf("UtranAdditionalPositioningData alias: want len 3, got %d", got)
+	if got := utadd(input); got != 4 {
+		t.Errorf("UtranAdditionalPositioningData alias: want len 4, got %d", got)
 	}
 	civic := func(v UtranCivicAddress) int { return len(v) }
-	if got := civic(input); got != 3 {
-		t.Errorf("UtranCivicAddress alias: want len 3, got %d", got)
+	if got := civic(input); got != 4 {
+		t.Errorf("UtranCivicAddress alias: want len 4, got %d", got)
 	}
 }
 
