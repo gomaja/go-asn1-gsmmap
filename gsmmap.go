@@ -2251,6 +2251,213 @@ type LCSInformation struct {
 }
 
 // ============================================================================
+// ProvideSubscriberLocation foundation types (TS 29.002 MAP-LCS-DataTypes.asn)
+// ============================================================================
+//
+// First PR of a staged ProvideSubscriberLocation (opCode 83) implementation.
+// Lands the foundation LCS types so follow-up PRs can build top-level
+// converters without a monolithic diff. No PSL Arg/Res top-level types yet —
+// those land in a later PR alongside their converters.
+
+// LocationEstimateType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:153.
+// Extensible enum; decoders preserve unknown values per Postel's law.
+// Aliased from go-asn1.
+type LocationEstimateType = gsm_map.LocationEstimateType
+
+const (
+	LocationEstimateCurrentLocation              = gsm_map.LocationEstimateTypeCurrentLocation
+	LocationEstimateCurrentOrLastKnownLocation   = gsm_map.LocationEstimateTypeCurrentOrLastKnownLocation
+	LocationEstimateInitialLocation              = gsm_map.LocationEstimateTypeInitialLocation
+	LocationEstimateActivateDeferredLocation     = gsm_map.LocationEstimateTypeActivateDeferredLocation
+	LocationEstimateCancelDeferredLocation       = gsm_map.LocationEstimateTypeCancelDeferredLocation
+	LocationEstimateNotificationVerificationOnly = gsm_map.LocationEstimateTypeNotificationVerificationOnly
+)
+
+// DeferredLocationEventType (BIT STRING SIZE 1..16) per TS 29.002
+// MAP-LCS-DataTypes.asn:165. 5 named bits (msAvailable through periodicLDR).
+// Surfaced as a bools-only struct to match the package's BIT STRING surrogate
+// pattern (e.g., SupportedCamelPhases). Codec lives with PSL converters.
+type DeferredLocationEventType struct {
+	MsAvailable       bool // bit 0
+	EnteringIntoArea  bool // bit 1
+	LeavingFromArea   bool // bit 2
+	BeingInsideArea   bool // bit 3
+	PeriodicLDR       bool // bit 4
+}
+
+// LocationType (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:148.
+// Mandatory in PSL-Arg.
+type LocationType struct {
+	LocationEstimateType      LocationEstimateType       // [0] mandatory
+	DeferredLocationEventType *DeferredLocationEventType // [1] optional, present only past the extensibility marker
+}
+
+// LCSClientType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:188.
+// Extensible enum. Aliased from go-asn1.
+type LCSClientType = gsm_map.LCSClientType
+
+const (
+	LCSClientTypeEmergencyServices       = gsm_map.LCSClientTypeEmergencyServices
+	LCSClientTypeValueAddedServices      = gsm_map.LCSClientTypeValueAddedServices
+	LCSClientTypePlmnOperatorServices    = gsm_map.LCSClientTypePlmnOperatorServices
+	LCSClientTypeLawfulInterceptServices = gsm_map.LCSClientTypeLawfulInterceptServices
+)
+
+// LCSFormatIndicator (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:224.
+// Extensible enum. Aliased from go-asn1.
+type LCSFormatIndicator = gsm_map.LCSFormatIndicator
+
+const (
+	LCSFormatLogicalName  = gsm_map.LCSFormatIndicatorLogicalName
+	LCSFormatEMailAddress = gsm_map.LCSFormatIndicatorEMailAddress
+	LCSFormatMsisdn       = gsm_map.LCSFormatIndicatorMsisdn
+	LCSFormatUrl          = gsm_map.LCSFormatIndicatorUrl
+	LCSFormatSipUrl       = gsm_map.LCSFormatIndicatorSipUrl
+)
+
+// LCSClientName (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:199.
+// NameString is a USSD-String of 1..63 octets per maxNameStringLength.
+// Surfaced as an opaque byte slice; the USSD-DataCodingScheme is preserved
+// verbatim so callers can decode per 3GPP TS 23.038 if needed.
+//
+// Note: the spec assigns tags [0]/[2]/[3] (skipping [1]) for these fields;
+// the gap is intentional in the ASN.1 module and is not an off-by-one in
+// this Go surface.
+type LCSClientName struct {
+	DataCodingScheme   uint8               // [0] mandatory, USSD-DataCodingScheme single octet
+	NameString         HexBytes            // [2] mandatory, NameString 1..63 octets
+	LcsFormatIndicator *LCSFormatIndicator // [3] optional, present only past the extensibility marker
+}
+
+// LCSRequestorID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:214.
+// RequestorIDString is a USSD-String of 1..63 octets per
+// maxRequestorIDStringLength.
+type LCSRequestorID struct {
+	DataCodingScheme   uint8               // [0] mandatory, USSD-DataCodingScheme single octet
+	RequestorIDString  HexBytes            // [1] mandatory, RequestorIDString 1..63 octets
+	LcsFormatIndicator *LCSFormatIndicator // [2] optional, present only past the extensibility marker
+}
+
+// LCSClientID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:178.
+// LcsClientDialedByMS is an AddressString surfaced as digits + nature/plan
+// triple consistent with the rest of the public API.
+type LCSClientID struct {
+	LcsClientType       LCSClientType        // [0] mandatory
+	LcsClientExternalID *LCSClientExternalID // [1] optional
+	// LcsClientDialedByMS, if present, is conveyed as an AddressString.
+	// Empty digits = absent.
+	LcsClientDialedByMS       string // [2] optional, AddressString digits
+	LcsClientDialedByMSNature uint8
+	LcsClientDialedByMSPlan   uint8
+	LcsClientInternalID       *LCSClientInternalID // [3] optional
+	LcsClientName             *LCSClientName       // [4] optional
+	LcsAPN                    HexBytes             // [5] optional, APN OCTET STRING (past extensibility marker)
+	LcsRequestorID            *LCSRequestorID      // [6] optional (past extensibility marker)
+}
+
+// ResponseTimeCategory (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:266.
+// Extensible enum; spec exception: unknown values shall be treated as
+// delaytolerant(1) on decode. Aliased from go-asn1; the lenient remap
+// happens in the decoder.
+type ResponseTimeCategory = gsm_map.ResponseTimeCategory
+
+const (
+	ResponseTimeLowdelay      = gsm_map.ResponseTimeCategoryLowdelay
+	ResponseTimeDelaytolerant = gsm_map.ResponseTimeCategoryDelaytolerant
+)
+
+// ResponseTime (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:261.
+// An expandable SEQUENCE per spec, currently carrying only the category.
+type ResponseTime struct {
+	ResponseTimeCategory ResponseTimeCategory // mandatory
+}
+
+// LCSQoS (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:237.
+// All fields optional. Horizontal/Vertical-Accuracy are 1-octet uncertainty
+// codes per 3GPP TS 23.032; surfaced as raw single-octet HexBytes.
+//
+// Note: the ASN.1 definition includes an optional ExtensionContainer at
+// tag [4]; consistent with the package-wide convention (see
+// APNConfiguration), it is kept as opaque metadata and not surfaced to
+// callers. Future round-trip converters/codecs are expected to preserve
+// it opaquely, matching the existing wire-struct pattern.
+type LCSQoS struct {
+	HorizontalAccuracy        HexBytes      // [0] optional, 1 octet per TS 23.032
+	VerticalCoordinateRequest bool          // [1] optional NULL; true when present, false when absent
+	VerticalAccuracy          HexBytes      // [2] optional, 1 octet per TS 23.032
+	ResponseTime              *ResponseTime // [3] optional
+	VelocityRequest           bool          // [5] optional NULL; true when present, false when absent; present only past the extensibility marker
+}
+
+// PrivacyCheckRelatedAction (ENUMERATED) per TS 29.002
+// MAP-LCS-DataTypes.asn:307. Aliased from go-asn1.
+type PrivacyCheckRelatedAction = gsm_map.PrivacyCheckRelatedAction
+
+const (
+	PrivacyCheckAllowedWithoutNotification = gsm_map.PrivacyCheckRelatedActionAllowedWithoutNotification
+	PrivacyCheckAllowedWithNotification    = gsm_map.PrivacyCheckRelatedActionAllowedWithNotification
+	PrivacyCheckAllowedIfNoResponse        = gsm_map.PrivacyCheckRelatedActionAllowedIfNoResponse
+	PrivacyCheckRestrictedIfNoResponse     = gsm_map.PrivacyCheckRelatedActionRestrictedIfNoResponse
+	PrivacyCheckNotAllowed                 = gsm_map.PrivacyCheckRelatedActionNotAllowed
+)
+
+// LCSPrivacyCheck (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:302.
+type LCSPrivacyCheck struct {
+	CallSessionUnrelated PrivacyCheckRelatedAction  // [0] mandatory
+	CallSessionRelated   *PrivacyCheckRelatedAction // [1] optional
+}
+
+// LCSCodeword (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:293.
+// LcsCodewordString is a USSD-String of 1..20 octets per
+// maxLCSCodewordStringLength.
+type LCSCodeword struct {
+	DataCodingScheme  uint8    // [0] mandatory, USSD-DataCodingScheme single octet
+	LcsCodewordString HexBytes // [1] mandatory, LCSCodewordString 1..20 octets
+}
+
+// AccuracyFulfilmentIndicator (ENUMERATED) per TS 29.002
+// MAP-LCS-DataTypes.asn:457. Extensible enum. Aliased from go-asn1.
+type AccuracyFulfilmentIndicator = gsm_map.AccuracyFulfilmentIndicator
+
+const (
+	AccuracyFulfilmentRequestedAccuracyFulfilled    = gsm_map.AccuracyFulfilmentIndicatorRequestedAccuracyFulfilled
+	AccuracyFulfilmentRequestedAccuracyNotFulfilled = gsm_map.AccuracyFulfilmentIndicatorRequestedAccuracyNotFulfilled
+)
+
+// SupportedGADShapes (BIT STRING SIZE 7..16) per TS 29.002
+// MAP-LCS-DataTypes.asn:280. 7 named bits per 3GPP TS 23.032.
+// Surfaced as a bools-only struct following the package BIT STRING pattern.
+type SupportedGADShapes struct {
+	EllipsoidPoint                                  bool // bit 0
+	EllipsoidPointWithUncertaintyCircle             bool // bit 1
+	EllipsoidPointWithUncertaintyEllipse            bool // bit 2
+	Polygon                                         bool // bit 3
+	EllipsoidPointWithAltitude                      bool // bit 4
+	EllipsoidPointWithAltitudeAndUncertaintyEllipsoid bool // bit 5
+	EllipsoidArc                                    bool // bit 6
+}
+
+// LCSPriority (OCTET STRING SIZE 1) per TS 29.002 MAP-LCS-DataTypes.asn:232.
+// Per spec: 0 = highest, 1 = normal, all other values treated as 1.
+type LCSPriority = HexBytes
+
+// LCSReferenceNumber (OCTET STRING SIZE 1) per TS 29.002
+// MAP-CommonDataTypes.asn — single-octet PSL/SLR correlation reference.
+type LCSReferenceNumber = HexBytes
+
+// LCSCodewordStringMaxLen is the maxLCSCodewordStringLength constant
+// from TS 29.002 MAP-LCS-DataTypes.asn:300.
+const LCSCodewordStringMaxLen = 20
+
+// NameStringMaxLen is the maxNameStringLength constant from TS 29.002
+// MAP-LCS-DataTypes.asn:212.
+const NameStringMaxLen = 63
+
+// RequestorIDStringMaxLen is the maxRequestorIDStringLength constant
+// from TS 29.002 MAP-LCS-DataTypes.asn:222.
+const RequestorIDStringMaxLen = 63
+
+// ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================
 
@@ -2671,4 +2878,21 @@ var (
 	ErrGPRSCSIRequiresTDPListAndPhase     = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")
 	ErrMobilityTriggersSize               = errors.New("mgCSI: MobilityTriggers must contain 1..10 entries (maxNumOfMobilityTriggers) per TS 29.002")
 	ErrMMCodeInvalidSize                  = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
+
+	ErrLocationEstimateTypeInvalid       = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (extensible enum: unknown values preserved on decode)")
+	ErrLCSClientTypeInvalid              = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (extensible enum: unknown values preserved on decode)")
+	ErrLCSFormatIndicatorInvalid         = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
+	ErrPrivacyCheckRelatedActionInvalid  = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:307")
+	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:457 (extensible enum: unknown values preserved on decode)")
+	ErrResponseTimeCategoryInvalid       = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
+	ErrLCSPriorityInvalidSize            = errors.New("psl: LCSPriority must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:232")
+	ErrLCSReferenceNumberInvalidSize     = errors.New("psl: LCSReferenceNumber must be exactly 1 octet per TS 29.002 MAP-CommonDataTypes.asn (LCS-ReferenceNumber)")
+	ErrHorizontalAccuracyInvalidSize     = errors.New("lcsQoS: HorizontalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:249 (7-bit Uncertainty Code per TS 23.032)")
+	ErrVerticalAccuracyInvalidSize       = errors.New("lcsQoS: VerticalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:255 (7-bit Vertical Uncertainty Code per TS 23.032)")
+	ErrLCSCodewordStringSize             = errors.New("lcsCodeword: LcsCodewordString must be 1..20 octets (maxLCSCodewordStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:298")
+	ErrLCSClientNameNameStringSize       = errors.New("lcsClientName: NameString must be 1..63 octets (maxNameStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:210")
+	ErrLCSRequestorIDStringSize          = errors.New("lcsRequestorID: RequestorIDString must be 1..63 octets (maxRequestorIDStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:220")
+	ErrDeferredLocationEventTypeSize     = errors.New("locationType: DeferredLocationEventType BIT STRING must be 1..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:165 (5 named bits, padded to multiple of 8 on the wire)")
+	ErrSupportedGADShapesSize            = errors.New("psl: SupportedGADShapes BIT STRING must be 7..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:280 (7 named bits, padded to multiple of 8 on the wire)")
+	ErrLCSClientIDDialedByMSEmpty        = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
 )
