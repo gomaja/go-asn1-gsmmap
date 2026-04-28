@@ -2377,15 +2377,16 @@ type ResponseTime struct {
 // codes per 3GPP TS 23.032; surfaced as raw single-octet HexBytes.
 //
 // Note: the ASN.1 definition includes an optional ExtensionContainer at
-// tag [4]; this API does not currently surface it. A later PR adds the
-// field alongside the codec, consistent with the package-wide
-// ExtensionContainer handling pattern.
+// tag [4]; consistent with the package-wide convention (see
+// APNConfiguration), it is kept opaque metadata and not surfaced to
+// callers (the wire struct still carries it transparently across
+// round-trip).
 type LCSQoS struct {
 	HorizontalAccuracy        HexBytes      // [0] optional, 1 octet per TS 23.032
-	VerticalCoordinateRequest bool          // [1] optional NULL
+	VerticalCoordinateRequest bool          // [1] optional NULL; true when present, false when absent
 	VerticalAccuracy          HexBytes      // [2] optional, 1 octet per TS 23.032
 	ResponseTime              *ResponseTime // [3] optional
-	VelocityRequest           bool          // [5] optional NULL, present only past the extensibility marker
+	VelocityRequest           bool          // [5] optional NULL; true when present, false when absent; present only past the extensibility marker
 }
 
 // PrivacyCheckRelatedAction (ENUMERATED) per TS 29.002
@@ -2884,8 +2885,8 @@ var (
 	ErrPrivacyCheckRelatedActionInvalid  = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:307")
 	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:457 (extensible enum: unknown values preserved on decode)")
 	ErrResponseTimeCategoryInvalid       = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
-	ErrLCSPriorityInvalidSize            = errors.New("psl: LcsPriority must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:232")
-	ErrLCSReferenceNumberInvalidSize     = errors.New("psl: LcsReferenceNumber must be exactly 1 octet per TS 29.002 MAP-CommonDataTypes.asn (LCS-ReferenceNumber)")
+	ErrLCSPriorityInvalidSize            = errors.New("psl: LCSPriority must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:232")
+	ErrLCSReferenceNumberInvalidSize     = errors.New("psl: LCSReferenceNumber must be exactly 1 octet per TS 29.002 MAP-CommonDataTypes.asn (LCS-ReferenceNumber)")
 	ErrHorizontalAccuracyInvalidSize     = errors.New("lcsQoS: HorizontalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:249 (7-bit Uncertainty Code per TS 23.032)")
 	ErrVerticalAccuracyInvalidSize       = errors.New("lcsQoS: VerticalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:255 (7-bit Vertical Uncertainty Code per TS 23.032)")
 	ErrLCSCodewordStringSize             = errors.New("lcsCodeword: LcsCodewordString must be 1..20 octets (maxLCSCodewordStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:298")
