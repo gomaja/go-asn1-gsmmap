@@ -26,44 +26,69 @@ func TestPSLGeoInfoTypesCompile(t *testing.T) {
 }
 
 // All byte-typed PSL geo/positioning aliases share HexBytes as their
-// underlying type. The aliases let callers pass HexBytes values
-// through unchanged; tested by passing HexBytes through functions
-// whose parameters are typed as the respective alias.
+// underlying type. The aliases let a HexBytes value pass directly into
+// a function whose parameter is typed as the respective alias (no cast
+// required) — same pattern as TestPSLByteAliases in
+// psl_foundation_test.go.
 func TestPSLGeoInfoByteAliases(t *testing.T) {
-	cases := []struct {
-		name   string
-		passer func(HexBytes) int
-	}{
-		{"ExtGeographicalInformation", func(v HexBytes) int { var x ExtGeographicalInformation = v; return len(x) }},
-		{"AddGeographicalInformation", func(v HexBytes) int { var x AddGeographicalInformation = v; return len(x) }},
-		{"VelocityEstimate", func(v HexBytes) int { var x VelocityEstimate = v; return len(x) }},
-		{"PositioningDataInformation", func(v HexBytes) int { var x PositioningDataInformation = v; return len(x) }},
-		{"UtranPositioningDataInfo", func(v HexBytes) int { var x UtranPositioningDataInfo = v; return len(x) }},
-		{"GeranGANSSpositioningData", func(v HexBytes) int { var x GeranGANSSpositioningData = v; return len(x) }},
-		{"UtranGANSSpositioningData", func(v HexBytes) int { var x UtranGANSSpositioningData = v; return len(x) }},
-		{"UtranAdditionalPositioningData", func(v HexBytes) int { var x UtranAdditionalPositioningData = v; return len(x) }},
-		{"UtranCivicAddress", func(v HexBytes) int { var x UtranCivicAddress = v; return len(x) }},
+	input := HexBytes{0x01, 0x02, 0x03}
+
+	ext := func(v ExtGeographicalInformation) int { return len(v) }
+	if got := ext(input); got != 3 {
+		t.Errorf("ExtGeographicalInformation alias: want len 3, got %d", got)
 	}
-	for _, tc := range cases {
-		input := HexBytes{0x01, 0x02, 0x03}
-		if got := tc.passer(input); got != 3 {
-			t.Errorf("%s alias: want len 3, got %d", tc.name, got)
-		}
+	add := func(v AddGeographicalInformation) int { return len(v) }
+	if got := add(input); got != 3 {
+		t.Errorf("AddGeographicalInformation alias: want len 3, got %d", got)
+	}
+	vel := func(v VelocityEstimate) int { return len(v) }
+	if got := vel(input); got != 3 {
+		t.Errorf("VelocityEstimate alias: want len 3, got %d", got)
+	}
+	pos := func(v PositioningDataInformation) int { return len(v) }
+	if got := pos(input); got != 3 {
+		t.Errorf("PositioningDataInformation alias: want len 3, got %d", got)
+	}
+	utpos := func(v UtranPositioningDataInfo) int { return len(v) }
+	if got := utpos(input); got != 3 {
+		t.Errorf("UtranPositioningDataInfo alias: want len 3, got %d", got)
+	}
+	geran := func(v GeranGANSSpositioningData) int { return len(v) }
+	if got := geran(input); got != 3 {
+		t.Errorf("GeranGANSSpositioningData alias: want len 3, got %d", got)
+	}
+	utganss := func(v UtranGANSSpositioningData) int { return len(v) }
+	if got := utganss(input); got != 3 {
+		t.Errorf("UtranGANSSpositioningData alias: want len 3, got %d", got)
+	}
+	utadd := func(v UtranAdditionalPositioningData) int { return len(v) }
+	if got := utadd(input); got != 3 {
+		t.Errorf("UtranAdditionalPositioningData alias: want len 3, got %d", got)
+	}
+	civic := func(v UtranCivicAddress) int { return len(v) }
+	if got := civic(input); got != 3 {
+		t.Errorf("UtranCivicAddress alias: want len 3, got %d", got)
 	}
 }
 
 // UtranBaroPressureMeas is aliased to int64; values within and outside
-// the spec range must round-trip without conversion.
+// the spec range must round-trip without conversion. The Min/Max
+// constants are typed as UtranBaroPressureMeas so range checks compose
+// directly without explicit casts.
 func TestPSLUtranBaroPressureMeasAlias(t *testing.T) {
 	var v UtranBaroPressureMeas = 65000
 	if int64(v) != 65000 {
 		t.Fatalf("UtranBaroPressureMeas alias: want 65000, got %d", v)
 	}
-	if int64(UtranBaroPressureMeasMin) != 30000 {
+	if UtranBaroPressureMeasMin != 30000 {
 		t.Errorf("UtranBaroPressureMeasMin: want 30000, got %d", UtranBaroPressureMeasMin)
 	}
-	if int64(UtranBaroPressureMeasMax) != 115000 {
+	if UtranBaroPressureMeasMax != 115000 {
 		t.Errorf("UtranBaroPressureMeasMax: want 115000, got %d", UtranBaroPressureMeasMax)
+	}
+	// Direct comparison without casts.
+	if v < UtranBaroPressureMeasMin || v > UtranBaroPressureMeasMax {
+		t.Errorf("range check: 65000 should be in [Min..Max]")
 	}
 }
 
@@ -105,7 +130,9 @@ func TestPSLGeoInfoSpecConstants(t *testing.T) {
 		got  int
 		want int
 	}{
+		{"ExtGeographicalInformationMinLen (asn:462)", ExtGeographicalInformationMinLen, 1},
 		{"ExtGeographicalInformationMaxLen (maxExt-GeographicalInformation, asn:518)", ExtGeographicalInformationMaxLen, 20},
+		{"AddGeographicalInformationMinLen (asn:601)", AddGeographicalInformationMinLen, 1},
 		{"AddGeographicalInformationMaxLen (maxAdd-GeographicalInformation, asn:619)", AddGeographicalInformationMaxLen, 91},
 		{"VelocityEstimateMinLen (asn:522)", VelocityEstimateMinLen, 4},
 		{"VelocityEstimateMaxLen (asn:522)", VelocityEstimateMaxLen, 7},
@@ -115,7 +142,9 @@ func TestPSLGeoInfoSpecConstants(t *testing.T) {
 		{"UtranPositioningDataInfoMaxLen (maxUtranPositioningDataInfo, asn:565)", UtranPositioningDataInfoMaxLen, 11},
 		{"GeranGANSSpositioningDataMinLen (asn:568)", GeranGANSSpositioningDataMinLen, 2},
 		{"GeranGANSSpositioningDataMaxLen (maxGeranGANSSpositioningData, asn:573)", GeranGANSSpositioningDataMaxLen, 10},
+		{"UtranGANSSpositioningDataMinLen (asn:576)", UtranGANSSpositioningDataMinLen, 1},
 		{"UtranGANSSpositioningDataMaxLen (maxUtranGANSSpositioningData, asn:581)", UtranGANSSpositioningDataMaxLen, 9},
+		{"UtranAdditionalPositioningDataMinLen (asn:584)", UtranAdditionalPositioningDataMinLen, 1},
 		{"UtranAdditionalPositioningDataMaxLen (maxUtranAdditionalPositioningData, asn:589)", UtranAdditionalPositioningDataMaxLen, 8},
 	}
 	for _, tc := range cases {

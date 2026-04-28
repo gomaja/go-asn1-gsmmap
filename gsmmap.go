@@ -2526,24 +2526,35 @@ type UtranCivicAddress = HexBytes
 type UtranBaroPressureMeas = gsm_map.UtranBaroPressureMeas
 
 // Size constants for PSL geographical / positioning data fields, per
-// TS 29.002 MAP-LCS-DataTypes.asn:518/619/557/565/573/581/589.
+// TS 29.002 MAP-LCS-DataTypes.asn:518/619/522/552/557/560/565/568/573/
+// 576/581/584/589.
+//
+// Both Min and Max bounds are surfaced explicitly (including Min=1 for
+// SIZE(1..N) fields) so the codec PRs can validate without magic
+// numbers.
 const (
-	ExtGeographicalInformationMaxLen    = 20
-	AddGeographicalInformationMaxLen    = 91
-	VelocityEstimateMinLen              = 4
-	VelocityEstimateMaxLen              = 7
-	PositioningDataInformationMinLen    = 2
-	PositioningDataInformationMaxLen    = 10
-	UtranPositioningDataInfoMinLen      = 3
-	UtranPositioningDataInfoMaxLen      = 11
-	GeranGANSSpositioningDataMinLen     = 2
-	GeranGANSSpositioningDataMaxLen     = 10
-	UtranGANSSpositioningDataMaxLen     = 9
+	ExtGeographicalInformationMinLen     = 1
+	ExtGeographicalInformationMaxLen     = 20
+	AddGeographicalInformationMinLen     = 1
+	AddGeographicalInformationMaxLen     = 91
+	VelocityEstimateMinLen               = 4
+	VelocityEstimateMaxLen               = 7
+	PositioningDataInformationMinLen     = 2
+	PositioningDataInformationMaxLen     = 10
+	UtranPositioningDataInfoMinLen       = 3
+	UtranPositioningDataInfoMaxLen       = 11
+	GeranGANSSpositioningDataMinLen      = 2
+	GeranGANSSpositioningDataMaxLen      = 10
+	UtranGANSSpositioningDataMinLen      = 1
+	UtranGANSSpositioningDataMaxLen      = 9
+	UtranAdditionalPositioningDataMinLen = 1
 	UtranAdditionalPositioningDataMaxLen = 8
 
 	// UtranBaroPressureMeas range bounds (TS 29.002 MAP-LCS-DataTypes.asn:592).
-	UtranBaroPressureMeasMin int64 = 30000
-	UtranBaroPressureMeasMax int64 = 115000
+	// Typed as UtranBaroPressureMeas so future range checks compose without
+	// explicit casts even if the alias is later replaced by a defined type.
+	UtranBaroPressureMeasMin UtranBaroPressureMeas = 30000
+	UtranBaroPressureMeasMax UtranBaroPressureMeas = 115000
 )
 
 // ============================================================================
