@@ -2324,18 +2324,18 @@ const (
 // the gap is intentional in the ASN.1 module and is not an off-by-one in
 // this Go surface.
 type LCSClientName struct {
-	DataCodingScheme   uint8              // [0] mandatory, USSD-DataCodingScheme single octet
-	NameString         HexBytes           // [2] mandatory, NameString 1..63 octets
-	LCSFormatIndicator *LCSFormatIndicator // [3] optional, present only past the extensibility marker
+	DataCodingScheme   uint8               // [0] mandatory, USSD-DataCodingScheme single octet
+	NameString         HexBytes            // [2] mandatory, NameString 1..63 octets
+	LcsFormatIndicator *LCSFormatIndicator // [3] optional, present only past the extensibility marker
 }
 
 // LCSRequestorID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:214.
 // RequestorIDString is a USSD-String of 1..63 octets per
 // maxRequestorIDStringLength.
 type LCSRequestorID struct {
-	DataCodingScheme   uint8              // [0] mandatory, USSD-DataCodingScheme single octet
-	RequestorIDString  HexBytes           // [1] mandatory, RequestorIDString 1..63 octets
-	LCSFormatIndicator *LCSFormatIndicator // [2] optional, present only past the extensibility marker
+	DataCodingScheme   uint8               // [0] mandatory, USSD-DataCodingScheme single octet
+	RequestorIDString  HexBytes            // [1] mandatory, RequestorIDString 1..63 octets
+	LcsFormatIndicator *LCSFormatIndicator // [2] optional, present only past the extensibility marker
 }
 
 // LCSClientID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:178.
@@ -2378,9 +2378,9 @@ type ResponseTime struct {
 //
 // Note: the ASN.1 definition includes an optional ExtensionContainer at
 // tag [4]; consistent with the package-wide convention (see
-// APNConfiguration), it is kept opaque metadata and not surfaced to
-// callers (the wire struct still carries it transparently across
-// round-trip).
+// APNConfiguration), it is kept as opaque metadata and not surfaced to
+// callers. Future round-trip converters/codecs are expected to preserve
+// it opaquely, matching the existing wire-struct pattern.
 type LCSQoS struct {
 	HorizontalAccuracy        HexBytes      // [0] optional, 1 octet per TS 23.032
 	VerticalCoordinateRequest bool          // [1] optional NULL; true when present, false when absent
