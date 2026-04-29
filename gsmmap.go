@@ -2559,6 +2559,195 @@ const (
 )
 
 // ============================================================================
+// PSL area-event / periodic / reporting-PLMN / serving-node types
+// (TS 29.002 MAP-LCS-DataTypes.asn)
+// ============================================================================
+//
+// Third PR of the staged ProvideSubscriberLocation (opCode 83)
+// implementation. Lands the SEQUENCE/CHOICE/ENUMERATED types referenced
+// by PSL-Arg's areaEventInfo, periodicLDRInfo, and reportingPLMNList
+// fields, and PSL-Res's targetServingNodeForHandover CHOICE.
+//
+// Top-level Arg/Res structs and codec arrive in subsequent PRs.
+
+// AreaType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:337.
+// Extensible enum. Aliased from go-asn1.
+type AreaType = gsm_map.AreaType
+
+const (
+	AreaTypeCountryCode    = gsm_map.AreaTypeCountryCode
+	AreaTypePlmnId         = gsm_map.AreaTypePlmnId
+	AreaTypeLocationAreaId = gsm_map.AreaTypeLocationAreaId
+	AreaTypeRoutingAreaId  = gsm_map.AreaTypeRoutingAreaId
+	AreaTypeCellGlobalId   = gsm_map.AreaTypeCellGlobalId
+	AreaTypeUtranCellId    = gsm_map.AreaTypeUtranCellId
+)
+
+// AreaIdentification (OCTET STRING SIZE 2..7) per TS 29.002
+// MAP-LCS-DataTypes.asn:346. Internal structure per the spec comment
+// (MCC/MNC/LAC/CI etc., depending on AreaType).
+type AreaIdentification = HexBytes
+
+// Area (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:332.
+type Area struct {
+	AreaType           AreaType           // [0] mandatory
+	AreaIdentification AreaIdentification // [1] mandatory, 2..7 octets
+}
+
+// AreaList (SEQUENCE SIZE 1..10 OF Area) per TS 29.002
+// MAP-LCS-DataTypes.asn:328 (maxNumOfAreas).
+type AreaList []Area
+
+// AreaDefinition (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:324.
+type AreaDefinition struct {
+	AreaList AreaList // [0] mandatory, 1..10 entries
+}
+
+// OccurrenceInfo (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:361.
+// Extensible enum. Aliased from go-asn1.
+type OccurrenceInfo = gsm_map.OccurrenceInfo
+
+const (
+	OccurrenceOneTimeEvent      = gsm_map.OccurrenceInfoOneTimeEvent
+	OccurrenceMultipleTimeEvent = gsm_map.OccurrenceInfoMultipleTimeEvent
+)
+
+// IntervalTime (INTEGER 1..32767) per TS 29.002 MAP-LCS-DataTypes.asn:366.
+// Minimum interval time between area reports, in seconds. Aliased from
+// go-asn1 to int64.
+type IntervalTime = gsm_map.IntervalTime
+
+// AreaEventInfo (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:318.
+type AreaEventInfo struct {
+	AreaDefinition AreaDefinition  // [0] mandatory
+	OccurrenceInfo *OccurrenceInfo // [1] optional
+	IntervalTime   *IntervalTime   // [2] optional, 1..32767 seconds
+}
+
+// ReportingAmount (INTEGER 1..8639999) per TS 29.002
+// MAP-LCS-DataTypes.asn:380 (maxReportingAmount). Aliased from go-asn1
+// to int64.
+type ReportingAmount = gsm_map.ReportingAmount
+
+// ReportingInterval (INTEGER 1..8639999) per TS 29.002
+// MAP-LCS-DataTypes.asn:384 (maxReportingInterval). Value is in seconds.
+// Aliased from go-asn1 to int64.
+type ReportingInterval = gsm_map.ReportingInterval
+
+// PeriodicLDRInfo (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:369.
+//
+// Per spec: ReportingInterval × ReportingAmount must not exceed
+// 8639999 (99 days, 23 hours, 59 minutes, 59 seconds) for compatibility
+// with OMA MLP and RLP. Validation lives in the codec PR.
+//
+// Note: the ASN.1 definition includes an optional
+// reportingOptionMilliseconds at tag [0] past the extensibility marker;
+// not surfaced by this API yet. The wire codec preserves the field
+// transparently across round-trip in the package convention.
+type PeriodicLDRInfo struct {
+	ReportingAmount   ReportingAmount   // mandatory, 1..8639999
+	ReportingInterval ReportingInterval // mandatory, 1..8639999 seconds
+}
+
+// RANTechnology (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:420.
+// Extensible enum. Aliased from go-asn1.
+type RANTechnology = gsm_map.RANTechnology
+
+const (
+	RANTechnologyGsm  = gsm_map.RANTechnologyGsm
+	RANTechnologyUmts = gsm_map.RANTechnologyUmts
+)
+
+// ReportingPLMN (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:414.
+// PlmnId is a 3-octet PLMN-Id per TS 23.003.
+type ReportingPLMN struct {
+	PlmnId                     HexBytes       // [0] mandatory, 3 octets
+	RanTechnology              *RANTechnology // [1] optional
+	RanPeriodicLocationSupport bool           // [2] optional NULL; true when present, false when absent
+}
+
+// PLMNList (SEQUENCE SIZE 1..20 OF ReportingPLMN) per TS 29.002
+// MAP-LCS-DataTypes.asn:409 (maxNumOfReportingPLMN).
+type PLMNList []ReportingPLMN
+
+// ReportingPLMNList (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:404.
+type ReportingPLMNList struct {
+	PlmnListPrioritized bool     // [0] optional NULL; true when present, false when absent
+	PlmnList            PLMNList // [1] mandatory, 1..20 entries
+}
+
+// TerminationCause (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:696.
+// Extensible enum. Aliased from go-asn1.
+type TerminationCause = gsm_map.TerminationCause
+
+const (
+	TerminationNormal                              = gsm_map.TerminationCauseNormal
+	TerminationErrorundefined                      = gsm_map.TerminationCauseErrorundefined
+	TerminationInternalTimeout                     = gsm_map.TerminationCauseInternalTimeout
+	TerminationCongestion                          = gsm_map.TerminationCauseCongestion
+	TerminationMtLrRestart                         = gsm_map.TerminationCauseMtLrRestart
+	TerminationPrivacyViolation                    = gsm_map.TerminationCausePrivacyViolation
+	TerminationShapeOfLocationEstimateNotSupported = gsm_map.TerminationCauseShapeOfLocationEstimateNotSupported
+	TerminationSubscriberTermination               = gsm_map.TerminationCauseSubscriberTermination
+	TerminationUETermination                       = gsm_map.TerminationCauseUETermination
+	TerminationNetworkTermination                  = gsm_map.TerminationCauseNetworkTermination
+)
+
+// ServingNodeAddress (CHOICE) per TS 29.002 MAP-LCS-DataTypes.asn (used
+// in PSL-Res targetServingNodeForHandover field). Set exactly one of
+// MscNumber, SgsnNumber, or MmeName.
+//
+// MscNumber and SgsnNumber are ISDN-AddressString digits + nature/plan
+// triples (consistent with the rest of the public API). MmeName is a
+// DiameterIdentity (opaque octets per RFC 6733).
+type ServingNodeAddress struct {
+	// Choice indicates which alternative is set; values match the
+	// upstream gsm_map.ServingNodeAddressChoice* constants.
+	Choice           int
+	MscNumber        string // ISDN-AddressString digits when MscNumber is selected
+	MscNumberNature  uint8
+	MscNumberPlan    uint8
+	SgsnNumber       string // ISDN-AddressString digits when SgsnNumber is selected
+	SgsnNumberNature uint8
+	SgsnNumberPlan   uint8
+	MmeName          HexBytes // DiameterIdentity octets when MmeName is selected
+}
+
+// ServingNodeAddressChoice* mirrors upstream
+// gsm_map.ServingNodeAddressChoice* (the alternatives' wire ordinals).
+const (
+	ServingNodeAddressChoiceMscNumber  = gsm_map.ServingNodeAddressChoiceMscNumber
+	ServingNodeAddressChoiceSgsnNumber = gsm_map.ServingNodeAddressChoiceSgsnNumber
+	ServingNodeAddressChoiceMmeNumber  = gsm_map.ServingNodeAddressChoiceMmeNumber
+)
+
+// Spec-derived size / range constants for PR C types, per TS 29.002
+// MAP-LCS-DataTypes.asn:328/330/346/366/380/382/384/387/409/412.
+const (
+	AreaIdentificationMinLen = 2
+	AreaIdentificationMaxLen = 7
+
+	AreaListMinEntries = 1
+	AreaListMaxEntries = 10 // maxNumOfAreas
+
+	IntervalTimeMin IntervalTime = 1
+	IntervalTimeMax IntervalTime = 32767
+
+	ReportingAmountMin   ReportingAmount   = 1
+	ReportingAmountMax   ReportingAmount   = 8639999 // maxReportingAmount
+	ReportingIntervalMin ReportingInterval = 1
+	ReportingIntervalMax ReportingInterval = 8639999 // maxReportingInterval
+
+	// PeriodicLDRInfo combined cap: ReportingInterval × ReportingAmount
+	// must not exceed this value (99 days, 23 hours, 59 minutes, 59
+	// seconds) for compatibility with OMA MLP and RLP.
+	PeriodicLDRProductMax int64 = 8639999
+
+	PLMNListMinEntries = 1
+	PLMNListMaxEntries = 20 // maxNumOfReportingPLMN
+)
+
+// ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================
 
@@ -3006,4 +3195,22 @@ var (
 	ErrUtranGANSSpositioningDataSize      = errors.New("psl: UtranGANSSpositioningData must be 1..9 octets (maxUtranGANSSpositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:576")
 	ErrUtranAdditionalPositioningDataSize = errors.New("psl: UtranAdditionalPositioningData must be 1..8 octets (maxUtranAdditionalPositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:584")
 	ErrUtranBaroPressureMeasOutOfRange    = errors.New("psl: UtranBaroPressureMeas must be 30000..115000 per TS 29.002 MAP-LCS-DataTypes.asn:592")
+
+	ErrAreaTypeInvalid                    = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
+	ErrAreaIdentificationSize             = errors.New("area: AreaIdentification must be 2..7 octets per TS 29.002 MAP-LCS-DataTypes.asn:346")
+	ErrAreaListSize                       = errors.New("areaDefinition: AreaList must contain 1..10 entries (maxNumOfAreas) per TS 29.002 MAP-LCS-DataTypes.asn:328-330")
+	ErrOccurrenceInfoInvalid              = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:361 (extensible enum: unknown values preserved on decode)")
+	ErrIntervalTimeOutOfRange             = errors.New("areaEventInfo: IntervalTime must be 1..32767 seconds per TS 29.002 MAP-LCS-DataTypes.asn:366")
+	ErrReportingAmountOutOfRange          = errors.New("periodicLDRInfo: ReportingAmount must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn:380-382")
+	ErrReportingIntervalOutOfRange        = errors.New("periodicLDRInfo: ReportingInterval must be 1..8639999 seconds (maxReportingInterval) per TS 29.002 MAP-LCS-DataTypes.asn:384-387")
+	ErrPeriodicLDRProductExceeded         = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
+	ErrRANTechnologyInvalid               = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
+	ErrReportingPLMNPlmnIdInvalidSize     = errors.New("reportingPLMN: PlmnId must be exactly 3 octets per TS 23.003")
+	ErrPLMNListSize                       = errors.New("reportingPLMNList: PlmnList must contain 1..20 entries (maxNumOfReportingPLMN) per TS 29.002 MAP-LCS-DataTypes.asn:409-412")
+	ErrTerminationCauseInvalid            = errors.New("deferredmt-lrData: TerminationCause must be 0..9 per TS 29.002 MAP-LCS-DataTypes.asn:696 (extensible enum: unknown values preserved on decode)")
+	ErrServingNodeAddressMultipleAlts     = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
+	ErrServingNodeAddressNoAlt            = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
+	ErrServingNodeAddressMscNumberEmpty   = errors.New("servingNodeAddress: when Choice is MscNumber, MscNumber digits must not be empty (presence cannot round-trip through string-based API)")
+	ErrServingNodeAddressSgsnNumberEmpty  = errors.New("servingNodeAddress: when Choice is SgsnNumber, SgsnNumber digits must not be empty (presence cannot round-trip through string-based API)")
+	ErrServingNodeAddressMmeNameEmpty     = errors.New("servingNodeAddress: when Choice is MmeName, MmeName octets must not be empty (DiameterIdentity per RFC 6733)")
 )
