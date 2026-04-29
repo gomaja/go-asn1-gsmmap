@@ -2458,6 +2458,107 @@ const NameStringMaxLen = 63
 const RequestorIDStringMaxLen = 63
 
 // ============================================================================
+// PSL geographical / positioning data types (TS 29.002 MAP-LCS-DataTypes.asn)
+// ============================================================================
+//
+// Second PR of the staged ProvideSubscriberLocation (opCode 83)
+// implementation. Lands the OCTET STRING / INTEGER types referenced by
+// PSL-Res and used in deferred-MT-LR responses. Contents are opaque
+// per the cited 3GPP specs (TS 23.032 for geographical/velocity data,
+// TS 49.031 for GERAN/GANSS positioning data, TS 25.413 for UTRAN
+// positioning data) — this package preserves them verbatim and leaves
+// interpretation to callers.
+//
+// All types are byte aliases (= HexBytes) or int64 wire surrogates so
+// they compose cleanly with the existing public-API patterns
+// (extensionContainer-style opaque pass-through).
+
+// ExtGeographicalInformation (OCTET STRING SIZE 1..20) per TS 29.002
+// MAP-LCS-DataTypes.asn:462. Carries a 3GPP TS 23.032 geographical
+// information element; only a subset of TS 23.032 shapes is allowed
+// in this field (see TS 29.002 MAP-LCS-DataTypes.asn:466).
+type ExtGeographicalInformation = HexBytes
+
+// AddGeographicalInformation (OCTET STRING SIZE 1..91) per TS 29.002
+// MAP-LCS-DataTypes.asn:601. Carries a 3GPP TS 23.032 geographical
+// information element; all TS 23.032 shapes are allowed in this field
+// (the wider size bound vs Ext-GeographicalInformation reflects that).
+type AddGeographicalInformation = HexBytes
+
+// VelocityEstimate (OCTET STRING SIZE 4..7) per TS 29.002
+// MAP-LCS-DataTypes.asn:522. Carries a 3GPP TS 23.032 velocity
+// description element.
+type VelocityEstimate = HexBytes
+
+// PositioningDataInformation (OCTET STRING SIZE 2..10) per TS 29.002
+// MAP-LCS-DataTypes.asn:552. GERAN positioning data per 3GPP TS 49.031.
+type PositioningDataInformation = HexBytes
+
+// UtranPositioningDataInfo (OCTET STRING SIZE 3..11) per TS 29.002
+// MAP-LCS-DataTypes.asn:560. UTRAN positioning data
+// (positioningDataDiscriminator + positioningDataSet) per 3GPP TS 25.413.
+type UtranPositioningDataInfo = HexBytes
+
+// GeranGANSSpositioningData (OCTET STRING SIZE 2..10) per TS 29.002
+// MAP-LCS-DataTypes.asn:568. GERAN GANSS positioning data per
+// 3GPP TS 49.031.
+type GeranGANSSpositioningData = HexBytes
+
+// UtranGANSSpositioningData (OCTET STRING SIZE 1..9) per TS 29.002
+// MAP-LCS-DataTypes.asn:576. UTRAN GANSS positioning data
+// (GANSS-PositioningDataSet only) per 3GPP TS 25.413.
+type UtranGANSSpositioningData = HexBytes
+
+// UtranAdditionalPositioningData (OCTET STRING SIZE 1..8) per TS 29.002
+// MAP-LCS-DataTypes.asn:584. UTRAN Additional-PositioningDataSet only,
+// per 3GPP TS 25.413.
+type UtranAdditionalPositioningData = HexBytes
+
+// UtranCivicAddress (OCTET STRING) per TS 29.002 MAP-LCS-DataTypes.asn:597.
+// CivicAddress only, per 3GPP TS 25.413. The spec puts no explicit size
+// bound on the wire; size validation is left to the caller.
+type UtranCivicAddress = HexBytes
+
+// UtranBaroPressureMeas (INTEGER 30000..115000) per TS 29.002
+// MAP-LCS-DataTypes.asn:592. UTRAN BarometricPressureMeasurement per
+// 3GPP TS 25.413. Raw value per the cited spec; no scaling is applied
+// here. Aliased from go-asn1's gsm_map.UtranBaroPressureMeas, which is
+// int64-backed.
+type UtranBaroPressureMeas = gsm_map.UtranBaroPressureMeas
+
+// Size constants for PSL geographical / positioning data fields, per
+// TS 29.002 MAP-LCS-DataTypes.asn:518/619/522/552/557/560/565/568/573/
+// 576/581/584/589.
+//
+// Both Min and Max bounds are surfaced explicitly (including Min=1 for
+// SIZE(1..N) fields) so the codec PRs can validate without magic
+// numbers.
+const (
+	ExtGeographicalInformationMinLen     = 1
+	ExtGeographicalInformationMaxLen     = 20
+	AddGeographicalInformationMinLen     = 1
+	AddGeographicalInformationMaxLen     = 91
+	VelocityEstimateMinLen               = 4
+	VelocityEstimateMaxLen               = 7
+	PositioningDataInformationMinLen     = 2
+	PositioningDataInformationMaxLen     = 10
+	UtranPositioningDataInfoMinLen       = 3
+	UtranPositioningDataInfoMaxLen       = 11
+	GeranGANSSpositioningDataMinLen      = 2
+	GeranGANSSpositioningDataMaxLen      = 10
+	UtranGANSSpositioningDataMinLen      = 1
+	UtranGANSSpositioningDataMaxLen      = 9
+	UtranAdditionalPositioningDataMinLen = 1
+	UtranAdditionalPositioningDataMaxLen = 8
+
+	// UtranBaroPressureMeas range bounds (TS 29.002 MAP-LCS-DataTypes.asn:592).
+	// Typed as UtranBaroPressureMeas so future range checks compose without
+	// explicit casts even if the alias is later replaced by a defined type.
+	UtranBaroPressureMeasMin UtranBaroPressureMeas = 30000
+	UtranBaroPressureMeasMax UtranBaroPressureMeas = 115000
+)
+
+// ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================
 
@@ -2895,4 +2996,14 @@ var (
 	ErrDeferredLocationEventTypeSize     = errors.New("locationType: DeferredLocationEventType BIT STRING must be 1..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:165 (5 named bits, padded to multiple of 8 on the wire)")
 	ErrSupportedGADShapesSize            = errors.New("psl: SupportedGADShapes BIT STRING must be 7..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:280 (7 named bits, padded to multiple of 8 on the wire)")
 	ErrLCSClientIDDialedByMSEmpty        = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
+
+	ErrExtGeographicalInformationSize     = errors.New("psl: ExtGeographicalInformation must be 1..20 octets (maxExt-GeographicalInformation) per TS 29.002 MAP-LCS-DataTypes.asn:462")
+	ErrAddGeographicalInformationSize     = errors.New("psl: AddGeographicalInformation must be 1..91 octets (maxAdd-GeographicalInformation) per TS 29.002 MAP-LCS-DataTypes.asn:601")
+	ErrVelocityEstimateSize               = errors.New("psl: VelocityEstimate must be 4..7 octets per TS 29.002 MAP-LCS-DataTypes.asn:522")
+	ErrPositioningDataInformationSize     = errors.New("psl: PositioningDataInformation must be 2..10 octets (maxPositioningDataInformation) per TS 29.002 MAP-LCS-DataTypes.asn:552")
+	ErrUtranPositioningDataInfoSize       = errors.New("psl: UtranPositioningDataInfo must be 3..11 octets (maxUtranPositioningDataInfo) per TS 29.002 MAP-LCS-DataTypes.asn:560")
+	ErrGeranGANSSpositioningDataSize      = errors.New("psl: GeranGANSSpositioningData must be 2..10 octets (maxGeranGANSSpositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:568")
+	ErrUtranGANSSpositioningDataSize      = errors.New("psl: UtranGANSSpositioningData must be 1..9 octets (maxUtranGANSSpositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:576")
+	ErrUtranAdditionalPositioningDataSize = errors.New("psl: UtranAdditionalPositioningData must be 1..8 octets (maxUtranAdditionalPositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:584")
+	ErrUtranBaroPressureMeasOutOfRange    = errors.New("psl: UtranBaroPressureMeas must be 30000..115000 per TS 29.002 MAP-LCS-DataTypes.asn:592")
 )
