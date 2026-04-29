@@ -2697,29 +2697,23 @@ const (
 // in PSL-Res targetServingNodeForHandover field). Set exactly one of
 // MscNumber, SgsnNumber, or MmeName.
 //
-// MscNumber and SgsnNumber are ISDN-AddressString digits + nature/plan
+// Following the existing CHOICE pattern (AdditionalNumber,
+// CancelLocationIdentity), the selected alternative is inferred from
+// which field is set: empty `MscNumber` digits, empty `SgsnNumber`
+// digits, and nil/empty `MmeName` mean "absent". Set exactly one.
+//
+// MscNumber and SgsnNumber are ISDN-AddressString digits + Nature/Plan
 // triples (consistent with the rest of the public API). MmeName is a
-// DiameterIdentity (opaque octets per RFC 6733).
+// DiameterIdentity (FQDN, 9..255 octets per RFC 6733).
 type ServingNodeAddress struct {
-	// Choice indicates which alternative is set; values match the
-	// upstream gsm_map.ServingNodeAddressChoice* constants.
-	Choice           int
-	MscNumber        string // ISDN-AddressString digits when MscNumber is selected
+	MscNumber        string // ISDN-AddressString digits; "" = alternative not selected
 	MscNumberNature  uint8
 	MscNumberPlan    uint8
-	SgsnNumber       string // ISDN-AddressString digits when SgsnNumber is selected
+	SgsnNumber       string // ISDN-AddressString digits; "" = alternative not selected
 	SgsnNumberNature uint8
 	SgsnNumberPlan   uint8
-	MmeName          HexBytes // DiameterIdentity octets when MmeName is selected
+	MmeName          HexBytes // DiameterIdentity octets; nil/empty = alternative not selected
 }
-
-// ServingNodeAddressChoice* mirrors upstream
-// gsm_map.ServingNodeAddressChoice* (the alternatives' wire ordinals).
-const (
-	ServingNodeAddressChoiceMscNumber  = gsm_map.ServingNodeAddressChoiceMscNumber
-	ServingNodeAddressChoiceSgsnNumber = gsm_map.ServingNodeAddressChoiceSgsnNumber
-	ServingNodeAddressChoiceMmeNumber  = gsm_map.ServingNodeAddressChoiceMmeNumber
-)
 
 // Spec-derived size / range constants for PR C types, per TS 29.002
 // MAP-LCS-DataTypes.asn:328/330/346/366/380/382/384/387/409/412.
@@ -3196,21 +3190,18 @@ var (
 	ErrUtranAdditionalPositioningDataSize = errors.New("psl: UtranAdditionalPositioningData must be 1..8 octets (maxUtranAdditionalPositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:584")
 	ErrUtranBaroPressureMeasOutOfRange    = errors.New("psl: UtranBaroPressureMeas must be 30000..115000 per TS 29.002 MAP-LCS-DataTypes.asn:592")
 
-	ErrAreaTypeInvalid                    = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
-	ErrAreaIdentificationSize             = errors.New("area: AreaIdentification must be 2..7 octets per TS 29.002 MAP-LCS-DataTypes.asn:346")
-	ErrAreaListSize                       = errors.New("areaDefinition: AreaList must contain 1..10 entries (maxNumOfAreas) per TS 29.002 MAP-LCS-DataTypes.asn:328-330")
-	ErrOccurrenceInfoInvalid              = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:361 (extensible enum: unknown values preserved on decode)")
-	ErrIntervalTimeOutOfRange             = errors.New("areaEventInfo: IntervalTime must be 1..32767 seconds per TS 29.002 MAP-LCS-DataTypes.asn:366")
-	ErrReportingAmountOutOfRange          = errors.New("periodicLDRInfo: ReportingAmount must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn:380-382")
-	ErrReportingIntervalOutOfRange        = errors.New("periodicLDRInfo: ReportingInterval must be 1..8639999 seconds (maxReportingInterval) per TS 29.002 MAP-LCS-DataTypes.asn:384-387")
-	ErrPeriodicLDRProductExceeded         = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
-	ErrRANTechnologyInvalid               = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
-	ErrReportingPLMNPlmnIdInvalidSize     = errors.New("reportingPLMN: PlmnId must be exactly 3 octets per TS 23.003")
-	ErrPLMNListSize                       = errors.New("reportingPLMNList: PlmnList must contain 1..20 entries (maxNumOfReportingPLMN) per TS 29.002 MAP-LCS-DataTypes.asn:409-412")
-	ErrTerminationCauseInvalid            = errors.New("deferredmt-lrData: TerminationCause must be 0..9 per TS 29.002 MAP-LCS-DataTypes.asn:696 (extensible enum: unknown values preserved on decode)")
-	ErrServingNodeAddressMultipleAlts     = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
-	ErrServingNodeAddressNoAlt            = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
-	ErrServingNodeAddressMscNumberEmpty   = errors.New("servingNodeAddress: when Choice is MscNumber, MscNumber digits must not be empty (presence cannot round-trip through string-based API)")
-	ErrServingNodeAddressSgsnNumberEmpty  = errors.New("servingNodeAddress: when Choice is SgsnNumber, SgsnNumber digits must not be empty (presence cannot round-trip through string-based API)")
-	ErrServingNodeAddressMmeNameEmpty     = errors.New("servingNodeAddress: when Choice is MmeName, MmeName octets must not be empty (DiameterIdentity per RFC 6733)")
+	ErrAreaTypeInvalid                   = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
+	ErrAreaIdentificationSize            = errors.New("area: AreaIdentification must be 2..7 octets per TS 29.002 MAP-LCS-DataTypes.asn:346")
+	ErrAreaListSize                      = errors.New("areaDefinition: AreaList must contain 1..10 entries (maxNumOfAreas) per TS 29.002 MAP-LCS-DataTypes.asn:328-330")
+	ErrOccurrenceInfoInvalid             = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:361 (extensible enum: unknown values preserved on decode)")
+	ErrIntervalTimeOutOfRange            = errors.New("areaEventInfo: IntervalTime must be 1..32767 seconds per TS 29.002 MAP-LCS-DataTypes.asn:366")
+	ErrReportingAmountOutOfRange         = errors.New("periodicLDRInfo: ReportingAmount must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn:380-382")
+	ErrReportingIntervalOutOfRange       = errors.New("periodicLDRInfo: ReportingInterval must be 1..8639999 seconds (maxReportingInterval) per TS 29.002 MAP-LCS-DataTypes.asn:384-387")
+	ErrPeriodicLDRProductExceeded        = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
+	ErrRANTechnologyInvalid              = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
+	ErrPLMNListSize                      = errors.New("reportingPLMNList: PlmnList must contain 1..20 entries (maxNumOfReportingPLMN) per TS 29.002 MAP-LCS-DataTypes.asn:409-412")
+	ErrTerminationCauseInvalid           = errors.New("deferredmt-lrData: TerminationCause must be 0..9 per TS 29.002 MAP-LCS-DataTypes.asn:696 (extensible enum: unknown values preserved on decode)")
+	ErrServingNodeAddressMultipleAlts    = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
+	ErrServingNodeAddressNoAlt           = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
+	ErrServingNodeAddressMmeNameSize     = errors.New("servingNodeAddress: MmeName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
 )

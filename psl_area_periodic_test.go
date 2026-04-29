@@ -60,9 +60,6 @@ func TestPSLAreaPeriodicTypesCompile(t *testing.T) {
 	_ = TerminationUETermination
 	_ = TerminationNetworkTermination
 
-	_ = ServingNodeAddressChoiceMscNumber
-	_ = ServingNodeAddressChoiceSgsnNumber
-	_ = ServingNodeAddressChoiceMmeNumber
 }
 
 // Aliased enums must resolve to the same numeric values as upstream so
@@ -81,9 +78,6 @@ func TestPSLAreaPeriodicEnumsAliasUpstream(t *testing.T) {
 		{"RANTechnologyUmts", int64(RANTechnologyUmts), int64(gsm_map.RANTechnologyUmts)},
 		{"TerminationNormal", int64(TerminationNormal), int64(gsm_map.TerminationCauseNormal)},
 		{"TerminationNetworkTermination", int64(TerminationNetworkTermination), int64(gsm_map.TerminationCauseNetworkTermination)},
-		{"ServingNodeAddressChoiceMscNumber", int64(ServingNodeAddressChoiceMscNumber), int64(gsm_map.ServingNodeAddressChoiceMscNumber)},
-		{"ServingNodeAddressChoiceSgsnNumber", int64(ServingNodeAddressChoiceSgsnNumber), int64(gsm_map.ServingNodeAddressChoiceSgsnNumber)},
-		{"ServingNodeAddressChoiceMmeNumber", int64(ServingNodeAddressChoiceMmeNumber), int64(gsm_map.ServingNodeAddressChoiceMmeNumber)},
 	}
 	for _, tc := range cases {
 		if tc.local != tc.upstr {
@@ -144,14 +138,11 @@ func TestPSLAreaPeriodicSentinelErrors(t *testing.T) {
 		ErrReportingIntervalOutOfRange,
 		ErrPeriodicLDRProductExceeded,
 		ErrRANTechnologyInvalid,
-		ErrReportingPLMNPlmnIdInvalidSize,
 		ErrPLMNListSize,
 		ErrTerminationCauseInvalid,
 		ErrServingNodeAddressMultipleAlts,
 		ErrServingNodeAddressNoAlt,
-		ErrServingNodeAddressMscNumberEmpty,
-		ErrServingNodeAddressSgsnNumberEmpty,
-		ErrServingNodeAddressMmeNameEmpty,
+		ErrServingNodeAddressMmeNameSize,
 	}
 	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {
@@ -216,9 +207,6 @@ func TestPSLAreaPeriodicZeroValues(t *testing.T) {
 	}
 
 	var sna ServingNodeAddress
-	if sna.Choice != 0 {
-		t.Error("ServingNodeAddress zero value should have Choice=0")
-	}
 	if sna.MscNumber != "" || sna.SgsnNumber != "" {
 		t.Error("ServingNodeAddress zero value should have empty MscNumber/SgsnNumber digits")
 	}
