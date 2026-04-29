@@ -22,9 +22,11 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **ProvideSubscriberInfo** (PSI) | 70 | `ProvideSubscriberInfo` | `ProvideSubscriberInfoRes` |
 | **CancelLocation** | 3 | `CancelLocation` | `CancelLocationRes` |
 | **InsertSubscriberData** (ISD) | 7 | `InsertSubscriberDataArg` | `InsertSubscriberDataRes` |
-| _SubscriberLocationReport_ | 83 | _planned_ | _planned_ |
+| _ProvideSubscriberLocation_ (PSL) | 83 | _foundation types only_ | _foundation types only_ |
 | _SendRoutingInfoForLCS_ | 85 | _planned_ | _planned_ |
-| _ProvideSubscriberLocation_ | 86 | _planned_ | _planned_ |
+| _SubscriberLocationReport_ | 86 | _planned_ | _planned_ |
+
+> ProvideSubscriberLocation (opCode 83) public types and validation sentinels are landed on `main`; top-level `Arg`/`Res` structs and codec arrive in subsequent PRs.
 
 ## Install
 
