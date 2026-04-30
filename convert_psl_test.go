@@ -50,6 +50,34 @@ func TestDeferredLocationEventTypeRoundTrip(t *testing.T) {
 	}
 }
 
+// Decode-only tests from hardcoded wire bytes lock the bit positions
+// independently of the encoder, catching symmetric encode/decode bit-
+// order bugs that would slip through round-trip-only assertions.
+func TestDeferredLocationEventTypeBitMappingFromWire(t *testing.T) {
+	cases := []struct {
+		name string
+		bs   runtime.BitString
+		want *DeferredLocationEventType
+	}{
+		{"bit 0 → MsAvailable", runtime.BitString{Bytes: []byte{0x80}, BitLength: 1}, &DeferredLocationEventType{MsAvailable: true}},
+		{"bit 1 → EnteringIntoArea", runtime.BitString{Bytes: []byte{0x40}, BitLength: 2}, &DeferredLocationEventType{EnteringIntoArea: true}},
+		{"bit 2 → LeavingFromArea", runtime.BitString{Bytes: []byte{0x20}, BitLength: 3}, &DeferredLocationEventType{LeavingFromArea: true}},
+		{"bit 3 → BeingInsideArea", runtime.BitString{Bytes: []byte{0x10}, BitLength: 4}, &DeferredLocationEventType{BeingInsideArea: true}},
+		{"bit 4 → PeriodicLDR", runtime.BitString{Bytes: []byte{0x08}, BitLength: 5}, &DeferredLocationEventType{PeriodicLDR: true}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := convertBitStringToDeferredLocationEventType(tc.bs)
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if !reflect.DeepEqual(tc.want, got) {
+				t.Errorf("bit mapping: want %+v, got %+v", tc.want, got)
+			}
+		})
+	}
+}
+
 func TestDeferredLocationEventTypeOversizedRejected(t *testing.T) {
 	bs := runtime.BitString{Bytes: []byte{0x00, 0x00, 0x00}, BitLength: 17}
 	_, err := convertBitStringToDeferredLocationEventType(bs)
@@ -98,6 +126,34 @@ func TestSupportedGADShapesRoundTrip(t *testing.T) {
 			}
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch: in=%+v out=%+v", tc.in, out)
+			}
+		})
+	}
+}
+
+// Decode-only tests from hardcoded wire bytes lock the bit positions.
+func TestSupportedGADShapesBitMappingFromWire(t *testing.T) {
+	cases := []struct {
+		name string
+		bs   runtime.BitString
+		want *SupportedGADShapes
+	}{
+		{"bit 0 → EllipsoidPoint", runtime.BitString{Bytes: []byte{0x80}, BitLength: 7}, &SupportedGADShapes{EllipsoidPoint: true}},
+		{"bit 1 → EllipsoidPointWithUncertaintyCircle", runtime.BitString{Bytes: []byte{0x40}, BitLength: 7}, &SupportedGADShapes{EllipsoidPointWithUncertaintyCircle: true}},
+		{"bit 2 → EllipsoidPointWithUncertaintyEllipse", runtime.BitString{Bytes: []byte{0x20}, BitLength: 7}, &SupportedGADShapes{EllipsoidPointWithUncertaintyEllipse: true}},
+		{"bit 3 → Polygon", runtime.BitString{Bytes: []byte{0x10}, BitLength: 7}, &SupportedGADShapes{Polygon: true}},
+		{"bit 4 → EllipsoidPointWithAltitude", runtime.BitString{Bytes: []byte{0x08}, BitLength: 7}, &SupportedGADShapes{EllipsoidPointWithAltitude: true}},
+		{"bit 5 → EllipsoidPointWithAltitudeAndUncertaintyEllipsoid", runtime.BitString{Bytes: []byte{0x04}, BitLength: 7}, &SupportedGADShapes{EllipsoidPointWithAltitudeAndUncertaintyEllipsoid: true}},
+		{"bit 6 → EllipsoidArc", runtime.BitString{Bytes: []byte{0x02}, BitLength: 7}, &SupportedGADShapes{EllipsoidArc: true}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := convertBitStringToSupportedGADShapes(tc.bs)
+			if err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+			if !reflect.DeepEqual(tc.want, got) {
+				t.Errorf("bit mapping: want %+v, got %+v", tc.want, got)
 			}
 		})
 	}
@@ -279,6 +335,27 @@ func TestLCSPrivacyCheckOutOfRangeRejected(t *testing.T) {
 	})
 	if !errors.Is(err, ErrPrivacyCheckRelatedActionInvalid) {
 		t.Errorf("want ErrPrivacyCheckRelatedActionInvalid for related, got %v", err)
+	}
+}
+
+// Decoder must reject out-of-range values too — PrivacyCheckRelatedAction
+// is NOT extensible (TS 29.002 MAP-LCS-DataTypes.asn:307), so symmetric
+// validation applies.
+func TestLCSPrivacyCheckWireOutOfRangeRejected(t *testing.T) {
+	_, err := convertWireToLCSPrivacyCheck(&gsm_map.LCSPrivacyCheck{
+		CallSessionUnrelated: 99,
+	})
+	if !errors.Is(err, ErrPrivacyCheckRelatedActionInvalid) {
+		t.Errorf("want ErrPrivacyCheckRelatedActionInvalid on decode (unrelated), got %v", err)
+	}
+
+	related := gsm_map.PrivacyCheckRelatedAction(7)
+	_, err = convertWireToLCSPrivacyCheck(&gsm_map.LCSPrivacyCheck{
+		CallSessionUnrelated: gsm_map.PrivacyCheckRelatedActionAllowedWithoutNotification,
+		CallSessionRelated:   &related,
+	})
+	if !errors.Is(err, ErrPrivacyCheckRelatedActionInvalid) {
+		t.Errorf("want ErrPrivacyCheckRelatedActionInvalid on decode (related), got %v", err)
 	}
 }
 

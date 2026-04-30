@@ -239,11 +239,19 @@ func convertWireToLCSPrivacyCheck(w *gsm_map.LCSPrivacyCheck) (*LCSPrivacyCheck,
 	if w == nil {
 		return nil, nil
 	}
+	// PrivacyCheckRelatedAction is NOT extensible (TS 29.002 MAP-LCS-DataTypes.asn:307);
+	// validate symmetrically with the encoder.
+	if int64(w.CallSessionUnrelated) < 0 || int64(w.CallSessionUnrelated) > 4 {
+		return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionUnrelated=%d: %w", w.CallSessionUnrelated, ErrPrivacyCheckRelatedActionInvalid)
+	}
 	out := &LCSPrivacyCheck{
 		CallSessionUnrelated: w.CallSessionUnrelated,
 	}
 	if w.CallSessionRelated != nil {
 		v := *w.CallSessionRelated
+		if int64(v) < 0 || int64(v) > 4 {
+			return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionRelated=%d: %w", v, ErrPrivacyCheckRelatedActionInvalid)
+		}
 		out.CallSessionRelated = &v
 	}
 	return out, nil
@@ -302,9 +310,7 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 		v := gsm_map.HorizontalAccuracy(q.HorizontalAccuracy)
 		out.HorizontalAccuracy = &v
 	}
-	if q.VerticalCoordinateRequest {
-		out.VerticalCoordinateRequest = &struct{}{}
-	}
+	out.VerticalCoordinateRequest = boolToNullPtr(q.VerticalCoordinateRequest)
 	if q.VerticalAccuracy != nil {
 		if len(q.VerticalAccuracy) != 1 {
 			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy len=%d: %w", len(q.VerticalAccuracy), ErrVerticalAccuracyInvalidSize)
@@ -319,9 +325,7 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 		}
 		out.ResponseTime = rt
 	}
-	if q.VelocityRequest {
-		out.VelocityRequest = &struct{}{}
-	}
+	out.VelocityRequest = boolToNullPtr(q.VelocityRequest)
 	return out, nil
 }
 
@@ -336,7 +340,7 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 		}
 		out.HorizontalAccuracy = HexBytes(*w.HorizontalAccuracy)
 	}
-	out.VerticalCoordinateRequest = w.VerticalCoordinateRequest != nil
+	out.VerticalCoordinateRequest = nullPtrToBool(w.VerticalCoordinateRequest)
 	if w.VerticalAccuracy != nil {
 		if len(*w.VerticalAccuracy) != 1 {
 			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy len=%d: %w", len(*w.VerticalAccuracy), ErrVerticalAccuracyInvalidSize)
@@ -350,6 +354,6 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 		}
 		out.ResponseTime = rt
 	}
-	out.VelocityRequest = w.VelocityRequest != nil
+	out.VelocityRequest = nullPtrToBool(w.VelocityRequest)
 	return out, nil
 }
