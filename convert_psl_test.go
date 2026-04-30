@@ -277,8 +277,8 @@ func TestLCSCodewordWireDataCodingSchemeMustBeOneOctet(t *testing.T) {
 		LcsCodewordString: gsm_map.LCSCodewordString{0x01},
 	}
 	_, err := convertWireToLCSCodeword(w)
-	if err == nil {
-		t.Error("want error for >1 octet DataCodingScheme")
+	if !errors.Is(err, ErrUSSDDataCodingSchemeInvalidSize) {
+		t.Errorf("want ErrUSSDDataCodingSchemeInvalidSize, got %v", err)
 	}
 }
 
@@ -460,6 +460,51 @@ func TestLCSQoSVerticalAccuracyMustBeOneOctet(t *testing.T) {
 	_, err = convertWireToLCSQoS(w)
 	if !errors.Is(err, ErrVerticalAccuracyInvalidSize) {
 		t.Errorf("want ErrVerticalAccuracyInvalidSize on decode, got %v", err)
+	}
+}
+
+// Spec mandates bit 8 = 0 on the Horizontal-Accuracy / Vertical-Accuracy
+// uncertainty code octet (TS 29.002 MAP-LCS-DataTypes.asn:250 / 256).
+// MSB-set values must be rejected on both encode and decode.
+func TestLCSQoSHorizontalAccuracyReservedBitRejected(t *testing.T) {
+	_, err := convertLCSQoSToWire(&LCSQoS{HorizontalAccuracy: HexBytes{0x80}})
+	if !errors.Is(err, ErrHorizontalAccuracyReservedBit) {
+		t.Errorf("want ErrHorizontalAccuracyReservedBit on encode, got %v", err)
+	}
+	_, err = convertLCSQoSToWire(&LCSQoS{HorizontalAccuracy: HexBytes{0xff}})
+	if !errors.Is(err, ErrHorizontalAccuracyReservedBit) {
+		t.Errorf("want ErrHorizontalAccuracyReservedBit on encode (0xff), got %v", err)
+	}
+	w := &gsm_map.LCSQoS{HorizontalAccuracy: &gsm_map.HorizontalAccuracy{0x80}}
+	_, err = convertWireToLCSQoS(w)
+	if !errors.Is(err, ErrHorizontalAccuracyReservedBit) {
+		t.Errorf("want ErrHorizontalAccuracyReservedBit on decode, got %v", err)
+	}
+}
+
+func TestLCSQoSVerticalAccuracyReservedBitRejected(t *testing.T) {
+	_, err := convertLCSQoSToWire(&LCSQoS{VerticalAccuracy: HexBytes{0x80}})
+	if !errors.Is(err, ErrVerticalAccuracyReservedBit) {
+		t.Errorf("want ErrVerticalAccuracyReservedBit on encode, got %v", err)
+	}
+	w := &gsm_map.LCSQoS{VerticalAccuracy: &gsm_map.VerticalAccuracy{0xc0}}
+	_, err = convertWireToLCSQoS(w)
+	if !errors.Is(err, ErrVerticalAccuracyReservedBit) {
+		t.Errorf("want ErrVerticalAccuracyReservedBit on decode, got %v", err)
+	}
+}
+
+// Boundary-case acceptance: 0x7F is valid (bit 8 = 0, all 7 low bits set).
+func TestLCSQoSAccuracyBoundaryAccepted(t *testing.T) {
+	wire, err := convertLCSQoSToWire(&LCSQoS{
+		HorizontalAccuracy: HexBytes{0x7f},
+		VerticalAccuracy:   HexBytes{0x7f},
+	})
+	if err != nil {
+		t.Fatalf("encode 0x7f: %v", err)
+	}
+	if _, err := convertWireToLCSQoS(wire); err != nil {
+		t.Fatalf("decode 0x7f: %v", err)
 	}
 }
 

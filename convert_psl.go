@@ -200,7 +200,7 @@ func convertWireToLCSCodeword(w *gsm_map.LCSCodeword) (*LCSCodeword, error) {
 		return nil, nil
 	}
 	if len(w.DataCodingScheme) != 1 {
-		return nil, fmt.Errorf("LCSCodeword.DataCodingScheme: USSD-DataCodingScheme must be exactly 1 octet on the wire (got %d)", len(w.DataCodingScheme))
+		return nil, fmt.Errorf("LCSCodeword.DataCodingScheme len=%d: %w", len(w.DataCodingScheme), ErrUSSDDataCodingSchemeInvalidSize)
 	}
 	if len(w.LcsCodewordString) < 1 || len(w.LcsCodewordString) > LCSCodewordStringMaxLen {
 		return nil, fmt.Errorf("LCSCodeword.LcsCodewordString len=%d: %w", len(w.LcsCodewordString), ErrLCSCodewordStringSize)
@@ -307,6 +307,11 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 		if len(q.HorizontalAccuracy) != 1 {
 			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy len=%d: %w", len(q.HorizontalAccuracy), ErrHorizontalAccuracyInvalidSize)
 		}
+		// Spec mandates bit 8 = 0 (TS 29.002 MAP-LCS-DataTypes.asn:250):
+		// only the low 7 bits encode the uncertainty code per TS 23.032.
+		if q.HorizontalAccuracy[0]&0x80 != 0 {
+			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy=0x%02x: %w", q.HorizontalAccuracy[0], ErrHorizontalAccuracyReservedBit)
+		}
 		v := gsm_map.HorizontalAccuracy(q.HorizontalAccuracy)
 		out.HorizontalAccuracy = &v
 	}
@@ -314,6 +319,11 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 	if q.VerticalAccuracy != nil {
 		if len(q.VerticalAccuracy) != 1 {
 			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy len=%d: %w", len(q.VerticalAccuracy), ErrVerticalAccuracyInvalidSize)
+		}
+		// Spec mandates bit 8 = 0 (TS 29.002 MAP-LCS-DataTypes.asn:256):
+		// only the low 7 bits encode the vertical uncertainty code per TS 23.032.
+		if q.VerticalAccuracy[0]&0x80 != 0 {
+			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy=0x%02x: %w", q.VerticalAccuracy[0], ErrVerticalAccuracyReservedBit)
 		}
 		v := gsm_map.VerticalAccuracy(q.VerticalAccuracy)
 		out.VerticalAccuracy = &v
@@ -338,12 +348,18 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 		if len(*w.HorizontalAccuracy) != 1 {
 			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy len=%d: %w", len(*w.HorizontalAccuracy), ErrHorizontalAccuracyInvalidSize)
 		}
+		if (*w.HorizontalAccuracy)[0]&0x80 != 0 {
+			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy=0x%02x: %w", (*w.HorizontalAccuracy)[0], ErrHorizontalAccuracyReservedBit)
+		}
 		out.HorizontalAccuracy = HexBytes(*w.HorizontalAccuracy)
 	}
 	out.VerticalCoordinateRequest = nullPtrToBool(w.VerticalCoordinateRequest)
 	if w.VerticalAccuracy != nil {
 		if len(*w.VerticalAccuracy) != 1 {
 			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy len=%d: %w", len(*w.VerticalAccuracy), ErrVerticalAccuracyInvalidSize)
+		}
+		if (*w.VerticalAccuracy)[0]&0x80 != 0 {
+			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy=0x%02x: %w", (*w.VerticalAccuracy)[0], ErrVerticalAccuracyReservedBit)
 		}
 		out.VerticalAccuracy = HexBytes(*w.VerticalAccuracy)
 	}
