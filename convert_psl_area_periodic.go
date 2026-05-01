@@ -59,15 +59,12 @@ func convertWireToArea(w *gsm_map.Area) (*Area, error) {
 // ============================================================================
 
 func convertAreaListToWire(list AreaList) (gsm_map.AreaList, error) {
-	if len(list) == 0 {
-		return nil, fmt.Errorf("AreaList: %w", ErrAreaListSize)
-	}
-	if len(list) > AreaListMaxEntries {
+	if len(list) < AreaListMinEntries || len(list) > AreaListMaxEntries {
 		return nil, fmt.Errorf("AreaList len=%d: %w", len(list), ErrAreaListSize)
 	}
 	out := make(gsm_map.AreaList, 0, len(list))
-	for i, area := range list {
-		w, err := convertAreaToWire(&area)
+	for i := range list {
+		w, err := convertAreaToWire(&list[i])
 		if err != nil {
 			return nil, fmt.Errorf("AreaList[%d]: %w", i, err)
 		}
@@ -274,8 +271,8 @@ func convertPLMNListToWire(list PLMNList) (gsm_map.PLMNList, error) {
 		return nil, fmt.Errorf("PLMNList len=%d: %w", len(list), ErrPLMNListSize)
 	}
 	out := make(gsm_map.PLMNList, 0, len(list))
-	for i, plmn := range list {
-		w, err := convertReportingPLMNToWire(&plmn)
+	for i := range list {
+		w, err := convertReportingPLMNToWire(&list[i])
 		if err != nil {
 			return nil, fmt.Errorf("PLMNList[%d]: %w", i, err)
 		}

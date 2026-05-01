@@ -25,7 +25,7 @@ func TestAreaRoundTrip(t *testing.T) {
 			AreaType:           AreaTypeCountryCode,
 			AreaIdentification: HexBytes{0x01, 0x02},
 		}},
-		{"plmnId max", &Area{
+		{"utranCellId max", &Area{
 			AreaType:           AreaTypeUtranCellId,
 			AreaIdentification: HexBytes{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
 		}},
@@ -384,21 +384,93 @@ func TestReportingPLMNListOversizedRejected(t *testing.T) {
 
 func TestPSLAreaPeriodicNilPassThrough(t *testing.T) {
 	if w, err := convertAreaToWire(nil); err != nil || w != nil {
-		t.Errorf("Area nil: got w=%v err=%v", w, err)
+		t.Errorf("AreaToWire nil: got w=%v err=%v", w, err)
 	}
 	if w, err := convertAreaDefinitionToWire(nil); err != nil || w != nil {
-		t.Errorf("AreaDefinition nil: got w=%v err=%v", w, err)
+		t.Errorf("AreaDefinitionToWire nil: got w=%v err=%v", w, err)
 	}
 	if w, err := convertAreaEventInfoToWire(nil); err != nil || w != nil {
-		t.Errorf("AreaEventInfo nil: got w=%v err=%v", w, err)
+		t.Errorf("AreaEventInfoToWire nil: got w=%v err=%v", w, err)
 	}
 	if w, err := convertPeriodicLDRInfoToWire(nil); err != nil || w != nil {
-		t.Errorf("PeriodicLDRInfo nil: got w=%v err=%v", w, err)
+		t.Errorf("PeriodicLDRInfoToWire nil: got w=%v err=%v", w, err)
 	}
 	if w, err := convertReportingPLMNToWire(nil); err != nil || w != nil {
-		t.Errorf("ReportingPLMN nil: got w=%v err=%v", w, err)
+		t.Errorf("ReportingPLMNToWire nil: got w=%v err=%v", w, err)
 	}
 	if w, err := convertReportingPLMNListToWire(nil); err != nil || w != nil {
-		t.Errorf("ReportingPLMNList nil: got w=%v err=%v", w, err)
+		t.Errorf("ReportingPLMNListToWire nil: got w=%v err=%v", w, err)
+	}
+
+	// Decode-side nil pass-through.
+	if out, err := convertWireToArea(nil); err != nil || out != nil {
+		t.Errorf("WireToArea nil: got out=%v err=%v", out, err)
+	}
+	if out, err := convertWireToAreaDefinition(nil); err != nil || out != nil {
+		t.Errorf("WireToAreaDefinition nil: got out=%v err=%v", out, err)
+	}
+	if out, err := convertWireToAreaEventInfo(nil); err != nil || out != nil {
+		t.Errorf("WireToAreaEventInfo nil: got out=%v err=%v", out, err)
+	}
+	if out, err := convertWireToPeriodicLDRInfo(nil); err != nil || out != nil {
+		t.Errorf("WireToPeriodicLDRInfo nil: got out=%v err=%v", out, err)
+	}
+	if out, err := convertWireToReportingPLMN(nil); err != nil || out != nil {
+		t.Errorf("WireToReportingPLMN nil: got out=%v err=%v", out, err)
+	}
+	if out, err := convertWireToReportingPLMNList(nil); err != nil || out != nil {
+		t.Errorf("WireToReportingPLMNList nil: got out=%v err=%v", out, err)
+	}
+}
+
+// Lock in the decoder-side leniency contract: extensible enums must
+// preserve unknown values per Postel even though encoders are strict.
+// (Symmetric encoder strict-rejection tests for these enums live in
+// TestAreaOutOfRangeTypeRejected, TestAreaEventInfoOccurrenceInfoOutOfRangeRejected,
+// and TestReportingPLMNRanTechnologyOutOfRangeRejected.)
+func TestPSLAreaPeriodicDecoderLenientForExtensibleEnums(t *testing.T) {
+	// AreaType — extensible (TS 29.002:337).
+	w := &gsm_map.Area{
+		AreaType:           gsm_map.AreaType(99),
+		AreaIdentification: gsm_map.AreaIdentification{0x01, 0x02},
+	}
+	got, err := convertWireToArea(w)
+	if err != nil {
+		t.Fatalf("AreaType=99 decode: unexpected error %v", err)
+	}
+	if int64(got.AreaType) != 99 {
+		t.Errorf("AreaType not preserved: want 99, got %d", got.AreaType)
+	}
+
+	// OccurrenceInfo — extensible (TS 29.002:361).
+	occ := gsm_map.OccurrenceInfo(99)
+	wAEI := &gsm_map.AreaEventInfo{
+		AreaDefinition: gsm_map.AreaDefinition{
+			AreaList: gsm_map.AreaList{
+				{AreaType: gsm_map.AreaTypeCountryCode, AreaIdentification: gsm_map.AreaIdentification{0x01, 0x02}},
+			},
+		},
+		OccurrenceInfo: &occ,
+	}
+	gotAEI, err := convertWireToAreaEventInfo(wAEI)
+	if err != nil {
+		t.Fatalf("OccurrenceInfo=99 decode: unexpected error %v", err)
+	}
+	if gotAEI.OccurrenceInfo == nil || int64(*gotAEI.OccurrenceInfo) != 99 {
+		t.Errorf("OccurrenceInfo not preserved: got %v", gotAEI.OccurrenceInfo)
+	}
+
+	// RANTechnology — extensible (TS 29.002:420).
+	tech := gsm_map.RANTechnology(99)
+	wRP := &gsm_map.ReportingPLMN{
+		PlmnId:        gsm_map.PLMNId{0x32, 0xf4, 0x10},
+		RanTechnology: &tech,
+	}
+	gotRP, err := convertWireToReportingPLMN(wRP)
+	if err != nil {
+		t.Fatalf("RanTechnology=99 decode: unexpected error %v", err)
+	}
+	if gotRP.RanTechnology == nil || int64(*gotRP.RanTechnology) != 99 {
+		t.Errorf("RanTechnology not preserved: got %v", gotRP.RanTechnology)
 	}
 }
