@@ -1,0 +1,277 @@
+// convert_psl_arg_test.go
+//
+// Tests for the top-level ProvideSubscriberLocationArg (opCode 83)
+// converter and the Marshal/Parse entry points wired in marshal.go /
+// parse.go.
+package gsmmap
+
+import (
+	"errors"
+	"reflect"
+	"testing"
+)
+
+// Minimal PSL-Arg: just the two mandatory fields (LocationType,
+// MlcNumber). Round-trip + Marshal/Parse.
+func TestProvideSubscriberLocationArgMinimalRoundTrip(t *testing.T) {
+	in := &ProvideSubscriberLocationArg{
+		LocationType: LocationType{
+			LocationEstimateType: LocationEstimateCurrentLocation,
+		},
+		MlcNumber:       "31612345678",
+		MlcNumberNature: 0x10, // International
+		MlcNumberPlan:   0x01, // ISDN
+	}
+	wire, err := convertProvideSubscriberLocationArgToWire(in)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	out, err := convertWireToProvideSubscriberLocationArg(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !reflect.DeepEqual(in, out) {
+		t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", in, out)
+	}
+
+	// Marshal/Parse over BER should also round-trip.
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	parsed, err := ParseProvideSubscriberLocation(data)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if !reflect.DeepEqual(in, parsed) {
+		t.Errorf("Marshal/Parse mismatch:\n in=%+v\nout=%+v", in, parsed)
+	}
+}
+
+// Full population: every optional field set. Locks the assembly of all
+// the sub-converters from D1/D2/D3.
+func TestProvideSubscriberLocationArgFullPopulationRoundTrip(t *testing.T) {
+	internalID := LCSClientBroadcastService
+	occ := OccurrenceMultipleTimeEvent
+	intv := IntervalTime(60)
+	tech := RANTechnologyUmts
+	serviceType := int64(42)
+
+	in := &ProvideSubscriberLocationArg{
+		LocationType: LocationType{
+			LocationEstimateType: LocationEstimateActivateDeferredLocation,
+			DeferredLocationEventType: &DeferredLocationEventType{
+				MsAvailable: true, PeriodicLDR: true,
+			},
+		},
+		MlcNumber:       "31611111111",
+		MlcNumberNature: 0x10,
+		MlcNumberPlan:   0x01,
+
+		LcsClientID: &LCSClientID{
+			LcsClientType:       LCSClientTypeEmergencyServices,
+			LcsClientInternalID: &internalID,
+		},
+		PrivacyOverride: true,
+		IMSI:            HexBytes{0x12, 0x34, 0x56, 0x78},
+		MSISDN:          "31622222222",
+		MSISDNNature:    0x10,
+		MSISDNPlan:      0x01,
+		LMSI:            HexBytes{0x01, 0x02, 0x03, 0x04},
+		IMEI:            HexBytes{0x35, 0x33, 0x37, 0x46, 0x37, 0x32, 0x31, 0xf0},
+		LcsPriority:     LCSPriority{0x00},
+		LcsQoS: &LCSQoS{
+			HorizontalAccuracy:        HexBytes{0x10},
+			VerticalCoordinateRequest: true,
+			VerticalAccuracy:          HexBytes{0x20},
+			ResponseTime: &ResponseTime{
+				ResponseTimeCategory: ResponseTimeDelaytolerant,
+			},
+			VelocityRequest: true,
+		},
+		SupportedGADShapes: &SupportedGADShapes{
+			EllipsoidPoint: true, Polygon: true,
+		},
+		LcsReferenceNumber: LCSReferenceNumber{0x42},
+		LcsServiceTypeID:   &serviceType,
+		LcsCodeword: &LCSCodeword{
+			DataCodingScheme:  0x0f,
+			LcsCodewordString: HexBytes{0x01, 0x02, 0x03},
+		},
+		LcsPrivacyCheck: &LCSPrivacyCheck{
+			CallSessionUnrelated: PrivacyCheckAllowedWithNotification,
+		},
+		AreaEventInfo: &AreaEventInfo{
+			AreaDefinition: AreaDefinition{
+				AreaList: AreaList{
+					{AreaType: AreaTypeCountryCode, AreaIdentification: HexBytes{0x01, 0x02}},
+				},
+			},
+			OccurrenceInfo: &occ,
+			IntervalTime:   &intv,
+		},
+		HGmlcAddress:              HexBytes{0xc0, 0xa8, 0x01, 0x01},
+		MoLrShortCircuitIndicator: true,
+		PeriodicLDRInfo: &PeriodicLDRInfo{
+			ReportingAmount:   10,
+			ReportingInterval: 60,
+		},
+		ReportingPLMNList: &ReportingPLMNList{
+			PlmnListPrioritized: true,
+			PlmnList: PLMNList{
+				{
+					PlmnId:        HexBytes{0x32, 0xf4, 0x10},
+					RanTechnology: &tech,
+				},
+			},
+		},
+	}
+
+	wire, err := convertProvideSubscriberLocationArgToWire(in)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	out, err := convertWireToProvideSubscriberLocationArg(wire)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !reflect.DeepEqual(in, out) {
+		t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", in, out)
+	}
+
+	// BER round-trip via Marshal/Parse.
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	parsed, err := ParseProvideSubscriberLocation(data)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if !reflect.DeepEqual(in, parsed) {
+		t.Errorf("Marshal/Parse mismatch:\n in=%+v\nout=%+v", in, parsed)
+	}
+}
+
+// =============================================================================
+// Validation: mandatory fields
+// =============================================================================
+
+func TestProvideSubscriberLocationArgNilRejected(t *testing.T) {
+	_, err := convertProvideSubscriberLocationArgToWire(nil)
+	if !errors.Is(err, ErrPSLArgNil) {
+		t.Errorf("encode nil: want ErrPSLArgNil, got %v", err)
+	}
+	_, err = convertWireToProvideSubscriberLocationArg(nil)
+	if !errors.Is(err, ErrPSLArgNil) {
+		t.Errorf("decode nil: want ErrPSLArgNil, got %v", err)
+	}
+}
+
+func TestProvideSubscriberLocationArgEmptyMlcNumberRejected(t *testing.T) {
+	_, err := convertProvideSubscriberLocationArgToWire(&ProvideSubscriberLocationArg{
+		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+	})
+	if !errors.Is(err, ErrPSLArgMlcNumberEmpty) {
+		t.Errorf("encode empty MlcNumber: want ErrPSLArgMlcNumberEmpty, got %v", err)
+	}
+}
+
+// =============================================================================
+// Validation: optional field sizes / ranges
+// =============================================================================
+
+func TestProvideSubscriberLocationArgIMSISizeValidation(t *testing.T) {
+	base := func() *ProvideSubscriberLocationArg {
+		return &ProvideSubscriberLocationArg{
+			LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+			MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		}
+	}
+	a := base()
+	a.IMSI = HexBytes{0x12, 0x34} // 2 octets — too short
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMSIInvalidSize) {
+		t.Errorf("IMSI=2 octets: want ErrPSLArgIMSIInvalidSize, got %v", err)
+	}
+	a = base()
+	a.IMSI = make(HexBytes, 9) // 9 octets — too long
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMSIInvalidSize) {
+		t.Errorf("IMSI=9 octets: want ErrPSLArgIMSIInvalidSize, got %v", err)
+	}
+}
+
+func TestProvideSubscriberLocationArgLMSISizeValidation(t *testing.T) {
+	a := &ProvideSubscriberLocationArg{
+		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		LMSI: HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be exactly 4
+	}
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgLMSIInvalidSize) {
+		t.Errorf("LMSI=3 octets: want ErrPSLArgLMSIInvalidSize, got %v", err)
+	}
+}
+
+func TestProvideSubscriberLocationArgIMEISizeValidation(t *testing.T) {
+	a := &ProvideSubscriberLocationArg{
+		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		IMEI: HexBytes{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, // 7 — must be 8
+	}
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMEIInvalidSize) {
+		t.Errorf("IMEI=7 octets: want ErrPSLArgIMEIInvalidSize, got %v", err)
+	}
+}
+
+func TestProvideSubscriberLocationArgLcsServiceTypeIDOutOfRange(t *testing.T) {
+	bad := int64(128)
+	a := &ProvideSubscriberLocationArg{
+		LocationType:     LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+		MlcNumber:        "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		LcsServiceTypeID: &bad,
+	}
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgLcsServiceTypeIDOutOfRange) {
+		t.Errorf("LcsServiceTypeID=128: want ErrPSLArgLcsServiceTypeIDOutOfRange, got %v", err)
+	}
+
+	negative := int64(-1)
+	a.LcsServiceTypeID = &negative
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgLcsServiceTypeIDOutOfRange) {
+		t.Errorf("LcsServiceTypeID=-1: want ErrPSLArgLcsServiceTypeIDOutOfRange, got %v", err)
+	}
+}
+
+func TestProvideSubscriberLocationArgLcsPrioritySizeValidation(t *testing.T) {
+	a := &ProvideSubscriberLocationArg{
+		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		LcsPriority:  LCSPriority{0x01, 0x02}, // 2 octets — must be 1
+	}
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrLCSPriorityInvalidSize) {
+		t.Errorf("LcsPriority=2 octets: want ErrLCSPriorityInvalidSize, got %v", err)
+	}
+}
+
+func TestProvideSubscriberLocationArgLcsReferenceNumberSizeValidation(t *testing.T) {
+	a := &ProvideSubscriberLocationArg{
+		LocationType:       LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+		MlcNumber:          "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		LcsReferenceNumber: LCSReferenceNumber{0x01, 0x02}, // 2 octets — must be 1
+	}
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrLCSReferenceNumberInvalidSize) {
+		t.Errorf("LcsReferenceNumber=2 octets: want ErrLCSReferenceNumberInvalidSize, got %v", err)
+	}
+}
+
+// Sub-converter errors must propagate via fmt.Errorf %w wrapping.
+func TestProvideSubscriberLocationArgSubConverterErrorsPropagate(t *testing.T) {
+	// Out-of-range LocationEstimateType: should surface
+	// ErrLocationEstimateTypeInvalid (raised by convertLocationTypeToWire).
+	a := &ProvideSubscriberLocationArg{
+		LocationType: LocationType{LocationEstimateType: 99},
+		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+	}
+	_, err := convertProvideSubscriberLocationArgToWire(a)
+	if !errors.Is(err, ErrLocationEstimateTypeInvalid) {
+		t.Errorf("LocationEstimateType=99: want ErrLocationEstimateTypeInvalid, got %v", err)
+	}
+}

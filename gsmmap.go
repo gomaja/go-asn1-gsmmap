@@ -2742,6 +2742,58 @@ const (
 )
 
 // ============================================================================
+// ProvideSubscriberLocationArg — TS 29.002 MAP-LCS-DataTypes.asn:425
+// ============================================================================
+//
+// Top-level PSL-Arg public type, opCode 83. Wires the PSL leaf,
+// LCS-Client, and area-event/periodic/PLMN-list converters from PRs
+// #43, #44, and #45 into a single public struct. Marshal()/Parse()
+// entry points are in marshal.go / parse.go.
+
+// ProvideSubscriberLocationArg represents a ProvideSubscriberLocation
+// request (opCode 83) per TS 29.002 MAP-LCS-DataTypes.asn:425.
+//
+// Mandatory fields: LocationType, MlcNumber.
+// All other fields are optional; presence/absence follows the
+// package-wide conventions:
+//   - String fields: "" = absent (e.g., MSISDN, MlcNumber digits).
+//   - Pointer fields: nil = absent.
+//   - HexBytes fields: nil/empty = absent.
+//   - bool NULL flags: false = absent, true = present.
+type ProvideSubscriberLocationArg struct {
+	// Mandatory.
+	LocationType    LocationType
+	MlcNumber       string // ISDN-AddressString digits
+	MlcNumberNature uint8
+	MlcNumberPlan   uint8
+
+	// Optional.
+	LcsClientID               *LCSClientID
+	PrivacyOverride           bool // [1] NULL flag
+	IMSI                      HexBytes
+	MSISDN                    string // ISDN-AddressString digits
+	MSISDNNature              uint8
+	MSISDNPlan                uint8
+	LMSI                      HexBytes
+	IMEI                      HexBytes
+	LcsPriority               LCSPriority        // 1 octet
+	LcsQoS                    *LCSQoS
+	// ExtensionContainer at [8] is opaque metadata not surfaced to
+	// callers (per the package convention; see APNConfiguration). The
+	// wire struct preserves it transparently across round-trip.
+	SupportedGADShapes        *SupportedGADShapes
+	LcsReferenceNumber        LCSReferenceNumber // 1 octet
+	LcsServiceTypeID          *int64             // 0..127 per LCSServiceTypeID INTEGER
+	LcsCodeword               *LCSCodeword
+	LcsPrivacyCheck           *LCSPrivacyCheck
+	AreaEventInfo             *AreaEventInfo
+	HGmlcAddress              HexBytes // GSN-Address opaque per TS 29.002
+	MoLrShortCircuitIndicator bool     // [16] NULL flag
+	PeriodicLDRInfo           *PeriodicLDRInfo
+	ReportingPLMNList         *ReportingPLMNList
+}
+
+// ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================
 
@@ -3207,4 +3259,12 @@ var (
 	ErrServingNodeAddressMultipleAlts    = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
 	ErrServingNodeAddressNoAlt           = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
 	ErrServingNodeAddressMmeNameSize     = errors.New("servingNodeAddress: MmeName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+
+	ErrPSLArgNil                         = errors.New("provideSubscriberLocationArg: argument must not be nil")
+	ErrPSLArgMlcNumberEmpty              = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory; empty value is not permitted on encode")
+	ErrPSLArgMlcNumberDecodedEmpty       = errors.New("provideSubscriberLocationArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPSLArgIMSIInvalidSize             = errors.New("provideSubscriberLocationArg: IMSI must be 3..8 octets per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8)")
+	ErrPSLArgLMSIInvalidSize             = errors.New("provideSubscriberLocationArg: LMSI must be exactly 4 octets per TS 29.002 MAP-CommonDataTypes.asn")
+	ErrPSLArgIMEIInvalidSize             = errors.New("provideSubscriberLocationArg: IMEI must be exactly 8 octets per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 8)")
+	ErrPSLArgLcsServiceTypeIDOutOfRange  = errors.New("provideSubscriberLocationArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
 )
