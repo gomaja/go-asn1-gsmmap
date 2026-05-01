@@ -12,14 +12,13 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+
+	"github.com/gomaja/go-asn1-gsmmap/gsn"
+	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
-// IMSI/LMSI/IMEI sizes per TS 29.002 MAP-CommonDataTypes.asn.
 const (
-	pslIMSIMinLen = 3
-	pslIMSIMaxLen = 8
-	pslLMSILen    = 4
-	pslIMEILen    = 8
+	pslLMSILen = 4
 
 	// LCSServiceTypeID INTEGER (0..127) per TS 29.002
 	// MAP-CommonDataTypes.asn:436.
@@ -66,11 +65,12 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 	}
 	out.PrivacyOverride = boolToNullPtr(a.PrivacyOverride)
 
-	if len(a.IMSI) > 0 {
-		if len(a.IMSI) < pslIMSIMinLen || len(a.IMSI) > pslIMSIMaxLen {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMSI len=%d: %w", len(a.IMSI), ErrPSLArgIMSIInvalidSize)
+	if a.IMSI != "" {
+		imsiBytes, err := tbcd.Encode(a.IMSI)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMSI: %w", err)
 		}
-		v := gsm_map.IMSI(a.IMSI)
+		v := gsm_map.IMSI(imsiBytes)
 		out.Imsi = &v
 	}
 	if a.MSISDN != "" {
@@ -88,11 +88,12 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		v := gsm_map.LMSI(a.LMSI)
 		out.Lmsi = &v
 	}
-	if len(a.IMEI) > 0 {
-		if len(a.IMEI) != pslIMEILen {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMEI len=%d: %w", len(a.IMEI), ErrPSLArgIMEIInvalidSize)
+	if a.IMEI != "" {
+		imeiBytes, err := tbcd.Encode(a.IMEI)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMEI: %w", err)
 		}
-		v := gsm_map.IMEI(a.IMEI)
+		v := gsm_map.IMEI(imeiBytes)
 		out.Imei = &v
 	}
 	if len(a.LcsPriority) > 0 {
@@ -149,8 +150,12 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		}
 		out.AreaEventInfo = v
 	}
-	if len(a.HGmlcAddress) > 0 {
-		v := gsm_map.GSNAddress(a.HGmlcAddress)
+	if a.HGmlcAddress != "" {
+		gsnAddr, err := gsn.Build(a.HGmlcAddress)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.HGmlcAddress: %w", err)
+		}
+		v := gsm_map.GSNAddress(gsnAddr)
 		out.HGmlcAddress = &v
 	}
 	out.MoLrShortCircuitIndicator = boolToNullPtr(a.MoLrShortCircuitIndicator)
@@ -211,15 +216,22 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 	out.PrivacyOverride = nullPtrToBool(w.PrivacyOverride)
 
 	if w.Imsi != nil {
-		if len(*w.Imsi) < pslIMSIMinLen || len(*w.Imsi) > pslIMSIMaxLen {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMSI len=%d: %w", len(*w.Imsi), ErrPSLArgIMSIInvalidSize)
+		imsi, err := tbcd.Decode(*w.Imsi)
+		if err != nil {
+			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.IMSI: %w", err)
 		}
-		out.IMSI = HexBytes(*w.Imsi)
+		if imsi == "" {
+			return nil, ErrPSLArgIMSIDecodedEmpty
+		}
+		out.IMSI = imsi
 	}
 	if w.Msisdn != nil {
 		s, nature, plan, err := decodeAddressField([]byte(*w.Msisdn))
 		if err != nil {
 			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.MSISDN: %w", err)
+		}
+		if s == "" {
+			return nil, ErrPSLArgMSISDNDecodedEmpty
 		}
 		out.MSISDN = s
 		out.MSISDNNature = nature
@@ -232,10 +244,14 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.LMSI = HexBytes(*w.Lmsi)
 	}
 	if w.Imei != nil {
-		if len(*w.Imei) != pslIMEILen {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMEI len=%d: %w", len(*w.Imei), ErrPSLArgIMEIInvalidSize)
+		imei, err := tbcd.Decode(*w.Imei)
+		if err != nil {
+			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.IMEI: %w", err)
 		}
-		out.IMEI = HexBytes(*w.Imei)
+		if imei == "" {
+			return nil, ErrPSLArgIMEIDecodedEmpty
+		}
+		out.IMEI = imei
 	}
 	if w.LcsPriority != nil {
 		if len(*w.LcsPriority) != 1 {
@@ -292,7 +308,11 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.AreaEventInfo = v
 	}
 	if w.HGmlcAddress != nil {
-		out.HGmlcAddress = HexBytes(*w.HGmlcAddress)
+		addr, err := gsn.Parse(*w.HGmlcAddress)
+		if err != nil {
+			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.HGmlcAddress: %w", err)
+		}
+		out.HGmlcAddress = addr
 	}
 	out.MoLrShortCircuitIndicator = nullPtrToBool(w.MoLrShortCircuitIndicator)
 

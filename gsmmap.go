@@ -2753,13 +2753,17 @@ const (
 // ProvideSubscriberLocationArg represents a ProvideSubscriberLocation
 // request (opCode 83) per TS 29.002 MAP-LCS-DataTypes.asn:425.
 //
-// Mandatory fields: LocationType, MlcNumber.
-// All other fields are optional; presence/absence follows the
-// package-wide conventions:
-//   - String fields: "" = absent (e.g., MSISDN, MlcNumber digits).
+// Mandatory fields: LocationType, MlcNumber (digits string + Nature/Plan
+// triple); empty MlcNumber digits are rejected on encode.
+//
+// Optional fields follow the package-wide conventions:
+//   - Optional string fields (e.g., MSISDN, IMSI, IMEI, HGmlcAddress):
+//     "" = absent.
 //   - Pointer fields: nil = absent.
-//   - HexBytes fields: nil/empty = absent.
 //   - bool NULL flags: false = absent, true = present.
+//
+// Note: ExtensionContainer at tag [8] is opaque metadata not surfaced
+// to callers (per the package convention; see APNConfiguration).
 type ProvideSubscriberLocationArg struct {
 	// Mandatory.
 	LocationType    LocationType
@@ -2769,26 +2773,23 @@ type ProvideSubscriberLocationArg struct {
 
 	// Optional.
 	LcsClientID               *LCSClientID
-	PrivacyOverride           bool // [1] NULL flag
-	IMSI                      HexBytes
-	MSISDN                    string // ISDN-AddressString digits
+	PrivacyOverride           bool   // [1] NULL flag
+	IMSI                      string // TBCD-decoded digits; "" = absent (3..15 BCD digits per TS 29.002)
+	MSISDN                    string // ISDN-AddressString digits; "" = absent
 	MSISDNNature              uint8
 	MSISDNPlan                uint8
-	LMSI                      HexBytes
-	IMEI                      HexBytes
-	LcsPriority               LCSPriority        // 1 octet
+	LMSI                      HexBytes // 4 octets opaque
+	IMEI                      string   // TBCD-decoded digits; "" = absent (15 BCD digits per TS 29.002)
+	LcsPriority               LCSPriority
 	LcsQoS                    *LCSQoS
-	// ExtensionContainer at [8] is opaque metadata not surfaced to
-	// callers (per the package convention; see APNConfiguration). The
-	// wire struct preserves it transparently across round-trip.
 	SupportedGADShapes        *SupportedGADShapes
-	LcsReferenceNumber        LCSReferenceNumber // 1 octet
-	LcsServiceTypeID          *int64             // 0..127 per LCSServiceTypeID INTEGER
+	LcsReferenceNumber        LCSReferenceNumber
+	LcsServiceTypeID          *int64 // 0..127 per LCSServiceTypeID INTEGER
 	LcsCodeword               *LCSCodeword
 	LcsPrivacyCheck           *LCSPrivacyCheck
 	AreaEventInfo             *AreaEventInfo
-	HGmlcAddress              HexBytes // GSN-Address opaque per TS 29.002
-	MoLrShortCircuitIndicator bool     // [16] NULL flag
+	HGmlcAddress              string // GSN-Address as IP string (built via gsn.Build); "" = absent
+	MoLrShortCircuitIndicator bool   // [16] NULL flag
 	PeriodicLDRInfo           *PeriodicLDRInfo
 	ReportingPLMNList         *ReportingPLMNList
 }
@@ -3263,8 +3264,9 @@ var (
 	ErrPSLArgNil                         = errors.New("provideSubscriberLocationArg: argument must not be nil")
 	ErrPSLArgMlcNumberEmpty              = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory; empty value is not permitted on encode")
 	ErrPSLArgMlcNumberDecodedEmpty       = errors.New("provideSubscriberLocationArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgIMSIInvalidSize             = errors.New("provideSubscriberLocationArg: IMSI must be 3..8 octets per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8)")
+	ErrPSLArgMSISDNDecodedEmpty          = errors.New("provideSubscriberLocationArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPSLArgIMSIDecodedEmpty            = errors.New("provideSubscriberLocationArg: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPSLArgIMEIDecodedEmpty            = errors.New("provideSubscriberLocationArg: present wire IMEI decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrPSLArgLMSIInvalidSize             = errors.New("provideSubscriberLocationArg: LMSI must be exactly 4 octets per TS 29.002 MAP-CommonDataTypes.asn")
-	ErrPSLArgIMEIInvalidSize             = errors.New("provideSubscriberLocationArg: IMEI must be exactly 8 octets per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 8)")
 	ErrPSLArgLcsServiceTypeIDOutOfRange  = errors.New("provideSubscriberLocationArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
 )

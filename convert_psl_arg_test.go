@@ -9,6 +9,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // Minimal PSL-Arg: just the two mandatory fields (LocationType,
@@ -73,12 +75,12 @@ func TestProvideSubscriberLocationArgFullPopulationRoundTrip(t *testing.T) {
 			LcsClientInternalID: &internalID,
 		},
 		PrivacyOverride: true,
-		IMSI:            HexBytes{0x12, 0x34, 0x56, 0x78},
+		IMSI:            "001010123456789",
 		MSISDN:          "31622222222",
 		MSISDNNature:    0x10,
 		MSISDNPlan:      0x01,
 		LMSI:            HexBytes{0x01, 0x02, 0x03, 0x04},
-		IMEI:            HexBytes{0x35, 0x33, 0x37, 0x46, 0x37, 0x32, 0x31, 0xf0},
+		IMEI:            "490154203237518",
 		LcsPriority:     LCSPriority{0x00},
 		LcsQoS: &LCSQoS{
 			HorizontalAccuracy:        HexBytes{0x10},
@@ -110,7 +112,7 @@ func TestProvideSubscriberLocationArgFullPopulationRoundTrip(t *testing.T) {
 			OccurrenceInfo: &occ,
 			IntervalTime:   &intv,
 		},
-		HGmlcAddress:              HexBytes{0xc0, 0xa8, 0x01, 0x01},
+		HGmlcAddress:              "192.168.1.1",
 		MoLrShortCircuitIndicator: true,
 		PeriodicLDRInfo: &PeriodicLDRInfo{
 			ReportingAmount:   10,
@@ -181,25 +183,6 @@ func TestProvideSubscriberLocationArgEmptyMlcNumberRejected(t *testing.T) {
 // Validation: optional field sizes / ranges
 // =============================================================================
 
-func TestProvideSubscriberLocationArgIMSISizeValidation(t *testing.T) {
-	base := func() *ProvideSubscriberLocationArg {
-		return &ProvideSubscriberLocationArg{
-			LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
-			MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
-		}
-	}
-	a := base()
-	a.IMSI = HexBytes{0x12, 0x34} // 2 octets — too short
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMSIInvalidSize) {
-		t.Errorf("IMSI=2 octets: want ErrPSLArgIMSIInvalidSize, got %v", err)
-	}
-	a = base()
-	a.IMSI = make(HexBytes, 9) // 9 octets — too long
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMSIInvalidSize) {
-		t.Errorf("IMSI=9 octets: want ErrPSLArgIMSIInvalidSize, got %v", err)
-	}
-}
-
 func TestProvideSubscriberLocationArgLMSISizeValidation(t *testing.T) {
 	a := &ProvideSubscriberLocationArg{
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
@@ -208,17 +191,6 @@ func TestProvideSubscriberLocationArgLMSISizeValidation(t *testing.T) {
 	}
 	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgLMSIInvalidSize) {
 		t.Errorf("LMSI=3 octets: want ErrPSLArgLMSIInvalidSize, got %v", err)
-	}
-}
-
-func TestProvideSubscriberLocationArgIMEISizeValidation(t *testing.T) {
-	a := &ProvideSubscriberLocationArg{
-		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
-		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
-		IMEI: HexBytes{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, // 7 — must be 8
-	}
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMEIInvalidSize) {
-		t.Errorf("IMEI=7 octets: want ErrPSLArgIMEIInvalidSize, got %v", err)
 	}
 }
 
@@ -259,6 +231,26 @@ func TestProvideSubscriberLocationArgLcsReferenceNumberSizeValidation(t *testing
 	}
 	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrLCSReferenceNumberInvalidSize) {
 		t.Errorf("LcsReferenceNumber=2 octets: want ErrLCSReferenceNumberInvalidSize, got %v", err)
+	}
+}
+
+// Round-trip fidelity: optional string-based fields decoded from the
+// wire that yield empty digits cannot round-trip through the public
+// API. Reject at decode rather than silently dropping the field on
+// the next encode.
+func TestProvideSubscriberLocationArgMSISDNDecodedEmptyRejected(t *testing.T) {
+	// AddressString header (extension=1, nature=international(1),
+	// plan=ISDN(1)) with no TBCD digits.
+	emptyAddr := gsm_map.ISDNAddressString{0x91}
+	mlc := gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x32, 0x54, 0x76, 0x98} // 31612345678
+	w := &gsm_map.ProvideSubscriberLocationArg{
+		LocationType: gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation},
+		MlcNumber:    mlc,
+		Msisdn:       &emptyAddr,
+	}
+	_, err := convertWireToProvideSubscriberLocationArg(w)
+	if !errors.Is(err, ErrPSLArgMSISDNDecodedEmpty) {
+		t.Errorf("MSISDN empty digits: want ErrPSLArgMSISDNDecodedEmpty, got %v", err)
 	}
 }
 
