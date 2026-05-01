@@ -3175,7 +3175,7 @@ var (
 	ErrHorizontalAccuracyReservedBit     = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:250 (only the low 7 bits encode the uncertainty code per TS 23.032)")
 	ErrVerticalAccuracyInvalidSize       = errors.New("lcsQoS: VerticalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:255 (7-bit Vertical Uncertainty Code per TS 23.032)")
 	ErrVerticalAccuracyReservedBit       = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:256 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")
-	ErrUSSDDataCodingSchemeInvalidSize   = errors.New("USSD-DataCodingScheme must be exactly 1 octet on the wire per TS 29.002 MAP-SS-DataTypes.asn (USSD-DataCodingScheme ::= OCTET STRING (SIZE (1)))")
+	ErrUSSDDataCodingSchemeInvalidSize   = errors.New("ussd: USSD-DataCodingScheme must be exactly 1 octet on the wire per TS 29.002 MAP-SS-DataTypes.asn (USSD-DataCodingScheme ::= OCTET STRING (SIZE (1)))")
 	ErrLCSCodewordStringSize             = errors.New("lcsCodeword: LcsCodewordString must be 1..20 octets (maxLCSCodewordStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:298")
 	ErrLCSClientNameNameStringSize       = errors.New("lcsClientName: NameString must be 1..63 octets (maxNameStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:210")
 	ErrLCSRequestorIDStringSize          = errors.New("lcsRequestorID: RequestorIDString must be 1..63 octets (maxRequestorIDStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:220")

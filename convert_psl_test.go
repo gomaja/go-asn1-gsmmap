@@ -494,6 +494,25 @@ func TestLCSQoSVerticalAccuracyReservedBitRejected(t *testing.T) {
 	}
 }
 
+// Empty (non-nil) HexBytes slices are treated as absent on encode, matching
+// the package-wide convention for optional slice fields. The wire output
+// must therefore omit both fields, not surface a 0-byte length error.
+func TestLCSQoSEmptyAccuracyTreatedAsAbsent(t *testing.T) {
+	wire, err := convertLCSQoSToWire(&LCSQoS{
+		HorizontalAccuracy: HexBytes{},
+		VerticalAccuracy:   HexBytes{},
+	})
+	if err != nil {
+		t.Fatalf("encode empty HexBytes: %v", err)
+	}
+	if wire.HorizontalAccuracy != nil {
+		t.Error("empty HexBytes should produce nil HorizontalAccuracy on the wire")
+	}
+	if wire.VerticalAccuracy != nil {
+		t.Error("empty HexBytes should produce nil VerticalAccuracy on the wire")
+	}
+}
+
 // Boundary-case acceptance: 0x7F is valid (bit 8 = 0, all 7 low bits set).
 func TestLCSQoSAccuracyBoundaryAccepted(t *testing.T) {
 	wire, err := convertLCSQoSToWire(&LCSQoS{
