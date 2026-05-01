@@ -42,6 +42,12 @@ func convertLCSClientNameToWire(c *LCSClientName) (*gsm_map.LCSClientName, error
 	}
 	if c.LcsFormatIndicator != nil {
 		v := *c.LcsFormatIndicator
+		// LCSFormatIndicator is extensible (TS 29.002:224); encoder
+		// strict, decoder lenient (consistent with LcsClientType,
+		// LocationEstimateType, etc.).
+		if int64(v) < 0 || int64(v) > 4 {
+			return nil, fmt.Errorf("LCSClientName.LcsFormatIndicator=%d: %w", v, ErrLCSFormatIndicatorInvalid)
+		}
 		out.LcsFormatIndicator = &v
 	}
 	return out, nil
@@ -85,6 +91,9 @@ func convertLCSRequestorIDToWire(r *LCSRequestorID) (*gsm_map.LCSRequestorID, er
 	}
 	if r.LcsFormatIndicator != nil {
 		v := *r.LcsFormatIndicator
+		if int64(v) < 0 || int64(v) > 4 {
+			return nil, fmt.Errorf("LCSRequestorID.LcsFormatIndicator=%d: %w", v, ErrLCSFormatIndicatorInvalid)
+		}
 		out.LcsFormatIndicator = &v
 	}
 	return out, nil
@@ -138,7 +147,15 @@ func convertLCSClientIDToWire(c *LCSClientID) (*gsm_map.LCSClientID, error) {
 		}
 		out.LcsClientExternalID = ext
 	}
-	if c.LcsClientDialedByMS != "" {
+	// Symmetry with the decode-side ErrLCSClientIDDialedByMSEmpty
+	// invariant: empty digits combined with non-zero Nature/Plan
+	// indicates a caller bug (Nature/Plan are only meaningful when
+	// digits are present).
+	if c.LcsClientDialedByMS == "" {
+		if c.LcsClientDialedByMSNature != 0 || c.LcsClientDialedByMSPlan != 0 {
+			return nil, fmt.Errorf("LCSClientID.LcsClientDialedByMS: %w", ErrLCSClientIDDialedByMSEmpty)
+		}
+	} else {
 		isdn, err := encodeAddressField(c.LcsClientDialedByMS, c.LcsClientDialedByMSNature, c.LcsClientDialedByMSPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding LCSClientID.LcsClientDialedByMS: %w", err)
@@ -148,6 +165,13 @@ func convertLCSClientIDToWire(c *LCSClientID) (*gsm_map.LCSClientID, error) {
 	}
 	if c.LcsClientInternalID != nil {
 		v := *c.LcsClientInternalID
+		// LCSClientInternalID is a non-extensible enum (0..4) per
+		// TS 29.002 MAP-CommonDataTypes.asn; validate symmetrically
+		// with PLMNClientList's per-entry check
+		// (ErrLCSClientInternalIDInvalid).
+		if int64(v) < 0 || int64(v) > 4 {
+			return nil, fmt.Errorf("LCSClientID.LcsClientInternalID=%d: %w", v, ErrLCSClientInternalIDInvalid)
+		}
 		out.LcsClientInternalID = &v
 	}
 	if c.LcsClientName != nil {
@@ -158,6 +182,9 @@ func convertLCSClientIDToWire(c *LCSClientID) (*gsm_map.LCSClientID, error) {
 		out.LcsClientName = nm
 	}
 	if len(c.LcsAPN) > 0 {
+		if err := validateAPN(c.LcsAPN, "LCSClientID.LcsAPN"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.APN(c.LcsAPN)
 		out.LcsAPN = &v
 	}
@@ -202,6 +229,9 @@ func convertWireToLCSClientID(w *gsm_map.LCSClientID) (*LCSClientID, error) {
 	}
 	if w.LcsClientInternalID != nil {
 		v := *w.LcsClientInternalID
+		if int64(v) < 0 || int64(v) > 4 {
+			return nil, fmt.Errorf("LCSClientID.LcsClientInternalID=%d: %w", v, ErrLCSClientInternalIDInvalid)
+		}
 		out.LcsClientInternalID = &v
 	}
 	if w.LcsClientName != nil {
@@ -211,8 +241,12 @@ func convertWireToLCSClientID(w *gsm_map.LCSClientID) (*LCSClientID, error) {
 		}
 		out.LcsClientName = nm
 	}
-	if w.LcsAPN != nil && len(*w.LcsAPN) > 0 {
-		out.LcsAPN = HexBytes(*w.LcsAPN)
+	if w.LcsAPN != nil {
+		apn := HexBytes(*w.LcsAPN)
+		if err := validateAPN(apn, "LCSClientID.LcsAPN"); err != nil {
+			return nil, err
+		}
+		out.LcsAPN = apn
 	}
 	if w.LcsRequestorID != nil {
 		rid, err := convertWireToLCSRequestorID(w.LcsRequestorID)

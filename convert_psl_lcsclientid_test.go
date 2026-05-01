@@ -321,3 +321,105 @@ func TestLCSClientIDDialedByMSWireEmptyDigitsRejected(t *testing.T) {
 		t.Errorf("want ErrLCSClientIDDialedByMSEmpty, got %v", err)
 	}
 }
+
+// Symmetric encode-side check: empty digits combined with non-zero
+// Nature/Plan must surface ErrLCSClientIDDialedByMSEmpty rather than
+// silently dropping the field.
+func TestLCSClientIDDialedByMSEncodeEmptyWithNaturePlanRejected(t *testing.T) {
+	_, err := convertLCSClientIDToWire(&LCSClientID{
+		LcsClientType:             LCSClientTypeEmergencyServices,
+		LcsClientDialedByMS:       "",
+		LcsClientDialedByMSNature: 0x10,
+	})
+	if !errors.Is(err, ErrLCSClientIDDialedByMSEmpty) {
+		t.Errorf("Nature set with empty digits: want ErrLCSClientIDDialedByMSEmpty, got %v", err)
+	}
+	_, err = convertLCSClientIDToWire(&LCSClientID{
+		LcsClientType:           LCSClientTypeEmergencyServices,
+		LcsClientDialedByMS:     "",
+		LcsClientDialedByMSPlan: 0x01,
+	})
+	if !errors.Is(err, ErrLCSClientIDDialedByMSEmpty) {
+		t.Errorf("Plan set with empty digits: want ErrLCSClientIDDialedByMSEmpty, got %v", err)
+	}
+}
+
+// LcsClientInternalID is a non-extensible enum (0..4); validate
+// symmetrically on encode and decode.
+func TestLCSClientIDInternalIDOutOfRangeRejected(t *testing.T) {
+	bad := LCSClientInternalID(99)
+	_, err := convertLCSClientIDToWire(&LCSClientID{
+		LcsClientType:       LCSClientTypeEmergencyServices,
+		LcsClientInternalID: &bad,
+	})
+	if !errors.Is(err, ErrLCSClientInternalIDInvalid) {
+		t.Errorf("encode: want ErrLCSClientInternalIDInvalid, got %v", err)
+	}
+
+	wireBad := gsm_map.LCSClientInternalID(99)
+	_, err = convertWireToLCSClientID(&gsm_map.LCSClientID{
+		LcsClientType:       gsm_map.LCSClientTypeEmergencyServices,
+		LcsClientInternalID: &wireBad,
+	})
+	if !errors.Is(err, ErrLCSClientInternalIDInvalid) {
+		t.Errorf("decode: want ErrLCSClientInternalIDInvalid, got %v", err)
+	}
+}
+
+// LcsAPN must satisfy APN SIZE(2..63) per TS 29.002 MAP-MS-DataTypes.asn.
+// Use the shared validateAPN helper for symmetry with PDPContext etc.
+func TestLCSClientIDAPNSizeValidation(t *testing.T) {
+	// 1-octet APN is too small (spec minimum is 2).
+	_, err := convertLCSClientIDToWire(&LCSClientID{
+		LcsClientType: LCSClientTypeEmergencyServices,
+		LcsAPN:        HexBytes{0x01},
+	})
+	if err == nil {
+		t.Error("encode: 1-octet APN should be rejected")
+	}
+
+	// 64-octet APN is too large.
+	tooBig := make(HexBytes, 64)
+	_, err = convertLCSClientIDToWire(&LCSClientID{
+		LcsClientType: LCSClientTypeEmergencyServices,
+		LcsAPN:        tooBig,
+	})
+	if err == nil {
+		t.Error("encode: 64-octet APN should be rejected")
+	}
+
+	// Decode-side parity.
+	tooSmallWire := gsm_map.APN{0x01}
+	_, err = convertWireToLCSClientID(&gsm_map.LCSClientID{
+		LcsClientType: gsm_map.LCSClientTypeEmergencyServices,
+		LcsAPN:        &tooSmallWire,
+	})
+	if err == nil {
+		t.Error("decode: 1-octet APN should be rejected")
+	}
+}
+
+// LcsFormatIndicator (extensible enum, encoder strict, decoder lenient)
+// — validate the encoder rejects out-of-range values for both
+// LCSClientName and LCSRequestorID.
+func TestLCSFormatIndicatorEncoderStrict(t *testing.T) {
+	bad := LCSFormatIndicator(99)
+
+	_, err := convertLCSClientNameToWire(&LCSClientName{
+		DataCodingScheme:   0x0f,
+		NameString:         HexBytes{0x41},
+		LcsFormatIndicator: &bad,
+	})
+	if !errors.Is(err, ErrLCSFormatIndicatorInvalid) {
+		t.Errorf("LCSClientName encode: want ErrLCSFormatIndicatorInvalid, got %v", err)
+	}
+
+	_, err = convertLCSRequestorIDToWire(&LCSRequestorID{
+		DataCodingScheme:   0x0f,
+		RequestorIDString:  HexBytes{0x41},
+		LcsFormatIndicator: &bad,
+	})
+	if !errors.Is(err, ErrLCSFormatIndicatorInvalid) {
+		t.Errorf("LCSRequestorID encode: want ErrLCSFormatIndicatorInvalid, got %v", err)
+	}
+}
