@@ -371,10 +371,11 @@ func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {
 		}
 	})
 
-	// IMEI 14 digits (one short of fixed 15).
+	// IMEI 14 digits (one short of fixed 15). Even digit count, no
+	// filler nibble required per 3GPP TBCD encoding.
 	t.Run("IMEI wrong digit count", func(t *testing.T) {
 		w := mkBase()
-		imei := gsm_map.IMEI{0x21, 0x43, 0x65, 0x87, 0x09, 0x21, 0x4f} // 14 digits + filler
+		imei := gsm_map.IMEI{0x21, 0x43, 0x65, 0x87, 0x09, 0x21, 0x43} // 14 digits, no filler
 		w.Imei = &imei
 		_, err := convertWireToProvideSubscriberLocationArg(w)
 		if !errors.Is(err, ErrPSLArgIMEIInvalidSize) {

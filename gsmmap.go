@@ -2770,16 +2770,16 @@ type ProvideSubscriberLocationArg struct {
 	// Mandatory.
 	LocationType    LocationType
 	MlcNumber       string // ISDN-AddressString digits
-	MlcNumberNature uint8
-	MlcNumberPlan   uint8
+	MlcNumberNature uint8  // address nature indicator (default: International when 0)
+	MlcNumberPlan   uint8  // numbering plan indicator (default: ISDN when 0)
 
 	// Optional.
 	LcsClientID               *LCSClientID
 	PrivacyOverride           bool   // [1] NULL flag
 	IMSI                      string // TBCD-decoded digits; "" = absent (5..15 BCD digits per TS 29.002, TBCD-STRING SIZE 3..8 octets)
 	MSISDN                    string // ISDN-AddressString digits; "" = absent
-	MSISDNNature              uint8
-	MSISDNPlan                uint8
+	MSISDNNature              uint8  // address nature indicator (default: International when 0)
+	MSISDNPlan                uint8  // numbering plan indicator (default: ISDN when 0)
 	LMSI                      HexBytes // 4 octets opaque
 	IMEI                      string   // TBCD-decoded digits; "" = absent (15 BCD digits per TS 29.002)
 	LcsPriority               LCSPriority
