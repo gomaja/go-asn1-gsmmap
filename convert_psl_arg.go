@@ -193,9 +193,20 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 }
 
 // convertWireToProvideSubscriberLocationArg unmarshals the wire-form
-// struct back to the public type. Symmetric validation: rejects out-
-// of-range values consistent with the encoder; preserves unknown
-// values for extensible enums per Postel.
+// struct back to the public type. Validation rules:
+//   - Fixed-domain identifiers (IMSI/IMEI digit counts, LMSI/LCSPriority/
+//     LCSReferenceNumber byte sizes, LcsServiceTypeID range,
+//     PrivacyCheckRelatedAction range): rejected when out of range,
+//     symmetric with the encoder.
+//   - Round-trip-safety: present-but-empty MlcNumber/MSISDN/IMSI/IMEI
+//     decoded values are rejected (cannot round-trip through the
+//     string-based public API).
+//   - Extensible enums (LocationEstimateType, LCSClientType,
+//     LCSFormatIndicator, AccuracyFulfilmentIndicator, AreaType,
+//     OccurrenceInfo, RANTechnology): unknown values preserved per
+//     Postel; encoder-side strictness lives in the leaf converters.
+//   - ExtensionContainer at tag [8]: dropped (opaque metadata not
+//     surfaced; see ProvideSubscriberLocationArg doc).
 func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocationArg) (*ProvideSubscriberLocationArg, error) {
 	if w == nil {
 		return nil, ErrPSLArgNil

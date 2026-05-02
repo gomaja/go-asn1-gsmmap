@@ -346,6 +346,87 @@ func TestProvideSubscriberLocationArgIMEIDecodedEmptyRejected(t *testing.T) {
 	}
 }
 
+// Decode-side size / range validation: every encode-path size/range
+// check has a symmetric guard in convertWireToProvideSubscriberLocationArg.
+// These tests construct wire args with out-of-range values directly and
+// assert the matching sentinel via errors.Is.
+func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {
+	mlc := gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x32, 0x54, 0x76, 0x98}
+	mkBase := func() *gsm_map.ProvideSubscriberLocationArg {
+		return &gsm_map.ProvideSubscriberLocationArg{
+			LocationType: gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation},
+			MlcNumber:    mlc,
+		}
+	}
+
+	// IMSI 16 digits (over 15-digit max). 8 octets = 16 nibbles, no
+	// trailing filler → 16-digit decode.
+	t.Run("IMSI over-max", func(t *testing.T) {
+		w := mkBase()
+		imsi := gsm_map.IMSI{0x21, 0x43, 0x65, 0x87, 0x09, 0x21, 0x43, 0x65}
+		w.Imsi = &imsi
+		_, err := convertWireToProvideSubscriberLocationArg(w)
+		if !errors.Is(err, ErrPSLArgIMSIInvalidSize) {
+			t.Errorf("want ErrPSLArgIMSIInvalidSize, got %v", err)
+		}
+	})
+
+	// IMEI 14 digits (one short of fixed 15).
+	t.Run("IMEI wrong digit count", func(t *testing.T) {
+		w := mkBase()
+		imei := gsm_map.IMEI{0x21, 0x43, 0x65, 0x87, 0x09, 0x21, 0x4f} // 14 digits + filler
+		w.Imei = &imei
+		_, err := convertWireToProvideSubscriberLocationArg(w)
+		if !errors.Is(err, ErrPSLArgIMEIInvalidSize) {
+			t.Errorf("want ErrPSLArgIMEIInvalidSize, got %v", err)
+		}
+	})
+
+	// LMSI must be exactly 4 octets.
+	t.Run("LMSI wrong size", func(t *testing.T) {
+		w := mkBase()
+		lmsi := gsm_map.LMSI{0x01, 0x02, 0x03} // 3 octets
+		w.Lmsi = &lmsi
+		_, err := convertWireToProvideSubscriberLocationArg(w)
+		if !errors.Is(err, ErrPSLArgLMSIInvalidSize) {
+			t.Errorf("want ErrPSLArgLMSIInvalidSize, got %v", err)
+		}
+	})
+
+	// LcsPriority must be exactly 1 octet.
+	t.Run("LcsPriority wrong size", func(t *testing.T) {
+		w := mkBase()
+		pri := gsm_map.LCSPriority{0x01, 0x02} // 2 octets
+		w.LcsPriority = &pri
+		_, err := convertWireToProvideSubscriberLocationArg(w)
+		if !errors.Is(err, ErrLCSPriorityInvalidSize) {
+			t.Errorf("want ErrLCSPriorityInvalidSize, got %v", err)
+		}
+	})
+
+	// LcsReferenceNumber must be exactly 1 octet.
+	t.Run("LcsReferenceNumber wrong size", func(t *testing.T) {
+		w := mkBase()
+		ref := gsm_map.LCSReferenceNumber{0x01, 0x02} // 2 octets
+		w.LcsReferenceNumber = &ref
+		_, err := convertWireToProvideSubscriberLocationArg(w)
+		if !errors.Is(err, ErrLCSReferenceNumberInvalidSize) {
+			t.Errorf("want ErrLCSReferenceNumberInvalidSize, got %v", err)
+		}
+	})
+
+	// LcsServiceTypeID must be 0..127 (exception path: wire INTEGER 128).
+	t.Run("LcsServiceTypeID over-max", func(t *testing.T) {
+		w := mkBase()
+		sid := gsm_map.LCSServiceTypeID(128)
+		w.LcsServiceTypeID = &sid
+		_, err := convertWireToProvideSubscriberLocationArg(w)
+		if !errors.Is(err, ErrPSLArgLcsServiceTypeIDOutOfRange) {
+			t.Errorf("want ErrPSLArgLcsServiceTypeIDOutOfRange, got %v", err)
+		}
+	})
+}
+
 // Sub-converter errors must propagate via fmt.Errorf %w wrapping.
 func TestProvideSubscriberLocationArgSubConverterErrorsPropagate(t *testing.T) {
 	// Out-of-range LocationEstimateType: should surface

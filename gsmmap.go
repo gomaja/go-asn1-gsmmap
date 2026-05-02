@@ -2763,7 +2763,9 @@ const (
 //   - bool NULL flags: false = absent, true = present.
 //
 // Note: ExtensionContainer at tag [8] is opaque metadata not surfaced
-// to callers (per the package convention; see APNConfiguration).
+// to callers (per the package convention; see APNConfiguration). It
+// is dropped on decode and emitted as absent on encode — callers
+// requiring opaque pass-through must add it at a higher layer.
 type ProvideSubscriberLocationArg struct {
 	// Mandatory.
 	LocationType    LocationType
