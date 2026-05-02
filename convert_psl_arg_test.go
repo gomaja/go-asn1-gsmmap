@@ -296,6 +296,56 @@ func TestProvideSubscriberLocationArgMSISDNDecodedEmptyRejected(t *testing.T) {
 	}
 }
 
+// Mandatory MlcNumber that decodes to empty digits is rejected — there
+// is no way to round-trip a present-but-empty MlcNumber through the
+// string-based public API.
+func TestProvideSubscriberLocationArgMlcNumberDecodedEmptyRejected(t *testing.T) {
+	// AddressString header (extension=1, nature=international(1),
+	// plan=ISDN(1)) with no TBCD digits.
+	emptyAddr := gsm_map.ISDNAddressString{0x91}
+	w := &gsm_map.ProvideSubscriberLocationArg{
+		LocationType: gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation},
+		MlcNumber:    emptyAddr,
+	}
+	_, err := convertWireToProvideSubscriberLocationArg(w)
+	if !errors.Is(err, ErrPSLArgMlcNumberDecodedEmpty) {
+		t.Errorf("MlcNumber empty digits: want ErrPSLArgMlcNumberDecodedEmpty, got %v", err)
+	}
+}
+
+// IMSI / IMEI present-but-empty wire fields are rejected on decode for
+// round-trip fidelity (parallel to the MSISDN/MlcNumber tests above).
+// A zero-length wire octet string decodes to "" after tbcd.Decode,
+// which would silently collapse to "absent" on re-encode without this
+// guard.
+func TestProvideSubscriberLocationArgIMSIDecodedEmptyRejected(t *testing.T) {
+	mlc := gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x32, 0x54, 0x76, 0x98}
+	emptyImsi := gsm_map.IMSI{} // zero octets → "" after Decode
+	w := &gsm_map.ProvideSubscriberLocationArg{
+		LocationType: gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation},
+		MlcNumber:    mlc,
+		Imsi:         &emptyImsi,
+	}
+	_, err := convertWireToProvideSubscriberLocationArg(w)
+	if !errors.Is(err, ErrPSLArgIMSIDecodedEmpty) {
+		t.Errorf("IMSI zero-length: want ErrPSLArgIMSIDecodedEmpty, got %v", err)
+	}
+}
+
+func TestProvideSubscriberLocationArgIMEIDecodedEmptyRejected(t *testing.T) {
+	mlc := gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x32, 0x54, 0x76, 0x98}
+	emptyImei := gsm_map.IMEI{} // zero octets → "" after Decode
+	w := &gsm_map.ProvideSubscriberLocationArg{
+		LocationType: gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation},
+		MlcNumber:    mlc,
+		Imei:         &emptyImei,
+	}
+	_, err := convertWireToProvideSubscriberLocationArg(w)
+	if !errors.Is(err, ErrPSLArgIMEIDecodedEmpty) {
+		t.Errorf("IMEI zero-length: want ErrPSLArgIMEIDecodedEmpty, got %v", err)
+	}
+}
+
 // Sub-converter errors must propagate via fmt.Errorf %w wrapping.
 func TestProvideSubscriberLocationArgSubConverterErrorsPropagate(t *testing.T) {
 	// Out-of-range LocationEstimateType: should surface

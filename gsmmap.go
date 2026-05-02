@@ -2774,7 +2774,7 @@ type ProvideSubscriberLocationArg struct {
 	// Optional.
 	LcsClientID               *LCSClientID
 	PrivacyOverride           bool   // [1] NULL flag
-	IMSI                      string // TBCD-decoded digits; "" = absent (3..15 BCD digits per TS 29.002)
+	IMSI                      string // TBCD-decoded digits; "" = absent (5..15 BCD digits per TS 29.002, TBCD-STRING SIZE 3..8 octets)
 	MSISDN                    string // ISDN-AddressString digits; "" = absent
 	MSISDNNature              uint8
 	MSISDNPlan                uint8
