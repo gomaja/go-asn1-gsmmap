@@ -183,6 +183,48 @@ func TestProvideSubscriberLocationArgEmptyMlcNumberRejected(t *testing.T) {
 // Validation: optional field sizes / ranges
 // =============================================================================
 
+// IMSI must be 5..15 BCD digits per TS 29.002 (TBCD-STRING SIZE 3..8
+// octets per ITU E.212). Reject under-min and over-max on encode; the
+// decode path applies the same check after tbcd.Decode.
+func TestProvideSubscriberLocationArgIMSIDigitCountValidation(t *testing.T) {
+	base := func() *ProvideSubscriberLocationArg {
+		return &ProvideSubscriberLocationArg{
+			LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+			MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		}
+	}
+	a := base()
+	a.IMSI = "1234" // 4 digits — under the 5-digit minimum
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMSIInvalidSize) {
+		t.Errorf("IMSI=4 digits: want ErrPSLArgIMSIInvalidSize, got %v", err)
+	}
+	a = base()
+	a.IMSI = "1234567890123456" // 16 digits — over the 15-digit maximum
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMSIInvalidSize) {
+		t.Errorf("IMSI=16 digits: want ErrPSLArgIMSIInvalidSize, got %v", err)
+	}
+}
+
+// IMEI must be exactly 15 BCD digits per 3GPP TS 23.003.
+func TestProvideSubscriberLocationArgIMEIDigitCountValidation(t *testing.T) {
+	base := func() *ProvideSubscriberLocationArg {
+		return &ProvideSubscriberLocationArg{
+			LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+			MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		}
+	}
+	a := base()
+	a.IMEI = "12345678901234" // 14 digits
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMEIInvalidSize) {
+		t.Errorf("IMEI=14 digits: want ErrPSLArgIMEIInvalidSize, got %v", err)
+	}
+	a = base()
+	a.IMEI = "1234567890123456" // 16 digits
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgIMEIInvalidSize) {
+		t.Errorf("IMEI=16 digits: want ErrPSLArgIMEIInvalidSize, got %v", err)
+	}
+}
+
 func TestProvideSubscriberLocationArgLMSISizeValidation(t *testing.T) {
 	a := &ProvideSubscriberLocationArg{
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},

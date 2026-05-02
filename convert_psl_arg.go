@@ -20,6 +20,14 @@ import (
 const (
 	pslLMSILen = 4
 
+	// IMSI digit-count bounds per TS 29.002 MAP-CommonDataTypes.asn
+	// (TBCD-STRING SIZE 3..8 octets = 5..15 BCD digits per ITU E.212).
+	pslIMSIDigitsMin = 5
+	pslIMSIDigitsMax = 15
+
+	// IMEI is 15 digits per 3GPP TS 23.003 (8 octets, last nibble is filler).
+	pslIMEIDigits = 15
+
 	// LCSServiceTypeID INTEGER (0..127) per TS 29.002
 	// MAP-CommonDataTypes.asn:436.
 	pslLcsServiceTypeIDMin int64 = 0
@@ -66,6 +74,9 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 	out.PrivacyOverride = boolToNullPtr(a.PrivacyOverride)
 
 	if a.IMSI != "" {
+		if len(a.IMSI) < pslIMSIDigitsMin || len(a.IMSI) > pslIMSIDigitsMax {
+			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMSI digits=%d: %w", len(a.IMSI), ErrPSLArgIMSIInvalidSize)
+		}
 		imsiBytes, err := tbcd.Encode(a.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMSI: %w", err)
@@ -89,6 +100,9 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		out.Lmsi = &v
 	}
 	if a.IMEI != "" {
+		if len(a.IMEI) != pslIMEIDigits {
+			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMEI digits=%d: %w", len(a.IMEI), ErrPSLArgIMEIInvalidSize)
+		}
 		imeiBytes, err := tbcd.Encode(a.IMEI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMEI: %w", err)
@@ -223,6 +237,9 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		if imsi == "" {
 			return nil, ErrPSLArgIMSIDecodedEmpty
 		}
+		if len(imsi) < pslIMSIDigitsMin || len(imsi) > pslIMSIDigitsMax {
+			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMSI digits=%d: %w", len(imsi), ErrPSLArgIMSIInvalidSize)
+		}
 		out.IMSI = imsi
 	}
 	if w.Msisdn != nil {
@@ -250,6 +267,9 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		}
 		if imei == "" {
 			return nil, ErrPSLArgIMEIDecodedEmpty
+		}
+		if len(imei) != pslIMEIDigits {
+			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMEI digits=%d: %w", len(imei), ErrPSLArgIMEIInvalidSize)
 		}
 		out.IMEI = imei
 	}
