@@ -2880,11 +2880,11 @@ type ProvideSubscriberLocationRes struct {
 // still test specific values via the gsm_map.AbsentSubscriberDiagnosticSM*
 // constants.
 type AbsentSubscriberSMParam struct {
-	AbsentSubscriberDiagnosticSM           *gsm_map.AbsentSubscriberDiagnosticSM
-	AdditionalAbsentSubscriberDiagnosticSM *gsm_map.AbsentSubscriberDiagnosticSM
-	IMSI                                   string   // TBCD-decoded digits; "" = absent
-	RequestedRetransmissionTime            HexBytes // [2] opaque GeneralizedTime octets; nil = absent
-	UserIdentifierAlert                    string   // TBCD-decoded digits; "" = absent
+	AbsentSubscriberDiagnosticSM           *gsm_map.AbsentSubscriberDiagnosticSM // untagged
+	AdditionalAbsentSubscriberDiagnosticSM *gsm_map.AbsentSubscriberDiagnosticSM // [0]
+	IMSI                                   string                                // [1] TBCD-decoded digits; "" = absent
+	RequestedRetransmissionTime            HexBytes                              // [2] opaque GeneralizedTime octets; nil = absent
+	UserIdentifierAlert                    string                                // [3] TBCD-decoded digits; "" = absent
 }
 
 // UnknownSubscriberParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
@@ -2908,9 +2908,9 @@ type CallBarredParam struct {
 // ExtensibleCallBarredParam (SEQUENCE) — extensible variant of the
 // callBarred CHOICE.
 type ExtensibleCallBarredParam struct {
-	CallBarringCause              *gsm_map.CallBarringCause
-	UnauthorisedMessageOriginator bool // [1] NULL flag
-	AnonymousCallRejection        bool // [2] NULL flag
+	CallBarringCause              *gsm_map.CallBarringCause // untagged
+	UnauthorisedMessageOriginator bool                      // [1] NULL flag
+	AnonymousCallRejection        bool                      // [2] NULL flag
 }
 
 // SystemFailureParam (CHOICE) per TS 29.002 MAP-ER-DataTypes.asn.
@@ -2927,9 +2927,9 @@ type SystemFailureParam struct {
 // ExtensibleSystemFailureParam (SEQUENCE) — extensible variant of the
 // systemFailure CHOICE.
 type ExtensibleSystemFailureParam struct {
-	NetworkResource           *gsm_map.NetworkResource
-	AdditionalNetworkResource *gsm_map.AdditionalNetworkResource
-	FailureCauseParam         *gsm_map.FailureCauseParam
+	NetworkResource           *gsm_map.NetworkResource           // untagged
+	AdditionalNetworkResource *gsm_map.AdditionalNetworkResource // [0]
+	FailureCauseParam         *gsm_map.FailureCauseParam         // [1]
 }
 
 // RoamingNotAllowedParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
@@ -2937,8 +2937,8 @@ type ExtensibleSystemFailureParam struct {
 // optional additional cause distinguish PLMN-roaming-not-allowed from
 // operator-determined-barring.
 type RoamingNotAllowedParam struct {
-	RoamingNotAllowedCause           gsm_map.RoamingNotAllowedCause
-	AdditionalRoamingNotAllowedCause *gsm_map.AdditionalRoamingNotAllowedCause
+	RoamingNotAllowedCause           gsm_map.RoamingNotAllowedCause            // untagged, mandatory
+	AdditionalRoamingNotAllowedCause *gsm_map.AdditionalRoamingNotAllowedCause // [0]
 }
 
 // UnauthorizedRequestingNetworkParam (SEQUENCE) per TS 29.002

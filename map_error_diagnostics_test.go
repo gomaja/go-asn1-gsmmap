@@ -28,23 +28,38 @@ func TestMapErrorParamTypesCompile(t *testing.T) {
 
 // Diagnostic-enum fields must keep their named upstream types so
 // callers can call String() without dropping down to gsm_map.* — the
-// whole point of this surface.
+// whole point of this surface. Cover every enum referenced from the
+// wrapper *Param types so a future upstream rename or visibility
+// regression on String() is caught at test time, not by callers.
 func TestMapErrorParamDiagnosticEnumStringers(t *testing.T) {
 	cases := []struct {
 		name string
 		got  string
 		want string
 	}{
-		{
-			name: "CallBarringCause.String()",
-			got:  gsm_map.CallBarringCauseBarringServiceActive.String(),
-			want: "barringServiceActive",
-		},
-		{
-			name: "CallBarringCause operator",
-			got:  gsm_map.CallBarringCauseOperatorBarring.String(),
-			want: "operatorBarring",
-		},
+		// CallBarringCause (from CallBarredParam, ExtensibleCallBarredParam).
+		{"CallBarringCauseBarringServiceActive", gsm_map.CallBarringCauseBarringServiceActive.String(), "barringServiceActive"},
+		{"CallBarringCauseOperatorBarring", gsm_map.CallBarringCauseOperatorBarring.String(), "operatorBarring"},
+
+		// RoamingNotAllowedCause (from RoamingNotAllowedParam). Spec lists
+		// plmnRoamingNotAllowed and operatorDeterminedBarring as the two
+		// canonical values.
+		{"RoamingNotAllowedCausePlmnRoamingNotAllowed", gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed.String(), "plmnRoamingNotAllowed"},
+		{"RoamingNotAllowedCauseOperatorDeterminedBarring", gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring.String(), "operatorDeterminedBarring"},
+
+		// AdditionalRoamingNotAllowedCause (from RoamingNotAllowedParam).
+		{"AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed", gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed.String(), "supportedRAT-TypesNotAllowed"},
+
+		// NetworkResource (from SystemFailureParam, ExtensibleSystemFailureParam).
+		{"NetworkResourcePlmn", gsm_map.NetworkResourcePlmn.String(), "plmn"},
+		{"NetworkResourceHlr", gsm_map.NetworkResourceHlr.String(), "hlr"},
+		{"NetworkResourceVlr", gsm_map.NetworkResourceVlr.String(), "vlr"},
+
+		// FailureCauseParam (from ExtensibleSystemFailureParam).
+		{"FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests", gsm_map.FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests.String(), "limitReachedOnNumberOfConcurrentLocationRequests"},
+
+		// UnknownSubscriberDiagnostic (from UnknownSubscriberParam).
+		{"UnknownSubscriberDiagnosticImsiUnknown", gsm_map.UnknownSubscriberDiagnosticImsiUnknown.String(), "imsiUnknown"},
 	}
 	for _, tc := range cases {
 		if tc.got != tc.want {
