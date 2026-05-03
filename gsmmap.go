@@ -2047,8 +2047,9 @@ type WLANOffloadability struct {
 // Field ordering follows the ASN.1 tag order. Tag [11]
 // (extensionContainer) is intentionally omitted from the public type
 // per the package-wide convention that ExtensionContainer is opaque
-// metadata not surfaced to callers (the wire struct still carries it
-// transparently across round-trip).
+// metadata not surfaced to callers. It is dropped on decode and
+// emitted as absent on encode — callers requiring opaque pass-through
+// must add it at a higher layer.
 type APNConfiguration struct {
 	ContextId                int              // [0] mandatory, ContextId 1..50
 	PdnType                  HexBytes         // [1] mandatory, OCTET STRING SIZE 1
@@ -2378,9 +2379,9 @@ type ResponseTime struct {
 //
 // Note: the ASN.1 definition includes an optional ExtensionContainer at
 // tag [4]; consistent with the package-wide convention (see
-// APNConfiguration), it is kept as opaque metadata and not surfaced to
-// callers. Future round-trip converters/codecs are expected to preserve
-// it opaquely, matching the existing wire-struct pattern.
+// APNConfiguration), it is opaque metadata not surfaced to callers.
+// It is dropped on decode and emitted as absent on encode — callers
+// requiring opaque pass-through must add it at a higher layer.
 type LCSQoS struct {
 	HorizontalAccuracy        HexBytes      // [0] optional, 1 octet per TS 23.032
 	VerticalCoordinateRequest bool          // [1] optional NULL; true when present, false when absent
@@ -2642,8 +2643,9 @@ type ReportingInterval = gsm_map.ReportingInterval
 //
 // Note: the ASN.1 definition includes an optional
 // reportingOptionMilliseconds at tag [0] past the extensibility marker;
-// not surfaced by this API yet. The wire codec preserves the field
-// transparently across round-trip in the package convention.
+// not surfaced by this API. It is dropped on decode and emitted as
+// absent on encode — callers requiring millisecond-resolution
+// reporting intervals must add it at a higher layer.
 type PeriodicLDRInfo struct {
 	ReportingAmount   ReportingAmount   // mandatory, 1..8639999
 	ReportingInterval ReportingInterval // mandatory, 1..8639999 seconds
