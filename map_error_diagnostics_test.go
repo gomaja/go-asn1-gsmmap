@@ -24,6 +24,7 @@ func TestMapErrorParamTypesCompile(t *testing.T) {
 	var _ FacilityNotSupParam
 	var _ TeleservNotProvParam
 	var _ DataMissingParam
+	var _ AbsentSubscriberParam
 }
 
 // Diagnostic-enum fields must keep their named upstream types so

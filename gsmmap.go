@@ -2859,6 +2859,32 @@ type ProvideSubscriberLocationRes struct {
 // counterparts while keeping diagnostic enums as named upstream types
 // so callers can call String() for free, without dropping down to
 // gsm_map.* directly.
+
+// MapErrorCode is the typed MAP ReturnError opcode per TS 29.002 §17.6.
+// Aliased from the upstream go-asn1 ErrorCode so callers can use either
+// the local or upstream constants interchangeably and the existing
+// GetErrorString helper continues to delegate to the upstream String()
+// method. Values not surfaced as constants below are still valid; they
+// can be cast from int64 (e.g. MapErrorCode(48) for orNotAllowed) or
+// referenced via gsm_map.<Name>.
+type MapErrorCode = gsm_map.ErrorCode
+
+// MAP error opcodes per TS 29.002 §17.6, scoped to the SRI-SM / SRI /
+// ATI-relevant subset surfaced by ParseReturnErrorParameter. Aliased
+// from the upstream gsm_map.<Name> constants. The full set lives in
+// the gsm_map package for callers needing less-common opcodes.
+const (
+	MapErrorUnknownSubscriber             = gsm_map.UnknownSubscriber             // 1
+	MapErrorAbsentSubscriberSM            = gsm_map.AbsentSubscriberSM            // 6
+	MapErrorRoamingNotAllowed             = gsm_map.RoamingNotAllowed             // 8
+	MapErrorTeleserviceNotProvisioned     = gsm_map.TeleserviceNotProvisioned     // 11
+	MapErrorCallBarred                    = gsm_map.CallBarred                    // 13
+	MapErrorFacilityNotSupported          = gsm_map.FacilityNotSupported          // 21
+	MapErrorAbsentSubscriber              = gsm_map.AbsentSubscriber              // 27
+	MapErrorSystemFailure                 = gsm_map.SystemFailure                 // 34
+	MapErrorDataMissing                   = gsm_map.DataMissing                   // 35
+	MapErrorUnauthorizedRequestingNetwork = gsm_map.UnauthorizedRequestingNetwork // 52
+)
 //
 // Parsers (Parse*Param functions) and the dispatcher
 // (ParseReturnErrorParameter) live in parse.go; see follow-up PRs.
@@ -2965,6 +2991,15 @@ type TeleservNotProvParam struct{}
 // Returned with errorCode 35 (dataMissing). Carries only
 // ExtensionContainer in the spec; the public type is empty.
 type DataMissingParam struct{}
+
+// AbsentSubscriberParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 27 (absentSubscriber) by SRI and PSI on the
+// GSM CS side. Distinct from AbsentSubscriberSMParam (errorCode 6),
+// which is the SMS-side variant. The optional AbsentSubscriberReason
+// distinguishes imsiDetach / pageReceiveFailure / etc.
+type AbsentSubscriberParam struct {
+	AbsentSubscriberReason *gsm_map.AbsentSubscriberReason // [0]
+}
 
 // ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)

@@ -380,6 +380,9 @@ func buildDispatcherFixtures(t *testing.T) map[int64][]byte {
 	// errorCode=21 (FacilityNotSupParam): empty SEQUENCE works.
 	fixtures[21] = []byte{0x30, 0x00}
 
+	// errorCode=27 (AbsentSubscriberParam): empty SEQUENCE works.
+	fixtures[27] = []byte{0x30, 0x00}
+
 	// errorCode=34 (SystemFailureParam): CHOICE — provide legacy alt.
 	sf := gsm_map.NewSystemFailureParamNetworkResource(gsm_map.NetworkResourceVlr)
 	sfData, err := sf.MarshalBER()
@@ -413,6 +416,7 @@ func TestParseReturnErrorParameterAllDispatchedTypes(t *testing.T) {
 		{11, "*gsmmap.TeleservNotProvParam"},
 		{13, "*gsmmap.CallBarredParam"},
 		{21, "*gsmmap.FacilityNotSupParam"},
+		{27, "*gsmmap.AbsentSubscriberParam"},
 		{34, "*gsmmap.SystemFailureParam"},
 		{35, "*gsmmap.DataMissingParam"},
 		{52, "*gsmmap.UnauthorizedRequestingNetworkParam"},

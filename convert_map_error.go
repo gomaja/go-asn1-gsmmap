@@ -247,3 +247,19 @@ func convertWireToDataMissingParam(w *gsm_map.DataMissingParam) (*DataMissingPar
 	}
 	return &DataMissingParam{}, nil
 }
+
+// ============================================================================
+// AbsentSubscriberParam — TS 29.002 MAP-ER-DataTypes.asn (errorCode 27)
+// ============================================================================
+
+func convertWireToAbsentSubscriberParam(w *gsm_map.AbsentSubscriberParam) (*AbsentSubscriberParam, error) {
+	if w == nil {
+		return nil, nil
+	}
+	out := &AbsentSubscriberParam{}
+	if w.AbsentSubscriberReason != nil {
+		v := *w.AbsentSubscriberReason
+		out.AbsentSubscriberReason = &v
+	}
+	return out, nil
+}
