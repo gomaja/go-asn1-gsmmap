@@ -16,22 +16,6 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// MAP error opcodes per TS 29.002 §17.6 — covers the SRI-SM / SRI /
-// ATI-relevant subset surfaced by this package. The full list is
-// defined in upstream go-asn1; we use raw int64 to keep this PR's
-// surface minimal (a typed MapErrorCode enum lands in a follow-up).
-const (
-	mapErrorCodeUnknownSubscriber             int64 = 1
-	mapErrorCodeAbsentSubscriberSM            int64 = 6
-	mapErrorCodeRoamingNotAllowed             int64 = 8
-	mapErrorCodeTeleserviceNotProvisioned     int64 = 11
-	mapErrorCodeCallBarred                    int64 = 13
-	mapErrorCodeFacilityNotSupported          int64 = 21
-	mapErrorCodeSystemFailure                 int64 = 34
-	mapErrorCodeDataMissing                   int64 = 35
-	mapErrorCodeUnauthorizedRequestingNetwork int64 = 52
-)
-
 // ParseReturnErrorParameter decodes the BER-encoded parameter of a
 // TCAP ReturnError component into a wrapper-level diagnostic struct.
 //
@@ -39,41 +23,46 @@ const (
 // data is TCAP ReturnError.Parameter. The concrete type of the
 // returned value depends on errorCode:
 //
-//	errorCode=1  (unknownSubscriber)             → *UnknownSubscriberParam
-//	errorCode=6  (absentSubscriberSM)            → *AbsentSubscriberSMParam
-//	errorCode=8  (roamingNotAllowed)             → *RoamingNotAllowedParam
-//	errorCode=11 (teleserviceNotProvisioned)     → *TeleservNotProvParam
-//	errorCode=13 (callBarred)                    → *CallBarredParam
-//	errorCode=21 (facilityNotSupported)          → *FacilityNotSupParam
-//	errorCode=34 (systemFailure)                 → *SystemFailureParam
-//	errorCode=35 (dataMissing)                   → *DataMissingParam
-//	errorCode=52 (unauthorizedRequestingNetwork) → *UnauthorizedRequestingNetworkParam
+//	MapErrorUnknownSubscriber             (1)  → *UnknownSubscriberParam
+//	MapErrorAbsentSubscriberSM            (6)  → *AbsentSubscriberSMParam
+//	MapErrorRoamingNotAllowed             (8)  → *RoamingNotAllowedParam
+//	MapErrorTeleserviceNotProvisioned     (11) → *TeleservNotProvParam
+//	MapErrorCallBarred                    (13) → *CallBarredParam
+//	MapErrorFacilityNotSupported          (21) → *FacilityNotSupParam
+//	MapErrorSystemFailure                 (34) → *SystemFailureParam
+//	MapErrorDataMissing                   (35) → *DataMissingParam
+//	MapErrorUnauthorizedRequestingNetwork (52) → *UnauthorizedRequestingNetworkParam
 //
 // Returns (nil, nil) for unhandled error codes or when data is empty,
 // so callers can safely call this for every ReturnError without
 // branching first.
+//
+// errorCode is typed as int64 to match TCAP ReturnError.ErrorCode on
+// the wire. Callers using the typed MapErrorCode constants can pass
+// them with an explicit cast (int64(MapErrorAbsentSubscriberSM)) or
+// use the untyped numeric value directly.
 func ParseReturnErrorParameter(errorCode int64, data []byte) (any, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
-	switch errorCode {
-	case mapErrorCodeUnknownSubscriber:
+	switch MapErrorCode(errorCode) {
+	case MapErrorUnknownSubscriber:
 		return ParseUnknownSubscriberParam(data)
-	case mapErrorCodeAbsentSubscriberSM:
+	case MapErrorAbsentSubscriberSM:
 		return ParseAbsentSubscriberSMParam(data)
-	case mapErrorCodeRoamingNotAllowed:
+	case MapErrorRoamingNotAllowed:
 		return ParseRoamingNotAllowedParam(data)
-	case mapErrorCodeTeleserviceNotProvisioned:
+	case MapErrorTeleserviceNotProvisioned:
 		return ParseTeleservNotProvParam(data)
-	case mapErrorCodeCallBarred:
+	case MapErrorCallBarred:
 		return ParseCallBarredParam(data)
-	case mapErrorCodeFacilityNotSupported:
+	case MapErrorFacilityNotSupported:
 		return ParseFacilityNotSupParam(data)
-	case mapErrorCodeSystemFailure:
+	case MapErrorSystemFailure:
 		return ParseSystemFailureParam(data)
-	case mapErrorCodeDataMissing:
+	case MapErrorDataMissing:
 		return ParseDataMissingParam(data)
-	case mapErrorCodeUnauthorizedRequestingNetwork:
+	case MapErrorUnauthorizedRequestingNetwork:
 		return ParseUnauthorizedRequestingNetworkParam(data)
 	default:
 		return nil, nil
