@@ -37,6 +37,9 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		if err != nil {
 			return nil, fmt.Errorf("decoding AbsentSubscriberSMParam.IMSI: %w", err)
 		}
+		if imsi == "" {
+			return nil, fmt.Errorf("AbsentSubscriberSMParam.IMSI: present wire field decoded to empty digits; presence cannot round-trip through string-based API")
+		}
 		out.IMSI = imsi
 	}
 	if w.RequestedRetransmissionTime != nil {
@@ -46,6 +49,9 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		uid, err := tbcd.Decode(*w.UserIdentifierAlert)
 		if err != nil {
 			return nil, fmt.Errorf("decoding AbsentSubscriberSMParam.UserIdentifierAlert: %w", err)
+		}
+		if uid == "" {
+			return nil, fmt.Errorf("AbsentSubscriberSMParam.UserIdentifierAlert: present wire field decoded to empty digits; presence cannot round-trip through string-based API")
 		}
 		out.UserIdentifierAlert = uid
 	}
@@ -83,6 +89,11 @@ func convertWireToCallBarredParam(w *gsm_map.CallBarredParam) (*CallBarredParam,
 			return nil, fmt.Errorf("CallBarredParam: choice=CallBarringCause but payload is nil")
 		}
 		v := *w.CallBarringCause
+		// CallBarringCause is non-extensible (TS 29.002 MAP-ER-DataTypes.asn);
+		// reject out-of-range values per project convention.
+		if int64(v) < 0 || int64(v) > 1 {
+			return nil, fmt.Errorf("CallBarredParam.CallBarringCause=%d: must be 0..1 per TS 29.002 MAP-ER-DataTypes.asn", v)
+		}
 		out.CallBarringCause = &v
 	case gsm_map.CallBarredParamChoiceExtensibleCallBarredParam:
 		if w.ExtensibleCallBarredParam == nil {
@@ -109,6 +120,9 @@ func convertWireToExtensibleCallBarredParam(w *gsm_map.ExtensibleCallBarredParam
 	}
 	if w.CallBarringCause != nil {
 		v := *w.CallBarringCause
+		if int64(v) < 0 || int64(v) > 1 {
+			return nil, fmt.Errorf("ExtensibleCallBarredParam.CallBarringCause=%d: must be 0..1 per TS 29.002 MAP-ER-DataTypes.asn", v)
+		}
 		out.CallBarringCause = &v
 	}
 	return out, nil
@@ -172,6 +186,16 @@ func convertWireToExtensibleSystemFailureParam(w *gsm_map.ExtensibleSystemFailur
 func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) (*RoamingNotAllowedParam, error) {
 	if w == nil {
 		return nil, nil
+	}
+	// RoamingNotAllowedCause is non-extensible per TS 29.002
+	// MAP-ER-DataTypes.asn with non-contiguous values: 0
+	// (plmnRoamingNotAllowed) and 3 (operatorDeterminedBarring).
+	switch w.RoamingNotAllowedCause {
+	case gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
+		gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring:
+		// valid
+	default:
+		return nil, fmt.Errorf("RoamingNotAllowedParam.RoamingNotAllowedCause=%d: must be 0 (plmnRoamingNotAllowed) or 3 (operatorDeterminedBarring) per TS 29.002 MAP-ER-DataTypes.asn", w.RoamingNotAllowedCause)
 	}
 	out := &RoamingNotAllowedParam{
 		RoamingNotAllowedCause: w.RoamingNotAllowedCause,

@@ -82,7 +82,7 @@ func TestParseUnknownSubscriberParamRoundTrip(t *testing.T) {
 		t.Fatalf("Parse: %v", err)
 	}
 	if got.UnknownSubscriberDiagnostic == nil || *got.UnknownSubscriberDiagnostic != gsm_map.UnknownSubscriberDiagnosticImsiUnknown {
-		t.Errorf("UnknownSubscriberDiagnostic: want imsiUnknown, got %v", got.UnknownSubscriberDiagnostic)
+		t.Fatalf("UnknownSubscriberDiagnostic: want imsiUnknown, got %v", got.UnknownSubscriberDiagnostic)
 	}
 	if got.UnknownSubscriberDiagnostic.String() != "imsiUnknown" {
 		t.Errorf("String(): want %q, got %q", "imsiUnknown", got.UnknownSubscriberDiagnostic.String())
@@ -162,7 +162,7 @@ func TestParseSystemFailureParamLegacyChoiceRoundTrip(t *testing.T) {
 		t.Fatalf("Parse: %v", err)
 	}
 	if got.NetworkResource == nil || *got.NetworkResource != gsm_map.NetworkResourceVlr {
-		t.Errorf("NetworkResource: want vlr, got %v", got.NetworkResource)
+		t.Fatalf("NetworkResource: want vlr, got %v", got.NetworkResource)
 	}
 	if got.NetworkResource.String() != "vlr" {
 		t.Errorf("String(): want %q, got %q", "vlr", got.NetworkResource.String())
@@ -340,15 +340,75 @@ func TestParseReturnErrorParameterEmptyData(t *testing.T) {
 	}
 }
 
+// Build minimal valid BER fixtures per errorCode so the dispatcher
+// smoke test asserts both routing and a successful decode. CHOICE
+// types (CallBarred, SystemFailure) reject empty SEQUENCEs, so
+// they need a selected alternative.
+func buildDispatcherFixtures(t *testing.T) map[int64][]byte {
+	t.Helper()
+	fixtures := make(map[int64][]byte)
+
+	// errorCode=1 (UnknownSubscriberParam): empty SEQUENCE works
+	// (all fields optional).
+	fixtures[1] = []byte{0x30, 0x00}
+
+	// errorCode=6 (AbsentSubscriberSMParam): empty SEQUENCE works.
+	fixtures[6] = []byte{0x30, 0x00}
+
+	// errorCode=8 (RoamingNotAllowedParam): mandatory cause field —
+	// build a wire fixture with cause=plmnRoamingNotAllowed.
+	rna := &gsm_map.RoamingNotAllowedParam{
+		RoamingNotAllowedCause: gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
+	}
+	rnaData, err := rna.MarshalBER()
+	if err != nil {
+		t.Fatalf("RoamingNotAllowedParam fixture: %v", err)
+	}
+	fixtures[8] = rnaData
+
+	// errorCode=11 (TeleservNotProvParam): empty SEQUENCE works.
+	fixtures[11] = []byte{0x30, 0x00}
+
+	// errorCode=13 (CallBarredParam): CHOICE — provide legacy alt.
+	cb := gsm_map.NewCallBarredParamCallBarringCause(gsm_map.CallBarringCauseOperatorBarring)
+	cbData, err := cb.MarshalBER()
+	if err != nil {
+		t.Fatalf("CallBarredParam fixture: %v", err)
+	}
+	fixtures[13] = cbData
+
+	// errorCode=21 (FacilityNotSupParam): empty SEQUENCE works.
+	fixtures[21] = []byte{0x30, 0x00}
+
+	// errorCode=34 (SystemFailureParam): CHOICE — provide legacy alt.
+	sf := gsm_map.NewSystemFailureParamNetworkResource(gsm_map.NetworkResourceVlr)
+	sfData, err := sf.MarshalBER()
+	if err != nil {
+		t.Fatalf("SystemFailureParam fixture: %v", err)
+	}
+	fixtures[34] = sfData
+
+	// errorCode=35 (DataMissingParam): empty SEQUENCE works.
+	fixtures[35] = []byte{0x30, 0x00}
+
+	// errorCode=52 (UnauthorizedRequestingNetworkParam): empty SEQUENCE.
+	fixtures[52] = []byte{0x30, 0x00}
+
+	return fixtures
+}
+
 func TestParseReturnErrorParameterAllDispatchedTypes(t *testing.T) {
-	// Smoke test: every errorCode listed in the dispatcher comment
-	// returns the documented type when given an empty SEQUENCE.
-	emptySeq := []byte{0x30, 0x00}
+	// Each errorCode listed in the dispatcher comment must route
+	// successfully to the documented concrete type. Use minimal
+	// valid BER fixtures (CHOICE types need a selected alternative)
+	// so a routing regression is caught even on CHOICE types.
+	fixtures := buildDispatcherFixtures(t)
 	cases := []struct {
 		errorCode int64
 		want      string // type name
 	}{
 		{1, "*gsmmap.UnknownSubscriberParam"},
+		{6, "*gsmmap.AbsentSubscriberSMParam"},
 		{8, "*gsmmap.RoamingNotAllowedParam"},
 		{11, "*gsmmap.TeleservNotProvParam"},
 		{13, "*gsmmap.CallBarredParam"},
@@ -359,31 +419,18 @@ func TestParseReturnErrorParameterAllDispatchedTypes(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.want, func(t *testing.T) {
-			out, err := ParseReturnErrorParameter(tc.errorCode, emptySeq)
-			// Some CHOICE types reject empty SEQUENCEs (e.g.
-			// CallBarred, SystemFailure require a selected
-			// alternative). Tolerate decode errors here — the
-			// point of this test is to confirm the dispatcher
-			// routes correctly, not that every type accepts
-			// empty input.
+			data, ok := fixtures[tc.errorCode]
+			if !ok {
+				t.Fatalf("missing fixture for errorCode=%d", tc.errorCode)
+			}
+			out, err := ParseReturnErrorParameter(tc.errorCode, data)
 			if err != nil {
-				return
+				t.Fatalf("errorCode=%d: unexpected parse error: %v", tc.errorCode, err)
 			}
 			gotType := reflect.TypeOf(out).String()
 			if gotType != tc.want {
 				t.Errorf("errorCode=%d: dispatcher returned %s, want %s", tc.errorCode, gotType, tc.want)
 			}
 		})
-	}
-
-	// AbsentSubscriberSM separately because its empty-SEQUENCE case
-	// is a working zero-value parse (covered above in
-	// TestParseAbsentSubscriberSMParamEmpty).
-	out, err := ParseReturnErrorParameter(6, emptySeq)
-	if err != nil {
-		t.Errorf("errorCode=6: %v", err)
-	}
-	if reflect.TypeOf(out).String() != "*gsmmap.AbsentSubscriberSMParam" {
-		t.Errorf("errorCode=6: got %T", out)
 	}
 }
