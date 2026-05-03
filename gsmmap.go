@@ -2992,6 +2992,15 @@ type TeleservNotProvParam struct{}
 // ExtensionContainer in the spec; the public type is empty.
 type DataMissingParam struct{}
 
+// AbsentSubscriberParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 27 (absentSubscriber) by SRI and PSI on the
+// GSM CS side. Distinct from AbsentSubscriberSMParam (errorCode 6),
+// which is the SMS-side variant. The optional AbsentSubscriberReason
+// distinguishes imsiDetach / pageReceiveFailure / etc.
+type AbsentSubscriberParam struct {
+	AbsentSubscriberReason *gsm_map.AbsentSubscriberReason // [0]
+}
+
 // ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================

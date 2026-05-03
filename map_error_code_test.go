@@ -78,20 +78,24 @@ func TestGetErrorStringRegression(t *testing.T) {
 }
 
 // MapErrorCode is a type alias for gsm_map.ErrorCode, so callers can
-// use either form interchangeably without conversions.
+// use either form interchangeably without conversions. Verified by
+// passing each constant through a function whose parameter is typed
+// as the other side of the alias — if the alias relationship breaks,
+// these calls stop compiling, matching the TestPSLByteAliases
+// pattern used elsewhere in the package.
 func TestMapErrorCodeUpstreamInterchangeable(t *testing.T) {
-	// Pass a local constant as upstream — must compile and equal.
-	var upstream gsm_map.ErrorCode = MapErrorCallBarred
-	if upstream != gsm_map.CallBarred {
+	// Pass a local constant where an upstream type is expected.
+	asUpstream := func(v gsm_map.ErrorCode) gsm_map.ErrorCode { return v }
+	if got := asUpstream(MapErrorCallBarred); got != gsm_map.CallBarred {
 		t.Errorf("local MapErrorCallBarred → upstream gsm_map.CallBarred: want %d, got %d",
-			gsm_map.CallBarred, upstream)
+			gsm_map.CallBarred, got)
 	}
 
-	// Pass an upstream constant as local — must compile and equal.
-	var local MapErrorCode = gsm_map.SystemFailure
-	if local != MapErrorSystemFailure {
+	// Pass an upstream constant where a local type is expected.
+	asLocal := func(v MapErrorCode) MapErrorCode { return v }
+	if got := asLocal(gsm_map.SystemFailure); got != MapErrorSystemFailure {
 		t.Errorf("upstream gsm_map.SystemFailure → local MapErrorSystemFailure: want %d, got %d",
-			MapErrorSystemFailure, local)
+			MapErrorSystemFailure, got)
 	}
 
 	// ParseReturnErrorParameter takes int64 to match TCAP's wire

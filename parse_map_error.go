@@ -29,6 +29,7 @@ import (
 //	MapErrorTeleserviceNotProvisioned     (11) → *TeleservNotProvParam
 //	MapErrorCallBarred                    (13) → *CallBarredParam
 //	MapErrorFacilityNotSupported          (21) → *FacilityNotSupParam
+//	MapErrorAbsentSubscriber              (27) → *AbsentSubscriberParam
 //	MapErrorSystemFailure                 (34) → *SystemFailureParam
 //	MapErrorDataMissing                   (35) → *DataMissingParam
 //	MapErrorUnauthorizedRequestingNetwork (52) → *UnauthorizedRequestingNetworkParam
@@ -58,6 +59,8 @@ func ParseReturnErrorParameter(errorCode int64, data []byte) (any, error) {
 		return ParseCallBarredParam(data)
 	case MapErrorFacilityNotSupported:
 		return ParseFacilityNotSupParam(data)
+	case MapErrorAbsentSubscriber:
+		return ParseAbsentSubscriberParam(data)
 	case MapErrorSystemFailure:
 		return ParseSystemFailureParam(data)
 	case MapErrorDataMissing:
@@ -159,4 +162,15 @@ func ParseDataMissingParam(data []byte) (*DataMissingParam, error) {
 		return nil, fmt.Errorf("decoding DataMissingParam: %w", err)
 	}
 	return convertWireToDataMissingParam(&w)
+}
+
+// ParseAbsentSubscriberParam decodes BER-encoded bytes into an
+// AbsentSubscriberParam (errorCode 27). Distinct from
+// AbsentSubscriberSMParam (errorCode 6).
+func ParseAbsentSubscriberParam(data []byte) (*AbsentSubscriberParam, error) {
+	var w gsm_map.AbsentSubscriberParam
+	if err := w.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding AbsentSubscriberParam: %w", err)
+	}
+	return convertWireToAbsentSubscriberParam(&w)
 }
