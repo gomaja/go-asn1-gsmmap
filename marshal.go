@@ -348,3 +348,17 @@ func (a *ProvideSubscriberLocationArg) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes ProvideSubscriberLocationRes (opCode 83) into
+// BER-encoded bytes.
+func (r *ProvideSubscriberLocationRes) Marshal() ([]byte, error) {
+	res, err := convertProvideSubscriberLocationResToWire(r)
+	if err != nil {
+		return nil, fmt.Errorf("converting ProvideSubscriberLocationRes: %w", err)
+	}
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding ProvideSubscriberLocationRes: %w", err)
+	}
+	return data, nil
+}
