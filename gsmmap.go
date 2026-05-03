@@ -2895,22 +2895,86 @@ const (
 // unauthorizedRequestingNetwork, facilityNotSupported,
 // teleserviceNotProvisioned, dataMissing.
 
+// AbsentSubscriberDiagnosticSM is the wrapper-level named type for
+// the AbsentSubscriberDiagnosticSM diagnostic carried by SRI-SM and
+// MT-ForwardSM error responses (errorCode 6) and by some PSI/UDS
+// fields. The ASN.1 type is `INTEGER (0..255)` per TS 29.002
+// MAP-ER-DataTypes.asn, with the named values defined out-of-spec in
+// 3GPP TS 23.040 §3.3.2 (SMS-side diagnostic information). Upstream
+// go-asn1 surfaces the type as a bare `int64` alias because the ASN.1
+// declaration is not an ENUMERATED; this wrapper promotes it to a
+// named type with the TS 23.040 constants and a String() method to
+// match the ergonomics of the other diagnostic enums in this package
+// (CallBarringCause, RoamingNotAllowedCause, NetworkResource, etc.).
+type AbsentSubscriberDiagnosticSM int64
+
+// AbsentSubscriberDiagnosticSM* values per 3GPP TS 23.040 §3.3.2.
+// Codes outside this set are still valid wire values (the spec range
+// is 0..255); String() returns "unknown" for unrecognized codes
+// without rejecting them.
+const (
+	AbsentSubscriberDiagnosticNoPagingResponseViaTheMSC          AbsentSubscriberDiagnosticSM = 0
+	AbsentSubscriberDiagnosticImsiDetached                       AbsentSubscriberDiagnosticSM = 1
+	AbsentSubscriberDiagnosticRoamingRestriction                 AbsentSubscriberDiagnosticSM = 2
+	AbsentSubscriberDiagnosticDeregisteredInTheHLRForNonGPRS     AbsentSubscriberDiagnosticSM = 3
+	AbsentSubscriberDiagnosticMsPurgedForNonGPRS                 AbsentSubscriberDiagnosticSM = 4
+	AbsentSubscriberDiagnosticNoPagingResponseViaTheSGSN         AbsentSubscriberDiagnosticSM = 5
+	AbsentSubscriberDiagnosticGPRSDetached                       AbsentSubscriberDiagnosticSM = 6
+	AbsentSubscriberDiagnosticDeregisteredInTheHLRForGPRS        AbsentSubscriberDiagnosticSM = 7
+	AbsentSubscriberDiagnosticMsPurgedForGPRS                    AbsentSubscriberDiagnosticSM = 8
+	AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheMSC    AbsentSubscriberDiagnosticSM = 9
+	AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheSGSN   AbsentSubscriberDiagnosticSM = 10
+)
+
+// String returns the spec value name for known diagnostic codes per
+// TS 23.040 §3.3.2, or "unknown" for unrecognized values. Wire values
+// outside the named set are not rejected — callers should treat
+// "unknown" as an unmodelled value rather than a decode error.
+func (v AbsentSubscriberDiagnosticSM) String() string {
+	switch v {
+	case AbsentSubscriberDiagnosticNoPagingResponseViaTheMSC:
+		return "noPagingResponseViaTheMSC"
+	case AbsentSubscriberDiagnosticImsiDetached:
+		return "imsiDetached"
+	case AbsentSubscriberDiagnosticRoamingRestriction:
+		return "roamingRestriction"
+	case AbsentSubscriberDiagnosticDeregisteredInTheHLRForNonGPRS:
+		return "deregisteredInTheHLR-ForNonGPRS"
+	case AbsentSubscriberDiagnosticMsPurgedForNonGPRS:
+		return "msPurged-ForNonGPRS"
+	case AbsentSubscriberDiagnosticNoPagingResponseViaTheSGSN:
+		return "noPagingResponseViaTheSGSN"
+	case AbsentSubscriberDiagnosticGPRSDetached:
+		return "gprsDetached"
+	case AbsentSubscriberDiagnosticDeregisteredInTheHLRForGPRS:
+		return "deregisteredInTheHLR-ForGPRS"
+	case AbsentSubscriberDiagnosticMsPurgedForGPRS:
+		return "msPurged-ForGPRS"
+	case AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheMSC:
+		return "unidentifiedSubscriberViaTheMSC"
+	case AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheSGSN:
+		return "unidentifiedSubscriberViaTheSGSN"
+	default:
+		return "unknown"
+	}
+}
+
 // AbsentSubscriberSMParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
 // Returned with errorCode 6 (absentSubscriberSM) by SRI-SM and
 // MT-ForwardSM. The diagnostic fields explain why the subscriber is
 // absent (phone off, out of coverage, purged from HLR, etc.) and
 // drive different remediation paths on the caller side.
 //
-// AbsentSubscriberDiagnosticSM is currently a type alias to int64 in
-// upstream go-asn1, so it has no String() method yet. Callers can
-// still test specific values via the gsm_map.AbsentSubscriberDiagnosticSM*
-// constants.
+// AbsentSubscriberDiagnosticSM is the wrapper-level named type
+// declared above (with String() per TS 23.040 §3.3.2) — distinct from
+// the bare int64 alias on the upstream gsm_map.AbsentSubscriberDiagnosticSM
+// type. Conversion happens in convertWireToAbsentSubscriberSMParam.
 type AbsentSubscriberSMParam struct {
-	AbsentSubscriberDiagnosticSM           *gsm_map.AbsentSubscriberDiagnosticSM // untagged
-	AdditionalAbsentSubscriberDiagnosticSM *gsm_map.AbsentSubscriberDiagnosticSM // [0]
-	IMSI                                   string                                // [1] TBCD-decoded digits; "" = absent
-	RequestedRetransmissionTime            HexBytes                              // [2] opaque GeneralizedTime octets; nil = absent
-	UserIdentifierAlert                    string                                // [3] TBCD-decoded digits; "" = absent
+	AbsentSubscriberDiagnosticSM           *AbsentSubscriberDiagnosticSM // untagged
+	AdditionalAbsentSubscriberDiagnosticSM *AbsentSubscriberDiagnosticSM // [0]
+	IMSI                                   string                        // [1] TBCD-decoded digits; "" = absent
+	RequestedRetransmissionTime            HexBytes                      // [2] opaque GeneralizedTime octets; nil = absent
+	UserIdentifierAlert                    string                        // [3] TBCD-decoded digits; "" = absent
 }
 
 // UnknownSubscriberParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.

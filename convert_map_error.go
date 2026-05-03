@@ -24,12 +24,16 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		return nil, nil
 	}
 	out := &AbsentSubscriberSMParam{}
+	// The upstream type is `type AbsentSubscriberDiagnosticSM = int64`
+	// (alias), so the explicit cast to the wrapper-level named type
+	// is required for the public-API field. Same value, named type
+	// gives the field a String() method.
 	if w.AbsentSubscriberDiagnosticSM != nil {
-		v := *w.AbsentSubscriberDiagnosticSM
+		v := AbsentSubscriberDiagnosticSM(*w.AbsentSubscriberDiagnosticSM)
 		out.AbsentSubscriberDiagnosticSM = &v
 	}
 	if w.AdditionalAbsentSubscriberDiagnosticSM != nil {
-		v := *w.AdditionalAbsentSubscriberDiagnosticSM
+		v := AbsentSubscriberDiagnosticSM(*w.AdditionalAbsentSubscriberDiagnosticSM)
 		out.AdditionalAbsentSubscriberDiagnosticSM = &v
 	}
 	if w.Imsi != nil {
