@@ -263,3 +263,13 @@ func ParseProvideSubscriberLocation(data []byte) (*ProvideSubscriberLocationArg,
 	}
 	return convertWireToProvideSubscriberLocationArg(&arg)
 }
+
+// ParseProvideSubscriberLocationRes decodes BER-encoded bytes into a
+// ProvideSubscriberLocationRes (opCode 83).
+func ParseProvideSubscriberLocationRes(data []byte) (*ProvideSubscriberLocationRes, error) {
+	var res gsm_map.ProvideSubscriberLocationRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ProvideSubscriberLocationRes: %w", err)
+	}
+	return convertWireToProvideSubscriberLocationRes(&res)
+}
