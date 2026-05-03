@@ -60,9 +60,9 @@ func TestServingNodeAddressSgsnNumberRoundTrip(t *testing.T) {
 	}
 }
 
-func TestServingNodeAddressMmeNameRoundTrip(t *testing.T) {
+func TestServingNodeAddressMmeNumberRoundTrip(t *testing.T) {
 	in := &ServingNodeAddress{
-		MmeName: HexBytes("mme1.example.com"), // 16 octets — within 9..255
+		MmeNumber: HexBytes("mme1.example.com"), // 16 octets — within 9..255
 	}
 	wire, err := convertServingNodeAddressToWire(in)
 	if err != nil {
@@ -97,12 +97,79 @@ func TestServingNodeAddressMultipleAlternativesRejected(t *testing.T) {
 	}
 }
 
-func TestServingNodeAddressMmeNameSizeValidation(t *testing.T) {
-	short := &ServingNodeAddress{MmeName: HexBytes("short")} // 5 octets — under min 9
+func TestServingNodeAddressMmeNumberSizeValidation(t *testing.T) {
+	short := &ServingNodeAddress{MmeNumber: HexBytes("short")} // 5 octets — under min 9
 	_, err := convertServingNodeAddressToWire(short)
-	if !errors.Is(err, ErrServingNodeAddressMmeNameSize) {
-		t.Errorf("encode 5 octets: want ErrServingNodeAddressMmeNameSize, got %v", err)
+	if !errors.Is(err, ErrServingNodeAddressMmeNumberSize) {
+		t.Errorf("encode 5 octets: want ErrServingNodeAddressMmeNumberSize, got %v", err)
 	}
+}
+
+// Decoder must reject present-but-empty wire MscNumber/SgsnNumber for
+// round-trip fidelity, parallel to the PSL-Arg DecodedEmpty pattern.
+func TestServingNodeAddressMscNumberDecodedEmptyRejected(t *testing.T) {
+	emptyAddr := gsm_map.ISDNAddressString{0x91} // header-only AddressString
+	w := &gsm_map.ServingNodeAddress{
+		Choice:    gsm_map.ServingNodeAddressChoiceMscNumber,
+		MscNumber: &emptyAddr,
+	}
+	_, err := convertWireToServingNodeAddress(w)
+	if !errors.Is(err, ErrServingNodeAddressMscNumberDecodedEmpty) {
+		t.Errorf("MscNumber empty digits: want ErrServingNodeAddressMscNumberDecodedEmpty, got %v", err)
+	}
+}
+
+func TestServingNodeAddressSgsnNumberDecodedEmptyRejected(t *testing.T) {
+	emptyAddr := gsm_map.ISDNAddressString{0x91}
+	w := &gsm_map.ServingNodeAddress{
+		Choice:     gsm_map.ServingNodeAddressChoiceSgsnNumber,
+		SgsnNumber: &emptyAddr,
+	}
+	_, err := convertWireToServingNodeAddress(w)
+	if !errors.Is(err, ErrServingNodeAddressSgsnNumberDecodedEmpty) {
+		t.Errorf("SgsnNumber empty digits: want ErrServingNodeAddressSgsnNumberDecodedEmpty, got %v", err)
+	}
+}
+
+// Decoder must reject malformed CellIdOrSai CHOICEs (selected
+// alternative but nil payload, or unknown choice value) instead of
+// silently coercing to "absent". Caught by 3 reviewers (CodeRabbit,
+// Codex, cubic) on PR #47.
+func TestProvideSubscriberLocationResCellIdOrSaiInvalidChoice(t *testing.T) {
+	t.Run("CGI choice but nil payload", func(t *testing.T) {
+		w := &gsm_map.ProvideSubscriberLocationRes{
+			LocationEstimate: gsm_map.ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+			CellIdOrSai: &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{
+				Choice: gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength,
+			},
+		}
+		_, err := convertWireToProvideSubscriberLocationRes(w)
+		if !errors.Is(err, ErrPSLResCellIdOrSaiInvalidChoice) {
+			t.Errorf("want ErrPSLResCellIdOrSaiInvalidChoice, got %v", err)
+		}
+	})
+	t.Run("LAI choice but nil payload", func(t *testing.T) {
+		w := &gsm_map.ProvideSubscriberLocationRes{
+			LocationEstimate: gsm_map.ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+			CellIdOrSai: &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{
+				Choice: gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength,
+			},
+		}
+		_, err := convertWireToProvideSubscriberLocationRes(w)
+		if !errors.Is(err, ErrPSLResCellIdOrSaiInvalidChoice) {
+			t.Errorf("want ErrPSLResCellIdOrSaiInvalidChoice, got %v", err)
+		}
+	})
+	t.Run("unknown choice value", func(t *testing.T) {
+		w := &gsm_map.ProvideSubscriberLocationRes{
+			LocationEstimate: gsm_map.ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+			CellIdOrSai:      &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{Choice: 99},
+		}
+		_, err := convertWireToProvideSubscriberLocationRes(w)
+		if !errors.Is(err, ErrPSLResCellIdOrSaiInvalidChoice) {
+			t.Errorf("want ErrPSLResCellIdOrSaiInvalidChoice, got %v", err)
+		}
+	})
 }
 
 func TestServingNodeAddressNilPassesThrough(t *testing.T) {
@@ -169,7 +236,7 @@ func TestProvideSubscriberLocationResFullPopulationRoundTrip(t *testing.T) {
 		MoLrShortCircuitIndicator:      true,
 		GeranGANSSpositioningData:      GeranGANSSpositioningData{0x01, 0x02, 0x03},
 		UtranGANSSpositioningData:      UtranGANSSpositioningData{0x01, 0x02, 0x03},
-		TargetServingNodeForHandover:   &ServingNodeAddress{MmeName: HexBytes("mme.example.com")},
+		TargetServingNodeForHandover:   &ServingNodeAddress{MmeNumber: HexBytes("mme.example.com")},
 		UtranAdditionalPositioningData: UtranAdditionalPositioningData{0x01, 0x02},
 		UtranBaroPressureMeas:          &baro,
 		UtranCivicAddress:              UtranCivicAddress("123 Main St"),

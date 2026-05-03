@@ -2695,16 +2695,19 @@ const (
 
 // ServingNodeAddress (CHOICE) per TS 29.002 MAP-LCS-DataTypes.asn (used
 // in PSL-Res targetServingNodeForHandover field). Set exactly one of
-// MscNumber, SgsnNumber, or MmeName.
+// MscNumber, SgsnNumber, or MmeNumber.
 //
 // Following the existing CHOICE pattern (AdditionalNumber,
 // CancelLocationIdentity), the selected alternative is inferred from
 // which field is set: empty `MscNumber` digits, empty `SgsnNumber`
-// digits, and nil/empty `MmeName` mean "absent". Set exactly one.
+// digits, and nil/empty `MmeNumber` mean "absent". Set exactly one.
 //
 // MscNumber and SgsnNumber are ISDN-AddressString digits + Nature/Plan
-// triples (consistent with the rest of the public API). MmeName is a
-// DiameterIdentity (FQDN, 9..255 octets per RFC 6733).
+// triples (consistent with the rest of the public API). MmeNumber is a
+// DiameterIdentity (FQDN, 9..255 octets per RFC 6733). The field name
+// matches the ASN.1 spec literal `mme-Number [2] DiameterIdentity`
+// even though the type is a name/FQDN — this preserves the
+// match-upstream-spec convention used elsewhere in the package.
 type ServingNodeAddress struct {
 	MscNumber        string // ISDN-AddressString digits; "" = alternative not selected
 	MscNumberNature  uint8
@@ -2712,7 +2715,7 @@ type ServingNodeAddress struct {
 	SgsnNumber       string // ISDN-AddressString digits; "" = alternative not selected
 	SgsnNumberNature uint8
 	SgsnNumberPlan   uint8
-	MmeName          HexBytes // DiameterIdentity octets; nil/empty = alternative not selected
+	MmeNumber        HexBytes // DiameterIdentity octets; nil/empty = alternative not selected
 }
 
 // Spec-derived size / range constants for PR C types, per TS 29.002
@@ -3306,9 +3309,11 @@ var (
 	ErrRANTechnologyInvalid              = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
 	ErrPLMNListSize                      = errors.New("reportingPLMNList: PlmnList must contain 1..20 entries (maxNumOfReportingPLMN) per TS 29.002 MAP-LCS-DataTypes.asn:409-412")
 	ErrTerminationCauseInvalid           = errors.New("deferredmt-lrData: TerminationCause must be 0..9 per TS 29.002 MAP-LCS-DataTypes.asn:696 (extensible enum: unknown values preserved on decode)")
-	ErrServingNodeAddressMultipleAlts    = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
-	ErrServingNodeAddressNoAlt           = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeName")
-	ErrServingNodeAddressMmeNameSize     = errors.New("servingNodeAddress: MmeName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrServingNodeAddressMultipleAlts    = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
+	ErrServingNodeAddressNoAlt           = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
+	ErrServingNodeAddressMmeNumberSize   = errors.New("servingNodeAddress: MmeNumber must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrServingNodeAddressMscNumberDecodedEmpty  = errors.New("servingNodeAddress: present wire MscNumber decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrServingNodeAddressSgsnNumberDecodedEmpty = errors.New("servingNodeAddress: present wire SgsnNumber decoded to empty digits; presence cannot round-trip through string-based API")
 
 	ErrPSLArgNil                         = errors.New("provideSubscriberLocationArg: argument must not be nil")
 	ErrPSLArgMlcNumberEmpty              = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory; empty value is not permitted on encode")
@@ -3326,4 +3331,5 @@ var (
 	ErrPSLResCellGlobalIdSize            = errors.New("provideSubscriberLocationRes: CellGlobalId must be exactly 7 octets per TS 29.002 MAP-CommonDataTypes.asn (CellGlobalIdOrServiceAreaIdFixedLength)")
 	ErrPSLResLAIInvalidSize              = errors.New("provideSubscriberLocationRes: LAI must be exactly 5 octets per TS 29.002 MAP-CommonDataTypes.asn (LAIFixedLength)")
 	ErrPSLResCellGlobalIdAndLAIMutex     = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set exactly one")
+	ErrPSLResCellIdOrSaiInvalidChoice    = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 )

@@ -142,7 +142,7 @@ func TestPSLAreaPeriodicSentinelErrors(t *testing.T) {
 		ErrTerminationCauseInvalid,
 		ErrServingNodeAddressMultipleAlts,
 		ErrServingNodeAddressNoAlt,
-		ErrServingNodeAddressMmeNameSize,
+		ErrServingNodeAddressMmeNumberSize,
 	}
 	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {
@@ -210,7 +210,7 @@ func TestPSLAreaPeriodicZeroValues(t *testing.T) {
 	if sna.MscNumber != "" || sna.SgsnNumber != "" {
 		t.Error("ServingNodeAddress zero value should have empty MscNumber/SgsnNumber digits")
 	}
-	if sna.MmeName != nil {
-		t.Error("ServingNodeAddress zero value should have nil MmeName")
+	if sna.MmeNumber != nil {
+		t.Error("ServingNodeAddress zero value should have nil MmeNumber")
 	}
 }

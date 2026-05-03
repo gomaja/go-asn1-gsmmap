@@ -20,7 +20,7 @@ const (
 	pslResLAILen          = 5
 
 	// DiameterIdentity SIZE 9..255 per TS 29.002 MAP-MS-DataTypes.asn:1434
-	// (also used for DiameterName/Realm and ServingNodeAddress.MmeName).
+	// (also used for DiameterName/Realm and ServingNodeAddress.MmeNumber).
 	diameterIdentityMinLen = 9
 	diameterIdentityMaxLen = 255
 )
@@ -30,13 +30,13 @@ const (
 // ============================================================================
 //
 // ServingNodeAddress is a CHOICE between MscNumber, SgsnNumber, and
-// MmeName per TS 29.002 MAP-LCS-DataTypes.asn (used in PSL-Res
+// MmeNumber per TS 29.002 MAP-LCS-DataTypes.asn (used in PSL-Res
 // targetServingNodeForHandover field). Per the existing CHOICE pattern
 // (see AdditionalNumber, CancelLocationIdentity), the selected
 // alternative is inferred from which field is set:
 //   - non-empty MscNumber digits → MscNumber alternative
 //   - non-empty SgsnNumber digits → SgsnNumber alternative
-//   - non-empty MmeName octets → MmeName alternative
+//   - non-empty MmeNumber octets → MmeNumber alternative
 
 func convertServingNodeAddressToWire(s *ServingNodeAddress) (*gsm_map.ServingNodeAddress, error) {
 	if s == nil {
@@ -44,7 +44,7 @@ func convertServingNodeAddressToWire(s *ServingNodeAddress) (*gsm_map.ServingNod
 	}
 	mscSet := s.MscNumber != ""
 	sgsnSet := s.SgsnNumber != ""
-	mmeSet := len(s.MmeName) > 0
+	mmeSet := len(s.MmeNumber) > 0
 	count := 0
 	if mscSet {
 		count++
@@ -78,10 +78,10 @@ func convertServingNodeAddressToWire(s *ServingNodeAddress) (*gsm_map.ServingNod
 		v := gsm_map.NewServingNodeAddressSgsnNumber(gsm_map.ISDNAddressString(isdn))
 		return &v, nil
 	default: // mmeSet
-		if len(s.MmeName) < diameterIdentityMinLen || len(s.MmeName) > diameterIdentityMaxLen {
-			return nil, fmt.Errorf("ServingNodeAddress.MmeName len=%d: %w", len(s.MmeName), ErrServingNodeAddressMmeNameSize)
+		if len(s.MmeNumber) < diameterIdentityMinLen || len(s.MmeNumber) > diameterIdentityMaxLen {
+			return nil, fmt.Errorf("ServingNodeAddress.MmeNumber len=%d: %w", len(s.MmeNumber), ErrServingNodeAddressMmeNumberSize)
 		}
-		v := gsm_map.NewServingNodeAddressMmeNumber(gsm_map.DiameterIdentity(s.MmeName))
+		v := gsm_map.NewServingNodeAddressMmeNumber(gsm_map.DiameterIdentity(s.MmeNumber))
 		return &v, nil
 	}
 }
@@ -101,7 +101,7 @@ func convertWireToServingNodeAddress(w *gsm_map.ServingNodeAddress) (*ServingNod
 			return nil, fmt.Errorf("decoding ServingNodeAddress.MscNumber: %w", err)
 		}
 		if s == "" {
-			return nil, fmt.Errorf("ServingNodeAddress.MscNumber: present wire ISDN-AddressString decoded to empty digits")
+			return nil, ErrServingNodeAddressMscNumberDecodedEmpty
 		}
 		out.MscNumber = s
 		out.MscNumberNature = nature
@@ -115,7 +115,7 @@ func convertWireToServingNodeAddress(w *gsm_map.ServingNodeAddress) (*ServingNod
 			return nil, fmt.Errorf("decoding ServingNodeAddress.SgsnNumber: %w", err)
 		}
 		if s == "" {
-			return nil, fmt.Errorf("ServingNodeAddress.SgsnNumber: present wire ISDN-AddressString decoded to empty digits")
+			return nil, ErrServingNodeAddressSgsnNumberDecodedEmpty
 		}
 		out.SgsnNumber = s
 		out.SgsnNumberNature = nature
@@ -126,9 +126,9 @@ func convertWireToServingNodeAddress(w *gsm_map.ServingNodeAddress) (*ServingNod
 		}
 		mme := HexBytes(*w.MmeNumber)
 		if len(mme) < diameterIdentityMinLen || len(mme) > diameterIdentityMaxLen {
-			return nil, fmt.Errorf("ServingNodeAddress.MmeName len=%d: %w", len(mme), ErrServingNodeAddressMmeNameSize)
+			return nil, fmt.Errorf("ServingNodeAddress.MmeNumber len=%d: %w", len(mme), ErrServingNodeAddressMmeNumberSize)
 		}
-		out.MmeName = mme
+		out.MmeNumber = mme
 	default:
 		return nil, ErrServingNodeAddressNoAlt
 	}
@@ -172,7 +172,7 @@ func convertWireToCellIdOrSai(w *gsm_map.CellGlobalIdOrServiceAreaIdOrLAI) (cgi,
 	switch w.Choice {
 	case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength:
 		if w.CellGlobalIdOrServiceAreaIdFixedLength == nil {
-			return nil, nil, nil
+			return nil, nil, fmt.Errorf("CellIdOrSai: choice=CGI/SAI but payload is nil: %w", ErrPSLResCellIdOrSaiInvalidChoice)
 		}
 		b := HexBytes(*w.CellGlobalIdOrServiceAreaIdFixedLength)
 		if len(b) != pslResCellGlobalIdLen {
@@ -181,7 +181,7 @@ func convertWireToCellIdOrSai(w *gsm_map.CellGlobalIdOrServiceAreaIdOrLAI) (cgi,
 		return b, nil, nil
 	case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
 		if w.LaiFixedLength == nil {
-			return nil, nil, nil
+			return nil, nil, fmt.Errorf("CellIdOrSai: choice=LAI but payload is nil: %w", ErrPSLResCellIdOrSaiInvalidChoice)
 		}
 		b := HexBytes(*w.LaiFixedLength)
 		if len(b) != pslResLAILen {
@@ -189,7 +189,7 @@ func convertWireToCellIdOrSai(w *gsm_map.CellGlobalIdOrServiceAreaIdOrLAI) (cgi,
 		}
 		return nil, b, nil
 	default:
-		return nil, nil, nil
+		return nil, nil, fmt.Errorf("CellIdOrSai: unsupported choice %d: %w", w.Choice, ErrPSLResCellIdOrSaiInvalidChoice)
 	}
 }
 
