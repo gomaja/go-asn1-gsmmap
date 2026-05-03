@@ -2849,6 +2849,124 @@ type ProvideSubscriberLocationRes struct {
 }
 
 // ============================================================================
+// MAP ReturnError diagnostics (TS 29.002 §17.6 / MAP-ER-DataTypes.asn)
+// ============================================================================
+//
+// TCAP ReturnError carries an opcode (e.g. absentSubscriberSM, callBarred)
+// plus a BER-encoded Parameter that holds operationally-important
+// diagnostic detail (which network resource broke; why a subscriber is
+// absent; etc.). The wrapper-level types below mirror the gsm_map.*Param
+// counterparts while keeping diagnostic enums as named upstream types
+// so callers can call String() for free, without dropping down to
+// gsm_map.* directly.
+//
+// Parsers (Parse*Param functions) and the dispatcher
+// (ParseReturnErrorParameter) live in parse.go; see follow-up PRs.
+//
+// Coverage scope is the SRI-SM / SRI / ATI-relevant errors observed
+// on roaming networks: absentSubscriberSM, unknownSubscriber,
+// callBarred, systemFailure, roamingNotAllowed,
+// unauthorizedRequestingNetwork, facilityNotSupported,
+// teleserviceNotProvisioned, dataMissing.
+
+// AbsentSubscriberSMParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 6 (absentSubscriberSM) by SRI-SM and
+// MT-ForwardSM. The diagnostic fields explain why the subscriber is
+// absent (phone off, out of coverage, purged from HLR, etc.) and
+// drive different remediation paths on the caller side.
+//
+// AbsentSubscriberDiagnosticSM is currently a type alias to int64 in
+// upstream go-asn1, so it has no String() method yet. Callers can
+// still test specific values via the gsm_map.AbsentSubscriberDiagnosticSM*
+// constants.
+type AbsentSubscriberSMParam struct {
+	AbsentSubscriberDiagnosticSM           *gsm_map.AbsentSubscriberDiagnosticSM // untagged
+	AdditionalAbsentSubscriberDiagnosticSM *gsm_map.AbsentSubscriberDiagnosticSM // [0]
+	IMSI                                   string                                // [1] TBCD-decoded digits; "" = absent
+	RequestedRetransmissionTime            HexBytes                              // [2] opaque GeneralizedTime octets; nil = absent
+	UserIdentifierAlert                    string                                // [3] TBCD-decoded digits; "" = absent
+}
+
+// UnknownSubscriberParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 1 (unknownSubscriber). The diagnostic
+// distinguishes "we never had this MSISDN" from "this MSISDN is not
+// provisioned for the queried service".
+type UnknownSubscriberParam struct {
+	UnknownSubscriberDiagnostic *gsm_map.UnknownSubscriberDiagnostic
+}
+
+// CallBarredParam (CHOICE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 13 (callBarred). The CHOICE is between a
+// bare CallBarringCause (legacy) and the extensible variant. Set
+// exactly one of CallBarringCause or ExtensibleCallBarredParam on
+// encode; both fields are populated mutually exclusively on decode.
+type CallBarredParam struct {
+	CallBarringCause          *gsm_map.CallBarringCause  // legacy alternative
+	ExtensibleCallBarredParam *ExtensibleCallBarredParam // extensible alternative
+}
+
+// ExtensibleCallBarredParam (SEQUENCE) — extensible variant of the
+// callBarred CHOICE.
+type ExtensibleCallBarredParam struct {
+	CallBarringCause              *gsm_map.CallBarringCause // untagged
+	UnauthorisedMessageOriginator bool                      // [1] NULL flag
+	AnonymousCallRejection        bool                      // [2] NULL flag
+}
+
+// SystemFailureParam (CHOICE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 34 (systemFailure). Identifies which network
+// node broke — critical for incident triage. The CHOICE is between a
+// bare NetworkResource (legacy) and the extensible variant. Set
+// exactly one on encode; both fields are populated mutually
+// exclusively on decode.
+type SystemFailureParam struct {
+	NetworkResource              *gsm_map.NetworkResource      // legacy alternative
+	ExtensibleSystemFailureParam *ExtensibleSystemFailureParam // extensible alternative
+}
+
+// ExtensibleSystemFailureParam (SEQUENCE) — extensible variant of the
+// systemFailure CHOICE.
+type ExtensibleSystemFailureParam struct {
+	NetworkResource           *gsm_map.NetworkResource           // untagged
+	AdditionalNetworkResource *gsm_map.AdditionalNetworkResource // [0]
+	FailureCauseParam         *gsm_map.FailureCauseParam         // [1]
+}
+
+// RoamingNotAllowedParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 8 (roamingNotAllowed). Mandatory cause +
+// optional additional cause distinguish PLMN-roaming-not-allowed from
+// operator-determined-barring.
+type RoamingNotAllowedParam struct {
+	RoamingNotAllowedCause           gsm_map.RoamingNotAllowedCause            // untagged, mandatory
+	AdditionalRoamingNotAllowedCause *gsm_map.AdditionalRoamingNotAllowedCause // [0]
+}
+
+// UnauthorizedRequestingNetworkParam (SEQUENCE) per TS 29.002
+// MAP-ER-DataTypes.asn. Returned with errorCode 52
+// (unauthorizedRequestingNetwork). Carries only ExtensionContainer
+// in the spec; the public type is empty (placeholder for opaque
+// pass-through callers).
+type UnauthorizedRequestingNetworkParam struct{}
+
+// FacilityNotSupParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 21 (facilityNotSupported). Optional
+// indicators identify which sub-facility is unsupported.
+type FacilityNotSupParam struct {
+	ShapeOfLocationEstimateNotSupported          bool // [0] NULL flag
+	NeededLcsCapabilityNotSupportedInServingNode bool // [1] NULL flag
+}
+
+// TeleservNotProvParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 11 (teleserviceNotProvisioned). Carries
+// only ExtensionContainer in the spec; the public type is empty.
+type TeleservNotProvParam struct{}
+
+// DataMissingParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// Returned with errorCode 35 (dataMissing). Carries only
+// ExtensionContainer in the spec; the public type is empty.
+type DataMissingParam struct{}
+
+// ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================
 
