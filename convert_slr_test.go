@@ -9,8 +9,13 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/gomaja/go-asn1/runtime"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
+
+// runtimeBitString0 is a zero-length BIT STRING used to exercise the
+// BitLength==0 = "absent" decode path.
+var runtimeBitString0 = runtime.BitString{Bytes: []byte{}, BitLength: 0}
 
 // =============================================================================
 // LCSLocationInfo
@@ -160,6 +165,29 @@ func TestLCSLocationInfoDiameterIdentitySizeRejected(t *testing.T) {
 				t.Errorf("want %v, got %v", tc.wantErr, err)
 			}
 		})
+	}
+}
+
+// A present-but-empty BIT STRING (BitLength==0) for the LCS capability
+// sets must decode as absent, matching the convert_updateloc.go /
+// convert_updategprsloc.go precedent. Without the BitLength>0 guard a
+// zero-length wire value would surface an all-false surrogate that
+// cannot round-trip.
+func TestLCSLocationInfoWireEmptyCapabilitySetsTreatedAsAbsent(t *testing.T) {
+	w := &gsm_map.LCSLocationInfo{
+		NetworkNodeNumber:           gsm_map.ISDNAddressString{0x91, 0x13, 0x05, 0x00, 0x00, 0x00, 0xf0}, // 31650000000
+		SupportedLCSCapabilitySets:  &runtimeBitString0,
+		AdditionalLCSCapabilitySets: &runtimeBitString0,
+	}
+	out, err := convertWireToLCSLocationInfo(w)
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if out.SupportedLCSCapabilitySets != nil {
+		t.Error("zero-length SupportedLCSCapabilitySets should decode as absent (nil)")
+	}
+	if out.AdditionalLCSCapabilitySets != nil {
+		t.Error("zero-length AdditionalLCSCapabilitySets should decode as absent (nil)")
 	}
 }
 

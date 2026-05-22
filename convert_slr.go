@@ -134,10 +134,14 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 		}
 		out.AdditionalNumber = an
 	}
-	if w.SupportedLCSCapabilitySets != nil {
+	// Guard with BitLength > 0 so a present-but-empty BIT STRING is
+	// treated as absent — a zero-length wire value can't round-trip
+	// through the struct-of-bools surrogate. Matches the existing
+	// pattern in convert_updateloc.go / convert_updategprsloc.go.
+	if w.SupportedLCSCapabilitySets != nil && w.SupportedLCSCapabilitySets.BitLength > 0 {
 		out.SupportedLCSCapabilitySets = convertBitStringToLCSCaps(*w.SupportedLCSCapabilitySets)
 	}
-	if w.AdditionalLCSCapabilitySets != nil {
+	if w.AdditionalLCSCapabilitySets != nil && w.AdditionalLCSCapabilitySets.BitLength > 0 {
 		out.AdditionalLCSCapabilitySets = convertBitStringToLCSCaps(*w.AdditionalLCSCapabilitySets)
 	}
 	if w.MmeName != nil {
