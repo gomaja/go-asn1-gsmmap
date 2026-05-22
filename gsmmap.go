@@ -3066,6 +3066,80 @@ type AbsentSubscriberParam struct {
 }
 
 // ============================================================================
+// SubscriberLocationReport foundation types (TS 29.002 MAP-LCS-DataTypes.asn)
+// ============================================================================
+//
+// First PR of a staged SubscriberLocationReport (opCode 86)
+// implementation. Lands the foundation types unique to SLR that aren't
+// already covered by the ProvideSubscriberLocation (opCode 83) work:
+// LCSEvent, SequenceNumber, LCSLocationInfo, Deferredmt-lrData. The
+// shared LCS positioning/area/PLMN types are reused directly from the
+// PSL implementation. Top-level Arg/Res structs and converters arrive
+// in subsequent PRs.
+
+// LCSEvent (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:681.
+// Extensible enum; decoders preserve unknown values per Postel's law.
+// Aliased from go-asn1.
+type LCSEvent = gsm_map.LCSEvent
+
+const (
+	LCSEventEmergencyCallOrigination   = gsm_map.LCSEventEmergencyCallOrigination
+	LCSEventEmergencyCallRelease       = gsm_map.LCSEventEmergencyCallRelease
+	LCSEventMoLr                       = gsm_map.LCSEventMoLr
+	LCSEventDeferredmtLrResponse       = gsm_map.LCSEventDeferredmtLrResponse
+	LCSEventDeferredmoLrTTTPInitiation = gsm_map.LCSEventDeferredmoLrTTTPInitiation
+	LCSEventEmergencyCallHandover      = gsm_map.LCSEventEmergencyCallHandover
+)
+
+// SequenceNumber (INTEGER 1..maxReportingAmount=8639999) per TS 29.002
+// MAP-LCS-DataTypes.asn. Identifies a periodic LDR report within a
+// reporting sequence. Aliased from go-asn1 to int64.
+type SequenceNumber = gsm_map.SequenceNumber
+
+// SequenceNumber range bounds (TS 29.002 MAP-LCS-DataTypes.asn:380,
+// shares maxReportingAmount with ReportingAmount).
+const (
+	SequenceNumberMin SequenceNumber = 1
+	SequenceNumberMax SequenceNumber = 8639999
+)
+
+// LCSLocationInfo (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn.
+// Identifies the network node that produced the location report.
+// NetworkNodeNumber is an ISDN-AddressString (MSC, SGSN, or the dummy
+// value "0") surfaced as digits + Nature/Plan triple consistent with
+// the rest of the public API. The DiameterIdentity fields (MmeName,
+// AaaServerName, SgsnName, SgsnRealm) are opaque FQDN octets per
+// RFC 6733.
+type LCSLocationInfo struct {
+	NetworkNodeNumber       string // mandatory ISDN-AddressString digits
+	NetworkNodeNumberNature uint8  // address nature indicator (default: International when 0)
+	NetworkNodeNumberPlan   uint8  // numbering plan indicator (default: ISDN when 0)
+
+	LMSI                        HexBytes                    // [0] optional, 4 octets
+	GprsNodeIndicator           bool                        // [2] optional NULL; set when NetworkNodeNumber is an SGSN number
+	AdditionalNumber            *AdditionalNumber           // [3] optional
+	SupportedLCSCapabilitySets  *SupportedLCSCapabilitySets // [4] optional
+	AdditionalLCSCapabilitySets *SupportedLCSCapabilitySets // [5] optional
+	MmeName                     HexBytes                    // [6] optional DiameterIdentity (9..255 octets per RFC 6733)
+	AaaServerName               HexBytes                    // [8] optional DiameterIdentity
+	SgsnName                    HexBytes                    // [9] optional DiameterIdentity
+	SgsnRealm                   HexBytes                    // [10] optional DiameterIdentity
+	// ExtensionContainer at [1] is opaque metadata not surfaced (per
+	// the package convention; see APNConfiguration). It is dropped on
+	// decode and emitted as absent on encode.
+}
+
+// DeferredmtLrData (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:673.
+// Present in SLR-Arg only when LcsEvent indicates a
+// deferredmt-lrResponse. LcsLocationInfo may be present only if
+// TerminationCause indicates mt-lrRestart (caller-enforced invariant).
+type DeferredmtLrData struct {
+	DeferredLocationEventType DeferredLocationEventType // mandatory
+	TerminationCause          *TerminationCause         // [0] optional
+	LcsLocationInfo           *LCSLocationInfo          // [1] optional
+}
+
+// ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================
 
@@ -3551,4 +3625,14 @@ var (
 	ErrPSLResLAIInvalidSize              = errors.New("provideSubscriberLocationRes: LAI must be exactly 5 octets per TS 29.002 MAP-CommonDataTypes.asn (LAIFixedLength)")
 	ErrPSLResCellGlobalIdAndLAIMutex     = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set exactly one")
 	ErrPSLResCellIdOrSaiInvalidChoice    = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
+
+	ErrLCSEventInvalid                    = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (extensible enum: unknown values preserved on decode)")
+	ErrSequenceNumberOutOfRange           = errors.New("subscriberLocationReport: SequenceNumber must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn")
+	ErrLCSLocationInfoNetworkNodeEmpty    = errors.New("lcsLocationInfo: NetworkNodeNumber digits are mandatory; empty value is not permitted on encode")
+	ErrLCSLocationInfoNetworkNodeDecodedEmpty = errors.New("lcsLocationInfo: present wire NetworkNodeNumber decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLCSLocationInfoLMSIInvalidSize     = errors.New("lcsLocationInfo: LMSI must be exactly 4 octets per TS 29.002 MAP-CommonDataTypes.asn")
+	ErrLCSLocationInfoMmeNameSize         = errors.New("lcsLocationInfo: MmeName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrLCSLocationInfoAaaServerNameSize   = errors.New("lcsLocationInfo: AaaServerName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrLCSLocationInfoSgsnNameSize        = errors.New("lcsLocationInfo: SgsnName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrLCSLocationInfoSgsnRealmSize       = errors.New("lcsLocationInfo: SgsnRealm must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
 )
