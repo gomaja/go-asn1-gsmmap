@@ -2818,9 +2818,10 @@ type ProvideSubscriberLocationArg struct {
 // to callers (per the package convention; see APNConfiguration). It
 // is dropped on decode and emitted as absent on encode.
 //
-// CellIdOrSai is a CHOICE between CGI/SAI (7 octets) and LAI (5 octets);
-// set exactly one of CellGlobalId or LAI on encode (matching the
-// existing CSLocationInformation pattern). Empty/nil on both = absent.
+// CellIdOrSai is an optional CHOICE between CGI/SAI (7 octets) and LAI
+// (5 octets); set at most one of CellGlobalId or LAI on encode (leaving
+// both empty omits the field), matching the existing
+// CSLocationInformation pattern.
 type ProvideSubscriberLocationRes struct {
 	// Mandatory.
 	LocationEstimate ExtGeographicalInformation // 1..20 octets per TS 23.032
@@ -3781,7 +3782,7 @@ var (
 	ErrPSLResLocationEstimateMissing  = errors.New("provideSubscriberLocationRes: LocationEstimate is mandatory; nil/empty value is not permitted on encode")
 	ErrPSLResCellGlobalIdSize         = errors.New("provideSubscriberLocationRes: CellGlobalId must be exactly 7 octets per TS 29.002 MAP-CommonDataTypes.asn (CellGlobalIdOrServiceAreaIdFixedLength)")
 	ErrPSLResLAIInvalidSize           = errors.New("provideSubscriberLocationRes: LAI must be exactly 5 octets per TS 29.002 MAP-CommonDataTypes.asn (LAIFixedLength)")
-	ErrPSLResCellGlobalIdAndLAIMutex  = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set exactly one")
+	ErrPSLResCellGlobalIdAndLAIMutex  = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (both empty omits the optional field)")
 	ErrPSLResCellIdOrSaiInvalidChoice = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 
 	ErrLCSEventInvalid                        = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (extensible enum: unknown values preserved on decode)")

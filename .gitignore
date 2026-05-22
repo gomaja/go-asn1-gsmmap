@@ -16,3 +16,8 @@ local_test*/
 /tshark_harness/
 /testdata/sri_fixtures/
 /testdata/go_asn1_bugs/
+
+# Generated test-vector artifacts emitted at the repo root by the
+# tshark harness (e.g. psl_test_vectors.json/.pcap). Local-only.
+/*_test_vectors.json
+/*_test_vectors.pcap

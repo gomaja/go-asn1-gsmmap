@@ -23,8 +23,8 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **CancelLocation** | 3 | `CancelLocation` | `CancelLocationRes` |
 | **InsertSubscriberData** (ISD) | 7 | `InsertSubscriberDataArg` | `InsertSubscriberDataRes` |
 | **ProvideSubscriberLocation** (PSL) | 83 | `ProvideSubscriberLocationArg` | `ProvideSubscriberLocationRes` |
-| _SendRoutingInfoForLCS_ | 85 | _planned_ | _planned_ |
-| _SubscriberLocationReport_ | 86 | _planned_ | _planned_ |
+| **SendRoutingInfoForLCS** (SRI-LCS) | 85 | `SriLcs` | `SriLcsResp` |
+| **SubscriberLocationReport** (SLR) | 86 | `SubscriberLocationReportArg` | `SubscriberLocationReportRes` |
 
 ## Install
 
