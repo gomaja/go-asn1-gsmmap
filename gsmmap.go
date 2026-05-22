@@ -60,9 +60,9 @@ type SriSmCorrelationID struct {
 // AdditionalNumber is the Additional-Number CHOICE.
 // Set exactly one of MscNumber or SgsnNumber.
 type AdditionalNumber struct {
-	MscNumber       string
-	MscNumberNature uint8
-	MscNumberPlan   uint8
+	MscNumber        string
+	MscNumberNature  uint8
+	MscNumberPlan    uint8
 	SgsnNumber       string
 	SgsnNumberNature uint8
 	SgsnNumberPlan   uint8
@@ -94,7 +94,7 @@ type SriSm struct {
 	GprsSupportIndicator    bool                   // [7] NULL — SMS-GMSC supports receiving two numbers from HLR
 	SmRpMti                 *int                   // [8] SM-RP-MTI: 0=SMS Deliver, 1=SMS Status Report (0..10)
 	SmRpSmea                HexBytes               // [9] SM-RP-SMEA: 1..12 octets (address per 3GPP TS 23.040)
-	SmDeliveryNotIntended   *SmDeliveryNotIntended  // [10] ENUMERATED
+	SmDeliveryNotIntended   *SmDeliveryNotIntended // [10] ENUMERATED
 	IpSmGwGuidanceIndicator bool                   // [11] NULL
 	IMSI                    string                 // [12] optional IMSI for delivery control
 	SingleAttemptDelivery   bool                   // [13] NULL
@@ -112,27 +112,27 @@ type SriSmResp struct {
 
 // LocationInfoWithLMSI contains location information with LMSI.
 type LocationInfoWithLMSI struct {
-	NetworkNodeNumber       string
-	NetworkNodeNumberNature uint8 // address nature indicator
-	NetworkNodeNumberPlan   uint8 // numbering plan indicator
-	LMSI                    HexBytes          // 4 octets; nil if absent
-	GprsNodeIndicator       bool              // [5] NULL
-	AdditionalNumber        *AdditionalNumber // [6] CHOICE
+	NetworkNodeNumber                    string
+	NetworkNodeNumberNature              uint8                       // address nature indicator
+	NetworkNodeNumberPlan                uint8                       // numbering plan indicator
+	LMSI                                 HexBytes                    // 4 octets; nil if absent
+	GprsNodeIndicator                    bool                        // [5] NULL
+	AdditionalNumber                     *AdditionalNumber           // [6] CHOICE
 	NetworkNodeDiameterAddress           *NetworkNodeDiameterAddress // [7]
 	AdditionalNetworkNodeDiameterAddress *NetworkNodeDiameterAddress // [8]
-	ThirdNumber             *AdditionalNumber           // [9] CHOICE
+	ThirdNumber                          *AdditionalNumber           // [9] CHOICE
 	ThirdNetworkNodeDiameterAddress      *NetworkNodeDiameterAddress // [10]
-	ImsNodeIndicator        bool              // [11] NULL
-	Smsf3gppNumber          string            // [12]
-	Smsf3gppNumberNature    uint8
-	Smsf3gppNumberPlan      uint8
-	Smsf3gppDiameterAddress *NetworkNodeDiameterAddress // [13]
-	SmsfNon3gppNumber       string            // [14]
-	SmsfNon3gppNumberNature uint8
-	SmsfNon3gppNumberPlan   uint8
-	SmsfNon3gppDiameterAddress *NetworkNodeDiameterAddress // [15]
-	Smsf3gppAddressIndicator    bool // [16] NULL
-	SmsfNon3gppAddressIndicator bool // [17] NULL
+	ImsNodeIndicator                     bool                        // [11] NULL
+	Smsf3gppNumber                       string                      // [12]
+	Smsf3gppNumberNature                 uint8
+	Smsf3gppNumberPlan                   uint8
+	Smsf3gppDiameterAddress              *NetworkNodeDiameterAddress // [13]
+	SmsfNon3gppNumber                    string                      // [14]
+	SmsfNon3gppNumberNature              uint8
+	SmsfNon3gppNumberPlan                uint8
+	SmsfNon3gppDiameterAddress           *NetworkNodeDiameterAddress // [15]
+	Smsf3gppAddressIndicator             bool                        // [16] NULL
+	SmsfNon3gppAddressIndicator          bool                        // [17] NULL
 }
 
 // MtFsm represents a Mobile Terminated Forward Short Message (opCode 44).
@@ -145,12 +145,12 @@ type MtFsm struct {
 	MoreMessagesToSend     bool
 
 	// Optional fields (post-extension marker).
-	SmDeliveryTimer           *int                        // SM-DeliveryTimerValue: MinSmDeliveryTimer..MaxSmDeliveryTimer seconds
-	SmDeliveryStartTime       HexBytes                    // Time octet string; nil if absent
-	SmsOverIPOnlyIndicator    bool                        // [0] NULL
-	CorrelationID             *SriSmCorrelationID         // [1] reuse SRI-SM type
-	MaximumRetransmissionTime HexBytes                    // [2] Time octet string; nil if absent
-	SmsGmscAddress            string                      // [3] ISDN-AddressString
+	SmDeliveryTimer           *int                // SM-DeliveryTimerValue: MinSmDeliveryTimer..MaxSmDeliveryTimer seconds
+	SmDeliveryStartTime       HexBytes            // Time octet string; nil if absent
+	SmsOverIPOnlyIndicator    bool                // [0] NULL
+	CorrelationID             *SriSmCorrelationID // [1] reuse SRI-SM type
+	MaximumRetransmissionTime HexBytes            // [2] Time octet string; nil if absent
+	SmsGmscAddress            string              // [3] ISDN-AddressString
 	SmsGmscAddressNature      uint8
 	SmsGmscAddressPlan        uint8
 	SmsGmscDiameterAddress    *NetworkNodeDiameterAddress // [4]
@@ -200,8 +200,8 @@ type MoFsm struct {
 	// overrides ServiceCentreAddressDA and allows any SM-RP-DA alternative
 	// (IMSI, LMSI, serviceCentreAddressDA, noSM-RP-DA).
 	ServiceCentreAddressDA string
-	SCADANature            uint8 // address nature indicator (default: International)
-	SCADAPlan              uint8 // numbering plan indicator (default: ISDN)
+	SCADANature            uint8   // address nature indicator (default: International)
+	SCADAPlan              uint8   // numbering plan indicator (default: ISDN)
 	SmRpDa                 *SmRpDa // when set, overrides ServiceCentreAddressDA
 
 	// SM-RP-OA: originator address CHOICE.
@@ -209,8 +209,8 @@ type MoFsm struct {
 	// and allows any SM-RP-OA alternative (msisdn, serviceCentreAddressOA,
 	// noSM-RP-OA).
 	MSISDN       string
-	MSISDNNature uint8 // address nature indicator (default: International)
-	MSISDNPlan   uint8 // numbering plan indicator (default: ISDN)
+	MSISDNNature uint8   // address nature indicator (default: International)
+	MSISDNPlan   uint8   // numbering plan indicator (default: ISDN)
 	SmRpOa       *SmRpOa // when set, overrides MSISDN
 
 	TPDU tpdu.TPDU
@@ -278,16 +278,16 @@ type VlrCapability struct {
 	SupportedCamelPhases       *SupportedCamelPhases       // [0]
 	SupportedLCSCapabilitySets *SupportedLCSCapabilitySets // [5]
 
-	SolsaSupportIndicator                      bool              // [2] NULL
-	IstSupportIndicator                        *int              // [1] 0=basicISTSupported, 1=istCommandSupported
-	SuperChargerSupportedInServingNetworkEntity *SuperChargerInfo // [3] CHOICE
-	LongFTNSupported                           bool              // [4] NULL
-	OfferedCamel4CSIs                          *OfferedCamel4CSIs // [6]
-	SupportedRATTypesIndicator                 *SupportedRATTypes // [7]
-	LongGroupIDSupported                       bool              // [8] NULL
-	MtRoamingForwardingSupported               bool              // [9] NULL
-	MsisdnLessOperationSupported               bool              // [10] NULL
-	ResetIdsSupported                          bool              // [11] NULL
+	SolsaSupportIndicator                       bool               // [2] NULL
+	IstSupportIndicator                         *int               // [1] 0=basicISTSupported, 1=istCommandSupported
+	SuperChargerSupportedInServingNetworkEntity *SuperChargerInfo  // [3] CHOICE
+	LongFTNSupported                            bool               // [4] NULL
+	OfferedCamel4CSIs                           *OfferedCamel4CSIs // [6]
+	SupportedRATTypesIndicator                  *SupportedRATTypes // [7]
+	LongGroupIDSupported                        bool               // [8] NULL
+	MtRoamingForwardingSupported                bool               // [9] NULL
+	MsisdnLessOperationSupported                bool               // [10] NULL
+	ResetIdsSupported                           bool               // [11] NULL
 }
 
 // SupportedCamelPhases indicates which CAMEL phases are supported.
@@ -411,24 +411,24 @@ type UpdateGprsLocation struct {
 
 // SGSNCapability indicates SGSN capabilities per 3GPP TS 29.002 (opCode 23).
 type SGSNCapability struct {
-	SolsaSupportIndicator                       bool              // untagged (first field) NULL
-	SuperChargerSupportedInServingNetworkEntity *SuperChargerInfo // [2] CHOICE
-	GprsEnhancementsSupportIndicator            bool              // [3] NULL
-	SupportedCamelPhases                        *SupportedCamelPhases
-	SupportedLCSCapabilitySets                  *SupportedLCSCapabilitySets
-	OfferedCamel4CSIs                           *OfferedCamel4CSIs
-	SmsCallBarringSupportIndicator              bool // [7] NULL
-	SupportedRATTypesIndicator                  *SupportedRATTypes
-	SupportedFeatures                           HexBytes // raw BIT STRING bytes [9]
-	SupportedFeaturesBits                       int      // BitLength; 0 means unset
-	TAdsDataRetrieval                           bool     // [10] NULL
-	HomogeneousSupportOfIMSVoiceOverPSSessions  *bool    // [11] 3-state
-	CancellationTypeInitialAttach               bool     // [12] NULL
-	MsisdnLessOperationSupported                bool     // [14] NULL
-	UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions bool // [15] NULL
-	ResetIdsSupported                           bool     // [16] NULL
-	ExtSupportedFeatures                        HexBytes // raw BIT STRING bytes [17]
-	ExtSupportedFeaturesBits                    int      // BitLength; 0 means unset
+	SolsaSupportIndicator                              bool              // untagged (first field) NULL
+	SuperChargerSupportedInServingNetworkEntity        *SuperChargerInfo // [2] CHOICE
+	GprsEnhancementsSupportIndicator                   bool              // [3] NULL
+	SupportedCamelPhases                               *SupportedCamelPhases
+	SupportedLCSCapabilitySets                         *SupportedLCSCapabilitySets
+	OfferedCamel4CSIs                                  *OfferedCamel4CSIs
+	SmsCallBarringSupportIndicator                     bool // [7] NULL
+	SupportedRATTypesIndicator                         *SupportedRATTypes
+	SupportedFeatures                                  HexBytes // raw BIT STRING bytes [9]
+	SupportedFeaturesBits                              int      // BitLength; 0 means unset
+	TAdsDataRetrieval                                  bool     // [10] NULL
+	HomogeneousSupportOfIMSVoiceOverPSSessions         *bool    // [11] 3-state
+	CancellationTypeInitialAttach                      bool     // [12] NULL
+	MsisdnLessOperationSupported                       bool     // [14] NULL
+	UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions bool     // [15] NULL
+	ResetIdsSupported                                  bool     // [16] NULL
+	ExtSupportedFeatures                               HexBytes // raw BIT STRING bytes [17]
+	ExtSupportedFeaturesBits                           int      // BitLength; 0 means unset
 }
 
 // UpdateGprsLocationRes represents an UpdateGprsLocation response (opCode 23).
@@ -510,22 +510,22 @@ type ProvideSubscriberInfoRes struct {
 
 // SubscriberInfo contains subscriber information returned by ATI (opCode 71).
 type SubscriberInfo struct {
-	LocationInformation     *CSLocationInformation  // [0]
-	SubscriberState         *SubscriberStateInfo    // [1]
-	LocationInformationGPRS *GPRSLocationInformation // [3]
-	PsSubscriberState       *PsSubscriberState      // [4] CHOICE
-	IMEI                    string                  // [5] decoded TBCD; empty if absent
-	MsClassmark2            HexBytes                // [6] raw octets; nil if absent
-	GprsMSClass             *GprsMSClass            // [7]
-	MnpInfoRes              *MnpInfoRes             // [8]
+	LocationInformation              *CSLocationInformation            // [0]
+	SubscriberState                  *SubscriberStateInfo              // [1]
+	LocationInformationGPRS          *GPRSLocationInformation          // [3]
+	PsSubscriberState                *PsSubscriberState                // [4] CHOICE
+	IMEI                             string                            // [5] decoded TBCD; empty if absent
+	MsClassmark2                     HexBytes                          // [6] raw octets; nil if absent
+	GprsMSClass                      *GprsMSClass                      // [7]
+	MnpInfoRes                       *MnpInfoRes                       // [8]
 	ImsVoiceOverPSSessionsIndication *ImsVoiceOverPSSessionsIndication // [9]
-	LastUEActivityTime      HexBytes                // [10] Time octet string; nil if absent
-	LastRATType             *UsedRatType            // [11]
-	EpsSubscriberState      *PsSubscriberState      // [12] CHOICE
-	LocationInformationEPS  *EPSLocationInformation // [13]
-	TimeZone                HexBytes                // [14] raw octet; nil if absent
-	DaylightSavingTime      *int                    // [15] nil if absent; 0=noAdjustment, 1=+1h, 2=+2h
-	LocationInformation5GS  *LocationInformation5GS // [16]
+	LastUEActivityTime               HexBytes                          // [10] Time octet string; nil if absent
+	LastRATType                      *UsedRatType                      // [11]
+	EpsSubscriberState               *PsSubscriberState                // [12] CHOICE
+	LocationInformationEPS           *EPSLocationInformation           // [13]
+	TimeZone                         HexBytes                          // [14] raw octet; nil if absent
+	DaylightSavingTime               *int                              // [15] nil if absent; 0=noAdjustment, 1=+1h, 2=+2h
+	LocationInformation5GS           *LocationInformation5GS           // [16]
 }
 
 // PsSubscriberState is the PS-SubscriberState CHOICE (opCode 71).
@@ -642,18 +642,18 @@ type EPSLocationInformation struct {
 	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
 	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
 	CurrentLocationRetrieved bool
-	MmeName                  HexBytes          // raw DiameterIdentity; nil if absent
+	MmeName                  HexBytes // raw DiameterIdentity; nil if absent
 }
 
 // GPRSLocationInformation contains GPRS domain location data (opCode 71).
 type GPRSLocationInformation struct {
-	AgeOfLocationInformation *int                // seconds; nil if absent
-	CellGlobalId             HexBytes            // raw fixed-length cell ID or SAI; nil if absent
-	LAI                      HexBytes            // raw 5-octet LAI; nil if absent
-	RouteingAreaIdentity     HexBytes            // raw octets; nil if absent
-	GeographicalInformation  *GeographicalInfo   // decoded per 3GPP TS 23.032; nil if absent
-	GeodeticInformation      HexBytes            // raw 10 octets; nil if absent
-	SgsnNumber               string              // decoded; empty if absent
+	AgeOfLocationInformation *int              // seconds; nil if absent
+	CellGlobalId             HexBytes          // raw fixed-length cell ID or SAI; nil if absent
+	LAI                      HexBytes          // raw 5-octet LAI; nil if absent
+	RouteingAreaIdentity     HexBytes          // raw octets; nil if absent
+	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
+	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
+	SgsnNumber               string            // decoded; empty if absent
 	SgsnNumberNature         uint8
 	SgsnNumberPlan           uint8
 	SelectedLSAIdentity      HexBytes            // [4] LSAIdentity; nil if absent
@@ -898,14 +898,14 @@ type TBcsmCamelTDPCriteria struct {
 // DPAnalysedInfoCriterium per 3GPP TS 29.002. Entry in DCSI's
 // DPAnalysedInfoCriteriaList — fires when a dialled number matches.
 type DPAnalysedInfoCriterium struct {
-	DialledNumber         string              // mandatory ISDN-AddressString
-	DialledNumberNature   uint8               // default: International
-	DialledNumberPlan     uint8               // default: ISDN
-	ServiceKey            int64               // mandatory
-	GsmSCFAddress         string              // mandatory
-	GsmSCFAddressNature   uint8               // default: International
-	GsmSCFAddressPlan     uint8               // default: ISDN
-	DefaultCallHandling   DefaultCallHandling // mandatory
+	DialledNumber       string              // mandatory ISDN-AddressString
+	DialledNumberNature uint8               // default: International
+	DialledNumberPlan   uint8               // default: ISDN
+	ServiceKey          int64               // mandatory
+	GsmSCFAddress       string              // mandatory
+	GsmSCFAddressNature uint8               // default: International
+	GsmSCFAddressPlan   uint8               // default: ISDN
+	DefaultCallHandling DefaultCallHandling // mandatory
 }
 
 // DCSI (D-CSI) per 3GPP TS 29.002. Dialled-number CAMEL Subscription Info.
@@ -1089,17 +1089,17 @@ const (
 
 // CUGSubscription per TS 29.002 MAP-MS-DataTypes.asn:1916.
 type CUGSubscription struct {
-	CugIndex              int                    // mandatory 0..32767
-	CugInterlock          HexBytes               // mandatory, exactly 4 octets
-	IntraCUGOptions       IntraCUGOptions        // mandatory
-	BasicServiceGroupList []ExtBasicServiceCode  // optional, 1..32 entries when present
+	CugIndex              int                   // mandatory 0..32767
+	CugInterlock          HexBytes              // mandatory, exactly 4 octets
+	IntraCUGOptions       IntraCUGOptions       // mandatory
+	BasicServiceGroupList []ExtBasicServiceCode // optional, 1..32 entries when present
 }
 
 // CUGFeature per TS 29.002 MAP-MS-DataTypes.asn:1944.
 type CUGFeature struct {
-	BasicService          *ExtBasicServiceCode // optional
-	PreferentialCUGIndex  *int                 // optional 0..32767
-	InterCUGRestrictions  uint8                // mandatory; 1 octet bit-encoded per spec
+	BasicService         *ExtBasicServiceCode // optional
+	PreferentialCUGIndex *int                 // optional 0..32767
+	InterCUGRestrictions uint8                // mandatory; 1 octet bit-encoded per spec
 }
 
 // CUGInfo per TS 29.002 MAP-MS-DataTypes.asn:1907.
@@ -1479,7 +1479,7 @@ const (
 // CancelLocationIdentity is the CHOICE between IMSI alone and IMSI+LMSI.
 // Exactly one of IMSI or IMSIWithLMSI must be set when encoding.
 type CancelLocationIdentity struct {
-	IMSI         string                   // alternative: imsi (TBCD)
+	IMSI         string                      // alternative: imsi (TBCD)
 	IMSIWithLMSI *CancelLocationIMSIWithLMSI // alternative: imsi-WithLMSI
 }
 
@@ -1551,35 +1551,35 @@ const (
 // bits received from peers are treated as unsupported-ODB per spec
 // exception handling.
 type ODBGeneralData struct {
-	AllOGCallsBarred                                                   bool // bit 0
-	InternationalOGCallsBarred                                         bool // bit 1
-	InternationalOGCallsNotToHPLMNCountryBarred                        bool // bit 2
-	PremiumRateInformationOGCallsBarred                                bool // bit 3
-	PremiumRateEntertainmentOGCallsBarred                              bool // bit 4
-	SSAccessBarred                                                     bool // bit 5
-	InterzonalOGCallsBarred                                            bool // bit 6
-	InterzonalOGCallsNotToHPLMNCountryBarred                           bool // bit 7
-	InterzonalOGCallsAndInternationalOGCallsNotToHPLMNCountryBarred    bool // bit 8
-	AllECTBarred                                                       bool // bit 9
-	ChargeableECTBarred                                                bool // bit 10
-	InternationalECTBarred                                             bool // bit 11
-	InterzonalECTBarred                                                bool // bit 12
-	DoublyChargeableECTBarred                                          bool // bit 13
-	MultipleECTBarred                                                  bool // bit 14
-	AllPacketOrientedServicesBarred                                    bool // bit 15
-	RoamerAccessToHPLMNAPBarred                                        bool // bit 16
-	RoamerAccessToVPLMNAPBarred                                        bool // bit 17
-	RoamingOutsidePLMNOGCallsBarred                                    bool // bit 18
-	AllICCallsBarred                                                   bool // bit 19
-	RoamingOutsidePLMNICCallsBarred                                    bool // bit 20
-	RoamingOutsidePLMNICountryICCallsBarred                            bool // bit 21
-	RoamingOutsidePLMNBarred                                           bool // bit 22
-	RoamingOutsidePLMNCountryBarred                                    bool // bit 23
-	RegistrationAllCFBarred                                            bool // bit 24
-	RegistrationCFNotToHPLMNBarred                                     bool // bit 25
-	RegistrationInterzonalCFBarred                                     bool // bit 26
-	RegistrationInterzonalCFNotToHPLMNBarred                           bool // bit 27
-	RegistrationInternationalCFBarred                                  bool // bit 28
+	AllOGCallsBarred                                                bool // bit 0
+	InternationalOGCallsBarred                                      bool // bit 1
+	InternationalOGCallsNotToHPLMNCountryBarred                     bool // bit 2
+	PremiumRateInformationOGCallsBarred                             bool // bit 3
+	PremiumRateEntertainmentOGCallsBarred                           bool // bit 4
+	SSAccessBarred                                                  bool // bit 5
+	InterzonalOGCallsBarred                                         bool // bit 6
+	InterzonalOGCallsNotToHPLMNCountryBarred                        bool // bit 7
+	InterzonalOGCallsAndInternationalOGCallsNotToHPLMNCountryBarred bool // bit 8
+	AllECTBarred                                                    bool // bit 9
+	ChargeableECTBarred                                             bool // bit 10
+	InternationalECTBarred                                          bool // bit 11
+	InterzonalECTBarred                                             bool // bit 12
+	DoublyChargeableECTBarred                                       bool // bit 13
+	MultipleECTBarred                                               bool // bit 14
+	AllPacketOrientedServicesBarred                                 bool // bit 15
+	RoamerAccessToHPLMNAPBarred                                     bool // bit 16
+	RoamerAccessToVPLMNAPBarred                                     bool // bit 17
+	RoamingOutsidePLMNOGCallsBarred                                 bool // bit 18
+	AllICCallsBarred                                                bool // bit 19
+	RoamingOutsidePLMNICCallsBarred                                 bool // bit 20
+	RoamingOutsidePLMNICountryICCallsBarred                         bool // bit 21
+	RoamingOutsidePLMNBarred                                        bool // bit 22
+	RoamingOutsidePLMNCountryBarred                                 bool // bit 23
+	RegistrationAllCFBarred                                         bool // bit 24
+	RegistrationCFNotToHPLMNBarred                                  bool // bit 25
+	RegistrationInterzonalCFBarred                                  bool // bit 26
+	RegistrationInterzonalCFNotToHPLMNBarred                        bool // bit 27
+	RegistrationInternationalCFBarred                               bool // bit 28
 }
 
 // ODBHPLMNData (BIT STRING SIZE 4..32) per TS 29.002 MAP-MS-DataTypes.asn:1812.
@@ -1597,21 +1597,21 @@ type ODBHPLMNData struct {
 // subscriber. Per spec, nodes shall ignore restrictions for access types
 // they do not support.
 type AccessRestrictionData struct {
-	UtranNotAllowed            bool // bit 0
-	GeranNotAllowed            bool // bit 1
-	GanNotAllowed              bool // bit 2
-	IHSPAEvolutionNotAllowed   bool // bit 3
-	WBEUtranNotAllowed         bool // bit 4
+	UtranNotAllowed             bool // bit 0
+	GeranNotAllowed             bool // bit 1
+	GanNotAllowed               bool // bit 2
+	IHSPAEvolutionNotAllowed    bool // bit 3
+	WBEUtranNotAllowed          bool // bit 4
 	HoToNon3GPPAccessNotAllowed bool // bit 5
-	NBIoTNotAllowed            bool // bit 6
-	EnhancedCoverageNotAllowed bool // bit 7
+	NBIoTNotAllowed             bool // bit 6
+	EnhancedCoverageNotAllowed  bool // bit 7
 }
 
 // ExtAccessRestrictionData (BIT STRING SIZE 1..32) per TS 29.002
 // MAP-MS-DataTypes.asn:1471. Additional access-type restrictions that
 // don't fit in the 8-bit AccessRestrictionData.
 type ExtAccessRestrictionData struct {
-	NrAsSecondaryRATNotAllowed                bool // bit 0
+	NrAsSecondaryRATNotAllowed                 bool // bit 0
 	UnlicensedSpectrumAsSecondaryRATNotAllowed bool // bit 1
 }
 
@@ -1734,9 +1734,9 @@ type VoiceGroupCallData struct {
 // Octet size constants for VBS/VGCS TBCD identifiers and AdditionalInfo
 // per TS 29.002 MAP-MS-DataTypes.asn:2729-2738 and TS 43.068.
 const (
-	GroupIdOctets             = 3
-	LongGroupIdOctets         = 4
-	MaxAdditionalInfoOctets   = 17 // 136 bits
+	GroupIdOctets           = 3
+	LongGroupIdOctets       = 4
+	MaxAdditionalInfoOctets = 17 // 136 bits
 )
 
 // VBSDataList per TS 29.002 MAP-MS-DataTypes.asn:2685 (SIZE 1..50).
@@ -1848,8 +1848,8 @@ const MaxResetIdOctets = 4
 // mandatory bandwidth fields are Bandwidth INTEGER (bits per second);
 // the extended pair carries kbps values for >4 Gbps profiles.
 type AMBR struct {
-	MaxRequestedBandwidthUL         int64 // [0] mandatory, bits per second
-	MaxRequestedBandwidthDL         int64 // [1] mandatory, bits per second
+	MaxRequestedBandwidthUL         int64  // [0] mandatory, bits per second
+	MaxRequestedBandwidthDL         int64  // [1] mandatory, bits per second
 	ExtendedMaxRequestedBandwidthUL *int64 // [3] optional, kilobits per second
 	ExtendedMaxRequestedBandwidthDL *int64 // [4] optional, kilobits per second
 }
@@ -1974,8 +1974,8 @@ type LSAInformation struct {
 type PDNConnectionContinuity = gsm_map.PDNConnectionContinuity
 
 const (
-	PDNConnectionMaintain                            = gsm_map.PDNConnectionContinuityMaintainPDNConnection
-	PDNConnectionDisconnectWithReactivationRequest   = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithReactivationRequest
+	PDNConnectionMaintain                             = gsm_map.PDNConnectionContinuityMaintainPDNConnection
+	PDNConnectionDisconnectWithReactivationRequest    = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithReactivationRequest
 	PDNConnectionDisconnectWithoutReactivationRequest = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithoutReactivationRequest
 )
 
@@ -2051,28 +2051,28 @@ type WLANOffloadability struct {
 // emitted as absent on encode — callers requiring opaque pass-through
 // must add it at a higher layer.
 type APNConfiguration struct {
-	ContextId                int              // [0] mandatory, ContextId 1..50
-	PdnType                  HexBytes         // [1] mandatory, OCTET STRING SIZE 1
-	ServedPartyIPIPv4Address HexBytes         // [2] optional, PDP-Address SIZE 1..16
-	Apn                      HexBytes         // [3] mandatory, APN SIZE 2..63
-	EpsQosSubscribed         EPSQoSSubscribed // [4] mandatory
-	PdnGwIdentity            *PdnGwIdentity   // [5] optional
-	PdnGwAllocationType      *PDNGWAllocationType // [6] optional
-	VplmnAddressAllowed      bool             // [7] optional NULL — true when present
-	ChargingCharacteristics  HexBytes         // [8] optional, OCTET STRING SIZE 2
-	Ambr                     *AMBR            // [9] optional
-	SpecificAPNInfoList      SpecificAPNInfoList // [10] optional, 1..50 entries when present
-	ServedPartyIPIPv6Address HexBytes                     // [12] optional, PDP-Address SIZE 1..16
-	ApnOiReplacement         HexBytes                     // [13] optional, SIZE 9..100
-	SiptoPermission          *SIPTOPermission             // [14] optional
-	LipaPermission           *LIPAPermission              // [15] optional
-	RestorationPriority      HexBytes                     // [16] optional, SIZE 1
+	ContextId                   int                          // [0] mandatory, ContextId 1..50
+	PdnType                     HexBytes                     // [1] mandatory, OCTET STRING SIZE 1
+	ServedPartyIPIPv4Address    HexBytes                     // [2] optional, PDP-Address SIZE 1..16
+	Apn                         HexBytes                     // [3] mandatory, APN SIZE 2..63
+	EpsQosSubscribed            EPSQoSSubscribed             // [4] mandatory
+	PdnGwIdentity               *PdnGwIdentity               // [5] optional
+	PdnGwAllocationType         *PDNGWAllocationType         // [6] optional
+	VplmnAddressAllowed         bool                         // [7] optional NULL — true when present
+	ChargingCharacteristics     HexBytes                     // [8] optional, OCTET STRING SIZE 2
+	Ambr                        *AMBR                        // [9] optional
+	SpecificAPNInfoList         SpecificAPNInfoList          // [10] optional, 1..50 entries when present
+	ServedPartyIPIPv6Address    HexBytes                     // [12] optional, PDP-Address SIZE 1..16
+	ApnOiReplacement            HexBytes                     // [13] optional, SIZE 9..100
+	SiptoPermission             *SIPTOPermission             // [14] optional
+	LipaPermission              *LIPAPermission              // [15] optional
+	RestorationPriority         HexBytes                     // [16] optional, SIZE 1
 	SiptoLocalNetworkPermission *SIPTOLocalNetworkPermission // [17] optional
-	WlanOffloadability       *WLANOffloadability          // [18] optional
-	NonIPPDNTypeIndicator    bool                         // [19] optional NULL — true when present
-	NIDDMechanism            *NIDDMechanism               // [20] optional
-	SCEFID                   HexBytes                     // [21] optional, FQDN SIZE 9..255
-	PdnConnectionContinuity  *PDNConnectionContinuity     // [22] optional
+	WlanOffloadability          *WLANOffloadability          // [18] optional
+	NonIPPDNTypeIndicator       bool                         // [19] optional NULL — true when present
+	NIDDMechanism               *NIDDMechanism               // [20] optional
+	SCEFID                      HexBytes                     // [21] optional, FQDN SIZE 9..255
+	PdnConnectionContinuity     *PDNConnectionContinuity     // [22] optional
 }
 
 // EPSDataList (SEQUENCE SIZE 1..50 OF APN-Configuration) per TS 29.002
@@ -2101,12 +2101,12 @@ type EPSSubscriptionData struct {
 	// StnSr [6] OPTIONAL ISDN-AddressString. Empty digits string means
 	// absent; a present wire frame that decodes to empty digits is
 	// rejected on the decode path to keep round-trip semantics stable.
-	StnSr       string // [6] optional, ISDN-AddressString digits
-	StnSrNature uint8  // ISDN-AddressString nature-of-address octet
-	StnSrPlan   uint8  // ISDN-AddressString numbering-plan octet
-	MpsCSPriority           bool                     // [7] optional NULL — true when present
-	MpsEPSPriority          bool                     // [8] optional NULL — true when present
-	SubscribedVsrvcc        bool                     // [9] optional NULL — true when present
+	StnSr            string // [6] optional, ISDN-AddressString digits
+	StnSrNature      uint8  // ISDN-AddressString nature-of-address octet
+	StnSrPlan        uint8  // ISDN-AddressString numbering-plan octet
+	MpsCSPriority    bool   // [7] optional NULL — true when present
+	MpsEPSPriority   bool   // [8] optional NULL — true when present
+	SubscribedVsrvcc bool   // [9] optional NULL — true when present
 }
 
 // EPS-DataList and SpecificAPNInfoList are bounded by the upstream
@@ -2170,8 +2170,8 @@ type LCSClientExternalID struct {
 
 // ExternalClient (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2018.
 type ExternalClient struct {
-	ClientIdentity       LCSClientExternalID  // mandatory
-	GmlcRestriction      *GMLCRestriction     // [0] optional
+	ClientIdentity       LCSClientExternalID   // mandatory
+	GmlcRestriction      *GMLCRestriction      // [0] optional
 	NotificationToMSUser *NotificationToMSUser // [1] optional
 }
 
@@ -2279,11 +2279,11 @@ const (
 // Surfaced as a bools-only struct to match the package's BIT STRING surrogate
 // pattern (e.g., SupportedCamelPhases). Codec lives with PSL converters.
 type DeferredLocationEventType struct {
-	MsAvailable       bool // bit 0
-	EnteringIntoArea  bool // bit 1
-	LeavingFromArea   bool // bit 2
-	BeingInsideArea   bool // bit 3
-	PeriodicLDR       bool // bit 4
+	MsAvailable      bool // bit 0
+	EnteringIntoArea bool // bit 1
+	LeavingFromArea  bool // bit 2
+	BeingInsideArea  bool // bit 3
+	PeriodicLDR      bool // bit 4
 }
 
 // LocationType (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:148.
@@ -2429,13 +2429,13 @@ const (
 // MAP-LCS-DataTypes.asn:280. 7 named bits per 3GPP TS 23.032.
 // Surfaced as a bools-only struct following the package BIT STRING pattern.
 type SupportedGADShapes struct {
-	EllipsoidPoint                                  bool // bit 0
-	EllipsoidPointWithUncertaintyCircle             bool // bit 1
-	EllipsoidPointWithUncertaintyEllipse            bool // bit 2
-	Polygon                                         bool // bit 3
-	EllipsoidPointWithAltitude                      bool // bit 4
+	EllipsoidPoint                                    bool // bit 0
+	EllipsoidPointWithUncertaintyCircle               bool // bit 1
+	EllipsoidPointWithUncertaintyEllipse              bool // bit 2
+	Polygon                                           bool // bit 3
+	EllipsoidPointWithAltitude                        bool // bit 4
 	EllipsoidPointWithAltitudeAndUncertaintyEllipsoid bool // bit 5
-	EllipsoidArc                                    bool // bit 6
+	EllipsoidArc                                      bool // bit 6
 }
 
 // LCSPriority (OCTET STRING SIZE 1) per TS 29.002 MAP-LCS-DataTypes.asn:232.
@@ -2780,11 +2780,11 @@ type ProvideSubscriberLocationArg struct {
 
 	// Optional.
 	LcsClientID               *LCSClientID
-	PrivacyOverride           bool   // [1] NULL flag
-	IMSI                      string // TBCD-decoded digits; "" = absent (5..15 BCD digits per TS 29.002, TBCD-STRING SIZE 3..8 octets)
-	MSISDN                    string // ISDN-AddressString digits; "" = absent
-	MSISDNNature              uint8  // address nature indicator (default: International when 0)
-	MSISDNPlan                uint8  // numbering plan indicator (default: ISDN when 0)
+	PrivacyOverride           bool     // [1] NULL flag
+	IMSI                      string   // TBCD-decoded digits; "" = absent (5..15 BCD digits per TS 29.002, TBCD-STRING SIZE 3..8 octets)
+	MSISDN                    string   // ISDN-AddressString digits; "" = absent
+	MSISDNNature              uint8    // address nature indicator (default: International when 0)
+	MSISDNPlan                uint8    // numbering plan indicator (default: ISDN when 0)
 	LMSI                      HexBytes // 4 octets opaque
 	IMEI                      string   // TBCD-decoded digits; "" = absent (15 BCD digits per TS 29.002)
 	LcsPriority               LCSPriority
@@ -2836,16 +2836,16 @@ type ProvideSubscriberLocationRes struct {
 	CellGlobalId HexBytes // CGI or SAI fixed-length 7 octets
 	LAI          HexBytes // LAI fixed-length 5 octets
 
-	SaiPresent                     bool                          // [7] NULL flag
-	AccuracyFulfilmentIndicator    *AccuracyFulfilmentIndicator  // [8] extensible enum
-	VelocityEstimate               VelocityEstimate              // [9] 4..7 octets
-	MoLrShortCircuitIndicator      bool                          // [10] NULL flag
-	GeranGANSSpositioningData      GeranGANSSpositioningData     // [11] 2..10 octets
-	UtranGANSSpositioningData      UtranGANSSpositioningData     // [12] 1..9 octets
-	TargetServingNodeForHandover   *ServingNodeAddress           // [13] explicit CHOICE
+	SaiPresent                     bool                           // [7] NULL flag
+	AccuracyFulfilmentIndicator    *AccuracyFulfilmentIndicator   // [8] extensible enum
+	VelocityEstimate               VelocityEstimate               // [9] 4..7 octets
+	MoLrShortCircuitIndicator      bool                           // [10] NULL flag
+	GeranGANSSpositioningData      GeranGANSSpositioningData      // [11] 2..10 octets
+	UtranGANSSpositioningData      UtranGANSSpositioningData      // [12] 1..9 octets
+	TargetServingNodeForHandover   *ServingNodeAddress            // [13] explicit CHOICE
 	UtranAdditionalPositioningData UtranAdditionalPositioningData // [14] 1..8 octets
-	UtranBaroPressureMeas          *UtranBaroPressureMeas        // [15] INTEGER 30000..115000
-	UtranCivicAddress              UtranCivicAddress             // [16] CivicAddress per TS 25.413
+	UtranBaroPressureMeas          *UtranBaroPressureMeas         // [15] INTEGER 30000..115000
+	UtranCivicAddress              UtranCivicAddress              // [16] CivicAddress per TS 25.413
 }
 
 // ============================================================================
@@ -2885,6 +2885,7 @@ const (
 	MapErrorDataMissing                   = gsm_map.DataMissing                   // 35
 	MapErrorUnauthorizedRequestingNetwork = gsm_map.UnauthorizedRequestingNetwork // 52
 )
+
 //
 // Parsers (Parse*Param functions) and the dispatcher
 // (ParseReturnErrorParameter) live in parse.go; see follow-up PRs.
@@ -2913,17 +2914,17 @@ type AbsentSubscriberDiagnosticSM int64
 // is 0..255); String() returns "unknown" for unrecognized codes
 // without rejecting them.
 const (
-	AbsentSubscriberDiagnosticNoPagingResponseViaTheMSC          AbsentSubscriberDiagnosticSM = 0
-	AbsentSubscriberDiagnosticImsiDetached                       AbsentSubscriberDiagnosticSM = 1
-	AbsentSubscriberDiagnosticRoamingRestriction                 AbsentSubscriberDiagnosticSM = 2
-	AbsentSubscriberDiagnosticDeregisteredInTheHLRForNonGPRS     AbsentSubscriberDiagnosticSM = 3
-	AbsentSubscriberDiagnosticMsPurgedForNonGPRS                 AbsentSubscriberDiagnosticSM = 4
-	AbsentSubscriberDiagnosticNoPagingResponseViaTheSGSN         AbsentSubscriberDiagnosticSM = 5
-	AbsentSubscriberDiagnosticGPRSDetached                       AbsentSubscriberDiagnosticSM = 6
-	AbsentSubscriberDiagnosticDeregisteredInTheHLRForGPRS        AbsentSubscriberDiagnosticSM = 7
-	AbsentSubscriberDiagnosticMsPurgedForGPRS                    AbsentSubscriberDiagnosticSM = 8
-	AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheMSC    AbsentSubscriberDiagnosticSM = 9
-	AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheSGSN   AbsentSubscriberDiagnosticSM = 10
+	AbsentSubscriberDiagnosticNoPagingResponseViaTheMSC        AbsentSubscriberDiagnosticSM = 0
+	AbsentSubscriberDiagnosticImsiDetached                     AbsentSubscriberDiagnosticSM = 1
+	AbsentSubscriberDiagnosticRoamingRestriction               AbsentSubscriberDiagnosticSM = 2
+	AbsentSubscriberDiagnosticDeregisteredInTheHLRForNonGPRS   AbsentSubscriberDiagnosticSM = 3
+	AbsentSubscriberDiagnosticMsPurgedForNonGPRS               AbsentSubscriberDiagnosticSM = 4
+	AbsentSubscriberDiagnosticNoPagingResponseViaTheSGSN       AbsentSubscriberDiagnosticSM = 5
+	AbsentSubscriberDiagnosticGPRSDetached                     AbsentSubscriberDiagnosticSM = 6
+	AbsentSubscriberDiagnosticDeregisteredInTheHLRForGPRS      AbsentSubscriberDiagnosticSM = 7
+	AbsentSubscriberDiagnosticMsPurgedForGPRS                  AbsentSubscriberDiagnosticSM = 8
+	AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheMSC  AbsentSubscriberDiagnosticSM = 9
+	AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheSGSN AbsentSubscriberDiagnosticSM = 10
 )
 
 // String returns the spec value name for known diagnostic codes per
@@ -3381,18 +3382,18 @@ type SGSNCAMELSubscriptionInfo struct {
 // fields are surfaced as `HexBytes` or typed integers.
 type InsertSubscriberDataArg struct {
 	// Identification (typically present together)
-	IMSI                                           HexBytes // [0] optional, IMSI octets (TBCD-encoded)
-	MSISDN                                         string   // [1] optional, ISDN-AddressString digits ("" = absent)
-	MSISDNNature                                   uint8
-	MSISDNPlan                                     uint8
+	IMSI         HexBytes // [0] optional, IMSI octets (TBCD-encoded)
+	MSISDN       string   // [1] optional, ISDN-AddressString digits ("" = absent)
+	MSISDNNature uint8
+	MSISDNPlan   uint8
 
 	// Subscriber profile
 	Category         HexBytes          // [2] optional, OCTET STRING SIZE 1
 	SubscriberStatus *SubscriberStatus // [3] optional
 
 	// Service lists
-	BearerServiceList []HexBytes // [4] optional, list of Ext-BearerServiceCode (1..5 octets each)
-	TeleserviceList   []HexBytes // [6] optional, list of Ext-TeleserviceCode (1..5 octets each)
+	BearerServiceList []HexBytes  // [4] optional, list of Ext-BearerServiceCode (1..5 octets each)
+	TeleserviceList   []HexBytes  // [6] optional, list of Ext-TeleserviceCode (1..5 octets each)
 	ProvisionedSS     []ExtSSInfo // [7] optional, ExtSSInfoList
 
 	// Operator-determined barring
@@ -3417,13 +3418,13 @@ type InsertSubscriberDataArg struct {
 	LsaInformation                                 *LSAInformation       // [25] optional
 
 	// LCS / IST / supercharger
-	LmuIndicator               bool                       // [21] optional NULL
-	LcsInformation             *LCSInformation            // [22] optional
-	IstAlertTimer              *int64                     // [26] optional, ISTAlertTimerValue
-	SuperChargerSupportedInHLR HexBytes                   // [27] optional, AgeIndicator OCTET STRING (SIZE 1..6)
-	McSSInfo                   *MCSSInfo                  // [28] optional
-	CsAllocationRetentionPriority HexBytes                // [29] optional, OCTET STRING SIZE 1
-	SgsnCAMELSubscriptionInfo  *SGSNCAMELSubscriptionInfo // [17] optional
+	LmuIndicator                  bool                       // [21] optional NULL
+	LcsInformation                *LCSInformation            // [22] optional
+	IstAlertTimer                 *int64                     // [26] optional, ISTAlertTimerValue
+	SuperChargerSupportedInHLR    HexBytes                   // [27] optional, AgeIndicator OCTET STRING (SIZE 1..6)
+	McSSInfo                      *MCSSInfo                  // [28] optional
+	CsAllocationRetentionPriority HexBytes                   // [29] optional, OCTET STRING SIZE 1
+	SgsnCAMELSubscriptionInfo     *SGSNCAMELSubscriptionInfo // [17] optional
 
 	// Charging / access restriction
 	ChargingCharacteristics HexBytes               // [18] optional, OCTET STRING SIZE 2
@@ -3498,8 +3499,8 @@ var (
 	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
 	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
 
-	ErrSriSmMissingSipUriB             = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
-	ErrSriSmInvalidDeliveryTimerValue  = errors.New("sriSm: SM-DeliveryTimerValue must be 30..600")
+	ErrSriSmMissingSipUriB            = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
+	ErrSriSmInvalidDeliveryTimerValue = errors.New("sriSm: SM-DeliveryTimerValue must be 30..600")
 
 	ErrMtFsmInvalidDeliveryTimer = errors.New("mtFsm: SmDeliveryTimer must be 30..600")
 
@@ -3532,15 +3533,15 @@ var (
 	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
 	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
 
-	ErrSaiMissingIMSI                                = errors.New("sai: IMSI is empty")
-	ErrSaiInvalidNumberOfRequestedVectors            = errors.New("sai: NumberOfRequestedVectors must be 1..5")
-	ErrSaiInvalidNumberOfRequestedAdditionalVectors  = errors.New("sai: NumberOfRequestedAdditionalVectors must be 1..5")
-	ErrSaiInvalidUeUsageType                         = errors.New("sai: UeUsageType must be exactly 4 octets")
-	ErrSaiInvalidPLMNId                              = errors.New("sai: RequestingPLMNId must be exactly 3 octets")
-	ErrSaiAuthSetListChoiceMultipleAlternatives      = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
-	ErrSaiAuthSetListChoiceNoAlternative             = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
-	ErrSaiInvalidRequestingNodeType                  = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
-	ErrSaiInvalidEpsAuthSetListSize                  = errors.New("sai: EpsAuthenticationSetList size must be at most 5 entries when present")
+	ErrSaiMissingIMSI                               = errors.New("sai: IMSI is empty")
+	ErrSaiInvalidNumberOfRequestedVectors           = errors.New("sai: NumberOfRequestedVectors must be 1..5")
+	ErrSaiInvalidNumberOfRequestedAdditionalVectors = errors.New("sai: NumberOfRequestedAdditionalVectors must be 1..5")
+	ErrSaiInvalidUeUsageType                        = errors.New("sai: UeUsageType must be exactly 4 octets")
+	ErrSaiInvalidPLMNId                             = errors.New("sai: RequestingPLMNId must be exactly 3 octets")
+	ErrSaiAuthSetListChoiceMultipleAlternatives     = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
+	ErrSaiAuthSetListChoiceNoAlternative            = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
+	ErrSaiInvalidRequestingNodeType                 = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
+	ErrSaiInvalidEpsAuthSetListSize                 = errors.New("sai: EpsAuthenticationSetList size must be at most 5 entries when present")
 
 	ErrPsiMissingIMSI         = errors.New("psi: IMSI is empty")
 	ErrPsiInvalidLMSI         = errors.New("psi: LMSI, if set, must be exactly 4 octets")
@@ -3587,25 +3588,25 @@ var (
 	ErrCamelInvalidMTSMSTPDUType             = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0), sms-SUBMIT-REPORT(1), or sms-STATUS-REPORT(2)")
 
 	// Ext-SS-Info CHOICE / nested SEQUENCE validation
-	ErrExtSSInfoChoiceNoAlternative           = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
-	ErrExtSSInfoChoiceMultipleAlternatives    = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
-	ErrExtSSStatusInvalidSize                 = errors.New("extSSInfo: SsStatus (Ext-SS-Status) must be 1..5 octets")
-	ErrExtForwOptionsInvalidSize              = errors.New("extSSInfo: ForwardingOptions (Ext-ForwOptions) must be 1..5 octets")
-	ErrExtNoRepCondTimeOutOfRange             = errors.New("extSSInfo: NoReplyConditionTime must be 1..100 per Ext-NoRepCondTime")
-	ErrExtForwSubaddressInvalidSize           = errors.New("extSSInfo: ForwardedToSubaddress (ISDN-SubaddressString) must be 1..21 octets")
-	ErrExtForwFeatureListInvalidSize          = errors.New("extSSInfo: ForwardingFeatureList must contain 1..32 entries")
-	ErrExtCallBarFeatureListInvalidSize       = errors.New("extSSInfo: CallBarringFeatureList must contain 1..32 entries")
-	ErrExtBasicServiceGroupListInvalidSize    = errors.New("extSSInfo: BasicServiceGroupList must contain 1..32 entries when present")
-	ErrCUGSubscriptionListInvalidSize         = errors.New("extSSInfo: CugSubscriptionList must contain 0..10 entries")
-	ErrCUGFeatureListInvalidSize              = errors.New("extSSInfo: CugFeatureList must contain 1..32 entries when present")
-	ErrCUGIndexOutOfRange                     = errors.New("extSSInfo: CugIndex must be 0..32767")
-	ErrCUGInterlockInvalidSize                = errors.New("extSSInfo: CugInterlock must be exactly 4 octets")
-	ErrIntraCUGOptionsInvalidValue            = errors.New("extSSInfo: IntraCUGOptions must be noCUG-Restrictions(0), cugIC-CallBarred(1), or cugOG-CallBarred(2)")
+	ErrExtSSInfoChoiceNoAlternative                   = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
+	ErrExtSSInfoChoiceMultipleAlternatives            = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
+	ErrExtSSStatusInvalidSize                         = errors.New("extSSInfo: SsStatus (Ext-SS-Status) must be 1..5 octets")
+	ErrExtForwOptionsInvalidSize                      = errors.New("extSSInfo: ForwardingOptions (Ext-ForwOptions) must be 1..5 octets")
+	ErrExtNoRepCondTimeOutOfRange                     = errors.New("extSSInfo: NoReplyConditionTime must be 1..100 per Ext-NoRepCondTime")
+	ErrExtForwSubaddressInvalidSize                   = errors.New("extSSInfo: ForwardedToSubaddress (ISDN-SubaddressString) must be 1..21 octets")
+	ErrExtForwFeatureListInvalidSize                  = errors.New("extSSInfo: ForwardingFeatureList must contain 1..32 entries")
+	ErrExtCallBarFeatureListInvalidSize               = errors.New("extSSInfo: CallBarringFeatureList must contain 1..32 entries")
+	ErrExtBasicServiceGroupListInvalidSize            = errors.New("extSSInfo: BasicServiceGroupList must contain 1..32 entries when present")
+	ErrCUGSubscriptionListInvalidSize                 = errors.New("extSSInfo: CugSubscriptionList must contain 0..10 entries")
+	ErrCUGFeatureListInvalidSize                      = errors.New("extSSInfo: CugFeatureList must contain 1..32 entries when present")
+	ErrCUGIndexOutOfRange                             = errors.New("extSSInfo: CugIndex must be 0..32767")
+	ErrCUGInterlockInvalidSize                        = errors.New("extSSInfo: CugInterlock must be exactly 4 octets")
+	ErrIntraCUGOptionsInvalidValue                    = errors.New("extSSInfo: IntraCUGOptions must be noCUG-Restrictions(0), cugIC-CallBarred(1), or cugOG-CallBarred(2)")
 	ErrSSSubscriptionOptionChoiceNoAlternative        = errors.New("extSSInfo: SsSubscriptionOption requires exactly one of CliRestriction or Override")
-	ErrSSSubscriptionOptionChoiceMultipleAlternatives  = errors.New("extSSInfo: SsSubscriptionOption may only have one of CliRestriction or Override set")
-	ErrCliRestrictionOptionInvalidValue       = errors.New("extSSInfo: CliRestrictionOption must be permanent(0), temporaryDefaultRestricted(1), or temporaryDefaultAllowed(2)")
-	ErrOverrideCategoryInvalidValue           = errors.New("extSSInfo: OverrideCategory must be overrideEnabled(0) or overrideDisabled(1)")
-	ErrEMLPPPriorityOutOfRange                = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
+	ErrSSSubscriptionOptionChoiceMultipleAlternatives = errors.New("extSSInfo: SsSubscriptionOption may only have one of CliRestriction or Override set")
+	ErrCliRestrictionOptionInvalidValue               = errors.New("extSSInfo: CliRestrictionOption must be permanent(0), temporaryDefaultRestricted(1), or temporaryDefaultAllowed(2)")
+	ErrOverrideCategoryInvalidValue                   = errors.New("extSSInfo: OverrideCategory must be overrideEnabled(0) or overrideDisabled(1)")
+	ErrEMLPPPriorityOutOfRange                        = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
 
 	ErrODBDataMissingGeneralData       = errors.New("odbData: OdbGeneralData is mandatory and must be non-nil")
 	ErrZoneCodeInvalidSize             = errors.New("zoneCode: each entry must be exactly 2 octets")
@@ -3630,113 +3631,113 @@ var (
 
 	ErrAdjacentAccessRestrictionListSize = errors.New("adjacentAccessRestrictionDataList: must contain 1..50 entries when present")
 
-	ErrIMSIGroupIdListSize         = errors.New("imsiGroupIdList: must contain 1..50 entries when present")
-	ErrIMSIGroupServiceIDOverflow  = errors.New("imsiGroupId: GroupServiceID must fit in 0..4294967295")
-	ErrLocalGroupIDInvalidSize     = errors.New("imsiGroupId: LocalGroupID must be 1..10 octets per TS 29.002")
+	ErrIMSIGroupIdListSize        = errors.New("imsiGroupIdList: must contain 1..50 entries when present")
+	ErrIMSIGroupServiceIDOverflow = errors.New("imsiGroupId: GroupServiceID must fit in 0..4294967295")
+	ErrLocalGroupIDInvalidSize    = errors.New("imsiGroupId: LocalGroupID must be 1..10 octets per TS 29.002")
 
-	ErrEDRXCycleLengthListSize    = errors.New("eDRXCycleLengthList: must contain 1..8 entries when present")
-	ErrEDRXCycleLengthValueSize   = errors.New("eDRXCycleLength: EDRXCycleLengthValue must be exactly 1 octet per TS 29.002")
+	ErrEDRXCycleLengthListSize  = errors.New("eDRXCycleLengthList: must contain 1..8 entries when present")
+	ErrEDRXCycleLengthValueSize = errors.New("eDRXCycleLength: EDRXCycleLengthValue must be exactly 1 octet per TS 29.002")
 
-	ErrResetIdListSize     = errors.New("resetIdList: must contain 1..50 entries when present")
-	ErrResetIdInvalidSize  = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")
+	ErrResetIdListSize    = errors.New("resetIdList: must contain 1..50 entries when present")
+	ErrResetIdInvalidSize = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")
 
-	ErrPDPContextIdOutOfRange       = errors.New("pdpContext: PdpContextId must be 1..50 (maxNumOfPDP-Contexts) per TS 29.002")
-	ErrPDPTypeInvalidSize           = errors.New("pdpContext: PdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1657")
-	ErrQoSSubscribedInvalidSize     = errors.New("pdpContext: QosSubscribed must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1673 (mandatory tag [18])")
-	ErrExtQoSSubscribedInvalidSize  = errors.New("pdpContext: ExtQoSSubscribed must be 1..9 octets per TS 29.002 MAP-MS-DataTypes.asn:1677")
-	ErrExt2QoSSubscribedInvalidSize = errors.New("pdpContext: Ext2QoSSubscribed must be 1..3 octets per TS 29.002 MAP-MS-DataTypes.asn:1685")
-	ErrExt3QoSSubscribedInvalidSize = errors.New("pdpContext: Ext3QoSSubscribed must be 1..2 octets per TS 29.002 MAP-MS-DataTypes.asn:1690")
-	ErrExt4QoSSubscribedInvalidSize = errors.New("pdpContext: Ext4QoSSubscribed must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1693")
-	ErrExtQoSHierarchyViolated      = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per TS 29.002 MAP-MS-DataTypes.asn:1534-1538 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
-	ErrExtPDPAddressWithoutPDPAddress = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per TS 29.002 MAP-MS-DataTypes.asn:1549")
-	ErrExtPDPTypeInvalidSize        = errors.New("pdpContext: ExtPdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1661")
-	ErrPDPAddressInvalidSize      = errors.New("pdpContext: PdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665")
-	ErrExtPDPAddressInvalidSize   = errors.New("pdpContext: ExtPdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665 (PDP-Address)")
-	ErrPDPChargingCharsInvalidSize = errors.New("pdpContext: PdpChargingCharacteristics must be exactly 2 octets per TS 29.002")
-	ErrAPNOIReplacementInvalidSize = errors.New("apnOIReplacement: must be 9..100 octets per TS 29.002 MAP-MS-DataTypes.asn:1303")
-	ErrFQDNInvalidSize            = errors.New("fqdn: must be 9..255 octets per TS 29.002 MAP-MS-DataTypes.asn:1434")
-	ErrRestorationPriorityInvalidSize = errors.New("pdpContext: RestorationPriority must be exactly 1 octet per TS 29.002")
-	ErrGPRSDataListSize           = errors.New("gprsDataList: must contain 1..50 entries (maxNumOfPDP-Contexts) per TS 29.002")
-	ErrGPRSSubscriptionDataMissingList = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
-	ErrAMBRBandwidthOutOfRange    = errors.New("ambr: bandwidth fields must be non-negative")
-	ErrSIPTOPermissionInvalid     = errors.New("pdpContext: SiptoPermission must be siptoAboveRanAllowed(0) or siptoAboveRanNotAllowed(1)")
+	ErrPDPContextIdOutOfRange             = errors.New("pdpContext: PdpContextId must be 1..50 (maxNumOfPDP-Contexts) per TS 29.002")
+	ErrPDPTypeInvalidSize                 = errors.New("pdpContext: PdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1657")
+	ErrQoSSubscribedInvalidSize           = errors.New("pdpContext: QosSubscribed must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1673 (mandatory tag [18])")
+	ErrExtQoSSubscribedInvalidSize        = errors.New("pdpContext: ExtQoSSubscribed must be 1..9 octets per TS 29.002 MAP-MS-DataTypes.asn:1677")
+	ErrExt2QoSSubscribedInvalidSize       = errors.New("pdpContext: Ext2QoSSubscribed must be 1..3 octets per TS 29.002 MAP-MS-DataTypes.asn:1685")
+	ErrExt3QoSSubscribedInvalidSize       = errors.New("pdpContext: Ext3QoSSubscribed must be 1..2 octets per TS 29.002 MAP-MS-DataTypes.asn:1690")
+	ErrExt4QoSSubscribedInvalidSize       = errors.New("pdpContext: Ext4QoSSubscribed must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1693")
+	ErrExtQoSHierarchyViolated            = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per TS 29.002 MAP-MS-DataTypes.asn:1534-1538 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
+	ErrExtPDPAddressWithoutPDPAddress     = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per TS 29.002 MAP-MS-DataTypes.asn:1549")
+	ErrExtPDPTypeInvalidSize              = errors.New("pdpContext: ExtPdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1661")
+	ErrPDPAddressInvalidSize              = errors.New("pdpContext: PdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665")
+	ErrExtPDPAddressInvalidSize           = errors.New("pdpContext: ExtPdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665 (PDP-Address)")
+	ErrPDPChargingCharsInvalidSize        = errors.New("pdpContext: PdpChargingCharacteristics must be exactly 2 octets per TS 29.002")
+	ErrAPNOIReplacementInvalidSize        = errors.New("apnOIReplacement: must be 9..100 octets per TS 29.002 MAP-MS-DataTypes.asn:1303")
+	ErrFQDNInvalidSize                    = errors.New("fqdn: must be 9..255 octets per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrRestorationPriorityInvalidSize     = errors.New("pdpContext: RestorationPriority must be exactly 1 octet per TS 29.002")
+	ErrGPRSDataListSize                   = errors.New("gprsDataList: must contain 1..50 entries (maxNumOfPDP-Contexts) per TS 29.002")
+	ErrGPRSSubscriptionDataMissingList    = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
+	ErrAMBRBandwidthOutOfRange            = errors.New("ambr: bandwidth fields must be non-negative")
+	ErrSIPTOPermissionInvalid             = errors.New("pdpContext: SiptoPermission must be siptoAboveRanAllowed(0) or siptoAboveRanNotAllowed(1)")
 	ErrSIPTOLocalNetworkPermissionInvalid = errors.New("pdpContext: SiptoLocalNetworkPermission must be siptoAtLocalNetworkAllowed(0) or siptoAtLocalNetworkNotAllowed(1)")
-	ErrLIPAPermissionInvalid      = errors.New("pdpContext: LipaPermission must be lipaProhibited(0), lipaOnly(1), or lipaConditional(2)")
-	ErrNIDDMechanismInvalid       = errors.New("pdpContext: NIDDMechanism must be sGi-based-data-delivery(0) or sCEF-based-data-delivery(1)")
+	ErrLIPAPermissionInvalid              = errors.New("pdpContext: LipaPermission must be lipaProhibited(0), lipaOnly(1), or lipaConditional(2)")
+	ErrNIDDMechanismInvalid               = errors.New("pdpContext: NIDDMechanism must be sGi-based-data-delivery(0) or sCEF-based-data-delivery(1)")
 
-	ErrLSAIdentityInvalidSize       = errors.New("lsaData: LsaIdentity must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1728")
-	ErrLSAAttributesInvalidSize     = errors.New("lsaData: LsaAttributes must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1731")
-	ErrLSADataListSize              = errors.New("lsaDataList: must contain 1..20 entries (maxNumOfLSAs) per TS 29.002")
+	ErrLSAIdentityInvalidSize        = errors.New("lsaData: LsaIdentity must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1728")
+	ErrLSAAttributesInvalidSize      = errors.New("lsaData: LsaAttributes must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1731")
+	ErrLSADataListSize               = errors.New("lsaDataList: must contain 1..20 entries (maxNumOfLSAs) per TS 29.002")
 	ErrLSAOnlyAccessIndicatorInvalid = errors.New("lsaInformation: LsaOnlyAccessIndicator must be accessOutsideLSAsAllowed(0) or accessOutsideLSAsRestricted(1)")
 
-	ErrPDNTypeInvalidSize           = errors.New("apnConfiguration: PdnType must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1369")
-	ErrQoSClassIdentifierOutOfRange = errors.New("epsQoSSubscribed: QosClassIdentifier must be 1..9 per TS 29.002 MAP-MS-DataTypes.asn:1415")
-	ErrRFSPIDOutOfRange             = errors.New("epsSubscriptionData: RfspId must be 1..MaxRFSPID (256) per TS 29.002 MAP-MS-DataTypes.asn:1306")
-	ErrPDNGWAllocationTypeInvalid   = errors.New("apnConfiguration: PdnGwAllocationType must be static(0) or dynamic(1) per TS 29.002 MAP-MS-DataTypes.asn:1437")
-	ErrPDNConnectionContinuityInvalid = errors.New("apnConfiguration: PdnConnectionContinuity must be 0..2 per TS 29.002 MAP-MS-DataTypes.asn:1356")
+	ErrPDNTypeInvalidSize                  = errors.New("apnConfiguration: PdnType must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1369")
+	ErrQoSClassIdentifierOutOfRange        = errors.New("epsQoSSubscribed: QosClassIdentifier must be 1..9 per TS 29.002 MAP-MS-DataTypes.asn:1415")
+	ErrRFSPIDOutOfRange                    = errors.New("epsSubscriptionData: RfspId must be 1..MaxRFSPID (256) per TS 29.002 MAP-MS-DataTypes.asn:1306")
+	ErrPDNGWAllocationTypeInvalid          = errors.New("apnConfiguration: PdnGwAllocationType must be static(0) or dynamic(1) per TS 29.002 MAP-MS-DataTypes.asn:1437")
+	ErrPDNConnectionContinuityInvalid      = errors.New("apnConfiguration: PdnConnectionContinuity must be 0..2 per TS 29.002 MAP-MS-DataTypes.asn:1356")
 	ErrWLANOffloadabilityIndicationInvalid = errors.New("wlanOffloadability: WLAN-Offloadability-Indication must be notAllowed(0) or allowed(1)")
-	ErrSpecificAPNInfoListSize      = errors.New("specificAPNInfoList: must contain 1..50 entries (maxNumOfSpecificAPNInfos) per TS 29.002")
-	ErrEPSDataListSize              = errors.New("epsDataList: must contain 1..50 entries (maxNumOfAPN-Configurations) per TS 29.002")
-	ErrAPNConfigurationProfileMissingList = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")
+	ErrSpecificAPNInfoListSize             = errors.New("specificAPNInfoList: must contain 1..50 entries (maxNumOfSpecificAPNInfos) per TS 29.002")
+	ErrEPSDataListSize                     = errors.New("epsDataList: must contain 1..50 entries (maxNumOfAPN-Configurations) per TS 29.002")
+	ErrAPNConfigurationProfileMissingList  = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")
 
-	ErrGMLCListSize                       = errors.New("gmlcList: must contain 1..5 entries (maxNumOfGMLC) per TS 29.002")
-	ErrLCSPrivacyExceptionListSize        = errors.New("lcsPrivacyExceptionList: must contain 1..4 entries (maxNumOfPrivacyClass) per TS 29.002")
-	ErrExternalClientListSize             = errors.New("externalClientList: must contain 0..5 entries (maxNumOfExternalClient) per TS 29.002")
-	ErrPLMNClientListSize                 = errors.New("plmnClientList: must contain 1..5 entries (maxNumOfPLMNClient) per TS 29.002")
-	ErrExtExternalClientListSize          = errors.New("extExternalClientList: must contain 1..35 entries (maxNumOfExt-ExternalClient) per TS 29.002")
-	ErrServiceTypeListSize                = errors.New("serviceTypeList: must contain 1..32 entries (maxNumOfServiceType) per TS 29.002")
-	ErrMOLRListSize                       = errors.New("molrList: must contain 1..3 entries (maxNumOfMOLR-Class) per TS 29.002")
-	ErrGMLCRestrictionInvalid             = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
-	ErrNotificationToMSUserInvalid        = errors.New("notificationToMSUser: must be 0..3 per TS 29.002 MAP-MS-DataTypes.asn:2035")
-	ErrLCSClientInternalIDInvalid         = errors.New("plmnClientList: LCSClientInternalID must be 0..4 per TS 29.002 MAP-CommonDataTypes.asn")
-	ErrServiceTypeIdentityRange           = errors.New("serviceType: ServiceTypeIdentity must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
-	ErrLCSPrivacyClassSsCodeInvalidSize   = errors.New("lcsPrivacyClass: SsCode must be exactly 1 octet per TS 29.002 (mandatory SS-Code)")
-	ErrMOLRClassSsCodeInvalidSize         = errors.New("molrClass: SsCode must be exactly 1 octet per TS 29.002 (mandatory SS-Code)")
-	ErrGMLCAddressEmpty                   = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
-	ErrSGSNMtSmsCAMELTDPCriteriaListSize  = errors.New("sgsnCAMELSubscriptionInfo: MtSmsCAMELTDPCriteriaList must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002 MAP-MS-DataTypes.asn:2199")
+	ErrGMLCListSize                      = errors.New("gmlcList: must contain 1..5 entries (maxNumOfGMLC) per TS 29.002")
+	ErrLCSPrivacyExceptionListSize       = errors.New("lcsPrivacyExceptionList: must contain 1..4 entries (maxNumOfPrivacyClass) per TS 29.002")
+	ErrExternalClientListSize            = errors.New("externalClientList: must contain 0..5 entries (maxNumOfExternalClient) per TS 29.002")
+	ErrPLMNClientListSize                = errors.New("plmnClientList: must contain 1..5 entries (maxNumOfPLMNClient) per TS 29.002")
+	ErrExtExternalClientListSize         = errors.New("extExternalClientList: must contain 1..35 entries (maxNumOfExt-ExternalClient) per TS 29.002")
+	ErrServiceTypeListSize               = errors.New("serviceTypeList: must contain 1..32 entries (maxNumOfServiceType) per TS 29.002")
+	ErrMOLRListSize                      = errors.New("molrList: must contain 1..3 entries (maxNumOfMOLR-Class) per TS 29.002")
+	ErrGMLCRestrictionInvalid            = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
+	ErrNotificationToMSUserInvalid       = errors.New("notificationToMSUser: must be 0..3 per TS 29.002 MAP-MS-DataTypes.asn:2035")
+	ErrLCSClientInternalIDInvalid        = errors.New("plmnClientList: LCSClientInternalID must be 0..4 per TS 29.002 MAP-CommonDataTypes.asn")
+	ErrServiceTypeIdentityRange          = errors.New("serviceType: ServiceTypeIdentity must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
+	ErrLCSPrivacyClassSsCodeInvalidSize  = errors.New("lcsPrivacyClass: SsCode must be exactly 1 octet per TS 29.002 (mandatory SS-Code)")
+	ErrMOLRClassSsCodeInvalidSize        = errors.New("molrClass: SsCode must be exactly 1 octet per TS 29.002 (mandatory SS-Code)")
+	ErrGMLCAddressEmpty                  = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
+	ErrSGSNMtSmsCAMELTDPCriteriaListSize = errors.New("sgsnCAMELSubscriptionInfo: MtSmsCAMELTDPCriteriaList must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002 MAP-MS-DataTypes.asn:2199")
 
-	ErrIsdArgNil                       = errors.New("insertSubscriberDataArg: argument must not be nil")
-	ErrIsdResNil                       = errors.New("insertSubscriberDataRes: argument must not be nil")
-	ErrIsdCategoryInvalidSize          = errors.New("insertSubscriberDataArg: Category must be exactly 1 octet per TS 29.002")
-	ErrIsdChargingCharsInvalidSize     = errors.New("insertSubscriberDataArg: ChargingCharacteristics must be exactly 2 octets per TS 29.002")
-	ErrIsdCsAllocRetentionInvalidSize  = errors.New("insertSubscriberDataArg: CsAllocationRetentionPriority must be exactly 1 octet per TS 29.002")
-	ErrIsdAgeIndicatorInvalidSize      = errors.New("insertSubscriberDataArg: SuperChargerSupportedInHLR (AgeIndicator) must be 1..6 octets per TS 29.002")
-	ErrIsdBearerServiceCodeSize        = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
-	ErrIsdTeleserviceCodeSize          = errors.New("insertSubscriberDataArg: each Ext-TeleserviceCode must be 1..5 octets per TS 29.002")
-	ErrIsdBearerServiceListSize        = errors.New("insertSubscriberDataArg: BearerServiceList must contain 1..50 entries (maxNumOfBearerServices) per TS 29.002")
-	ErrIsdTeleserviceListSize          = errors.New("insertSubscriberDataArg: TeleserviceList must contain 1..20 entries (maxNumOfTeleservices) per TS 29.002")
-	ErrIsdProvisionedSSListSize        = errors.New("insertSubscriberDataArg: ProvisionedSS must contain 1..30 entries (maxNumOfSS) per TS 29.002 MAP-MS-DataTypes.asn:1508")
-	ErrIsdResSsListSize                = errors.New("insertSubscriberDataRes: SsList entries must each be exactly 1 octet (SS-Code) per TS 29.002")
-	ErrIsdMSISDNDecodedEmpty           = errors.New("insertSubscriberDataArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrIsdIMSIInvalidSize              = errors.New("insertSubscriberDataArg: IMSI must be 3..8 octets per TS 29.002 MAP-CommonDataTypes.asn:327 (TBCD-STRING SIZE 3..8)")
+	ErrIsdArgNil                      = errors.New("insertSubscriberDataArg: argument must not be nil")
+	ErrIsdResNil                      = errors.New("insertSubscriberDataRes: argument must not be nil")
+	ErrIsdCategoryInvalidSize         = errors.New("insertSubscriberDataArg: Category must be exactly 1 octet per TS 29.002")
+	ErrIsdChargingCharsInvalidSize    = errors.New("insertSubscriberDataArg: ChargingCharacteristics must be exactly 2 octets per TS 29.002")
+	ErrIsdCsAllocRetentionInvalidSize = errors.New("insertSubscriberDataArg: CsAllocationRetentionPriority must be exactly 1 octet per TS 29.002")
+	ErrIsdAgeIndicatorInvalidSize     = errors.New("insertSubscriberDataArg: SuperChargerSupportedInHLR (AgeIndicator) must be 1..6 octets per TS 29.002")
+	ErrIsdBearerServiceCodeSize       = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
+	ErrIsdTeleserviceCodeSize         = errors.New("insertSubscriberDataArg: each Ext-TeleserviceCode must be 1..5 octets per TS 29.002")
+	ErrIsdBearerServiceListSize       = errors.New("insertSubscriberDataArg: BearerServiceList must contain 1..50 entries (maxNumOfBearerServices) per TS 29.002")
+	ErrIsdTeleserviceListSize         = errors.New("insertSubscriberDataArg: TeleserviceList must contain 1..20 entries (maxNumOfTeleservices) per TS 29.002")
+	ErrIsdProvisionedSSListSize       = errors.New("insertSubscriberDataArg: ProvisionedSS must contain 1..30 entries (maxNumOfSS) per TS 29.002 MAP-MS-DataTypes.asn:1508")
+	ErrIsdResSsListSize               = errors.New("insertSubscriberDataRes: SsList entries must each be exactly 1 octet (SS-Code) per TS 29.002")
+	ErrIsdMSISDNDecodedEmpty          = errors.New("insertSubscriberDataArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrIsdIMSIInvalidSize             = errors.New("insertSubscriberDataArg: IMSI must be 3..8 octets per TS 29.002 MAP-CommonDataTypes.asn:327 (TBCD-STRING SIZE 3..8)")
 
-	ErrGPRSCamelTDPDataListSize           = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
-	ErrGPRSTriggerDetectionPointInvalid   = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be 1, 2, 11, 12, or 14 per TS 29.002 (extensible enum: unknown values preserved on decode)")
-	ErrDefaultGPRSHandlingInvalid         = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
-	ErrCamelCapabilityHandlingOutOfRange  = errors.New("gprsCSI/mgCSI: CamelCapabilityHandling must be 1..4 per TS 29.078")
-	ErrGPRSCSIRequiresTDPListAndPhase     = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")
-	ErrMobilityTriggersSize               = errors.New("mgCSI: MobilityTriggers must contain 1..10 entries (maxNumOfMobilityTriggers) per TS 29.002")
-	ErrMMCodeInvalidSize                  = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
+	ErrGPRSCamelTDPDataListSize          = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
+	ErrGPRSTriggerDetectionPointInvalid  = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be 1, 2, 11, 12, or 14 per TS 29.002 (extensible enum: unknown values preserved on decode)")
+	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
+	ErrCamelCapabilityHandlingOutOfRange = errors.New("gprsCSI/mgCSI: CamelCapabilityHandling must be 1..4 per TS 29.078")
+	ErrGPRSCSIRequiresTDPListAndPhase    = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")
+	ErrMobilityTriggersSize              = errors.New("mgCSI: MobilityTriggers must contain 1..10 entries (maxNumOfMobilityTriggers) per TS 29.002")
+	ErrMMCodeInvalidSize                 = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
 
-	ErrLocationEstimateTypeInvalid       = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (extensible enum: unknown values preserved on decode)")
-	ErrLCSClientTypeInvalid              = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (extensible enum: unknown values preserved on decode)")
-	ErrLCSFormatIndicatorInvalid         = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
-	ErrPrivacyCheckRelatedActionInvalid  = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:307")
+	ErrLocationEstimateTypeInvalid        = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (extensible enum: unknown values preserved on decode)")
+	ErrLCSClientTypeInvalid               = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (extensible enum: unknown values preserved on decode)")
+	ErrLCSFormatIndicatorInvalid          = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
+	ErrPrivacyCheckRelatedActionInvalid   = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:307")
 	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:457 (extensible enum: unknown values preserved on decode)")
-	ErrResponseTimeCategoryInvalid       = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
-	ErrLCSPriorityInvalidSize            = errors.New("psl: LCSPriority must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:232")
-	ErrLCSReferenceNumberInvalidSize     = errors.New("psl: LCSReferenceNumber must be exactly 1 octet per TS 29.002 MAP-CommonDataTypes.asn (LCS-ReferenceNumber)")
-	ErrHorizontalAccuracyInvalidSize     = errors.New("lcsQoS: HorizontalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:249 (7-bit Uncertainty Code per TS 23.032)")
-	ErrHorizontalAccuracyReservedBit     = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:250 (only the low 7 bits encode the uncertainty code per TS 23.032)")
-	ErrVerticalAccuracyInvalidSize       = errors.New("lcsQoS: VerticalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:255 (7-bit Vertical Uncertainty Code per TS 23.032)")
-	ErrVerticalAccuracyReservedBit       = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:256 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")
-	ErrUSSDDataCodingSchemeInvalidSize   = errors.New("ussd: USSD-DataCodingScheme must be exactly 1 octet on the wire per TS 29.002 MAP-SS-DataTypes.asn (USSD-DataCodingScheme ::= OCTET STRING (SIZE (1)))")
-	ErrLCSCodewordStringSize             = errors.New("lcsCodeword: LcsCodewordString must be 1..20 octets (maxLCSCodewordStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:298")
-	ErrLCSClientNameNameStringSize       = errors.New("lcsClientName: NameString must be 1..63 octets (maxNameStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:210")
-	ErrLCSRequestorIDStringSize          = errors.New("lcsRequestorID: RequestorIDString must be 1..63 octets (maxRequestorIDStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:220")
-	ErrDeferredLocationEventTypeSize     = errors.New("locationType: DeferredLocationEventType BIT STRING must be 1..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:165 (5 named bits, padded to multiple of 8 on the wire)")
-	ErrSupportedGADShapesSize            = errors.New("psl: SupportedGADShapes BIT STRING must be 7..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:280 (7 named bits, padded to multiple of 8 on the wire)")
-	ErrLCSClientIDDialedByMSEmpty        = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
+	ErrResponseTimeCategoryInvalid        = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
+	ErrLCSPriorityInvalidSize             = errors.New("psl: LCSPriority must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:232")
+	ErrLCSReferenceNumberInvalidSize      = errors.New("psl: LCSReferenceNumber must be exactly 1 octet per TS 29.002 MAP-CommonDataTypes.asn (LCS-ReferenceNumber)")
+	ErrHorizontalAccuracyInvalidSize      = errors.New("lcsQoS: HorizontalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:249 (7-bit Uncertainty Code per TS 23.032)")
+	ErrHorizontalAccuracyReservedBit      = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:250 (only the low 7 bits encode the uncertainty code per TS 23.032)")
+	ErrVerticalAccuracyInvalidSize        = errors.New("lcsQoS: VerticalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:255 (7-bit Vertical Uncertainty Code per TS 23.032)")
+	ErrVerticalAccuracyReservedBit        = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:256 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")
+	ErrUSSDDataCodingSchemeInvalidSize    = errors.New("ussd: USSD-DataCodingScheme must be exactly 1 octet on the wire per TS 29.002 MAP-SS-DataTypes.asn (USSD-DataCodingScheme ::= OCTET STRING (SIZE (1)))")
+	ErrLCSCodewordStringSize              = errors.New("lcsCodeword: LcsCodewordString must be 1..20 octets (maxLCSCodewordStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:298")
+	ErrLCSClientNameNameStringSize        = errors.New("lcsClientName: NameString must be 1..63 octets (maxNameStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:210")
+	ErrLCSRequestorIDStringSize           = errors.New("lcsRequestorID: RequestorIDString must be 1..63 octets (maxRequestorIDStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:220")
+	ErrDeferredLocationEventTypeSize      = errors.New("locationType: DeferredLocationEventType BIT STRING must be 1..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:165 (5 named bits, padded to multiple of 8 on the wire)")
+	ErrSupportedGADShapesSize             = errors.New("psl: SupportedGADShapes BIT STRING must be 7..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:280 (7 named bits, padded to multiple of 8 on the wire)")
+	ErrLCSClientIDDialedByMSEmpty         = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
 
 	ErrExtGeographicalInformationSize     = errors.New("psl: ExtGeographicalInformation must be 1..20 octets (maxExt-GeographicalInformation) per TS 29.002 MAP-LCS-DataTypes.asn:462")
 	ErrAddGeographicalInformationSize     = errors.New("psl: AddGeographicalInformation must be 1..91 octets (maxAdd-GeographicalInformation) per TS 29.002 MAP-LCS-DataTypes.asn:601")
@@ -3748,50 +3749,50 @@ var (
 	ErrUtranAdditionalPositioningDataSize = errors.New("psl: UtranAdditionalPositioningData must be 1..8 octets (maxUtranAdditionalPositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:584")
 	ErrUtranBaroPressureMeasOutOfRange    = errors.New("psl: UtranBaroPressureMeas must be 30000..115000 per TS 29.002 MAP-LCS-DataTypes.asn:592")
 
-	ErrAreaTypeInvalid                   = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
-	ErrAreaIdentificationSize            = errors.New("area: AreaIdentification must be 2..7 octets per TS 29.002 MAP-LCS-DataTypes.asn:346")
-	ErrAreaListSize                      = errors.New("areaDefinition: AreaList must contain 1..10 entries (maxNumOfAreas) per TS 29.002 MAP-LCS-DataTypes.asn:328-330")
-	ErrOccurrenceInfoInvalid             = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:361 (extensible enum: unknown values preserved on decode)")
-	ErrIntervalTimeOutOfRange            = errors.New("areaEventInfo: IntervalTime must be 1..32767 seconds per TS 29.002 MAP-LCS-DataTypes.asn:366")
-	ErrReportingAmountOutOfRange         = errors.New("periodicLDRInfo: ReportingAmount must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn:380-382")
-	ErrReportingIntervalOutOfRange       = errors.New("periodicLDRInfo: ReportingInterval must be 1..8639999 seconds (maxReportingInterval) per TS 29.002 MAP-LCS-DataTypes.asn:384-387")
-	ErrPeriodicLDRProductExceeded        = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
-	ErrRANTechnologyInvalid              = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
-	ErrPLMNListSize                      = errors.New("reportingPLMNList: PlmnList must contain 1..20 entries (maxNumOfReportingPLMN) per TS 29.002 MAP-LCS-DataTypes.asn:409-412")
-	ErrTerminationCauseInvalid           = errors.New("deferredmt-lrData: TerminationCause must be 0..9 per TS 29.002 MAP-LCS-DataTypes.asn:696 (extensible enum: unknown values preserved on decode)")
-	ErrServingNodeAddressMultipleAlts    = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
-	ErrServingNodeAddressNoAlt           = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
-	ErrServingNodeAddressMmeNumberSize   = errors.New("servingNodeAddress: MmeNumber must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrAreaTypeInvalid                          = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
+	ErrAreaIdentificationSize                   = errors.New("area: AreaIdentification must be 2..7 octets per TS 29.002 MAP-LCS-DataTypes.asn:346")
+	ErrAreaListSize                             = errors.New("areaDefinition: AreaList must contain 1..10 entries (maxNumOfAreas) per TS 29.002 MAP-LCS-DataTypes.asn:328-330")
+	ErrOccurrenceInfoInvalid                    = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:361 (extensible enum: unknown values preserved on decode)")
+	ErrIntervalTimeOutOfRange                   = errors.New("areaEventInfo: IntervalTime must be 1..32767 seconds per TS 29.002 MAP-LCS-DataTypes.asn:366")
+	ErrReportingAmountOutOfRange                = errors.New("periodicLDRInfo: ReportingAmount must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn:380-382")
+	ErrReportingIntervalOutOfRange              = errors.New("periodicLDRInfo: ReportingInterval must be 1..8639999 seconds (maxReportingInterval) per TS 29.002 MAP-LCS-DataTypes.asn:384-387")
+	ErrPeriodicLDRProductExceeded               = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
+	ErrRANTechnologyInvalid                     = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
+	ErrPLMNListSize                             = errors.New("reportingPLMNList: PlmnList must contain 1..20 entries (maxNumOfReportingPLMN) per TS 29.002 MAP-LCS-DataTypes.asn:409-412")
+	ErrTerminationCauseInvalid                  = errors.New("deferredmt-lrData: TerminationCause must be 0..9 per TS 29.002 MAP-LCS-DataTypes.asn:696 (extensible enum: unknown values preserved on decode)")
+	ErrServingNodeAddressMultipleAlts           = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
+	ErrServingNodeAddressNoAlt                  = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
+	ErrServingNodeAddressMmeNumberSize          = errors.New("servingNodeAddress: MmeNumber must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
 	ErrServingNodeAddressMscNumberDecodedEmpty  = errors.New("servingNodeAddress: present wire MscNumber decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrServingNodeAddressSgsnNumberDecodedEmpty = errors.New("servingNodeAddress: present wire SgsnNumber decoded to empty digits; presence cannot round-trip through string-based API")
 
-	ErrPSLArgNil                         = errors.New("provideSubscriberLocationArg: argument must not be nil")
-	ErrPSLArgMlcNumberEmpty              = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory; empty value is not permitted on encode")
-	ErrPSLArgMlcNumberDecodedEmpty       = errors.New("provideSubscriberLocationArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgMSISDNDecodedEmpty          = errors.New("provideSubscriberLocationArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgIMSIDecodedEmpty            = errors.New("provideSubscriberLocationArg: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgIMSIInvalidSize             = errors.New("provideSubscriberLocationArg: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8 octets per ITU E.212)")
-	ErrPSLArgIMEIDecodedEmpty            = errors.New("provideSubscriberLocationArg: present wire IMEI decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgIMEIInvalidSize             = errors.New("provideSubscriberLocationArg: IMEI must be exactly 15 BCD digits per 3GPP TS 23.003 (TBCD-STRING SIZE 8 octets)")
-	ErrPSLArgLMSIInvalidSize             = errors.New("provideSubscriberLocationArg: LMSI must be exactly 4 octets per TS 29.002 MAP-CommonDataTypes.asn")
-	ErrPSLArgLcsServiceTypeIDOutOfRange  = errors.New("provideSubscriberLocationArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
+	ErrPSLArgNil                        = errors.New("provideSubscriberLocationArg: argument must not be nil")
+	ErrPSLArgMlcNumberEmpty             = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory; empty value is not permitted on encode")
+	ErrPSLArgMlcNumberDecodedEmpty      = errors.New("provideSubscriberLocationArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPSLArgMSISDNDecodedEmpty         = errors.New("provideSubscriberLocationArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPSLArgIMSIDecodedEmpty           = errors.New("provideSubscriberLocationArg: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPSLArgIMSIInvalidSize            = errors.New("provideSubscriberLocationArg: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8 octets per ITU E.212)")
+	ErrPSLArgIMEIDecodedEmpty           = errors.New("provideSubscriberLocationArg: present wire IMEI decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPSLArgIMEIInvalidSize            = errors.New("provideSubscriberLocationArg: IMEI must be exactly 15 BCD digits per 3GPP TS 23.003 (TBCD-STRING SIZE 8 octets)")
+	ErrPSLArgLMSIInvalidSize            = errors.New("provideSubscriberLocationArg: LMSI must be exactly 4 octets per TS 29.002 MAP-CommonDataTypes.asn")
+	ErrPSLArgLcsServiceTypeIDOutOfRange = errors.New("provideSubscriberLocationArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
 
-	ErrPSLResNil                         = errors.New("provideSubscriberLocationRes: argument must not be nil")
-	ErrPSLResLocationEstimateMissing     = errors.New("provideSubscriberLocationRes: LocationEstimate is mandatory; nil/empty value is not permitted on encode")
-	ErrPSLResCellGlobalIdSize            = errors.New("provideSubscriberLocationRes: CellGlobalId must be exactly 7 octets per TS 29.002 MAP-CommonDataTypes.asn (CellGlobalIdOrServiceAreaIdFixedLength)")
-	ErrPSLResLAIInvalidSize              = errors.New("provideSubscriberLocationRes: LAI must be exactly 5 octets per TS 29.002 MAP-CommonDataTypes.asn (LAIFixedLength)")
-	ErrPSLResCellGlobalIdAndLAIMutex     = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set exactly one")
-	ErrPSLResCellIdOrSaiInvalidChoice    = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
+	ErrPSLResNil                      = errors.New("provideSubscriberLocationRes: argument must not be nil")
+	ErrPSLResLocationEstimateMissing  = errors.New("provideSubscriberLocationRes: LocationEstimate is mandatory; nil/empty value is not permitted on encode")
+	ErrPSLResCellGlobalIdSize         = errors.New("provideSubscriberLocationRes: CellGlobalId must be exactly 7 octets per TS 29.002 MAP-CommonDataTypes.asn (CellGlobalIdOrServiceAreaIdFixedLength)")
+	ErrPSLResLAIInvalidSize           = errors.New("provideSubscriberLocationRes: LAI must be exactly 5 octets per TS 29.002 MAP-CommonDataTypes.asn (LAIFixedLength)")
+	ErrPSLResCellGlobalIdAndLAIMutex  = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set exactly one")
+	ErrPSLResCellIdOrSaiInvalidChoice = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 
-	ErrLCSEventInvalid                    = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (extensible enum: unknown values preserved on decode)")
-	ErrSequenceNumberOutOfRange           = errors.New("subscriberLocationReport: SequenceNumber must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn")
-	ErrLCSLocationInfoNetworkNodeEmpty    = errors.New("lcsLocationInfo: NetworkNodeNumber digits are mandatory; empty value is not permitted on encode")
+	ErrLCSEventInvalid                        = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (extensible enum: unknown values preserved on decode)")
+	ErrSequenceNumberOutOfRange               = errors.New("subscriberLocationReport: SequenceNumber must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn")
+	ErrLCSLocationInfoNetworkNodeEmpty        = errors.New("lcsLocationInfo: NetworkNodeNumber digits are mandatory; empty value is not permitted on encode")
 	ErrLCSLocationInfoNetworkNodeDecodedEmpty = errors.New("lcsLocationInfo: present wire NetworkNodeNumber decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrLCSLocationInfoLMSIInvalidSize     = errors.New("lcsLocationInfo: LMSI must be exactly 4 octets per TS 29.002 MAP-CommonDataTypes.asn")
-	ErrLCSLocationInfoMmeNameSize         = errors.New("lcsLocationInfo: MmeName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
-	ErrLCSLocationInfoAaaServerNameSize   = errors.New("lcsLocationInfo: AaaServerName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
-	ErrLCSLocationInfoSgsnNameSize        = errors.New("lcsLocationInfo: SgsnName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
-	ErrLCSLocationInfoSgsnRealmSize       = errors.New("lcsLocationInfo: SgsnRealm must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrLCSLocationInfoLMSIInvalidSize         = errors.New("lcsLocationInfo: LMSI must be exactly 4 octets per TS 29.002 MAP-CommonDataTypes.asn")
+	ErrLCSLocationInfoMmeNameSize             = errors.New("lcsLocationInfo: MmeName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrLCSLocationInfoAaaServerNameSize       = errors.New("lcsLocationInfo: AaaServerName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrLCSLocationInfoSgsnNameSize            = errors.New("lcsLocationInfo: SgsnName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+	ErrLCSLocationInfoSgsnRealmSize           = errors.New("lcsLocationInfo: SgsnRealm must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
 
 	// SubscriberLocationReportArg top-level (TS 29.002 MAP-LCS-DataTypes.asn:622).
 	ErrSLRArgNil                        = errors.New("subscriberLocationReportArg: nil argument is not permitted")

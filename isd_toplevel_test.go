@@ -51,17 +51,17 @@ func TestInsertSubscriberDataArg_NULLFlagsRoundTrip(t *testing.T) {
 	// Exercise the dozen-or-so OPTIONAL NULL bool flags to confirm the
 	// encode/decode pair via boolToNullPtr/nullPtrToBool round-trips.
 	in := &InsertSubscriberDataArg{
-		IMSI:                                      HexBytes{0x12, 0x34, 0x56},
+		IMSI: HexBytes{0x12, 0x34, 0x56},
 		RoamingRestrictionDueToUnsupportedFeature: true,
-		LmuIndicator:                              true,
-		UeReachabilityRequestIndicator:            true,
-		VplmnLIPAAllowed:                          true,
-		PsAndSMSOnlyServiceProvision:              true,
-		SmsInSGSNAllowed:                          true,
-		CsToPsSRVCCAllowedIndicator:               true,
-		PcscfRestorationRequest:                   true,
-		UserPlaneIntegrityProtectionIndicator:     true,
-		IabOperationAllowedIndicator:              true,
+		LmuIndicator:                          true,
+		UeReachabilityRequestIndicator:        true,
+		VplmnLIPAAllowed:                      true,
+		PsAndSMSOnlyServiceProvision:          true,
+		SmsInSGSNAllowed:                      true,
+		CsToPsSRVCCAllowedIndicator:           true,
+		PcscfRestorationRequest:               true,
+		UserPlaneIntegrityProtectionIndicator: true,
+		IabOperationAllowedIndicator:          true,
 	}
 	encoded, err := in.Marshal()
 	if err != nil {

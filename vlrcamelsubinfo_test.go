@@ -11,8 +11,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/google/go-cmp/cmp"
 )
 
 // gsmMapDefaultSMSHandling is a test helper for injecting spec-invalid

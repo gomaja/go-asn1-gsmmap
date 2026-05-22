@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The tshark_harness/ directory is a separate, local-only module
+# (its own go.mod, gitignored test files) and is intentionally not built
+# or tested in CI.
+
+jobs:
+  build-test:
+    name: build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: true
+      - name: Build
+        run: go build ./...
+      - name: Test
+        run: go test ./... -count=1
+      - name: Vet
+        run: go vet ./...
+
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache: true
+      - name: golangci-lint
+        # action v7 is required to install golangci-lint v2 (v6 only
+        # supports the v1 series).
+        uses: golangci/golangci-lint-action@v7
+        with:
+          # v2 is required: the module targets go 1.25 and golangci-lint
+          # refuses to run when its own build Go version is older than the
+          # module's go directive (the final v1 release, v1.64.8, is built
+          # with go1.24).
+          version: v2.12.2

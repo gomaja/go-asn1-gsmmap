@@ -3,9 +3,9 @@ package gsmmap
 import (
 	"fmt"
 
-	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
+	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // --- UpdateLocation ---

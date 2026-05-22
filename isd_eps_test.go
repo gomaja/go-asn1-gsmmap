@@ -153,10 +153,10 @@ func makeAPNConfiguration() APNConfiguration {
 	pdnCC := PDNConnectionMaintain
 	eutranWLAN := WLANOffloadabilityAllowed
 	return APNConfiguration{
-		ContextId: 1,
-		PdnType:   HexBytes{0x01},
+		ContextId:                1,
+		PdnType:                  HexBytes{0x01},
 		ServedPartyIPIPv4Address: HexBytes{0x0a, 0x01, 0x02, 0x03},
-		Apn:       HexBytes("internet.apn"),
+		Apn:                      HexBytes("internet.apn"),
 		EpsQosSubscribed: EPSQoSSubscribed{
 			QosClassIdentifier: 5,
 			AllocationRetentionPriority: AllocationRetentionPriority{
@@ -350,9 +350,9 @@ func TestEPSSubscriptionData_FullRoundTrip(t *testing.T) {
 			DefaultContext: 1,
 			EpsDataList:    EPSDataList{makeAPNConfiguration()},
 		},
-		StnSr:       "12345",
-		StnSrNature: 0x10, // International (pre-shifted)
-		StnSrPlan:   0x01, // ISDN
+		StnSr:            "12345",
+		StnSrNature:      0x10, // International (pre-shifted)
+		StnSrPlan:        0x01, // ISDN
 		MpsCSPriority:    true,
 		MpsEPSPriority:   true,
 		SubscribedVsrvcc: true,

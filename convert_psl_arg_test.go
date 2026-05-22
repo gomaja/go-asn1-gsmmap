@@ -239,8 +239,8 @@ func TestProvideSubscriberLocationArgLMSISizeValidation(t *testing.T) {
 func TestProvideSubscriberLocationArgLcsServiceTypeIDOutOfRange(t *testing.T) {
 	bad := int64(128)
 	a := &ProvideSubscriberLocationArg{
-		LocationType:     LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
-		MlcNumber:        "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LcsServiceTypeID: &bad,
 	}
 	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgLcsServiceTypeIDOutOfRange) {
@@ -258,7 +258,7 @@ func TestProvideSubscriberLocationArgLcsPrioritySizeValidation(t *testing.T) {
 	a := &ProvideSubscriberLocationArg{
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
-		LcsPriority:  LCSPriority{0x01, 0x02}, // 2 octets — must be 1
+		LcsPriority: LCSPriority{0x01, 0x02}, // 2 octets — must be 1
 	}
 	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrLCSPriorityInvalidSize) {
 		t.Errorf("LcsPriority=2 octets: want ErrLCSPriorityInvalidSize, got %v", err)
@@ -267,8 +267,8 @@ func TestProvideSubscriberLocationArgLcsPrioritySizeValidation(t *testing.T) {
 
 func TestProvideSubscriberLocationArgLcsReferenceNumberSizeValidation(t *testing.T) {
 	a := &ProvideSubscriberLocationArg{
-		LocationType:       LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
-		MlcNumber:          "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
+		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
+		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LcsReferenceNumber: LCSReferenceNumber{0x01, 0x02}, // 2 octets — must be 1
 	}
 	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrLCSReferenceNumberInvalidSize) {

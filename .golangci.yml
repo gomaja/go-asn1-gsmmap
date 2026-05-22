@@ -1,0 +1,39 @@
+# golangci-lint configuration (v2 schema).
+#
+# Primary goal: keep the tree gofmt-clean. Before this config `gofmt` was
+# never enforced and formatting drift accumulated across the package. The
+# `gofmt` formatter is the gate that prevents that regression.
+#
+# This config stays close to golangci-lint's defaults (errcheck, govet,
+# ineffassign, staticcheck, unused) and only adds the `gofmt` formatter.
+# Additional linters such as gosec and misspell surface pre-existing
+# findings that are out of scope for a formatting pass; they can be
+# enabled in a follow-up that also resolves their findings.
+#
+# v2 requires a build of golangci-lint compiled with Go >= the module's
+# go directive (1.25), so CI pins a v2 release (see .github/workflows).
+
+version: "2"
+
+linters:
+  default: standard
+  exclusions:
+    rules:
+      # QF1001 is a staticcheck "quickfix" simplification (De Morgan's
+      # law) that flags a pre-existing call site unrelated to this
+      # formatting pass. The simplification can be applied in a separate
+      # follow-up; excluding it keeps this gofmt-focused gate from
+      # failing on unrelated style nits.
+      - linters:
+          - staticcheck
+        text: "QF1001"
+
+issues:
+  # Report every finding (golangci-lint otherwise caps at 3 per linter /
+  # per source line), so a clean run is genuinely clean.
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt # enforce gofmt formatting — the reason this config exists

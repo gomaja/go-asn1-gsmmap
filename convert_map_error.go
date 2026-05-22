@@ -11,8 +11,8 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // ============================================================================

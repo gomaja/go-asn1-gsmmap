@@ -3,8 +3,8 @@ package gsmmap
 import (
 	"fmt"
 
-	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
+	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // --- SRI-SM ---
@@ -31,7 +31,7 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 
 	arg := &gsm_map.RoutingInfoForSMArg{
 		Msisdn:               gsm_map.ISDNAddressString(msisdn),
-		SmRPPRI:               s.SmRpPri,
+		SmRPPRI:              s.SmRpPri,
 		ServiceCentreAddress: gsm_map.AddressString(sca),
 	}
 

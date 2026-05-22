@@ -10,9 +10,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/google/go-cmp/cmp"
 )
 
 // gsmMapEmptyZoneCodeList returns a non-nil, zero-length wire ZoneCodeList
