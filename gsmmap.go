@@ -3218,6 +3218,41 @@ type SubscriberLocationReportArg struct {
 }
 
 // ============================================================================
+// SubscriberLocationReportRes — TS 29.002 MAP-LCS-DataTypes.asn:691
+// ============================================================================
+
+// SubscriberLocationReportRes represents a SubscriberLocationReport
+// response (opCode 86) per TS 29.002 MAP-LCS-DataTypes.asn:691. Sent by
+// the GMLC back to the reporting node to acknowledge the report and,
+// for emergency calls, return the routing identifiers it assigned.
+//
+// Every field is optional; an empty response (all fields absent) is a
+// valid acknowledgement. NaESRK and NaESRD are independent optional
+// fields (not a CHOICE) and may both be present.
+//
+// Fields follow the package-wide conventions:
+//   - String fields (NaESRK, NaESRD, HGmlcAddress): "" = absent.
+//   - HexBytes fields (LcsReferenceNumber): nil/empty = absent.
+//   - Pointer fields (ReportingPLMNList): nil = absent.
+//   - bool NULL flag (MoLrShortCircuitIndicator): false = absent.
+//
+// ExtensionContainer is opaque metadata not surfaced; dropped on decode,
+// emitted as absent on encode.
+type SubscriberLocationReportRes struct {
+	NaESRK       string // [0] North-American Emergency Service Routing Key; "" = absent
+	NaESRKNature uint8
+	NaESRKPlan   uint8
+	NaESRD       string // [1] North-American Emergency Service Routing Digits; "" = absent
+	NaESRDNature uint8
+	NaESRDPlan   uint8
+
+	HGmlcAddress              string             // [2] GSN-Address as IP string (built via gsn.Build); "" = absent
+	MoLrShortCircuitIndicator bool               // [3] NULL flag
+	ReportingPLMNList         *ReportingPLMNList // [4]
+	LcsReferenceNumber        LCSReferenceNumber // [5] 1 octet
+}
+
+// ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================
 
@@ -3725,4 +3760,9 @@ var (
 	ErrSLRArgNaESRKDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgLcsServiceTypeIDOutOfRange = errors.New("subscriberLocationReportArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
 	ErrSLRArgCellGlobalIdAndLAIMutex    = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (both empty omits the optional field)")
+
+	// SubscriberLocationReportRes top-level (TS 29.002 MAP-LCS-DataTypes.asn:691).
+	ErrSLRResNil                = errors.New("subscriberLocationReportRes: nil argument is not permitted")
+	ErrSLRResNaESRKDecodedEmpty = errors.New("subscriberLocationReportRes: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRResNaESRDDecodedEmpty = errors.New("subscriberLocationReportRes: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
 )
