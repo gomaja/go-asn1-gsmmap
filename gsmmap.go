@@ -3140,6 +3140,84 @@ type DeferredmtLrData struct {
 }
 
 // ============================================================================
+// SubscriberLocationReportArg — TS 29.002 MAP-LCS-DataTypes.asn:622
+// ============================================================================
+
+// SubscriberLocationReportArg represents a SubscriberLocationReport
+// request (opCode 86) per TS 29.002 MAP-LCS-DataTypes.asn:622. Sent
+// from the MSC/SGSN/MME (or GMLC) to report a computed location.
+//
+// Mandatory fields: LcsEvent, LcsClientID, LcsLocationInfo. Per spec,
+// one of MSISDN or IMSI must also be present — that cross-field
+// invariant is the caller's responsibility (the encoder does not
+// reject its absence, since intermediaries may relay partial data).
+//
+// Optional fields follow the package-wide conventions:
+//   - String fields (MSISDN, IMSI, IMEI, NaESRD, NaESRK, HGmlcAddress):
+//     "" = absent.
+//   - Pointer fields: nil = absent.
+//   - HexBytes fields: nil/empty = absent.
+//   - bool NULL flags: false = absent, true = present.
+//
+// CellIdOrSai is an optional CHOICE between CGI/SAI (7 octets) and LAI
+// (5 octets); set at most one of CellGlobalId or LAI on encode (leaving
+// both empty omits the field), matching the PSL-Res pattern.
+// SlrArgExtensionContainer (tag [7]) is opaque metadata not surfaced;
+// dropped on decode, emitted as absent on encode.
+type SubscriberLocationReportArg struct {
+	// Mandatory.
+	LcsEvent        LCSEvent
+	LcsClientID     LCSClientID
+	LcsLocationInfo LCSLocationInfo
+
+	// Optional subscriber identity.
+	MSISDN       string // [0] ISDN-AddressString digits; "" = absent
+	MSISDNNature uint8
+	MSISDNPlan   uint8
+	IMSI         string // [1] TBCD-decoded digits; "" = absent (5..15 BCD digits)
+	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 BCD digits)
+
+	// Optional emergency-services routing identifiers (ISDN-AddressString).
+	NaESRD       string // [3] North-American Emergency Service Routing Digits; "" = absent
+	NaESRDNature uint8
+	NaESRDPlan   uint8
+	NaESRK       string // [4] North-American Emergency Service Routing Key; "" = absent
+	NaESRKNature uint8
+	NaESRKPlan   uint8
+
+	// Optional location data.
+	LocationEstimate      ExtGeographicalInformation // [5] 1..20 octets
+	AgeOfLocationEstimate *int64                     // [6] minutes
+	AddLocationEstimate   AddGeographicalInformation // [8] 1..91 octets
+	DeferredmtLrData      *DeferredmtLrData          // [9]
+	LcsReferenceNumber    LCSReferenceNumber         // [10] 1 octet
+	GeranPositioningData  PositioningDataInformation // [11] 2..10 octets
+	UtranPositioningData  UtranPositioningDataInfo   // [12] 3..11 octets
+
+	// CellIdOrSai CHOICE [13] (explicit, optional). Set at most one of
+	// CellGlobalId or LAI; leaving both empty omits the field.
+	CellGlobalId HexBytes // CGI or SAI fixed-length 7 octets
+	LAI          HexBytes // LAI fixed-length 5 octets
+
+	HGmlcAddress     string // [14] GSN-Address as IP string (built via gsn.Build); "" = absent
+	LcsServiceTypeID *int64 // [15] 0..127
+
+	SaiPresent                     bool                           // [17] NULL flag
+	PseudonymIndicator             bool                           // [18] NULL flag
+	AccuracyFulfilmentIndicator    *AccuracyFulfilmentIndicator   // [19] extensible enum
+	VelocityEstimate               VelocityEstimate               // [20] 4..7 octets
+	SequenceNumber                 *SequenceNumber                // [21] 1..8639999
+	PeriodicLDRInfo                *PeriodicLDRInfo               // [22]
+	MoLrShortCircuitIndicator      bool                           // [23] NULL flag
+	GeranGANSSpositioningData      GeranGANSSpositioningData      // [24] 2..10 octets
+	UtranGANSSpositioningData      UtranGANSSpositioningData      // [25] 1..9 octets
+	TargetServingNodeForHandover   *ServingNodeAddress            // [26] explicit CHOICE
+	UtranAdditionalPositioningData UtranAdditionalPositioningData // [27] 1..8 octets
+	UtranBaroPressureMeas          *UtranBaroPressureMeas         // [28] INTEGER 30000..115000
+	UtranCivicAddress              UtranCivicAddress              // [29] CivicAddress per TS 25.413
+}
+
+// ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================
 
@@ -3635,4 +3713,16 @@ var (
 	ErrLCSLocationInfoAaaServerNameSize   = errors.New("lcsLocationInfo: AaaServerName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
 	ErrLCSLocationInfoSgsnNameSize        = errors.New("lcsLocationInfo: SgsnName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
 	ErrLCSLocationInfoSgsnRealmSize       = errors.New("lcsLocationInfo: SgsnRealm must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
+
+	// SubscriberLocationReportArg top-level (TS 29.002 MAP-LCS-DataTypes.asn:622).
+	ErrSLRArgNil                        = errors.New("subscriberLocationReportArg: nil argument is not permitted")
+	ErrSLRArgIMSIInvalidSize            = errors.New("subscriberLocationReportArg: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8)")
+	ErrSLRArgIMSIDecodedEmpty           = errors.New("subscriberLocationReportArg: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgIMEIInvalidSize            = errors.New("subscriberLocationReportArg: IMEI must be exactly 15 BCD digits per 3GPP TS 23.003")
+	ErrSLRArgIMEIDecodedEmpty           = errors.New("subscriberLocationReportArg: present wire IMEI decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgMSISDNDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgNaESRDDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgNaESRKDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgLcsServiceTypeIDOutOfRange = errors.New("subscriberLocationReportArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
+	ErrSLRArgCellGlobalIdAndLAIMutex    = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (both empty omits the optional field)")
 )
