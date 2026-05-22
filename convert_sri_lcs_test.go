@@ -9,6 +9,7 @@ package gsmmap
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
@@ -248,7 +249,6 @@ func TestSriLcsRespEncodeNegative(t *testing.T) {
 		{"nil res", nil, ErrSriLcsRespNil},
 		{"no target identity", func(r *SriLcsResp) { r.TargetMS = SubscriberIdentity{} }, ErrSubscriberIdentityNoAlt},
 		{"empty LcsLocationInfo node", func(r *SriLcsResp) { r.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeEmpty},
-		{"invalid GSN address", func(r *SriLcsResp) { r.HGmlcAddress = "not-an-ip" }, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -258,15 +258,25 @@ func TestSriLcsRespEncodeNegative(t *testing.T) {
 				tc.mut(in)
 			}
 			_, err := convertSriLcsRespToRes(in)
-			if tc.want == nil {
-				if err == nil {
-					t.Errorf("want an error, got nil")
-				}
-				return
-			}
 			if !errors.Is(err, tc.want) {
 				t.Errorf("want %v, got %v", tc.want, err)
 			}
 		})
+	}
+}
+
+// TestSriLcsRespInvalidGSNAddress: gsn.Build returns a plain (un-wrapped)
+// error for a malformed IP, so there is no sentinel to assert via
+// errors.Is. Instead verify the converter attributes the failure to the
+// right field via its wrapping context.
+func TestSriLcsRespInvalidGSNAddress(t *testing.T) {
+	in := minimalSriLcsResp()
+	in.HGmlcAddress = "not-an-ip"
+	_, err := convertSriLcsRespToRes(in)
+	if err == nil {
+		t.Fatal("want an error for malformed GSN address, got nil")
+	}
+	if !strings.Contains(err.Error(), "SriLcsResp.HGmlcAddress") {
+		t.Errorf("error should name the offending field; got %v", err)
 	}
 }
