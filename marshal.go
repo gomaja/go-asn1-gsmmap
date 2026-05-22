@@ -390,3 +390,31 @@ func (r *SubscriberLocationReportRes) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes SendRoutingInfoForLCS-Arg (opCode 85) into
+// BER-encoded bytes.
+func (s *SriLcs) Marshal() ([]byte, error) {
+	arg, err := convertSriLcsToArg(s)
+	if err != nil {
+		return nil, fmt.Errorf("converting SriLcs: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding RoutingInfoForLCSArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes SendRoutingInfoForLCS-Res (opCode 85) into
+// BER-encoded bytes.
+func (s *SriLcsResp) Marshal() ([]byte, error) {
+	res, err := convertSriLcsRespToRes(s)
+	if err != nil {
+		return nil, fmt.Errorf("converting SriLcsResp: %w", err)
+	}
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding RoutingInfoForLCSRes: %w", err)
+	}
+	return data, nil
+}

@@ -293,3 +293,23 @@ func ParseSubscriberLocationReportRes(data []byte) (*SubscriberLocationReportRes
 	}
 	return convertWireToSubscriberLocationReportRes(&res)
 }
+
+// ParseSriLcs decodes BER-encoded bytes into a SendRoutingInfoForLCS-Arg
+// (SriLcs, opCode 85).
+func ParseSriLcs(data []byte) (*SriLcs, error) {
+	var arg gsm_map.RoutingInfoForLCSArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding RoutingInfoForLCSArg: %w", err)
+	}
+	return convertArgToSriLcs(&arg)
+}
+
+// ParseSriLcsResp decodes BER-encoded bytes into a
+// SendRoutingInfoForLCS-Res (SriLcsResp, opCode 85).
+func ParseSriLcsResp(data []byte) (*SriLcsResp, error) {
+	var res gsm_map.RoutingInfoForLCSRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding RoutingInfoForLCSRes: %w", err)
+	}
+	return convertResToSriLcsResp(&res)
+}
