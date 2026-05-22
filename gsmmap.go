@@ -3159,10 +3159,11 @@ type DeferredmtLrData struct {
 //   - HexBytes fields: nil/empty = absent.
 //   - bool NULL flags: false = absent, true = present.
 //
-// CellIdOrSai is a CHOICE between CGI/SAI (7 octets) and LAI (5 octets);
-// set exactly one of CellGlobalId or LAI on encode (matching the PSL-Res
-// pattern). SlrArgExtensionContainer (tag [7]) is opaque metadata not
-// surfaced; dropped on decode, emitted as absent on encode.
+// CellIdOrSai is an optional CHOICE between CGI/SAI (7 octets) and LAI
+// (5 octets); set at most one of CellGlobalId or LAI on encode (leaving
+// both empty omits the field), matching the PSL-Res pattern.
+// SlrArgExtensionContainer (tag [7]) is opaque metadata not surfaced;
+// dropped on decode, emitted as absent on encode.
 type SubscriberLocationReportArg struct {
 	// Mandatory.
 	LcsEvent        LCSEvent
@@ -3193,7 +3194,8 @@ type SubscriberLocationReportArg struct {
 	GeranPositioningData  PositioningDataInformation // [11] 2..10 octets
 	UtranPositioningData  UtranPositioningDataInfo   // [12] 3..11 octets
 
-	// CellIdOrSai CHOICE [13] (explicit). Set exactly one of:
+	// CellIdOrSai CHOICE [13] (explicit, optional). Set at most one of
+	// CellGlobalId or LAI; leaving both empty omits the field.
 	CellGlobalId HexBytes // CGI or SAI fixed-length 7 octets
 	LAI          HexBytes // LAI fixed-length 5 octets
 
@@ -3722,5 +3724,5 @@ var (
 	ErrSLRArgNaESRDDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgNaESRKDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgLcsServiceTypeIDOutOfRange = errors.New("subscriberLocationReportArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
-	ErrSLRArgCellGlobalIdAndLAIMutex    = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set exactly one")
+	ErrSLRArgCellGlobalIdAndLAIMutex    = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (both empty omits the optional field)")
 )
