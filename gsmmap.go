@@ -3253,6 +3253,50 @@ type SubscriberLocationReportRes struct {
 }
 
 // ============================================================================
+// SendRoutingInfoForLCS — TS 29.002 MAP-LCS-DataTypes.asn:603
+// ============================================================================
+
+// SriLcs represents a SendRoutingInfoForLCS request (opCode 85) per
+// TS 29.002 MAP-LCS-DataTypes.asn:603 (RoutingInfoForLCS-Arg). Sent from
+// the GMLC to the HLR to locate the serving node (MSC/SGSN/MME) of a
+// target subscriber before a location request, and to learn the
+// applicable GMLC/PPR addresses.
+//
+// Both fields are mandatory:
+//   - MlcNumber: the requesting GMLC's ISDN-AddressString.
+//   - TargetMS:  SubscriberIdentity CHOICE — set exactly one of IMSI or
+//     MSISDN.
+//
+// ExtensionContainer (tag [2]) is opaque metadata not surfaced; dropped
+// on decode, emitted as absent on encode.
+type SriLcs struct {
+	MlcNumber       string // mandatory ISDN-AddressString digits
+	MlcNumberNature uint8
+	MlcNumberPlan   uint8
+	TargetMS        SubscriberIdentity // mandatory CHOICE (IMSI or MSISDN)
+}
+
+// SriLcsResp represents a SendRoutingInfoForLCS response (opCode 85) per
+// TS 29.002 MAP-LCS-DataTypes.asn:610 (RoutingInfoForLCS-Res). Returned
+// by the HLR with the target's serving-node location info and the
+// GMLC/PPR addresses involved in the location procedure.
+//
+// Mandatory: TargetMS (echoed back) and LcsLocationInfo (the serving
+// node). The four GMLC/PPR addresses are optional GSN-Address fields
+// surfaced as IP strings ("" = absent), built/parsed via the gsn helper.
+//
+// ExtensionContainer (tag [2]) is opaque metadata not surfaced.
+type SriLcsResp struct {
+	TargetMS        SubscriberIdentity // [0] mandatory CHOICE (IMSI or MSISDN)
+	LcsLocationInfo LCSLocationInfo    // [1] mandatory
+
+	VGmlcAddress           string // [3] GSN-Address as IP string; "" = absent
+	HGmlcAddress           string // [4] GSN-Address as IP string; "" = absent
+	PprAddress             string // [5] GSN-Address as IP string; "" = absent
+	AdditionalVGmlcAddress string // [6] GSN-Address as IP string; "" = absent
+}
+
+// ============================================================================
 // SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
 // ============================================================================
 
@@ -3765,4 +3809,17 @@ var (
 	ErrSLRResNil                = errors.New("subscriberLocationReportRes: nil argument is not permitted")
 	ErrSLRResNaESRKDecodedEmpty = errors.New("subscriberLocationReportRes: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRResNaESRDDecodedEmpty = errors.New("subscriberLocationReportRes: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
+
+	// SubscriberIdentity CHOICE (TS 29.002 MAP-CommonDataTypes.asn).
+	ErrSubscriberIdentityNoAlt              = errors.New("subscriberIdentity: exactly one of IMSI or MSISDN must be set (CHOICE); neither was provided")
+	ErrSubscriberIdentityMultipleAlts       = errors.New("subscriberIdentity: exactly one of IMSI or MSISDN must be set (CHOICE); both were provided")
+	ErrSubscriberIdentityIMSIDecodedEmpty   = errors.New("subscriberIdentity: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSubscriberIdentityMSISDNDecodedEmpty = errors.New("subscriberIdentity: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSubscriberIdentityUnknownChoice      = errors.New("subscriberIdentity: CHOICE has unknown or empty selected alternative on the wire; cannot decode")
+
+	// SendRoutingInfoForLCS top-level (TS 29.002 MAP-LCS-DataTypes.asn:603).
+	ErrSriLcsNil                   = errors.New("sriLcs: nil argument is not permitted")
+	ErrSriLcsMlcNumberEmpty        = errors.New("sriLcs: MlcNumber digits are mandatory; empty value is not permitted on encode")
+	ErrSriLcsMlcNumberDecodedEmpty = errors.New("sriLcs: present wire MlcNumber decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriLcsRespNil               = errors.New("sriLcsResp: nil argument is not permitted")
 )
