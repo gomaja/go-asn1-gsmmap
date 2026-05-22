@@ -58,15 +58,15 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	out := &gsm_map.InsertSubscriberDataArg{
 		RoamingRestrictionDueToUnsupportedFeature:      boolToNullPtr(a.RoamingRestrictionDueToUnsupportedFeature),
 		RoamingRestrictedInSgsnDueToUnsupportedFeature: boolToNullPtr(a.RoamingRestrictedInSgsnDueToUnsupportedFeature),
-		LmuIndicator:                                   boolToNullPtr(a.LmuIndicator),
-		UeReachabilityRequestIndicator:                 boolToNullPtr(a.UeReachabilityRequestIndicator),
-		VplmnLIPAAllowed:                               boolToNullPtr(a.VplmnLIPAAllowed),
-		PsAndSMSOnlyServiceProvision:                   boolToNullPtr(a.PsAndSMSOnlyServiceProvision),
-		SmsInSGSNAllowed:                               boolToNullPtr(a.SmsInSGSNAllowed),
-		CsToPsSRVCCAllowedIndicator:                    boolToNullPtr(a.CsToPsSRVCCAllowedIndicator),
-		PcscfRestorationRequest:                        boolToNullPtr(a.PcscfRestorationRequest),
-		UserPlaneIntegrityProtectionIndicator:          boolToNullPtr(a.UserPlaneIntegrityProtectionIndicator),
-		IabOperationAllowedIndicator:                   boolToNullPtr(a.IabOperationAllowedIndicator),
+		LmuIndicator:                          boolToNullPtr(a.LmuIndicator),
+		UeReachabilityRequestIndicator:        boolToNullPtr(a.UeReachabilityRequestIndicator),
+		VplmnLIPAAllowed:                      boolToNullPtr(a.VplmnLIPAAllowed),
+		PsAndSMSOnlyServiceProvision:          boolToNullPtr(a.PsAndSMSOnlyServiceProvision),
+		SmsInSGSNAllowed:                      boolToNullPtr(a.SmsInSGSNAllowed),
+		CsToPsSRVCCAllowedIndicator:           boolToNullPtr(a.CsToPsSRVCCAllowedIndicator),
+		PcscfRestorationRequest:               boolToNullPtr(a.PcscfRestorationRequest),
+		UserPlaneIntegrityProtectionIndicator: boolToNullPtr(a.UserPlaneIntegrityProtectionIndicator),
+		IabOperationAllowedIndicator:          boolToNullPtr(a.IabOperationAllowedIndicator),
 	}
 
 	if len(a.IMSI) > 0 {
@@ -342,15 +342,15 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 	out := &InsertSubscriberDataArg{
 		RoamingRestrictionDueToUnsupportedFeature:      nullPtrToBool(w.RoamingRestrictionDueToUnsupportedFeature),
 		RoamingRestrictedInSgsnDueToUnsupportedFeature: nullPtrToBool(w.RoamingRestrictedInSgsnDueToUnsupportedFeature),
-		LmuIndicator:                                   nullPtrToBool(w.LmuIndicator),
-		UeReachabilityRequestIndicator:                 nullPtrToBool(w.UeReachabilityRequestIndicator),
-		VplmnLIPAAllowed:                               nullPtrToBool(w.VplmnLIPAAllowed),
-		PsAndSMSOnlyServiceProvision:                   nullPtrToBool(w.PsAndSMSOnlyServiceProvision),
-		SmsInSGSNAllowed:                               nullPtrToBool(w.SmsInSGSNAllowed),
-		CsToPsSRVCCAllowedIndicator:                    nullPtrToBool(w.CsToPsSRVCCAllowedIndicator),
-		PcscfRestorationRequest:                        nullPtrToBool(w.PcscfRestorationRequest),
-		UserPlaneIntegrityProtectionIndicator:          nullPtrToBool(w.UserPlaneIntegrityProtectionIndicator),
-		IabOperationAllowedIndicator:                   nullPtrToBool(w.IabOperationAllowedIndicator),
+		LmuIndicator:                          nullPtrToBool(w.LmuIndicator),
+		UeReachabilityRequestIndicator:        nullPtrToBool(w.UeReachabilityRequestIndicator),
+		VplmnLIPAAllowed:                      nullPtrToBool(w.VplmnLIPAAllowed),
+		PsAndSMSOnlyServiceProvision:          nullPtrToBool(w.PsAndSMSOnlyServiceProvision),
+		SmsInSGSNAllowed:                      nullPtrToBool(w.SmsInSGSNAllowed),
+		CsToPsSRVCCAllowedIndicator:           nullPtrToBool(w.CsToPsSRVCCAllowedIndicator),
+		PcscfRestorationRequest:               nullPtrToBool(w.PcscfRestorationRequest),
+		UserPlaneIntegrityProtectionIndicator: nullPtrToBool(w.UserPlaneIntegrityProtectionIndicator),
+		IabOperationAllowedIndicator:          nullPtrToBool(w.IabOperationAllowedIndicator),
 	}
 
 	if w.Imsi != nil {

@@ -6,8 +6,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/gomaja/go-asn1-gsmmap/address"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestSriTypesCompile(t *testing.T) {
@@ -427,16 +427,16 @@ func TestSriFullStressRoundTrip(t *testing.T) {
 		InterrogationType:   InterrogationForwarding,
 		GmscOrGsmSCFAddress: "31201111111",
 
-		CugCheckInfo:       &CugCheckInfo{CugInterlock: HexBytes{0x01, 0x02, 0x03, 0x04}, CugOutgoingAccess: true},
-		NumberOfForwarding: &nof,
-		OrInterrogation:    true,
-		OrCapability:       &orCap,
+		CugCheckInfo:        &CugCheckInfo{CugInterlock: HexBytes{0x01, 0x02, 0x03, 0x04}, CugOutgoingAccess: true},
+		NumberOfForwarding:  &nof,
+		OrInterrogation:     true,
+		OrCapability:        &orCap,
 		CallReferenceNumber: HexBytes{0xAA, 0xBB, 0xCC, 0xDD},
-		ForwardingReason:   &fr,
-		BasicServiceGroup:  &ExtBasicServiceCode{ExtTeleservice: HexBytes{0x11}},
-		BasicServiceGroup2: &ExtBasicServiceCode{ExtBearerService: HexBytes{0x21}},
-		NetworkSignalInfo:  &ExternalSignalInfo{ProtocolID: 0, SignalInfo: HexBytes{0xDE, 0xAD}},
-		NetworkSignalInfo2: &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xBE, 0xEF}},
+		ForwardingReason:    &fr,
+		BasicServiceGroup:   &ExtBasicServiceCode{ExtTeleservice: HexBytes{0x11}},
+		BasicServiceGroup2:  &ExtBasicServiceCode{ExtBearerService: HexBytes{0x21}},
+		NetworkSignalInfo:   &ExternalSignalInfo{ProtocolID: 0, SignalInfo: HexBytes{0xDE, 0xAD}},
+		NetworkSignalInfo2:  &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xBE, 0xEF}},
 		CamelInfo: &SriCamelInfo{
 			SupportedCamelPhases: SupportedCamelPhases{Phase1: true, Phase2: true, Phase3: true, Phase4: true},
 			SuppressTCSI:         true,

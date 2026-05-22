@@ -283,11 +283,11 @@ func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfigurati
 	}
 
 	out := &gsm_map.APNConfiguration{
-		ContextId:           gsm_map.ContextId(a.ContextId),
-		PdnType:             gsm_map.PDNType(a.PdnType),
-		Apn:                 gsm_map.APN(a.Apn),
-		EpsQosSubscribed:    *qos,
-		VplmnAddressAllowed: boolToNullPtr(a.VplmnAddressAllowed),
+		ContextId:             gsm_map.ContextId(a.ContextId),
+		PdnType:               gsm_map.PDNType(a.PdnType),
+		Apn:                   gsm_map.APN(a.Apn),
+		EpsQosSubscribed:      *qos,
+		VplmnAddressAllowed:   boolToNullPtr(a.VplmnAddressAllowed),
 		NonIPPDNTypeIndicator: boolToNullPtr(a.NonIPPDNTypeIndicator),
 	}
 	if a.ServedPartyIPIPv4Address != nil {

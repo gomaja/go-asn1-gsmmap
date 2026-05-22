@@ -8,8 +8,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/google/go-cmp/cmp"
 )
 
 // --- SSSubscriptionOption CHOICE ---
@@ -97,9 +97,9 @@ func TestExtForwInfoRoundTrip(t *testing.T) {
 						BasicService: &ExtBasicServiceCode{
 							ExtTeleservice: HexBytes{0x11},
 						},
-						SsStatus:              HexBytes{0x05},
-						ForwardedToNumber:     "31611111111",
-						ForwardedToNature:     16, ForwardedToPlan: 1,
+						SsStatus:          HexBytes{0x05},
+						ForwardedToNumber: "31611111111",
+						ForwardedToNature: 16, ForwardedToPlan: 1,
 						ForwardedToSubaddress: HexBytes{0xa0, 0x01, 0x02},
 						ForwardingOptions:     HexBytes{0xc0},
 						NoReplyConditionTime:  intPtrV(20),
@@ -268,7 +268,7 @@ func TestExtForwFeatureLenientNoRepCondTime(t *testing.T) {
 		{"low4MapsToFive", 4, 5},
 		{"high31MapsToThirty", 31, 30},
 		{"high99MapsToThirty", 99, 30},
-		{"reject0", 0, -1},   // out of spec → error
+		{"reject0", 0, -1},     // out of spec → error
 		{"reject101", 101, -1}, // out of spec → error
 	}
 	for _, tc := range cases {

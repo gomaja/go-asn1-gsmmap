@@ -15,9 +15,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // groupIdFiller is the six-TBCD-nibble placeholder GroupId must carry

@@ -145,9 +145,9 @@ func TestPDPContext_ContextIdOutOfRange(t *testing.T) {
 
 func TestPDPContext_FieldSizeViolations(t *testing.T) {
 	cases := []struct {
-		name  string
-		mut   func(*PDPContext)
-		want  error
+		name string
+		mut  func(*PDPContext)
+		want error
 	}{
 		{"PdpType wrong size", func(p *PDPContext) { p.PdpType = HexBytes{0x01} }, ErrPDPTypeInvalidSize},
 		{"QosSubscribed empty", func(p *PDPContext) { p.QosSubscribed = HexBytes{} }, ErrQoSSubscribedInvalidSize},

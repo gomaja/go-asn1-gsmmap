@@ -422,14 +422,14 @@ func convertSupportedFeaturesToBitString(s *SupportedFeatures) runtime.BitString
 
 func convertBitStringToSupportedFeatures(bs runtime.BitString) *SupportedFeatures {
 	return &SupportedFeatures{
-		OdbAllApn:                                        bs.Has(0),
-		OdbHPLMNApn:                                      bs.Has(1),
-		OdbVPLMNApn:                                      bs.Has(2),
-		OdbAllOg:                                         bs.Has(3),
-		OdbAllInternationalOg:                            bs.Has(4),
-		OdbAllIntOgNotToHPLMNCountry:                     bs.Has(5),
-		OdbAllInterzonalOg:                               bs.Has(6),
-		OdbAllInterzonalOgNotToHPLMNCountry:              bs.Has(7),
+		OdbAllApn:                           bs.Has(0),
+		OdbHPLMNApn:                         bs.Has(1),
+		OdbVPLMNApn:                         bs.Has(2),
+		OdbAllOg:                            bs.Has(3),
+		OdbAllInternationalOg:               bs.Has(4),
+		OdbAllIntOgNotToHPLMNCountry:        bs.Has(5),
+		OdbAllInterzonalOg:                  bs.Has(6),
+		OdbAllInterzonalOgNotToHPLMNCountry: bs.Has(7),
 		OdbAllInterzonalOgAndInternatOgNotToHPLMNCountry: bs.Has(8),
 		RegSub:                            bs.Has(9),
 		Trace:                             bs.Has(10),

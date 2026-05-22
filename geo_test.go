@@ -343,8 +343,8 @@ func TestGeoEncode_Rejects7BitFieldsOverflow(t *testing.T) {
 		{
 			"Arc: UncertaintyRadius=200",
 			&GeographicalInfo{
-				ShapeType: ShapeEllipsoidArc,
-				InnerRadius:   u16(1000),
+				ShapeType:         ShapeEllipsoidArc,
+				InnerRadius:       u16(1000),
 				UncertaintyRadius: u8(200), OffsetAngle: u8(0),
 				IncludedAngle: u8(90), Confidence: u8(50),
 			},
@@ -481,13 +481,13 @@ func TestGeoDecodeThenEncode_SpecInvalidAngleFailsOnReEncode(t *testing.T) {
 	// AngleMajorAxis=200 (invalid; spec caps at 179). Decode must succeed;
 	// re-encoding must fail.
 	wire := []byte{
-		0x30,                   // ShapeType=3 (UncertaintyEllipse)<<4
-		0x00, 0x00, 0x00,       // lat = 0
-		0x00, 0x00, 0x00,       // lon = 0
-		0x01,                   // SemiMajor = 1
-		0x01,                   // SemiMinor = 1
-		200,                    // AngleMajorAxis = 200 (SPEC-INVALID)
-		0x32,                   // Confidence = 50
+		0x30,             // ShapeType=3 (UncertaintyEllipse)<<4
+		0x00, 0x00, 0x00, // lat = 0
+		0x00, 0x00, 0x00, // lon = 0
+		0x01, // SemiMajor = 1
+		0x01, // SemiMinor = 1
+		200,  // AngleMajorAxis = 200 (SPEC-INVALID)
+		0x32, // Confidence = 50
 	}
 	gi, err := DecodeGeographicalInfo(wire)
 	if err != nil {

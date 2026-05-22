@@ -7,9 +7,9 @@ import (
 	"math"
 	"testing"
 
+	"github.com/gomaja/go-asn1-gsmmap/address"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/google/go-cmp/cmp"
-	"github.com/gomaja/go-asn1-gsmmap/address"
 )
 
 func TestSriSmRoundTrip(t *testing.T) {

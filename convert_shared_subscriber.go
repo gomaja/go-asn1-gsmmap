@@ -3,9 +3,9 @@ package gsmmap
 import (
 	"fmt"
 
+	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // --- SubscriberInfo helpers (shared between ATI and SRI response) ---

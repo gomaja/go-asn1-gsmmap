@@ -148,10 +148,10 @@ func TestParseMtFsm(t *testing.T) {
 
 func TestParseMoFsm(t *testing.T) {
 	tests := []struct {
-		name           string
-		hexString      string
-		expectError    bool
-		skipRoundTrip  bool // skip round-trip check when TPDU re-encoding differs
+		name          string
+		hexString     string
+		expectError   bool
+		skipRoundTrip bool // skip round-trip check when TPDU re-encoding differs
 	}{
 		{
 			name:        "Valid MO FSM",
