@@ -418,3 +418,31 @@ func (s *SriLcsResp) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes ReportSMDeliveryStatus-Arg (opCode 47) into
+// BER-encoded bytes.
+func (r *ReportSMDeliveryStatus) Marshal() ([]byte, error) {
+	arg, err := convertReportSMDeliveryStatusToArg(r)
+	if err != nil {
+		return nil, fmt.Errorf("converting ReportSMDeliveryStatus: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding ReportSMDeliveryStatusArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes ReportSMDeliveryStatus-Res (opCode 47) into
+// BER-encoded bytes.
+func (r *ReportSMDeliveryStatusRes) Marshal() ([]byte, error) {
+	res, err := convertReportSMDeliveryStatusResToRes(r)
+	if err != nil {
+		return nil, fmt.Errorf("converting ReportSMDeliveryStatusRes: %w", err)
+	}
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding ReportSMDeliveryStatusRes: %w", err)
+	}
+	return data, nil
+}

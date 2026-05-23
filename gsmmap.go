@@ -1337,6 +1337,71 @@ type AlertServiceCentre struct {
 	NewMSCNumberPlan          uint8
 }
 
+// ReportSMDeliveryStatus represents a ReportSM-DeliveryStatus request
+// (opCode 47) per 3GPP TS 29.002, sent from the SMS-GMSC to the HLR to
+// report the outcome of an MT-SMS delivery attempt. When SmDeliveryOutcome
+// is SmDeliveryAbsentSubscriber, this arms the Mobile-station-Not-Reachable
+// flag (MNRF) and adds ServiceCentreAddress to the Message-Waiting-Data
+// list, so the HLR later sends AlertServiceCentre (opCode 64) once the
+// subscriber becomes reachable again. ACN mwdMngtContext (24).
+//
+// Mandatory: Msisdn, ServiceCentreAddress, SmDeliveryOutcome.
+//
+// SmDeliveryOutcome is chosen by the caller from the delivery result:
+// SmDeliveryAbsentSubscriber (unreachable — arms the alert),
+// SmDeliveryMemoryCapacityExceeded, or SmDeliverySuccessfulTransfer
+// (clears the waiting state). AbsentSubscriberDiagnosticSM (0..255)
+// carries the absence reason, typically copied from the SRI-SM
+// AbsentSubscriberSM error.
+//
+// Field conventions: string addresses "" = absent (Nature/Plan default to
+// International/ISDN); *int diagnostics nil = absent; bool NULL flags
+// false = absent. ExtensionContainer (tag [1]) is opaque and not surfaced.
+type ReportSMDeliveryStatus struct {
+	// Mandatory.
+	Msisdn               string // ISDN-AddressString digits
+	MsisdnNature         uint8
+	MsisdnPlan           uint8
+	ServiceCentreAddress string // AddressString digits (SC to alert later)
+	SCANature            uint8
+	SCAPlan              uint8
+	SmDeliveryOutcome    SmDeliveryOutcome // 0..2
+
+	// Optional (classic SMS).
+	AbsentSubscriberDiagnosticSM           *int                // [0] 0..255
+	GprsSupportIndicator                   bool                // [2] NULL — SC supports GPRS-specific outcome
+	DeliveryOutcomeIndicator               bool                // [3] NULL — AdditionalSMDeliveryOutcome is for GPRS
+	AdditionalSMDeliveryOutcome            *SmDeliveryOutcome  // [4]
+	AdditionalAbsentSubscriberDiagnosticSM *int                // [5] 0..255
+	IMSI                                   string              // [9] TBCD digits
+	SingleAttemptDelivery                  bool                // [10] NULL
+	CorrelationID                          *SriSmCorrelationID // [11] (reuses SRI-SM type)
+
+	// Optional (IP-SM-GW variant).
+	IpSmGwIndicator                    bool               // [6] NULL
+	IpSmGwSmDeliveryOutcome            *SmDeliveryOutcome // [7]
+	IpSmGwAbsentSubscriberDiagnosticSM *int               // [8] 0..255
+
+	// Optional (5G SMSF 3GPP-access variant).
+	Smsf3gppDeliveryOutcomeIndicator bool               // [12] NULL
+	Smsf3gppDeliveryOutcome          *SmDeliveryOutcome // [13]
+	Smsf3gppAbsentSubscriberDiagSM   *int               // [14] 0..255
+
+	// Optional (5G SMSF non-3GPP-access variant).
+	SmsfNon3gppDeliveryOutcomeIndicator bool               // [15] NULL
+	SmsfNon3gppDeliveryOutcome          *SmDeliveryOutcome // [16]
+	SmsfNon3gppAbsentSubscriberDiagSM   *int               // [17] 0..255
+}
+
+// ReportSMDeliveryStatusRes represents a ReportSM-DeliveryStatus response
+// (opCode 47). StoredMSISDN, if present, is the MSISDN the HLR has on
+// record. ExtensionContainer is opaque and not surfaced.
+type ReportSMDeliveryStatusRes struct {
+	StoredMSISDN       string // ISDN-AddressString digits; "" = absent
+	StoredMSISDNNature uint8
+	StoredMSISDNPlan   uint8
+}
+
 // InformServiceCentre represents an InformServiceCentre request (opCode 63).
 // This is a one-way MAP operation; no response is defined in 3GPP TS 29.002.
 type InformServiceCentre struct {
@@ -3838,4 +3903,15 @@ var (
 
 	// AnyTimeInterrogation top-level (TS 29.002 MAP-CH-DataTypes.asn).
 	ErrAnyTimeInterrogationNil = errors.New("anyTimeInterrogation: nil argument is not permitted")
+
+	// ReportSMDeliveryStatus top-level (TS 29.002 MAP-SM-DataTypes.asn).
+	ErrReportSMDeliveryStatusNil                  = errors.New("reportSMDeliveryStatus: nil argument is not permitted")
+	ErrReportSMDeliveryStatusMsisdnEmpty          = errors.New("reportSMDeliveryStatus: Msisdn digits are mandatory; empty value is not permitted on encode")
+	ErrReportSMDeliveryStatusMsisdnDecodedEmpty   = errors.New("reportSMDeliveryStatus: present wire Msisdn decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrReportSMDeliveryStatusSCAEmpty             = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory; empty value is not permitted on encode")
+	ErrReportSMDeliveryStatusSCADecodedEmpty      = errors.New("reportSMDeliveryStatus: present wire ServiceCentreAddress decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrReportSMDeliveryStatusOutcomeInvalid       = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 MAP-SM-DataTypes.asn")
+	ErrReportSMDeliveryStatusIMSIDecodedEmpty     = errors.New("reportSMDeliveryStatus: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrReportSMDeliveryStatusResNil               = errors.New("reportSMDeliveryStatusRes: nil argument is not permitted")
+	ErrReportSMDeliveryStatusResStoredMSISDNEmpty = errors.New("reportSMDeliveryStatusRes: present wire StoredMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 )
