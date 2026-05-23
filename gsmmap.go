@@ -2833,7 +2833,8 @@ type ProvideSubscriberLocationRes struct {
 	GeranPositioningData          PositioningDataInformation // [4] 2..10 octets; nil/empty = absent
 	UtranPositioningData          UtranPositioningDataInfo   // [5] 3..11 octets; nil/empty = absent
 
-	// CellIdOrSai CHOICE [6] (explicit). Set exactly one of:
+	// CellIdOrSai CHOICE [6] (explicit, optional). Set at most one of
+	// CellGlobalId or LAI; leaving both empty omits the field.
 	CellGlobalId HexBytes // CGI or SAI fixed-length 7 octets
 	LAI          HexBytes // LAI fixed-length 5 octets
 
@@ -3782,7 +3783,7 @@ var (
 	ErrPSLResLocationEstimateMissing  = errors.New("provideSubscriberLocationRes: LocationEstimate is mandatory; nil/empty value is not permitted on encode")
 	ErrPSLResCellGlobalIdSize         = errors.New("provideSubscriberLocationRes: CellGlobalId must be exactly 7 octets per TS 29.002 MAP-CommonDataTypes.asn (CellGlobalIdOrServiceAreaIdFixedLength)")
 	ErrPSLResLAIInvalidSize           = errors.New("provideSubscriberLocationRes: LAI must be exactly 5 octets per TS 29.002 MAP-CommonDataTypes.asn (LAIFixedLength)")
-	ErrPSLResCellGlobalIdAndLAIMutex  = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (both empty omits the optional field)")
+	ErrPSLResCellGlobalIdAndLAIMutex  = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
 	ErrPSLResCellIdOrSaiInvalidChoice = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 
 	ErrLCSEventInvalid                        = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (extensible enum: unknown values preserved on decode)")
@@ -3805,7 +3806,7 @@ var (
 	ErrSLRArgNaESRDDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgNaESRKDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgLcsServiceTypeIDOutOfRange = errors.New("subscriberLocationReportArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
-	ErrSLRArgCellGlobalIdAndLAIMutex    = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (both empty omits the optional field)")
+	ErrSLRArgCellGlobalIdAndLAIMutex    = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
 
 	// SubscriberLocationReportRes top-level (TS 29.002 MAP-LCS-DataTypes.asn:691).
 	ErrSLRResNil                = errors.New("subscriberLocationReportRes: nil argument is not permitted")
