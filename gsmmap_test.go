@@ -380,6 +380,13 @@ func TestATIValidationErrors(t *testing.T) {
 	if !errors.Is(err, ErrSubscriberIdentityMultipleAlts) {
 		t.Errorf("ambiguous SubscriberIdentity: want ErrSubscriberIdentityMultipleAlts, got %v", err)
 	}
+
+	// Nil receiver must not panic.
+	var nilATI *AnyTimeInterrogation
+	_, err = nilATI.Marshal()
+	if !errors.Is(err, ErrAnyTimeInterrogationNil) {
+		t.Errorf("nil AnyTimeInterrogation: want ErrAnyTimeInterrogationNil, got %v", err)
+	}
 }
 
 func TestParseInvalidData(t *testing.T) {

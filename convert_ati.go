@@ -9,6 +9,9 @@ import (
 // --- AnyTimeInterrogation ---
 
 func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationArg, error) {
+	if ati == nil {
+		return nil, ErrAnyTimeInterrogationNil
+	}
 	subId, err := convertSubscriberIdentityToWire(ati.SubscriberIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("AnyTimeInterrogation.SubscriberIdentity: %w", err)
