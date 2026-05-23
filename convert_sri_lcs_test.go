@@ -25,7 +25,13 @@ func TestSubscriberIdentityRoundTrip(t *testing.T) {
 		in   SubscriberIdentity
 	}{
 		{"IMSI", SubscriberIdentity{IMSI: "204080000000001"}},
-		{"MSISDN", SubscriberIdentity{MSISDN: "31612345678"}},
+		// MSISDN with explicit International/ISDN nature+plan. (Leaving
+		// them 0 would encode as 0x10/0x01 and decode back non-zero, so
+		// the round-trip is expressed with the encoded values.)
+		{"MSISDN international", SubscriberIdentity{MSISDN: "31612345678", MSISDNNature: 0x10, MSISDNPlan: 0x01}},
+		// Non-international MSISDN must preserve its Nature/Plan — the
+		// reason MSISDNNature/MSISDNPlan were added to SubscriberIdentity.
+		{"MSISDN national", SubscriberIdentity{MSISDN: "0612345678", MSISDNNature: 0x20, MSISDNPlan: 0x01}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -110,7 +116,7 @@ func TestSriLcsRoundTrip(t *testing.T) {
 			MlcNumber:       "31611111111",
 			MlcNumberNature: 0x10,
 			MlcNumberPlan:   0x01,
-			TargetMS:        SubscriberIdentity{MSISDN: "31612345678"},
+			TargetMS:        SubscriberIdentity{MSISDN: "31612345678", MSISDNNature: 0x10, MSISDNPlan: 0x01},
 		}},
 	}
 	for _, tc := range cases {
@@ -193,7 +199,7 @@ func TestSriLcsRespRoundTrip(t *testing.T) {
 	}{
 		{"minimal", minimalSriLcsResp()},
 		{"MSISDN target + all GMLC/PPR addresses", &SriLcsResp{
-			TargetMS: SubscriberIdentity{MSISDN: "31612345678"},
+			TargetMS: SubscriberIdentity{MSISDN: "31612345678", MSISDNNature: 0x10, MSISDNPlan: 0x01},
 			LcsLocationInfo: LCSLocationInfo{
 				NetworkNodeNumber:       "31650000000",
 				NetworkNodeNumberNature: 0x10,

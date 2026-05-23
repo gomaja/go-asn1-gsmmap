@@ -458,9 +458,17 @@ type RequestedNodes struct {
 
 // SubscriberIdentity represents the subscriber identity CHOICE.
 // Set exactly one of IMSI or MSISDN.
+//
+// MSISDNNature/MSISDNPlan carry the AddressString nature-of-address and
+// numbering-plan for the MSISDN alternative; both default to 0, which
+// encodes as International / ISDN (E.164) — the usual MSISDN form. They
+// are only meaningful when MSISDN is set, and are preserved across a
+// decode→encode round-trip.
 type SubscriberIdentity struct {
-	IMSI   string
-	MSISDN string
+	IMSI         string
+	MSISDN       string
+	MSISDNNature uint8 // address nature indicator (default 0 = International)
+	MSISDNPlan   uint8 // numbering plan indicator (default 0 = ISDN)
 }
 
 // RequestedInfo represents the requested information flags for ATI.

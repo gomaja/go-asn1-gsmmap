@@ -2,10 +2,9 @@
 //
 // Shared converter for the SubscriberIdentity CHOICE (IMSI or MSISDN)
 // per TS 29.002 MAP-CommonDataTypes.asn. Used by SendRoutingInfoForLCS
-// (opCode 85). The public SubscriberIdentity carries only digit strings
-// (no Nature/Plan), matching the existing AnyTimeInterrogation handling:
-// MSISDN is encoded with the default address header and its Nature/Plan
-// are not surfaced on decode.
+// (opCode 85) and AnyTimeInterrogation (opCode 71). MSISDN carries its
+// AddressString Nature/Plan (defaulting to International/ISDN when zero),
+// so a non-international MSISDN survives a decode→encode round-trip.
 
 package gsmmap
 
@@ -36,7 +35,7 @@ func convertSubscriberIdentityToWire(s SubscriberIdentity) (gsm_map.SubscriberId
 		}
 		return gsm_map.NewSubscriberIdentityImsi(gsm_map.IMSI(imsiBytes)), nil
 	}
-	msisdnBytes, err := encodeAddressField(s.MSISDN, 0, 0)
+	msisdnBytes, err := encodeAddressField(s.MSISDN, s.MSISDNNature, s.MSISDNPlan)
 	if err != nil {
 		return gsm_map.SubscriberIdentity{}, fmt.Errorf("encoding MSISDN: %w", err)
 	}
@@ -65,7 +64,7 @@ func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberId
 		if w.Msisdn == nil {
 			return out, ErrSubscriberIdentityUnknownChoice
 		}
-		msisdn, _, _, err := decodeAddressField(*w.Msisdn)
+		msisdn, nature, plan, err := decodeAddressField(*w.Msisdn)
 		if err != nil {
 			return out, fmt.Errorf("decoding SubscriberIdentity.MSISDN: %w", err)
 		}
@@ -73,6 +72,8 @@ func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberId
 			return out, ErrSubscriberIdentityMSISDNDecodedEmpty
 		}
 		out.MSISDN = msisdn
+		out.MSISDNNature = nature
+		out.MSISDNPlan = plan
 	default:
 		return out, fmt.Errorf("SubscriberIdentity choice=%d: %w", w.Choice, ErrSubscriberIdentityUnknownChoice)
 	}
