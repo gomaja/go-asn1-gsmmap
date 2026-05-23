@@ -363,8 +363,8 @@ func TestATIValidationErrors(t *testing.T) {
 		GsmSCFAddress: "12345",
 	}
 	_, err := ati.Marshal()
-	if err == nil {
-		t.Error("expected error for empty SubscriberIdentity")
+	if !errors.Is(err, ErrSubscriberIdentityNoAlt) {
+		t.Errorf("empty SubscriberIdentity: want ErrSubscriberIdentityNoAlt, got %v", err)
 	}
 
 	// Both IMSI and MSISDN set
@@ -377,8 +377,8 @@ func TestATIValidationErrors(t *testing.T) {
 		GsmSCFAddress: "12345",
 	}
 	_, err = ati.Marshal()
-	if err == nil {
-		t.Error("expected error for ambiguous SubscriberIdentity")
+	if !errors.Is(err, ErrSubscriberIdentityMultipleAlts) {
+		t.Errorf("ambiguous SubscriberIdentity: want ErrSubscriberIdentityMultipleAlts, got %v", err)
 	}
 }
 

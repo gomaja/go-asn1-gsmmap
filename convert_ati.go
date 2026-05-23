@@ -3,33 +3,15 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // --- AnyTimeInterrogation ---
 
 func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationArg, error) {
-	if ati.SubscriberIdentity.IMSI == "" && ati.SubscriberIdentity.MSISDN == "" {
-		return nil, fmt.Errorf("subscriber identity required: set either IMSI or MSISDN")
-	}
-	if ati.SubscriberIdentity.IMSI != "" && ati.SubscriberIdentity.MSISDN != "" {
-		return nil, fmt.Errorf("subscriber identity ambiguous: set either IMSI or MSISDN, not both")
-	}
-
-	var subId gsm_map.SubscriberIdentity
-	if ati.SubscriberIdentity.IMSI != "" {
-		imsiBytes, err := tbcd.Encode(ati.SubscriberIdentity.IMSI)
-		if err != nil {
-			return nil, fmt.Errorf(errEncodingIMSI, err)
-		}
-		subId = gsm_map.NewSubscriberIdentityImsi(gsm_map.IMSI(imsiBytes))
-	} else {
-		msisdnBytes, err := encodeAddressField(ati.SubscriberIdentity.MSISDN, 0, 0)
-		if err != nil {
-			return nil, fmt.Errorf("encoding MSISDN: %w", err)
-		}
-		subId = gsm_map.NewSubscriberIdentityMsisdn(gsm_map.ISDNAddressString(msisdnBytes))
+	subId, err := convertSubscriberIdentityToWire(ati.SubscriberIdentity)
+	if err != nil {
+		return nil, fmt.Errorf("AnyTimeInterrogation.SubscriberIdentity: %w", err)
 	}
 
 	reqInfo := buildMSRequestedInfo(&ati.RequestedInfo)
@@ -96,29 +78,11 @@ func buildMSRequestedInfo(ri *RequestedInfo) gsm_map.MSRequestedInfo {
 func convertArgToATI(arg *gsm_map.AnyTimeInterrogationArg) (*AnyTimeInterrogation, error) {
 	var ati AnyTimeInterrogation
 
-	// SubscriberIdentity
-	switch arg.SubscriberIdentity.Choice {
-	case gsm_map.SubscriberIdentityChoiceImsi:
-		if arg.SubscriberIdentity.Imsi == nil {
-			return nil, fmt.Errorf("SubscriberIdentity IMSI is nil")
-		}
-		imsi, err := tbcd.Decode(*arg.SubscriberIdentity.Imsi)
-		if err != nil {
-			return nil, fmt.Errorf("decoding IMSI: %w", err)
-		}
-		ati.SubscriberIdentity.IMSI = imsi
-	case gsm_map.SubscriberIdentityChoiceMsisdn:
-		if arg.SubscriberIdentity.Msisdn == nil {
-			return nil, fmt.Errorf("SubscriberIdentity MSISDN is nil")
-		}
-		msisdn, _, _, err := decodeAddressField(*arg.SubscriberIdentity.Msisdn)
-		if err != nil {
-			return nil, fmt.Errorf("decoding MSISDN: %w", err)
-		}
-		ati.SubscriberIdentity.MSISDN = msisdn
-	default:
-		return nil, fmt.Errorf("unknown SubscriberIdentity choice: %d", arg.SubscriberIdentity.Choice)
+	subId, err := convertWireToSubscriberIdentity(arg.SubscriberIdentity)
+	if err != nil {
+		return nil, fmt.Errorf("AnyTimeInterrogation.SubscriberIdentity: %w", err)
 	}
+	ati.SubscriberIdentity = subId
 
 	// RequestedInfo
 	ati.RequestedInfo = buildRequestedInfoFromWire(&arg.RequestedInfo)
