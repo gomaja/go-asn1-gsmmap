@@ -3825,4 +3825,7 @@ var (
 	ErrSriLcsMlcNumberEmpty        = errors.New("sriLcs: MlcNumber digits are mandatory; empty value is not permitted on encode")
 	ErrSriLcsMlcNumberDecodedEmpty = errors.New("sriLcs: present wire MlcNumber decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSriLcsRespNil               = errors.New("sriLcsResp: nil argument is not permitted")
+
+	// AnyTimeInterrogation top-level (TS 29.002 MAP-CH-DataTypes.asn).
+	ErrAnyTimeInterrogationNil = errors.New("anyTimeInterrogation: nil argument is not permitted")
 )
