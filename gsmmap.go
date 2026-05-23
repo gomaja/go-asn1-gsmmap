@@ -3920,6 +3920,7 @@ var (
 	ErrReportSMDeliveryStatusSCAEmpty             = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory; empty value is not permitted on encode")
 	ErrReportSMDeliveryStatusSCADecodedEmpty      = errors.New("reportSMDeliveryStatus: present wire ServiceCentreAddress decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrReportSMDeliveryStatusOutcomeInvalid       = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 MAP-SM-DataTypes.asn")
+	ErrReportSMDeliveryStatusIMSIInvalidSize      = errors.New("reportSMDeliveryStatus: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8)")
 	ErrReportSMDeliveryStatusIMSIDecodedEmpty     = errors.New("reportSMDeliveryStatus: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrReportSMDeliveryStatusResNil               = errors.New("reportSMDeliveryStatusRes: nil argument is not permitted")
 	ErrReportSMDeliveryStatusResStoredMSISDNEmpty = errors.New("reportSMDeliveryStatusRes: present wire StoredMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
