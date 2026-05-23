@@ -86,15 +86,15 @@ func TestReportSMDeliveryStatusRoundTrip(t *testing.T) {
 				SipUriA: HexBytes{0xCC, 0xDD},
 				SipUriB: HexBytes{0xEE, 0xFF},
 			},
-			IpSmGwIndicator:                     true,
-			IpSmGwSmDeliveryOutcome:             &ipOutcome,
-			IpSmGwAbsentSubscriberDiagnosticSM:  &ipDiag,
-			Smsf3gppDeliveryOutcomeIndicator:    true,
-			Smsf3gppDeliveryOutcome:             &smsf3Outcome,
-			Smsf3gppAbsentSubscriberDiagSM:      &smsf3,
-			SmsfNon3gppDeliveryOutcomeIndicator: true,
-			SmsfNon3gppDeliveryOutcome:          &smsfNOutcome,
-			SmsfNon3gppAbsentSubscriberDiagSM:   &smsfN,
+			IpSmGwIndicator:                         true,
+			IpSmGwSmDeliveryOutcome:                 &ipOutcome,
+			IpSmGwAbsentSubscriberDiagnosticSM:      &ipDiag,
+			Smsf3gppDeliveryOutcomeIndicator:        true,
+			Smsf3gppDeliveryOutcome:                 &smsf3Outcome,
+			Smsf3gppAbsentSubscriberDiagnosticSM:    &smsf3,
+			SmsfNon3gppDeliveryOutcomeIndicator:     true,
+			SmsfNon3gppDeliveryOutcome:              &smsfNOutcome,
+			SmsfNon3gppAbsentSubscriberDiagnosticSM: &smsfN,
 		}},
 	}
 
@@ -143,7 +143,7 @@ func TestReportSMDeliveryStatusEncodeNegative(t *testing.T) {
 		{"empty Msisdn", func(r *ReportSMDeliveryStatus) { r.Msisdn = "" }, ErrReportSMDeliveryStatusMsisdnEmpty},
 		{"empty ServiceCentreAddress", func(r *ReportSMDeliveryStatus) { r.ServiceCentreAddress = "" }, ErrReportSMDeliveryStatusSCAEmpty},
 		{"outcome out of range", func(r *ReportSMDeliveryStatus) { r.SmDeliveryOutcome = SmDeliveryOutcome(9) }, ErrReportSMDeliveryStatusOutcomeInvalid},
-		{"diagnostic out of range", func(r *ReportSMDeliveryStatus) { r.AbsentSubscriberDiagnosticSM = &bad }, ErrIscInvalidAbsentSubscriberDiagnosticSM},
+		{"diagnostic out of range", func(r *ReportSMDeliveryStatus) { r.AbsentSubscriberDiagnosticSM = &bad }, ErrAbsentSubscriberDiagnosticSMOutOfRange},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1383,14 +1383,14 @@ type ReportSMDeliveryStatus struct {
 	IpSmGwAbsentSubscriberDiagnosticSM *int               // [8] 0..255
 
 	// Optional (5G SMSF 3GPP-access variant).
-	Smsf3gppDeliveryOutcomeIndicator bool               // [12] NULL
-	Smsf3gppDeliveryOutcome          *SmDeliveryOutcome // [13]
-	Smsf3gppAbsentSubscriberDiagSM   *int               // [14] 0..255
+	Smsf3gppDeliveryOutcomeIndicator     bool               // [12] NULL
+	Smsf3gppDeliveryOutcome              *SmDeliveryOutcome // [13]
+	Smsf3gppAbsentSubscriberDiagnosticSM *int               // [14] 0..255
 
 	// Optional (5G SMSF non-3GPP-access variant).
-	SmsfNon3gppDeliveryOutcomeIndicator bool               // [15] NULL
-	SmsfNon3gppDeliveryOutcome          *SmDeliveryOutcome // [16]
-	SmsfNon3gppAbsentSubscriberDiagSM   *int               // [17] 0..255
+	SmsfNon3gppDeliveryOutcomeIndicator     bool               // [15] NULL
+	SmsfNon3gppDeliveryOutcome              *SmDeliveryOutcome // [16]
+	SmsfNon3gppAbsentSubscriberDiagnosticSM *int               // [17] 0..255
 }
 
 // ReportSMDeliveryStatusRes represents a ReportSM-DeliveryStatus response
@@ -3592,7 +3592,16 @@ var (
 	ErrAtiPsSubscriberStateNoAlternative        = errors.New("ati: PsSubscriberState CHOICE has no alternative set")
 	ErrAtiPsSubscriberStateMultipleAlternatives = errors.New("ati: PsSubscriberState CHOICE has multiple alternatives set")
 
-	ErrIscInvalidAbsentSubscriberDiagnosticSM = errors.New("informServiceCentre: value must be 0..255")
+	// ErrAbsentSubscriberDiagnosticSMOutOfRange is the operation-agnostic
+	// range error for an AbsentSubscriberDiagnosticSM value (0..255). It is
+	// shared by every operation that carries the field (InformServiceCentre,
+	// ReportSMDeliveryStatus, …) via absentDiagToWire/absentDiagFromWire.
+	ErrAbsentSubscriberDiagnosticSMOutOfRange = errors.New("absentSubscriberDiagnosticSM: value must be 0..255")
+
+	// ErrIscInvalidAbsentSubscriberDiagnosticSM is retained as a
+	// backward-compatible alias of the shared range error (same value, so
+	// errors.Is matches either name).
+	ErrIscInvalidAbsentSubscriberDiagnosticSM = ErrAbsentSubscriberDiagnosticSMOutOfRange
 
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")

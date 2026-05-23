@@ -98,10 +98,10 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	if out.IpSmGwAbsentSubscriberDiagnosticSM, err = absentDiagToWire("ReportSMDeliveryStatus.IpSmGwAbsentSubscriberDiagnosticSM", r.IpSmGwAbsentSubscriberDiagnosticSM); err != nil {
 		return nil, err
 	}
-	if out.Smsf3gppAbsentSubscriberDiagSM, err = absentDiagToWire("ReportSMDeliveryStatus.Smsf3gppAbsentSubscriberDiagSM", r.Smsf3gppAbsentSubscriberDiagSM); err != nil {
+	if out.Smsf3gppAbsentSubscriberDiagSM, err = absentDiagToWire("ReportSMDeliveryStatus.Smsf3gppAbsentSubscriberDiagnosticSM", r.Smsf3gppAbsentSubscriberDiagnosticSM); err != nil {
 		return nil, err
 	}
-	if out.SmsfNon3gppAbsentSubscriberDiagSM, err = absentDiagToWire("ReportSMDeliveryStatus.SmsfNon3gppAbsentSubscriberDiagSM", r.SmsfNon3gppAbsentSubscriberDiagSM); err != nil {
+	if out.SmsfNon3gppAbsentSubscriberDiagSM, err = absentDiagToWire("ReportSMDeliveryStatus.SmsfNon3gppAbsentSubscriberDiagnosticSM", r.SmsfNon3gppAbsentSubscriberDiagnosticSM); err != nil {
 		return nil, err
 	}
 
@@ -190,10 +190,10 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 	if out.IpSmGwAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.IpSmGwAbsentSubscriberDiagnosticSM", w.IpSmGwAbsentSubscriberDiagnosticSM); err != nil {
 		return nil, err
 	}
-	if out.Smsf3gppAbsentSubscriberDiagSM, err = absentDiagFromWire("ReportSMDeliveryStatus.Smsf3gppAbsentSubscriberDiagSM", w.Smsf3gppAbsentSubscriberDiagSM); err != nil {
+	if out.Smsf3gppAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.Smsf3gppAbsentSubscriberDiagnosticSM", w.Smsf3gppAbsentSubscriberDiagSM); err != nil {
 		return nil, err
 	}
-	if out.SmsfNon3gppAbsentSubscriberDiagSM, err = absentDiagFromWire("ReportSMDeliveryStatus.SmsfNon3gppAbsentSubscriberDiagSM", w.SmsfNon3gppAbsentSubscriberDiagSM); err != nil {
+	if out.SmsfNon3gppAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.SmsfNon3gppAbsentSubscriberDiagnosticSM", w.SmsfNon3gppAbsentSubscriberDiagSM); err != nil {
 		return nil, err
 	}
 
