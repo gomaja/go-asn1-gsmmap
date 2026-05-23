@@ -313,3 +313,23 @@ func ParseSriLcsResp(data []byte) (*SriLcsResp, error) {
 	}
 	return convertResToSriLcsResp(&res)
 }
+
+// ParseReportSMDeliveryStatus decodes BER-encoded bytes into a
+// ReportSMDeliveryStatus-Arg (opCode 47).
+func ParseReportSMDeliveryStatus(data []byte) (*ReportSMDeliveryStatus, error) {
+	var arg gsm_map.ReportSMDeliveryStatusArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ReportSMDeliveryStatusArg: %w", err)
+	}
+	return convertArgToReportSMDeliveryStatus(&arg)
+}
+
+// ParseReportSMDeliveryStatusRes decodes BER-encoded bytes into a
+// ReportSMDeliveryStatus-Res (opCode 47).
+func ParseReportSMDeliveryStatusRes(data []byte) (*ReportSMDeliveryStatusRes, error) {
+	var res gsm_map.ReportSMDeliveryStatusRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ReportSMDeliveryStatusRes: %w", err)
+	}
+	return convertResToReportSMDeliveryStatusRes(&res)
+}

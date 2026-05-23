@@ -62,7 +62,7 @@ func validateAbsentSubscriberDiagnosticSM(p *int) error {
 		return nil
 	}
 	if *p < 0 || *p > 255 {
-		return ErrIscInvalidAbsentSubscriberDiagnosticSM
+		return ErrAbsentSubscriberDiagnosticSMOutOfRange
 	}
 	return nil
 }
@@ -89,7 +89,7 @@ func absentDiagFromWire(field string, p *gsm_map.AbsentSubscriberDiagnosticSM) (
 	}
 	v := int64(*p)
 	if v < 0 || v > 255 {
-		return nil, fmt.Errorf("%s: %w", field, ErrIscInvalidAbsentSubscriberDiagnosticSM)
+		return nil, fmt.Errorf("%s: %w", field, ErrAbsentSubscriberDiagnosticSMOutOfRange)
 	}
 	iv := int(v)
 	return &iv, nil
