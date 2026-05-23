@@ -1345,7 +1345,7 @@ type AlertServiceCentre struct {
 // list, so the HLR later sends AlertServiceCentre (opCode 64) once the
 // subscriber becomes reachable again. ACN mwdMngtContext (24).
 //
-// Mandatory: Msisdn, ServiceCentreAddress, SmDeliveryOutcome.
+// Mandatory: MSISDN, ServiceCentreAddress, SmDeliveryOutcome.
 //
 // SmDeliveryOutcome is chosen by the caller from the delivery result:
 // SmDeliveryAbsentSubscriber (unreachable — arms the alert),
@@ -1359,9 +1359,9 @@ type AlertServiceCentre struct {
 // false = absent. ExtensionContainer (tag [1]) is opaque and not surfaced.
 type ReportSMDeliveryStatus struct {
 	// Mandatory.
-	Msisdn               string // ISDN-AddressString digits
-	MsisdnNature         uint8
-	MsisdnPlan           uint8
+	MSISDN               string // ISDN-AddressString digits
+	MSISDNNature         uint8
+	MSISDNPlan           uint8
 	ServiceCentreAddress string // AddressString digits (SC to alert later)
 	SCANature            uint8
 	SCAPlan              uint8
@@ -3915,8 +3915,8 @@ var (
 
 	// ReportSMDeliveryStatus top-level (TS 29.002 MAP-SM-DataTypes.asn).
 	ErrReportSMDeliveryStatusNil                  = errors.New("reportSMDeliveryStatus: nil argument is not permitted")
-	ErrReportSMDeliveryStatusMsisdnEmpty          = errors.New("reportSMDeliveryStatus: Msisdn digits are mandatory; empty value is not permitted on encode")
-	ErrReportSMDeliveryStatusMsisdnDecodedEmpty   = errors.New("reportSMDeliveryStatus: present wire Msisdn decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrReportSMDeliveryStatusMSISDNEmpty          = errors.New("reportSMDeliveryStatus: MSISDN digits are mandatory; empty value is not permitted on encode")
+	ErrReportSMDeliveryStatusMSISDNDecodedEmpty   = errors.New("reportSMDeliveryStatus: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrReportSMDeliveryStatusSCAEmpty             = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory; empty value is not permitted on encode")
 	ErrReportSMDeliveryStatusSCADecodedEmpty      = errors.New("reportSMDeliveryStatus: present wire ServiceCentreAddress decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrReportSMDeliveryStatusOutcomeInvalid       = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 MAP-SM-DataTypes.asn")
