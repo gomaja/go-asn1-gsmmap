@@ -2,7 +2,7 @@
 
 High-level Go library for GSM MAP (3GPP TS 29.002) — parse, build, and marshal MAP operations using clean Go types.
 
-Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs for correct BER encoding/decoding, with [warthog618/sms](https://github.com/warthog618/sms) for SMS TPDU handling.
+Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs for correct BER encoding/decoding, with [go-sms](https://github.com/gomaja/go-sms) for SMS TPDU handling.
 
 ## Supported Operations
 

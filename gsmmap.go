@@ -6,7 +6,7 @@ import (
 	"errors"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-	"github.com/warthog618/sms/encoding/tpdu"
+	"github.com/gomaja/go-sms/encoding/tpdu"
 )
 
 // GetErrorString converts a MAP error code to its string representation.
