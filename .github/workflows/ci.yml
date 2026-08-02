@@ -19,21 +19,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
           cache: true
       - name: gofmt
         run: |
-          go_files="$(git ls-files '*.go')"
-          unformatted="$(printf '%s\n' "$go_files" | xargs gofmt -l)"
+          unformatted="$(git ls-files -z '*.go' | xargs -0 -r gofmt -l)"
           if [ -n "$unformatted" ]; then
             echo "not gofmt'd:"
             echo "$unformatted"
             exit 1
           fi
       - name: diff check
-        run: git diff --check
+        run: |
+          zero_sha="0000000000000000000000000000000000000000"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check "${{ github.event.pull_request.base.sha }}...HEAD"
+          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "$zero_sha" ]; then
+            git diff --check "${{ github.event.before }}...HEAD"
+          else
+            git diff-tree --check --root --no-commit-id -r HEAD
+          fi
 
   build-test:
     name: build-test / Go ${{ matrix.go }}
@@ -44,6 +54,8 @@ jobs:
         go: ['1.25.x', stable]
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: ${{ matrix.go }}
@@ -58,6 +70,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
@@ -70,6 +84,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
@@ -88,17 +104,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
           cache: true
       - uses: dominikh/staticcheck-action@v1.4.1
         with:
-          version: latest
+          version: v0.7.0
           install-go: false
       - uses: golangci/golangci-lint-action@v9.3.0
         with:
-          version: latest
+          version: v2.12.2
 
   portability:
     name: portability / ${{ matrix.kind }}
@@ -121,6 +139,8 @@ jobs:
             command: go test ./... -short -count=1 -timeout 900s
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
@@ -133,11 +153,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
           cache: true
       - name: govulncheck
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
           "$(go env GOPATH)/bin/govulncheck" ./...

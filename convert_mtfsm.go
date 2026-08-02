@@ -5,7 +5,7 @@ import (
 
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-	"github.com/gomaja/go-sms"
+	sms "github.com/gomaja/go-sms"
 )
 
 // --- MT-ForwardSM ---

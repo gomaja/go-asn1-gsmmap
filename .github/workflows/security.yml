@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: security-${{ github.ref }}
-  cancel-in-progress: true
+  group: security-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
 jobs:
   dependency-review:
@@ -25,6 +25,8 @@ jobs:
       pull-requests: read
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/dependency-review-action@v5.0.0
         with:
           fail-on-severity: moderate
@@ -37,6 +39,8 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
@@ -45,8 +49,8 @@ jobs:
         id: govulncheck
         shell: bash
         run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
           set +e
-          go install golang.org/x/vuln/cmd/govulncheck@latest
           "$(go env GOPATH)/bin/govulncheck" ./... 2>&1 | tee govulncheck.txt
           status=${PIPESTATUS[0]}
           echo "status=$status" >> "$GITHUB_OUTPUT"
@@ -85,6 +89,8 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
@@ -103,18 +109,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set +e
-          count="$(gh api -X GET "repos/${GITHUB_REPOSITORY}/code-scanning/alerts" \
-            -f state=open \
-            -f tool_name=CodeQL \
-            -f ref=refs/heads/main \
-            -F per_page=100 \
-            --jq 'length' 2>/dev/null)"
-          status=$?
-          if [ "$status" -ne 0 ] || [ -z "$count" ]; then
-            count=0
-          fi
-          echo "count=$count" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            if count="$(gh api --paginate -X GET "repos/${GITHUB_REPOSITORY}/code-scanning/alerts" \
+              -f state=open \
+              -f tool_name=CodeQL \
+              -f ref=refs/heads/main \
+              -F per_page=100 \
+              --slurp --jq 'add | length')"; then
+              echo "count=$count" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "failed to query CodeQL alerts" >&2
+          exit 1
       - name: Report scheduled SAST findings
         if: github.event_name == 'schedule' && steps.codeql_alerts.outputs.count != '0'
         env:
@@ -152,6 +161,7 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-go@v7.0.0
         with:
           go-version: stable
