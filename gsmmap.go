@@ -3581,6 +3581,9 @@ var (
 
 	ErrMtFsmInvalidDeliveryTimer = errors.New("mtFsm: SmDeliveryTimer must be 30..600")
 
+	ErrMtFsmUnexpectedTPDUType = errors.New("mtFsm: unexpected TPDU type")
+	ErrMoFsmUnexpectedTPDUType = errors.New("moFsm: unexpected TPDU type")
+
 	ErrMoFsmSmRpDaNoAlternative        = errors.New("moFsm: SmRpDa CHOICE has no alternative set")
 	ErrMoFsmSmRpDaMultipleAlternatives = errors.New("moFsm: SmRpDa CHOICE has multiple alternatives set")
 	ErrMoFsmSmRpOaNoAlternative        = errors.New("moFsm: SmRpOa CHOICE has no alternative set")

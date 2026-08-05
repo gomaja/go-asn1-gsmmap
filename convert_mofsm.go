@@ -203,6 +203,9 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 		smRpOa = gsm_map.NewSMRPOAMsisdn(gsm_map.ISDNAddressString(msisdn))
 	}
 
+	if err := validateMoForwardSMArgTPDU(m.TPDU); err != nil {
+		return nil, err
+	}
 	tpduBytes, err := m.TPDU.MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("marshaling TPDU: %w", err)
@@ -294,6 +297,9 @@ func convertArgToMoFsm(arg *gsm_map.MOForwardSMArg) (*MoFsm, error) {
 	}
 	if tpduResult == nil {
 		return nil, fmt.Errorf("unmarshaling TPDU: nil result")
+	}
+	if err := validateMoForwardSMArgTPDU(*tpduResult); err != nil {
+		return nil, err
 	}
 	moFsm.TPDU = *tpduResult
 
