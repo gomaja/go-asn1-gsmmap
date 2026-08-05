@@ -32,6 +32,9 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 		return nil, fmt.Errorf("encoding ServiceCentreAddressOA: %w", err)
 	}
 
+	if err := validateMtForwardSMArgTPDU(m.TPDU); err != nil {
+		return nil, err
+	}
 	tpduBytes, err := m.TPDU.MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("marshaling TPDU: %w", err)
@@ -127,6 +130,9 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 	}
 	if tpduResult == nil {
 		return nil, fmt.Errorf("unmarshaling TPDU: nil result")
+	}
+	if err := validateMtForwardSMArgTPDU(*tpduResult); err != nil {
+		return nil, err
 	}
 	mtFsm.TPDU = *tpduResult
 

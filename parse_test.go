@@ -6,6 +6,7 @@ package gsmmap
 
 import (
 	"encoding/hex"
+	"errors"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -174,10 +175,9 @@ func TestParseMoFsm(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name:          "Valid MO FSM with IMSI DA and SCA OA",
-			hexString:     "3081b7800826610011829761f6840891328490000005f704819e4009d047f6dbfe06000042217251400000a00500035f020190e53c0b947fd741e8b0bd0c9abfdb6510bcec26a7dd67d09c5e86cf41693728ffaecb41f2f2393da7cbc3f4f4db0d82cbdfe3f27cee0241d9e5f0bc0c32bfd9ecf71d44479741ecb47b0da2bf41e3771bce2ed3cb203abadc0685dd64d09c1e96d341e4323b6d2fcbd3ee33888e96bfeb6734e8c87edbdf2190bc3c96d7d3f476d94d77d5e70500",
-			expectError:   false,
-			skipRoundTrip: true, // TPDU re-encoding differs from original wire bytes
+			name:        "Reject MT FSM with IMSI DA and SCA OA",
+			hexString:   "3081b7800826610011829761f6840891328490000005f704819e4009d047f6dbfe06000042217251400000a00500035f020190e53c0b947fd741e8b0bd0c9abfdb6510bcec26a7dd67d09c5e86cf41693728ffaecb41f2f2393da7cbc3f4f4db0d82cbdfe3f27cee0241d9e5f0bc0c32bfd9ecf71d44479741ecb47b0da2bf41e3771bce2ed3cb203abadc0685dd64d09c1e96d341e4323b6d2fcbd3ee33888e96bfeb6734e8c87edbdf2190bc3c96d7d3f476d94d77d5e70500",
+			expectError: true,
 		},
 	}
 
@@ -209,6 +209,34 @@ func TestParseMoFsm(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestParseMoFsmRejectsCapturedMtForwardSMV2(t *testing.T) {
+	// Captured from temp_wireshark/issue-2.pcapng frame 33:
+	// TCAP forwardSM(46) in shortMsgMT-RelayContext-v2 carries
+	// MT-ForwardSM-Arg with an SMS-DELIVER TPDU. Per 3GPP TS 29.002
+	// v19.1.0 MAP-SM-DataTypes.asn, MO-ForwardSM-Arg and MT-ForwardSM-Arg
+	// share the same leading fields; TS 23.040 v19.0.0 clause 9.2.2
+	// makes the TPDU direction the discriminator here.
+	data, err := hex.DecodeString("3056800822589172230006f7840891328490000033f00440040d91328471112898f3000062805011948422324f2228e90c42a153500c34a3e1643010cd06a2c570391cc8268bd960a0a213548bc16020015990a6cb62b61a")
+	if err != nil {
+		t.Fatalf("hex decode: %v", err)
+	}
+
+	mtFsm, err := ParseMtFsm(data)
+	if err != nil {
+		t.Fatalf("ParseMtFsm: %v", err)
+	}
+	if mtFsm.IMSI != "228519273200607" {
+		t.Errorf("IMSI: got %q, want %q", mtFsm.IMSI, "228519273200607")
+	}
+	if mtFsm.ServiceCentreAddressOA != "2348090000330" {
+		t.Errorf("ServiceCentreAddressOA: got %q, want %q", mtFsm.ServiceCentreAddressOA, "2348090000330")
+	}
+
+	if _, err := ParseMoFsm(data); !errors.Is(err, ErrMoFsmUnexpectedTPDUType) {
+		t.Fatalf("ParseMoFsm error: got %v, want ErrMoFsmUnexpectedTPDUType", err)
 	}
 }
 
