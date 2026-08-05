@@ -4,6 +4,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"testing"
+	"time"
+
+	"github.com/gomaja/go-sms/encoding/tpdu"
 )
 
 func TestMoFsmMarshalRejectsMtTPDU(t *testing.T) {
@@ -45,5 +48,33 @@ func TestMtFsmMarshalRejectsMoTPDU(t *testing.T) {
 
 	if _, err := msg.Marshal(); !errors.Is(err, ErrMtFsmUnexpectedTPDUType) {
 		t.Fatalf("Marshal error: got %v, want ErrMtFsmUnexpectedTPDUType", err)
+	}
+}
+
+func TestMtFsmMarshalAcceptsSubmitReportTPDU(t *testing.T) {
+	msg := &MtFsm{
+		IMSI:                   "228519273200607",
+		ServiceCentreAddressOA: "2348090000330",
+		TPDU: tpdu.TPDU{
+			Direction:  tpdu.MT,
+			FirstOctet: 0x01,
+			FCS:        0x12,
+			SCTS: tpdu.Timestamp{
+				Time: time.Date(2015, time.May, 17, 23, 02, 50, 0, time.FixedZone("SCTS", 8*3600)),
+			},
+		},
+	}
+
+	data, err := msg.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+
+	got, err := ParseMtFsm(data)
+	if err != nil {
+		t.Fatalf("ParseMtFsm: %v", err)
+	}
+	if got.TPDU.SmsType() != tpdu.SmsSubmitReport {
+		t.Fatalf("TPDU type: got %v, want %v", got.TPDU.SmsType(), tpdu.SmsSubmitReport)
 	}
 }

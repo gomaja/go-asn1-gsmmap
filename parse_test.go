@@ -149,10 +149,10 @@ func TestParseMtFsm(t *testing.T) {
 
 func TestParseMoFsm(t *testing.T) {
 	tests := []struct {
-		name          string
-		hexString     string
-		expectError   bool
-		skipRoundTrip bool // skip round-trip check when TPDU re-encoding differs
+		name        string
+		hexString   string
+		expectError bool
+		wantErr     error
 	}{
 		{
 			name:        "Valid MO FSM",
@@ -178,6 +178,7 @@ func TestParseMoFsm(t *testing.T) {
 			name:        "Reject MT FSM with IMSI DA and SCA OA",
 			hexString:   "3081b7800826610011829761f6840891328490000005f704819e4009d047f6dbfe06000042217251400000a00500035f020190e53c0b947fd741e8b0bd0c9abfdb6510bcec26a7dd67d09c5e86cf41693728ffaecb41f2f2393da7cbc3f4f4db0d82cbdfe3f27cee0241d9e5f0bc0c32bfd9ecf71d44479741ecb47b0da2bf41e3771bce2ed3cb203abadc0685dd64d09c1e96d341e4323b6d2fcbd3ee33888e96bfeb6734e8c87edbdf2190bc3c96d7d3f476d94d77d5e70500",
 			expectError: true,
+			wantErr:     ErrMoFsmUnexpectedTPDUType,
 		},
 	}
 
@@ -192,6 +193,9 @@ func TestParseMoFsm(t *testing.T) {
 			if (err != nil) != tc.expectError {
 				t.Fatalf("Unexpected error status during parsing: got %v, expected error: %v", err, tc.expectError)
 			}
+			if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Unexpected parsing error: got %v, want %v", err, tc.wantErr)
+			}
 
 			if tc.expectError && err != nil {
 				t.Logf("Expected error occurred in test case '%s': %v", tc.name, err)
@@ -203,10 +207,8 @@ func TestParseMoFsm(t *testing.T) {
 				t.Fatalf("Failed to marshal MoFsm: %v", err)
 			}
 
-			if !tc.skipRoundTrip {
-				if diff := cmp.Diff(originalBytes, marshaledBytes); diff != "" {
-					t.Errorf("Marshaled bytes don't match original (-original +marshaled):\n%s", diff)
-				}
+			if diff := cmp.Diff(originalBytes, marshaledBytes); diff != "" {
+				t.Errorf("Marshaled bytes don't match original (-original +marshaled):\n%s", diff)
 			}
 		})
 	}
