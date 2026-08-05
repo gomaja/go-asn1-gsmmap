@@ -22,7 +22,10 @@ func TestAllocationRetentionPriority_RoundTrip(t *testing.T) {
 		PreEmptionVulnerability: ptrBool(false),
 	}
 	w := convertAllocationRetentionPriorityToWire(in)
-	out := convertWireToAllocationRetentionPriority(w)
+	out, err := convertWireToAllocationRetentionPriority(w)
+	if err != nil {
+		t.Fatalf("fromWire: %v", err)
+	}
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, out)
 	}

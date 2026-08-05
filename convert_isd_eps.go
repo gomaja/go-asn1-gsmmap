@@ -14,7 +14,7 @@ func convertAllocationRetentionPriorityToWire(a *AllocationRetentionPriority) *g
 	if a == nil {
 		return nil
 	}
-	out := &gsm_map.AllocationRetentionPriority{PriorityLevel: a.PriorityLevel}
+	out := &gsm_map.AllocationRetentionPriority{PriorityLevel: bigIntFromInt64(a.PriorityLevel)}
 	if a.PreEmptionCapability != nil {
 		v := *a.PreEmptionCapability
 		out.PreEmptionCapability = &v
@@ -26,11 +26,15 @@ func convertAllocationRetentionPriorityToWire(a *AllocationRetentionPriority) *g
 	return out
 }
 
-func convertWireToAllocationRetentionPriority(w *gsm_map.AllocationRetentionPriority) *AllocationRetentionPriority {
+func convertWireToAllocationRetentionPriority(w *gsm_map.AllocationRetentionPriority) (*AllocationRetentionPriority, error) {
 	if w == nil {
-		return nil
+		return nil, nil
 	}
-	out := &AllocationRetentionPriority{PriorityLevel: w.PriorityLevel}
+	priorityLevel, err := int64FromBigInt(w.PriorityLevel, "AllocationRetentionPriority.PriorityLevel")
+	if err != nil {
+		return nil, err
+	}
+	out := &AllocationRetentionPriority{PriorityLevel: priorityLevel}
 	if w.PreEmptionCapability != nil {
 		v := *w.PreEmptionCapability
 		out.PreEmptionCapability = &v
@@ -39,7 +43,7 @@ func convertWireToAllocationRetentionPriority(w *gsm_map.AllocationRetentionPrio
 		v := *w.PreEmptionVulnerability
 		out.PreEmptionVulnerability = &v
 	}
-	return out
+	return out, nil
 }
 
 // ============================================================================
@@ -67,9 +71,13 @@ func convertWireToEPSQoSSubscribed(w *gsm_map.EPSQoSSubscribed) (*EPSQoSSubscrib
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrQoSClassIdentifierOutOfRange, err)
 	}
+	arp, err := convertWireToAllocationRetentionPriority(&w.AllocationRetentionPriority)
+	if err != nil {
+		return nil, fmt.Errorf("EPSQoSSubscribed.AllocationRetentionPriority: %w", err)
+	}
 	return &EPSQoSSubscribed{
 		QosClassIdentifier:          qci,
-		AllocationRetentionPriority: *convertWireToAllocationRetentionPriority(&w.AllocationRetentionPriority),
+		AllocationRetentionPriority: *arp,
 	}, nil
 }
 
