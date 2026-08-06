@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"fmt"
 	"math"
+	"math/big"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
@@ -102,6 +103,20 @@ func narrowInt64Range(v int64, lo, hi int64, field string) (int, error) {
 		return 0, fmt.Errorf("%s out of range %d..%d: %d", field, lo, hi, v)
 	}
 	return narrowInt64(v)
+}
+
+func bigIntFromInt64(v int64) *big.Int {
+	return big.NewInt(v)
+}
+
+func int64FromBigInt(v *big.Int, field string) (int64, error) {
+	if v == nil {
+		return 0, fmt.Errorf("%s is nil", field)
+	}
+	if !v.IsInt64() {
+		return 0, fmt.Errorf("%s overflows int64: %s", field, v.String())
+	}
+	return v.Int64(), nil
 }
 
 // validatePlmnId is the canonical 3-octet PLMN-Id check per TS 23.003,

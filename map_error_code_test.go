@@ -1,6 +1,6 @@
 // map_error_code_test.go
 //
-// Tests for the typed MapErrorCode enum and the upstream-aliased
+// Tests for the typed MapErrorCode enum and upstream local-error-code
 // constants. PR F3 of the staged ReturnError.Parameter implementation.
 package gsmmap
 
@@ -10,7 +10,7 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// MapErrorCode is an alias for gsm_map.ErrorCode; values pass without
+// MapErrorCode is an alias for gsm_map.GSMMAPLocalErrorcode; values pass without
 // casts and the constants line up with the upstream values.
 func TestMapErrorCodeAliasUpstream(t *testing.T) {
 	cases := []struct {
@@ -37,7 +37,7 @@ func TestMapErrorCodeAliasUpstream(t *testing.T) {
 }
 
 // String() works on the typed enum without a cast (delegated to the
-// upstream gsm_map.ErrorCode method).
+// upstream gsm_map.GSMMAPLocalErrorcode method).
 func TestMapErrorCodeString(t *testing.T) {
 	cases := []struct {
 		got  MapErrorCode
@@ -58,8 +58,8 @@ func TestMapErrorCodeString(t *testing.T) {
 }
 
 // GetErrorString continues to work — it delegates to upstream
-// gsm_map.ErrorCode.String(). Existing callers passing raw int64
-// must not regress.
+// gsm_map.GSMMAPLocalErrorcode.String(). Existing callers passing raw
+// int64 must not regress.
 func TestGetErrorStringRegression(t *testing.T) {
 	cases := []struct {
 		errCode int64
@@ -77,7 +77,7 @@ func TestGetErrorStringRegression(t *testing.T) {
 	}
 }
 
-// MapErrorCode is a type alias for gsm_map.ErrorCode, so callers can
+// MapErrorCode is a type alias for gsm_map.GSMMAPLocalErrorcode, so callers can
 // use either form interchangeably without conversions. Verified by
 // passing each constant through a function whose parameter is typed
 // as the other side of the alias — if the alias relationship breaks,
@@ -85,16 +85,16 @@ func TestGetErrorStringRegression(t *testing.T) {
 // pattern used elsewhere in the package.
 func TestMapErrorCodeUpstreamInterchangeable(t *testing.T) {
 	// Pass a local constant where an upstream type is expected.
-	asUpstream := func(v gsm_map.ErrorCode) gsm_map.ErrorCode { return v }
-	if got := asUpstream(MapErrorCallBarred); got != gsm_map.CallBarred {
-		t.Errorf("local MapErrorCallBarred → upstream gsm_map.CallBarred: want %d, got %d",
-			gsm_map.CallBarred, got)
+	asUpstream := func(v gsm_map.GSMMAPLocalErrorcode) gsm_map.GSMMAPLocalErrorcode { return v }
+	if got := asUpstream(MapErrorCallBarred); got != gsm_map.GSMMAPLocalErrorcodeCallBarred {
+		t.Errorf("local MapErrorCallBarred → upstream gsm_map.GSMMAPLocalErrorcodeCallBarred: want %d, got %d",
+			gsm_map.GSMMAPLocalErrorcodeCallBarred, got)
 	}
 
 	// Pass an upstream constant where a local type is expected.
 	asLocal := func(v MapErrorCode) MapErrorCode { return v }
-	if got := asLocal(gsm_map.SystemFailure); got != MapErrorSystemFailure {
-		t.Errorf("upstream gsm_map.SystemFailure → local MapErrorSystemFailure: want %d, got %d",
+	if got := asLocal(gsm_map.GSMMAPLocalErrorcodeSystemFailure); got != MapErrorSystemFailure {
+		t.Errorf("upstream gsm_map.GSMMAPLocalErrorcodeSystemFailure → local MapErrorSystemFailure: want %d, got %d",
 			MapErrorSystemFailure, got)
 	}
 
@@ -105,7 +105,7 @@ func TestMapErrorCodeUpstreamInterchangeable(t *testing.T) {
 	if _, err := ParseReturnErrorParameter(int64(MapErrorUnknownSubscriber), emptySeq); err != nil {
 		t.Errorf("ParseReturnErrorParameter(int64(MapErrorUnknownSubscriber)): %v", err)
 	}
-	if _, err := ParseReturnErrorParameter(int64(gsm_map.UnknownSubscriber), emptySeq); err != nil {
-		t.Errorf("ParseReturnErrorParameter(int64(gsm_map.UnknownSubscriber)): %v", err)
+	if _, err := ParseReturnErrorParameter(int64(gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber), emptySeq); err != nil {
+		t.Errorf("ParseReturnErrorParameter(int64(gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber)): %v", err)
 	}
 }
