@@ -160,8 +160,8 @@ func TestPSLGeoInfoSpecConstants(t *testing.T) {
 // Zero values for the aliases must compose cleanly with HexBytes.
 func TestPSLGeoInfoZeroValues(t *testing.T) {
 	var ext ExtGeographicalInformation
-	if ext != nil {
-		t.Error("ExtGeographicalInformation zero value should be nil")
+	if len(ext) != 0 {
+		t.Error("ExtGeographicalInformation zero value should have len 0")
 	}
 	var v VelocityEstimate
 	if len(v) != 0 {
