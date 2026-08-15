@@ -11,6 +11,26 @@ import (
 // --- MO-ForwardSM SM-RP-DA/OA converters ---
 
 func convertSmRpDaToWire(da *SmRpDa) (gsm_map.SMRPDA, error) {
+	return convertSmRpDaToWireWithErrors(
+		da,
+		ErrMoFsmSmRpDaNoAlternative,
+		ErrMoFsmSmRpDaMultipleAlternatives,
+	)
+}
+
+func convertMtSmRpDaToWire(da *SmRpDa) (gsm_map.SMRPDA, error) {
+	return convertSmRpDaToWireWithErrors(
+		da,
+		ErrMtFsmSmRpDaNoAlternative,
+		ErrMtFsmSmRpDaMultipleAlternatives,
+	)
+}
+
+func convertSmRpDaToWireWithErrors(
+	da *SmRpDa,
+	noAlternativeErr error,
+	multipleAlternativesErr error,
+) (gsm_map.SMRPDA, error) {
 	count := 0
 	if da.IMSI != "" {
 		count++
@@ -25,10 +45,10 @@ func convertSmRpDaToWire(da *SmRpDa) (gsm_map.SMRPDA, error) {
 		count++
 	}
 	if count == 0 {
-		return gsm_map.SMRPDA{}, ErrMoFsmSmRpDaNoAlternative
+		return gsm_map.SMRPDA{}, noAlternativeErr
 	}
 	if count > 1 {
-		return gsm_map.SMRPDA{}, ErrMoFsmSmRpDaMultipleAlternatives
+		return gsm_map.SMRPDA{}, multipleAlternativesErr
 	}
 
 	switch {
@@ -94,6 +114,26 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 }
 
 func convertSmRpOaToWire(oa *SmRpOa) (gsm_map.SMRPOA, error) {
+	return convertSmRpOaToWireWithErrors(
+		oa,
+		ErrMoFsmSmRpOaNoAlternative,
+		ErrMoFsmSmRpOaMultipleAlternatives,
+	)
+}
+
+func convertMtSmRpOaToWire(oa *SmRpOa) (gsm_map.SMRPOA, error) {
+	return convertSmRpOaToWireWithErrors(
+		oa,
+		ErrMtFsmSmRpOaNoAlternative,
+		ErrMtFsmSmRpOaMultipleAlternatives,
+	)
+}
+
+func convertSmRpOaToWireWithErrors(
+	oa *SmRpOa,
+	noAlternativeErr error,
+	multipleAlternativesErr error,
+) (gsm_map.SMRPOA, error) {
 	count := 0
 	if oa.MSISDN != "" {
 		count++
@@ -105,10 +145,10 @@ func convertSmRpOaToWire(oa *SmRpOa) (gsm_map.SMRPOA, error) {
 		count++
 	}
 	if count == 0 {
-		return gsm_map.SMRPOA{}, ErrMoFsmSmRpOaNoAlternative
+		return gsm_map.SMRPOA{}, noAlternativeErr
 	}
 	if count > 1 {
-		return gsm_map.SMRPOA{}, ErrMoFsmSmRpOaMultipleAlternatives
+		return gsm_map.SMRPOA{}, multipleAlternativesErr
 	}
 
 	switch {

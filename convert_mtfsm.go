@@ -12,24 +12,43 @@ import (
 
 func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 	// sm-RP-DA and sm-RP-OA are non-OPTIONAL CHOICEs in MT-ForwardSM-Arg
-	// per MAP-SM-DataTypes.asn:178-181. The public MtFsm type hardcodes
-	// the imsi / serviceCentreAddressOA alternatives, so those string
-	// fields must be non-empty for the wire CHOICE to be valid.
-	if m.IMSI == "" {
-		return nil, ErrMtFsmMissingIMSI
-	}
-	if m.ServiceCentreAddressOA == "" {
-		return nil, ErrMtFsmMissingServiceCentreAddressOA
+	// per 3GPP TS 29.002 v19.1.0 clause 17.7.6. IMSI and
+	// ServiceCentreAddressOA remain the common public fields; SmRpDa/SmRpOa
+	// expose the full CHOICEs.
+	var smRpDa gsm_map.SMRPDA
+	if m.SmRpDa != nil {
+		da, err := convertMtSmRpDaToWire(m.SmRpDa)
+		if err != nil {
+			return nil, err
+		}
+		smRpDa = da
+	} else {
+		if m.IMSI == "" {
+			return nil, ErrMtFsmMissingIMSI
+		}
+		imsiBytes, err := tbcd.Encode(m.IMSI)
+		if err != nil {
+			return nil, fmt.Errorf(errEncodingIMSI, err)
+		}
+		smRpDa = gsm_map.NewSMRPDAImsi(gsm_map.IMSI(imsiBytes))
 	}
 
-	imsiBytes, err := tbcd.Encode(m.IMSI)
-	if err != nil {
-		return nil, fmt.Errorf(errEncodingIMSI, err)
-	}
-
-	scaOA, err := encodeAddressField(m.ServiceCentreAddressOA, m.SCAOANature, m.SCAOAPlan)
-	if err != nil {
-		return nil, fmt.Errorf("encoding ServiceCentreAddressOA: %w", err)
+	var smRpOa gsm_map.SMRPOA
+	if m.SmRpOa != nil {
+		oa, err := convertMtSmRpOaToWire(m.SmRpOa)
+		if err != nil {
+			return nil, err
+		}
+		smRpOa = oa
+	} else {
+		if m.ServiceCentreAddressOA == "" {
+			return nil, ErrMtFsmMissingServiceCentreAddressOA
+		}
+		scaOA, err := encodeAddressField(m.ServiceCentreAddressOA, m.SCAOANature, m.SCAOAPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ServiceCentreAddressOA: %w", err)
+		}
+		smRpOa = gsm_map.NewSMRPOAServiceCentreAddressOA(gsm_map.AddressString(scaOA))
 	}
 
 	if err := validateMtForwardSMArgTPDU(m.TPDU); err != nil {
@@ -41,8 +60,8 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 	}
 
 	arg := &gsm_map.MTForwardSMArg{
-		SmRPDA: gsm_map.NewSMRPDAImsi(gsm_map.IMSI(imsiBytes)),
-		SmRPOA: gsm_map.NewSMRPOAServiceCentreAddressOA(gsm_map.AddressString(scaOA)),
+		SmRPDA: smRpDa,
+		SmRPOA: smRpOa,
 		SmRPUI: gsm_map.SignalInfo(tpduBytes),
 	}
 
@@ -91,7 +110,7 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 	var mtFsm MtFsm
 
-	// Extract IMSI from SM-RP-DA
+	// Extract SM-RP-DA.
 	switch arg.SmRPDA.Choice {
 	case gsm_map.SMRPDAChoiceImsi:
 		if arg.SmRPDA.Imsi == nil {
@@ -102,11 +121,17 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 			return nil, fmt.Errorf("decoding IMSI: %w", err)
 		}
 		mtFsm.IMSI = imsi
+	case gsm_map.SMRPDAChoiceLmsi, gsm_map.SMRPDAChoiceServiceCentreAddressDA, gsm_map.SMRPDAChoiceNoSMRPDA:
+		da, err := convertWireToSmRpDa(&arg.SmRPDA)
+		if err != nil {
+			return nil, err
+		}
+		mtFsm.SmRpDa = da
 	default:
 		return nil, fmt.Errorf("unexpected SMRPDA choice: %d", arg.SmRPDA.Choice)
 	}
 
-	// Extract ServiceCentreAddressOA from SM-RP-OA
+	// Extract SM-RP-OA.
 	switch arg.SmRPOA.Choice {
 	case gsm_map.SMRPOAChoiceServiceCentreAddressOA:
 		if arg.SmRPOA.ServiceCentreAddressOA == nil {
@@ -119,6 +144,12 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 		mtFsm.ServiceCentreAddressOA = sca
 		mtFsm.SCAOANature = nature
 		mtFsm.SCAOAPlan = plan
+	case gsm_map.SMRPOAChoiceMsisdn, gsm_map.SMRPOAChoiceNoSMRPOA:
+		oa, err := convertWireToSmRpOa(&arg.SmRPOA)
+		if err != nil {
+			return nil, err
+		}
+		mtFsm.SmRpOa = oa
 	default:
 		return nil, fmt.Errorf("unexpected SMRPOA choice: %d", arg.SmRPOA.Choice)
 	}
