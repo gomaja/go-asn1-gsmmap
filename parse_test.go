@@ -9,6 +9,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/gomaja/go-sms/encoding/tpdu"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -235,6 +236,46 @@ func TestParseMoFsmRejectsCapturedMtForwardSMV2(t *testing.T) {
 	}
 	if mtFsm.ServiceCentreAddressOA != "2348090000330" {
 		t.Errorf("ServiceCentreAddressOA: got %q, want %q", mtFsm.ServiceCentreAddressOA, "2348090000330")
+	}
+
+	if _, err := ParseMoFsm(data); !errors.Is(err, ErrMoFsmUnexpectedTPDUType) {
+		t.Fatalf("ParseMoFsm error: got %v, want ErrMoFsmUnexpectedTPDUType", err)
+	}
+}
+
+func TestParseMtFsmAcceptsNoSmRpDaNoSmRpOaFromIssue3(t *testing.T) {
+	// Captured from temp_wireshark/issue-3.pcapng frame 3:
+	// TCAP forwardSM(46) in shortMsgMT-RelayContext-v2 carries an
+	// MT-ForwardSM-Arg with noSM-RP-DA, noSM-RP-OA, and an SMS-DELIVER
+	// TPDU. These RP address CHOICEs are defined by 3GPP TS 29.002 v19.1.0
+	// clause 17.7.6 and used for subsequent MT transfers per clause 12.9.3;
+	// they must not make the wrapper reject the message before TPDU direction
+	// validation per 3GPP TS 23.040 v19.0.0 clause 9.2.2.
+	data, err := hex.DecodeString("3067850085000461040b916971101911f900006280517153902159d2e2b1252d467ff6de6c47efd18c38980d27ac1589b9a1d02814d26cb1d92d17a40983311aee560bde6ec39b8d4623da8a4623cd188bc18a441b4c981b0e6d4259ac3814eee4bd5b4d26c3cd6c36")
+	if err != nil {
+		t.Fatalf("hex decode: %v", err)
+	}
+
+	mtFsm, err := ParseMtFsm(data)
+	if err != nil {
+		t.Fatalf("ParseMtFsm: %v", err)
+	}
+	if mtFsm.SmRpDa == nil || !mtFsm.SmRpDa.NoSmRpDa {
+		t.Fatalf("SmRpDa: got %#v, want NoSmRpDa", mtFsm.SmRpDa)
+	}
+	if mtFsm.SmRpOa == nil || !mtFsm.SmRpOa.NoSmRpOa {
+		t.Fatalf("SmRpOa: got %#v, want NoSmRpOa", mtFsm.SmRpOa)
+	}
+	if mtFsm.TPDU.SmsType() != tpdu.SmsDeliver {
+		t.Fatalf("TPDU type: got %v, want %v", mtFsm.TPDU.SmsType(), tpdu.SmsDeliver)
+	}
+
+	marshaled, err := mtFsm.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if diff := cmp.Diff(data, marshaled); diff != "" {
+		t.Fatalf("marshaled bytes mismatch (-want +got):\n%s", diff)
 	}
 
 	if _, err := ParseMoFsm(data); !errors.Is(err, ErrMoFsmUnexpectedTPDUType) {

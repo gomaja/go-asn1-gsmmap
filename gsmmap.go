@@ -137,12 +137,24 @@ type LocationInfoWithLMSI struct {
 
 // MtFsm represents a Mobile Terminated Forward Short Message (opCode 44).
 type MtFsm struct {
-	IMSI                   string
+	// SM-RP-DA: destination address CHOICE.
+	// IMSI is the common variant. When SmRpDa is set it overrides IMSI and
+	// allows any SM-RP-DA alternative (IMSI, LMSI, serviceCentreAddressDA,
+	// noSM-RP-DA).
+	IMSI   string
+	SmRpDa *SmRpDa
+
+	// SM-RP-OA: originator address CHOICE.
+	// ServiceCentreAddressOA is the common variant. When SmRpOa is set it
+	// overrides ServiceCentreAddressOA and allows any SM-RP-OA alternative
+	// (msisdn, serviceCentreAddressOA, noSM-RP-OA).
 	ServiceCentreAddressOA string
-	SCAOANature            uint8 // address nature indicator (default: International)
-	SCAOAPlan              uint8 // numbering plan indicator (default: ISDN)
-	TPDU                   tpdu.TPDU
-	MoreMessagesToSend     bool
+	SCAOANature            uint8   // address nature indicator (default: International)
+	SCAOAPlan              uint8   // numbering plan indicator (default: ISDN)
+	SmRpOa                 *SmRpOa // when set, overrides ServiceCentreAddressOA
+
+	TPDU               tpdu.TPDU
+	MoreMessagesToSend bool
 
 	// Optional fields (post-extension marker).
 	SmDeliveryTimer           *int                // SM-DeliveryTimerValue: MinSmDeliveryTimer..MaxSmDeliveryTimer seconds
@@ -3586,6 +3598,11 @@ var (
 	ErrMoFsmSmRpDaMultipleAlternatives = errors.New("moFsm: SmRpDa CHOICE has multiple alternatives set")
 	ErrMoFsmSmRpOaNoAlternative        = errors.New("moFsm: SmRpOa CHOICE has no alternative set")
 	ErrMoFsmSmRpOaMultipleAlternatives = errors.New("moFsm: SmRpOa CHOICE has multiple alternatives set")
+
+	ErrMtFsmSmRpDaNoAlternative        = errors.New("mtFsm: SmRpDa CHOICE has no alternative set")
+	ErrMtFsmSmRpDaMultipleAlternatives = errors.New("mtFsm: SmRpDa CHOICE has multiple alternatives set")
+	ErrMtFsmSmRpOaNoAlternative        = errors.New("mtFsm: SmRpOa CHOICE has no alternative set")
+	ErrMtFsmSmRpOaMultipleAlternatives = errors.New("mtFsm: SmRpOa CHOICE has multiple alternatives set")
 
 	ErrSuperChargerInfoNoAlternative        = errors.New("updateLocation: SuperChargerInfo CHOICE has no alternative set")
 	ErrSuperChargerInfoMultipleAlternatives = errors.New("updateLocation: SuperChargerInfo CHOICE has multiple alternatives set")

@@ -67,9 +67,9 @@ func TestUpdateLocationMandatoryFields(t *testing.T) {
 	})
 }
 
-// MT-ForwardSM-Arg uses SM-RP-DA and SM-RP-OA CHOICE variants. The
-// public MtFsm struct hardcodes the IMSI and ServiceCentreAddressOA
-// alternatives, so those string fields must be non-empty.
+// MT-ForwardSM-Arg uses mandatory SM-RP-DA and SM-RP-OA CHOICE values.
+// The common IMSI and ServiceCentreAddressOA fields must be non-empty
+// when the corresponding full CHOICE field is not set.
 func TestMtFsmMandatoryFields(t *testing.T) {
 	// Parse a known-valid MT-FSM (same hex as TestMtFsmFullStressRoundTrip)
 	// to obtain a populated TPDU value; synthesizing one from scratch would
