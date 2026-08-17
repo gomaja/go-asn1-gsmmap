@@ -2,8 +2,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/gomaja/go-asn1 v0.3.0 h1:XpuR/MpvNfe8AfczQT+ZWUNjUG59gujgCFxfpI1/4nU=
 github.com/gomaja/go-asn1 v0.3.0/go.mod h1:e1aXO5rnMK+OFSV7DZSk6ckpe3nYANwEEJrJGsE9foY=
-github.com/gomaja/go-sms v0.0.0-20260802173117-e1b0aca6298e h1:it69ONUfY480pM8JJoRfhF0yhwo/pAYaEX0f1eDZCK8=
-github.com/gomaja/go-sms v0.0.0-20260802173117-e1b0aca6298e/go.mod h1:j18GDVFrX7w4rI/mZRKrMsdqpoSm3uhQvhikgz0r3tM=
+github.com/gomaja/go-sms v1.0.1 h1:q+oVdM0SbqltrVFHcc9MTFvZ9+C8tmo5UU7cuO58n4U=
+github.com/gomaja/go-sms v1.0.1/go.mod h1:j18GDVFrX7w4rI/mZRKrMsdqpoSm3uhQvhikgz0r3tM=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
