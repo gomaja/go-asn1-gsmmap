@@ -1,11 +1,7 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/gomaja/go-asn1 v0.0.0-20260929161325-79f72b5cf187 h1:CoJRiA9NK0PTo+JUjeoT6fbmXYDGoaLY/Cw45F7rl/Y=
-github.com/gomaja/go-asn1 v0.0.0-20260929161325-79f72b5cf187/go.mod h1:e1aXO5rnMK+OFSV7DZSk6ckpe3nYANwEEJrJGsE9foY=
-github.com/gomaja/go-asn1 v0.3.0 h1:XpuR/MpvNfe8AfczQT+ZWUNjUG59gujgCFxfpI1/4nU=
-github.com/gomaja/go-asn1 v0.3.0/go.mod h1:e1aXO5rnMK+OFSV7DZSk6ckpe3nYANwEEJrJGsE9foY=
-github.com/gomaja/go-sms v0.0.0-20260802173117-e1b0aca6298e h1:it69ONUfY480pM8JJoRfhF0yhwo/pAYaEX0f1eDZCK8=
-github.com/gomaja/go-sms v0.0.0-20260802173117-e1b0aca6298e/go.mod h1:j18GDVFrX7w4rI/mZRKrMsdqpoSm3uhQvhikgz0r3tM=
+github.com/gomaja/go-asn1 v0.0.0-20260929180321-5f9ce3a46527 h1:ijPCtzG9i9JrX4Ljaad3795S2YLn5p5GueBdMatfmow=
+github.com/gomaja/go-asn1 v0.0.0-20260929180321-5f9ce3a46527/go.mod h1:N8d4E0zr4ijiO6aSV9kMMeRn0IjkNnEck1YZv+jk5SY=
 github.com/gomaja/go-sms v0.0.0-20260928185505-66af3bfd4fa8 h1:++sB7163y61onIbllOkCx8OsbPPUz8eM8LZ5TMv3C74=
 github.com/gomaja/go-sms v0.0.0-20260928185505-66af3bfd4fa8/go.mod h1:NlqKkd09ZWvUCk9dJ6FxLQr6a5VD7E5Gr7DLyJX3KDk=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=

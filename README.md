@@ -26,12 +26,63 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **SendRoutingInfoForLCS** (SRI-LCS) | 85 | `SriLcs` | `SriLcsResp` |
 | **SubscriberLocationReport** (SLR) | 86 | `SubscriberLocationReportArg` | `SubscriberLocationReportRes` |
 | **ReportSMDeliveryStatus** | 47 | `ReportSMDeliveryStatus` | `ReportSMDeliveryStatusRes` |
+| **processUnstructuredSS-Request** (USSD) | 59 | `USSDArg` | `USSDRes` |
+| **unstructuredSS-Request** (USSD) | 60 | `USSDArg` | `USSDRes` |
+| **unstructuredSS-Notify** (USSD) | 61 | `USSDArg` | — |
+
+MAP ReturnError parameters are decoded with `ParseReturnErrorParameter` (see [MAP errors](#map-errors)).
 
 ## Install
 
+Depend on the main branch:
+
 ```bash
-go get github.com/gomaja/go-asn1-gsmmap
+go get github.com/gomaja/go-asn1-gsmmap@main
 ```
+
+The main branch is the only supported version. The API follows the current
+3GPP specifications and the main branches of
+[go-asn1](https://github.com/gomaja/go-asn1) and
+[go-sms](https://github.com/gomaja/go-sms), and keeps no backward-compatible
+aliases or wrappers: when something changes, there is one way to do it.
+
+The module was tagged v1.0.0, v1.0.1 and v1.0.2 before it moved to the main
+branch. Those tags and their GitHub releases are deleted, and v1.0.3 was
+published only to retract all four (see the `retract` block in `go.mod`).
+What that means for a consumer:
+
+- proxy.golang.org and sum.golang.org keep v1.0.0–v1.0.3 permanently; a
+  deleted tag cannot be removed from them. Because they are retracted, the go
+  command does not offer them: `go get github.com/gomaja/go-asn1-gsmmap` with
+  no version, `@latest` and `go list -m -u` resolve to the main branch.
+- Without tags, a version of the main branch is a pseudo-version
+  `v0.0.0-<UTC time>-<commit>`, which sorts below v1.0.x. `go get -u` never
+  moves such a pseudo-version back to v1.0.x (the go command does not
+  "upgrade" to a chronologically older version), but minimal version
+  selection does compare by version: if any module in your build still
+  requires v1.0.x, that retracted release wins over the main branch, and
+  `go build` and `go mod tidy` say nothing about it. `go get` warns that the
+  selected version is retracted, and `go list -m -u all` marks it
+  `(retracted)`; update the module that requires it.
+- A project that requires v1.0.x is warned that it is retracted, and moves to
+  the main branch with the command above. The v1.0.x API differs (see the
+  migration notes below).
+
+### Migrating from v1.0.x
+
+- `MtFsm` and `MoFsm` carry the SM-RP-DA and SM-RP-OA CHOICEs only, as
+  `SmRpDa SmRpDa` and `SmRpOa SmRpOa`. The shorthand fields (`MtFsm.IMSI`,
+  `MtFsm.ServiceCentreAddressOA`, `MoFsm.ServiceCentreAddressDA`,
+  `MoFsm.MSISDN` and their nature/plan fields) are gone; set exactly one
+  alternative of each CHOICE.
+- An address nature or numbering plan of 0 now means unknown, as on the wire.
+  Set `address.NatureInternational` / `address.PlanISDN` (or any other value)
+  explicitly; parsing and marshalling reproduces every address exactly.
+- `ParseReturnErrorParameter` takes a `MapErrorCode` and is the only way to
+  decode an error parameter; the per-error `Parse*Param` functions are no
+  longer exported. `GetErrorString(code)` is `MapErrorCode(code).String()`.
+- `ErrIscInvalidAbsentSubscriberDiagnosticSM` is
+  `ErrAbsentSubscriberDiagnosticSMOutOfRange`.
 
 ## Usage
 
@@ -53,19 +104,26 @@ mtFsm, err := gsmmap.ParseMtFsm(berData)
 if err != nil {
     log.Fatal(err)
 }
-fmt.Println(mtFsm.IMSI) // "001010123456789"
+fmt.Println(mtFsm.SmRpDa.IMSI) // "001010123456789" when SM-RP-DA is an IMSI
 // mtFsm.TPDU contains the decoded SMS TPDU
 ```
 
 ### Build and marshal MAP data
 
 ```go
-import gsmmap "github.com/gomaja/go-asn1-gsmmap"
+import (
+    gsmmap "github.com/gomaja/go-asn1-gsmmap"
+    "github.com/gomaja/go-asn1-gsmmap/address"
+)
 
 sriSm := &gsmmap.SriSm{
     MSISDN:               "1234567890",
+    MSISDNNature:         address.NatureInternational,
+    MSISDNPlan:           address.PlanISDN,
     SmRpPri:              true,
     ServiceCentreAddress: "9876543210",
+    SCANature:            address.NatureInternational,
+    SCAPlan:              address.PlanISDN,
 }
 
 berData, err := sriSm.Marshal()
@@ -86,6 +144,8 @@ ati := &gsmmap.AnyTimeInterrogation{
         SubscriberState:     true,
     },
     GsmSCFAddress: "1234567890",
+    GsmSCFNature:  address.NatureInternational,
+    GsmSCFPlan:    address.PlanISDN,
 }
 
 data, err := ati.Marshal()
@@ -108,7 +168,9 @@ if atiRes.SubscriberInfo.SubscriberState != nil {
 absent := 5 // AbsentSubscriberDiagnosticSM (0..255)
 
 isc := &gsmmap.InformServiceCentre{
-    StoredMSISDN: "31612345678",
+    StoredMSISDN:       "31612345678",
+    StoredMSISDNNature: address.NatureInternational,
+    StoredMSISDNPlan:   address.PlanISDN,
     MwStatus: &gsmmap.MwStatusFlags{
         MnrfSet: true,
         McefSet: true,
@@ -142,7 +204,11 @@ event := gsmmap.SmsGmscAlertMsAvailableForMtSms
 
 asc := &gsmmap.AlertServiceCentre{
     MSISDN:               "31612345678",
+    MSISDNNature:         address.NatureInternational,
+    MSISDNPlan:           address.PlanISDN,
     ServiceCentreAddress: "31611111111",
+    SCANature:            address.NatureInternational,
+    SCAPlan:              address.PlanISDN,
     SmsGmscAlertEvent:    &event,
 }
 data, err := asc.Marshal()
@@ -168,6 +234,8 @@ fmt.Println("SMS retry triggered for MSISDN:", parsed.MSISDN)
 purge := &gsmmap.PurgeMS{
     IMSI:      "204080012345678",
     VLRNumber: "31611111111",
+    VLRNature: address.NatureInternational,
+    VLRPlan:   address.PlanISDN,
 }
 data, err := purge.Marshal()
 if err != nil {
@@ -298,10 +366,14 @@ cl := &gsmmap.CancelLocation{
     Identity:         gsmmap.CancelLocationIdentity{IMSI: "204080012345678"},
     CancellationType: &ct,
     TypeOfUpdate:     &tu,
-    NewMSCNumber:     "31611111111",
-    NewVLRNumber:     "31622222222",
-    NewLMSI:          gsmmap.HexBytes{0x11, 0x22, 0x33, 0x44},
-    ReattachRequired: true,
+    NewMSCNumber:       "31611111111",
+    NewMSCNumberNature: address.NatureInternational,
+    NewMSCNumberPlan:   address.PlanISDN,
+    NewVLRNumber:       "31622222222",
+    NewVLRNumberNature: address.NatureInternational,
+    NewVLRNumberPlan:   address.PlanISDN,
+    NewLMSI:            gsmmap.HexBytes{0x11, 0x22, 0x33, 0x44},
+    ReattachRequired:   true,
 }
 data, err := cl.Marshal()
 if err != nil {
@@ -338,8 +410,12 @@ if _, err := gsmmap.ParseCancelLocationRes(respBytes); err != nil {
 // Build an SRI request
 sri := &gsmmap.Sri{
     MSISDN:              "31612345678",
+    MSISDNNature:        address.NatureInternational,
+    MSISDNPlan:          address.PlanISDN,
     InterrogationType:   gsmmap.InterrogationBasicCall,
     GmscOrGsmSCFAddress: "31201111111",
+    GmscNature:          address.NatureInternational,
+    GmscPlan:            address.PlanISDN,
 }
 data, err := sri.Marshal()
 
@@ -379,6 +455,8 @@ resp := &gsmmap.SriResp{
                             OBcsmTriggerDetectionPoint: gsmmap.OBcsmTriggerCollectedInfo,
                             ServiceKey:                 42,
                             GsmSCFAddress:              "31611111111",
+                            GsmSCFAddressNature:        address.NatureInternational,
+                            GsmSCFAddressPlan:          address.PlanISDN,
                             DefaultCallHandling:        gsmmap.DefaultCallHandlingContinueCall,
                         },
                     },
@@ -392,6 +470,76 @@ resp := &gsmmap.SriResp{
 data, err := resp.Marshal()
 ```
 
+### USSD (opCodes 59, 60, 61)
+
+The three USSD operations of 3GPP TS 29.002 share one argument and one result
+type ([§17.7.4](https://www.3gpp.org/ftp/Specs/archive/29_series/29.002/)):
+
+- **processUnstructuredSS-Request** (59, §11.9): mobile-initiated USSD. Argument `USSDArg`, result `USSDRes`. `MSISDN` applies to this operation only.
+- **unstructuredSS-Request** (60, §11.10): network-initiated request for input. Argument `USSDArg`, result `USSDRes` (which the peer may omit). `AlertingPattern` applies to 60 and 61 only.
+- **unstructuredSS-Notify** (61, §11.11): network-initiated notification. Argument `USSDArg`; the result has no parameter.
+
+All three use the application context networkUnstructuredSsContext-v2
+(0.4.0.0.1.0.19.2, §17.3.2.20), returned by `NetworkUnstructuredSsContextV2()`
+as a `[]uint64`.
+
+```go
+// A USSD gateway receiving processUnstructuredSS-Request (opCode 59)
+arg, err := gsmmap.ParseUSSDArg(invokeParameter)
+if err != nil {
+    log.Fatal(err)
+}
+text, err := arg.DataCodingScheme.Decode(arg.USSDString) // "*100#"
+if err != nil {
+    // e.g. errors.Is(err, gsmmap.ErrUSSDUnsupportedDataCodingScheme):
+    // answer with the unknownAlphabet error (gsmmap.MapErrorUnknownAlphabet)
+}
+
+// Answer with USSD-Res
+reply, err := gsmmap.USSDDataCodingSchemeGSM7.Encode("Balance: 10.00 EUR")
+if err != nil {
+    log.Fatal(err)
+}
+res := &gsmmap.USSDRes{
+    DataCodingScheme: gsmmap.USSDDataCodingSchemeGSM7,
+    USSDString:       reply,
+}
+resultParameter, err := res.Marshal()
+```
+
+`USSDDataCodingScheme` interprets the data coding scheme as the Cell
+Broadcast Data Coding Scheme of 3GPP TS 23.038 §5, as TS 29.002 §7.6.4.36
+requires:
+
+| Coding | Decode | Encode |
+|---|---|---|
+| GSM 7 bit default alphabet (e.g. `0x0F`, the language groups, `01xx 00xx`, `1111 0xxx`) | yes, with the USSD packing of TS 23.038 §6.1.2.3.1 (a final `<CR>` pad is removed) and the extension table | yes |
+| UCS2 (`01xx 10xx`, e.g. `0x48`) | yes | yes, for characters up to U+FFFF |
+| Reserved codings | as GSM 7 bit, which §5 requires of a receiving entity | no (a sender must not use them) |
+| Language indication (`0x10`, `0x11`, `0x12`), compressed, 8 bit data, UDH, I1, WAP | `ErrUSSDUnsupportedDataCodingScheme` | `ErrUSSDUnsupportedDataCodingScheme` |
+
+The 7 bit packing and the character tables come from go-sms
+(`encoding/gsm7`, `encoding/ucs2`).
+
+### MAP errors
+
+`MapErrorCode` names the MAP local error codes (`String()` gives the ASN.1
+name, e.g. `"ussd-Busy"`), and `ParseReturnErrorParameter` decodes the
+parameter of a TCAP ReturnError into the error's parameter type:
+
+```go
+p, err := gsmmap.ParseReturnErrorParameter(gsmmap.MapErrorCode(errorCode), parameter)
+switch v := p.(type) {
+case *gsmmap.SystemFailureParam:
+    fmt.Println(v)
+case *gsmmap.UnexpectedDataParam:
+    fmt.Println(v.UnexpectedSubscriber)
+}
+```
+
+It returns `(nil, nil)` for errors without a parameter (unknownAlphabet 71,
+ussd-Busy 72), for codes it does not decode, and for an empty parameter.
+
 ## Design
 
 This library provides a **layered API**:
@@ -402,7 +550,7 @@ This library provides a **layered API**:
 
 ### Address handling
 
-Phone numbers are stored as plain digit strings. Address nature and numbering plan indicators are preserved via companion fields (e.g., `MSISDNNature`, `MSISDNPlan`), defaulting to International + ISDN (E.164) when zero.
+Phone numbers are stored as plain digit strings. The nature of address and numbering plan are companion fields (e.g., `MSISDNNature`, `MSISDNPlan`) holding the `address.Nature*` / `address.Plan*` values. Zero is unknown, exactly as on the wire, so a parsed address marshals back to the same octets; set the nature and plan explicitly when building a message.
 
 ### Sub-packages
 
@@ -414,8 +562,8 @@ Phone numbers are stored as plain digit strings. Address nature and numbering pl
 
 ## Requirements
 
-- Go 1.21+
-- [gomaja/go-asn1](https://github.com/gomaja/go-asn1) v0.1.2+
+- Go 1.25.4 or later (the `go` directive in `go.mod`)
+- The main branches of [gomaja/go-asn1](https://github.com/gomaja/go-asn1) and [gomaja/go-sms](https://github.com/gomaja/go-sms), which `go.mod` pins by commit
 
 ## License
 
