@@ -1,10 +1,8 @@
 // convert_map_error.go
 //
-// Converters between the wrapper-level MAP ReturnError diagnostic
-// types (defined in gsmmap.go) and their gsm_map.*Param wire forms.
-// PR F2 of the staged ReturnError.Parameter implementation, building
-// on PR #49 (types only). Parse* helpers and the
-// ParseReturnErrorParameter dispatcher live in parse.go.
+// Converters from the gsm_map.*Param wire forms of the MAP ReturnError
+// parameters to the public diagnostic types defined in gsmmap.go. The
+// ParseReturnErrorParameter dispatcher lives in parse_map_error.go.
 
 package gsmmap
 
@@ -24,10 +22,8 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		return nil, nil
 	}
 	out := &AbsentSubscriberSMParam{}
-	// The upstream type is `type AbsentSubscriberDiagnosticSM = int64`
-	// (alias), so the explicit cast to the wrapper-level named type
-	// is required for the public-API field. Same value, named type
-	// gives the field a String() method.
+	// The upstream AbsentSubscriberDiagnosticSM is a plain int64; the public
+	// field uses the named type, which has a String method.
 	if w.AbsentSubscriberDiagnosticSM != nil {
 		v := AbsentSubscriberDiagnosticSM(*w.AbsentSubscriberDiagnosticSM)
 		out.AbsentSubscriberDiagnosticSM = &v
@@ -266,4 +262,30 @@ func convertWireToAbsentSubscriberParam(w *gsm_map.AbsentSubscriberParam) (*Abse
 		out.AbsentSubscriberReason = &v
 	}
 	return out, nil
+}
+
+// ============================================================================
+// IllegalSubscriberParam, IllegalEquipmentParam, UnexpectedDataParam —
+// TS 29.002 §17.7.7 (errorCodes 9, 12, 36)
+// ============================================================================
+
+func convertWireToIllegalSubscriberParam(w *gsm_map.IllegalSubscriberParam) (*IllegalSubscriberParam, error) {
+	if w == nil {
+		return nil, nil
+	}
+	return &IllegalSubscriberParam{}, nil
+}
+
+func convertWireToIllegalEquipmentParam(w *gsm_map.IllegalEquipmentParam) (*IllegalEquipmentParam, error) {
+	if w == nil {
+		return nil, nil
+	}
+	return &IllegalEquipmentParam{}, nil
+}
+
+func convertWireToUnexpectedDataParam(w *gsm_map.UnexpectedDataParam) (*UnexpectedDataParam, error) {
+	if w == nil {
+		return nil, nil
+	}
+	return &UnexpectedDataParam{UnexpectedSubscriber: w.UnexpectedSubscriber != nil}, nil
 }

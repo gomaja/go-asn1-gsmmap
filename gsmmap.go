@@ -9,11 +9,6 @@ import (
 	"github.com/gomaja/go-sms/encoding/tpdu"
 )
 
-// GetErrorString converts a MAP error code to its string representation.
-func GetErrorString(errCode int64) string {
-	return MapErrorCode(errCode).String()
-}
-
 // HexBytes is a []byte that marshals to/from hex strings in JSON
 // instead of the default base64 encoding.
 type HexBytes []byte
@@ -2954,17 +2949,26 @@ type ProvideSubscriberLocationRes struct {
 type MapErrorCode int64
 
 // MAP local error codes per TS 29.002 §17.6.
+//
+// The USSD operations of TS 29.002 §17.6.4 return systemFailure, dataMissing,
+// unexpectedDataValue, absentSubscriber, illegalSubscriber, illegalEquipment,
+// callBarred, unknownAlphabet and ussd-Busy.
 const (
 	MapErrorUnknownSubscriber             MapErrorCode = 1
 	MapErrorAbsentSubscriberSM            MapErrorCode = 6
 	MapErrorRoamingNotAllowed             MapErrorCode = 8
+	MapErrorIllegalSubscriber             MapErrorCode = 9
 	MapErrorTeleserviceNotProvisioned     MapErrorCode = 11
+	MapErrorIllegalEquipment              MapErrorCode = 12
 	MapErrorCallBarred                    MapErrorCode = 13
 	MapErrorFacilityNotSupported          MapErrorCode = 21
 	MapErrorAbsentSubscriber              MapErrorCode = 27
 	MapErrorSystemFailure                 MapErrorCode = 34
 	MapErrorDataMissing                   MapErrorCode = 35
+	MapErrorUnexpectedDataValue           MapErrorCode = 36
 	MapErrorUnauthorizedRequestingNetwork MapErrorCode = 52
+	MapErrorUnknownAlphabet               MapErrorCode = 71
+	MapErrorUSSDBusy                      MapErrorCode = 72
 )
 
 // String returns the ASN.1 name of the error (e.g. "absentSubscriberSM"),
@@ -2972,16 +2976,6 @@ const (
 func (c MapErrorCode) String() string {
 	return gsm_map.NewGSMMAPLocalErrorcodeInt64(int64(c)).String()
 }
-
-//
-// Parsers (Parse*Param functions) and the dispatcher
-// (ParseReturnErrorParameter) live in parse.go; see follow-up PRs.
-//
-// Coverage scope is the SRI-SM / SRI / ATI-relevant errors observed
-// on roaming networks: absentSubscriberSM, unknownSubscriber,
-// callBarred, systemFailure, roamingNotAllowed,
-// unauthorizedRequestingNetwork, facilityNotSupported,
-// teleserviceNotProvisioned, dataMissing.
 
 // AbsentSubscriberDiagnosticSM is the wrapper-level named type for
 // the AbsentSubscriberDiagnosticSM diagnostic carried by SRI-SM and
@@ -3151,6 +3145,25 @@ type DataMissingParam struct{}
 // distinguishes imsiDetach / pageReceiveFailure / etc.
 type AbsentSubscriberParam struct {
 	AbsentSubscriberReason *gsm_map.AbsentSubscriberReason // [0]
+}
+
+// IllegalSubscriberParam (SEQUENCE) per TS 29.002 §17.7.7. Returned with
+// errorCode 9 (illegalSubscriber), e.g. by unstructuredSS-Request and
+// unstructuredSS-Notify when the MS failed authentication (§11.10.3).
+// Carries only ExtensionContainer in the spec; the public type is empty.
+type IllegalSubscriberParam struct{}
+
+// IllegalEquipmentParam (SEQUENCE) per TS 29.002 §17.7.7. Returned with
+// errorCode 12 (illegalEquipment). Carries only ExtensionContainer in the
+// spec; the public type is empty.
+type IllegalEquipmentParam struct{}
+
+// UnexpectedDataParam (SEQUENCE) per TS 29.002 §17.7.7. Returned with
+// errorCode 36 (unexpectedDataValue), e.g. by the USSD operations when the
+// responder cannot deal with the contents of the USSD string (§11.9.3).
+type UnexpectedDataParam struct {
+	// UnexpectedSubscriber is the unexpectedSubscriber [0] NULL indication.
+	UnexpectedSubscriber bool
 }
 
 // ============================================================================
@@ -3616,11 +3629,6 @@ var (
 	// ReportSMDeliveryStatus, …) via absentDiagToWire/absentDiagFromWire.
 	ErrAbsentSubscriberDiagnosticSMOutOfRange = errors.New("absentSubscriberDiagnosticSM: value must be 0..255")
 
-	// ErrIscInvalidAbsentSubscriberDiagnosticSM is retained as a
-	// backward-compatible alias of the shared range error (same value, so
-	// errors.Is matches either name).
-	ErrIscInvalidAbsentSubscriberDiagnosticSM = ErrAbsentSubscriberDiagnosticSMOutOfRange
-
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
 	ErrAscInvalidSmsGmscAlertEvent    = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
@@ -3816,7 +3824,6 @@ var (
 	ErrIsdIMSIInvalidSize             = errors.New("insertSubscriberDataArg: IMSI must be 3..8 octets per TS 29.002 MAP-CommonDataTypes.asn:327 (TBCD-STRING SIZE 3..8)")
 
 	ErrGPRSCamelTDPDataListSize          = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
-	ErrGPRSTriggerDetectionPointInvalid  = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be 1, 2, 11, 12, or 14 per TS 29.002 (extensible enum: unknown values preserved on decode)")
 	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
 	ErrCamelCapabilityHandlingOutOfRange = errors.New("gprsCSI/mgCSI: CamelCapabilityHandling must be 1..4 per TS 29.078")
 	ErrGPRSCSIRequiresTDPListAndPhase    = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")

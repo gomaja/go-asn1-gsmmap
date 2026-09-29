@@ -1,7 +1,7 @@
 // map_error_code_test.go
 //
-// Tests for the typed MapErrorCode enum and upstream local-error-code
-// constants. PR F3 of the staged ReturnError.Parameter implementation.
+// Tests for the MapErrorCode enum against the local error codes go-asn1
+// generates from the MAP-Errors module.
 package gsmmap
 
 import (
@@ -57,26 +57,6 @@ func TestMapErrorCodeString(t *testing.T) {
 	}
 }
 
-// GetErrorString continues to work — it delegates to upstream
-// gsm_map.GSMMAPLocalErrorcode.String(). Existing callers passing raw
-// int64 must not regress.
-func TestGetErrorStringRegression(t *testing.T) {
-	cases := []struct {
-		errCode int64
-		want    string
-	}{
-		{1, "unknownSubscriber"},
-		{6, "absentSubscriberSM"},
-		{34, "systemFailure"},
-		{52, "unauthorizedRequestingNetwork"},
-	}
-	for _, tc := range cases {
-		if got := GetErrorString(tc.errCode); got != tc.want {
-			t.Errorf("GetErrorString(%d): want %q, got %q", tc.errCode, tc.want, got)
-		}
-	}
-}
-
 // Each local MapErrorCode constant carries the CODE local value that
 // go-asn1 generated from the MAP-Errors module, and String() returns the
 // generated ASN.1 name.
@@ -89,13 +69,18 @@ func TestMapErrorCodeMatchesUpstream(t *testing.T) {
 		{MapErrorUnknownSubscriber, gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber, "unknownSubscriber"},
 		{MapErrorAbsentSubscriberSM, gsm_map.GSMMAPLocalErrorcodeAbsentSubscriberSM, "absentSubscriberSM"},
 		{MapErrorRoamingNotAllowed, gsm_map.GSMMAPLocalErrorcodeRoamingNotAllowed, "roamingNotAllowed"},
+		{MapErrorIllegalSubscriber, gsm_map.GSMMAPLocalErrorcodeIllegalSubscriber, "illegalSubscriber"},
 		{MapErrorTeleserviceNotProvisioned, gsm_map.GSMMAPLocalErrorcodeTeleserviceNotProvisioned, "teleserviceNotProvisioned"},
+		{MapErrorIllegalEquipment, gsm_map.GSMMAPLocalErrorcodeIllegalEquipment, "illegalEquipment"},
 		{MapErrorCallBarred, gsm_map.GSMMAPLocalErrorcodeCallBarred, "callBarred"},
 		{MapErrorFacilityNotSupported, gsm_map.GSMMAPLocalErrorcodeFacilityNotSupported, "facilityNotSupported"},
 		{MapErrorAbsentSubscriber, gsm_map.GSMMAPLocalErrorcodeAbsentSubscriber, "absentSubscriber"},
 		{MapErrorSystemFailure, gsm_map.GSMMAPLocalErrorcodeSystemFailure, "systemFailure"},
 		{MapErrorDataMissing, gsm_map.GSMMAPLocalErrorcodeDataMissing, "dataMissing"},
+		{MapErrorUnexpectedDataValue, gsm_map.GSMMAPLocalErrorcodeUnexpectedDataValue, "unexpectedDataValue"},
 		{MapErrorUnauthorizedRequestingNetwork, gsm_map.GSMMAPLocalErrorcodeUnauthorizedRequestingNetwork, "unauthorizedRequestingNetwork"},
+		{MapErrorUnknownAlphabet, gsm_map.GSMMAPLocalErrorcodeUnknownAlphabet, "unknownAlphabet"},
+		{MapErrorUSSDBusy, gsm_map.GSMMAPLocalErrorcodeUssdBusy, "ussd-Busy"},
 	}
 	for _, tc := range cases {
 		if int64(tc.got) != tc.upstream {

@@ -2919,8 +2919,8 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected validation error, got nil")
 			}
-			if !errors.Is(err, ErrIscInvalidAbsentSubscriberDiagnosticSM) {
-				t.Errorf("expected ErrIscInvalidAbsentSubscriberDiagnosticSM, got: %v", err)
+			if !errors.Is(err, ErrAbsentSubscriberDiagnosticSMOutOfRange) {
+				t.Errorf("expected ErrAbsentSubscriberDiagnosticSMOutOfRange, got: %v", err)
 			}
 		})
 	}

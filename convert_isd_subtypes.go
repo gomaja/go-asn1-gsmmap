@@ -367,9 +367,7 @@ func convertWireToEDRXCycleLength(w *gsm_map.EDRXCycleLength) (*EDRXCycleLength,
 		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthValueSize, len(w.EDRXCycleLengthValue))
 	}
 	// UsedRatType is an extensible enum (Postel's law) — preserve unknown
-	// values via direct assignment. The local type is now an `=` alias of
-	// the upstream gsm_map type (both int64-backed), so no narrowing is
-	// needed here.
+	// values via direct assignment.
 	return &EDRXCycleLength{
 		RatType:              w.RatType,
 		EDRXCycleLengthValue: HexBytes(w.EDRXCycleLengthValue),
