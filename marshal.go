@@ -446,3 +446,29 @@ func (r *ReportSMDeliveryStatusRes) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes USSD-Arg (opCode 59, 60 or 61) into BER-encoded bytes.
+func (a *USSDArg) Marshal() ([]byte, error) {
+	arg, err := convertUSSDArgToWire(a)
+	if err != nil {
+		return nil, fmt.Errorf("converting USSDArg: %w", err)
+	}
+	data, err := arg.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding USSDArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes USSD-Res (opCode 59 or 60) into BER-encoded bytes.
+func (r *USSDRes) Marshal() ([]byte, error) {
+	res, err := convertUSSDResToWire(r)
+	if err != nil {
+		return nil, fmt.Errorf("converting USSDRes: %w", err)
+	}
+	data, err := res.MarshalBER()
+	if err != nil {
+		return nil, fmt.Errorf("encoding USSDRes: %w", err)
+	}
+	return data, nil
+}

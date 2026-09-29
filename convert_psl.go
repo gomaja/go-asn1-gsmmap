@@ -1,10 +1,9 @@
 // convert_psl.go
 //
 // Converters for ProvideSubscriberLocation (opCode 83) leaf SEQUENCE
-// types and BIT STRING surrogates. PR D1 of the staged PSL
-// implementation. Container converters (LCSClientID,
-// AreaEventInfo, PeriodicLDRInfo, ReportingPLMNList) and the
-// top-level ProvideSubscriberLocationArg/Res live in subsequent PRs.
+// types and BIT STRING surrogates. The container converters (LCSClientID,
+// AreaEventInfo, PeriodicLDRInfo, ReportingPLMNList) and the top-level
+// ProvideSubscriberLocationArg/Res live in the other convert_psl_*.go files.
 //
 // Each converter pair:
 //   convertXToWire(*X) (*gsm_map.X, error)   — public type → wire
@@ -189,7 +188,7 @@ func convertLCSCodewordToWire(c *LCSCodeword) (*gsm_map.LCSCodeword, error) {
 		return nil, fmt.Errorf("LCSCodeword.LcsCodewordString len=%d: %w", len(c.LcsCodewordString), ErrLCSCodewordStringSize)
 	}
 	out := &gsm_map.LCSCodeword{
-		DataCodingScheme:  gsm_map.USSDDataCodingScheme{c.DataCodingScheme},
+		DataCodingScheme:  gsm_map.USSDDataCodingScheme{byte(c.DataCodingScheme)},
 		LcsCodewordString: gsm_map.LCSCodewordString(c.LcsCodewordString),
 	}
 	return out, nil
@@ -199,14 +198,15 @@ func convertWireToLCSCodeword(w *gsm_map.LCSCodeword) (*LCSCodeword, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w.DataCodingScheme) != 1 {
-		return nil, fmt.Errorf("LCSCodeword.DataCodingScheme len=%d: %w", len(w.DataCodingScheme), ErrUSSDDataCodingSchemeInvalidSize)
+	dcs, err := wireUSSDDataCodingScheme(w.DataCodingScheme)
+	if err != nil {
+		return nil, fmt.Errorf("LCSCodeword.DataCodingScheme: %w", err)
 	}
 	if len(w.LcsCodewordString) < 1 || len(w.LcsCodewordString) > LCSCodewordStringMaxLen {
 		return nil, fmt.Errorf("LCSCodeword.LcsCodewordString len=%d: %w", len(w.LcsCodewordString), ErrLCSCodewordStringSize)
 	}
 	return &LCSCodeword{
-		DataCodingScheme:  w.DataCodingScheme[0],
+		DataCodingScheme:  dcs,
 		LcsCodewordString: HexBytes(w.LcsCodewordString),
 	}, nil
 }

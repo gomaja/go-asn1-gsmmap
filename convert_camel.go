@@ -1166,7 +1166,7 @@ func convertVlrCamelSubscriptionInfoToWire(v *VlrCamelSubscriptionInfo) (*gsm_ma
 	}
 	if v.OBcsmCamelTDPCriteriaList != nil {
 		// Spec SIZE(1..10) — reject a non-nil empty list rather than
-		// silently omitting it. Matches the PR #29 pattern.
+		// silently omitting it.
 		if len(v.OBcsmCamelTDPCriteriaList) < 1 || len(v.OBcsmCamelTDPCriteriaList) > maxNumOfCamelTDPData {
 			return nil, ErrCamelInvalidCriteriaListSize
 		}
@@ -1265,7 +1265,7 @@ func convertWireToVlrCamelSubscriptionInfo(w *gsm_map.VlrCamelSubscriptionInfo) 
 	}
 	if w.OBcsmCamelTDPCriteriaList != nil {
 		// Per spec SIZE(1..10), a non-nil empty wire list is malformed.
-		// Match the encoder's strictness (and the PR #29 pattern).
+		// Match the encoder's strictness.
 		if len(w.OBcsmCamelTDPCriteriaList) < 1 || len(w.OBcsmCamelTDPCriteriaList) > maxNumOfCamelTDPData {
 			return nil, ErrCamelInvalidCriteriaListSize
 		}

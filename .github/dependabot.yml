@@ -12,6 +12,13 @@ updates:
     commit-message:
       prefix: deps
       include: scope
+    # go-asn1 and go-sms are consumed from their main branches, which carry
+    # no tags; they are updated with `go get <module>@<main commit>`.
+    # Their deleted tags are still served by the module proxy, and Dependabot
+    # would propose them as updates.
+    ignore:
+      - dependency-name: github.com/gomaja/go-asn1
+      - dependency-name: github.com/gomaja/go-sms
     groups:
       go-modules:
         patterns:

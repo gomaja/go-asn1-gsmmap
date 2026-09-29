@@ -1,0 +1,66 @@
+package gsmmap
+
+import (
+	"encoding/hex"
+	"errors"
+	"testing"
+
+	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+)
+
+// An SM-RP-DA or SM-RP-OA address alternative that is present on the wire
+// but carries no digits (a one-octet AddressString, or an empty IMSI) would
+// decode to an SmRpDa / SmRpOa with no alternative set, which Marshal then
+// rejects. Parse reports it instead, like every other address the package
+// cannot represent.
+func TestForwardSMChoiceAddressDecodedEmpty(t *testing.T) {
+	golden, err := hex.DecodeString(forwardSMFuzzSeeds[0]) // MO-ForwardSM-Arg
+	if err != nil {
+		t.Fatal(err)
+	}
+	var base gsm_map.MOForwardSMArg
+	if err := base.UnmarshalBER(golden); err != nil {
+		t.Fatal(err)
+	}
+	natureOnly := []byte{0x91}
+	cases := []struct {
+		name string
+		edit func(a *gsm_map.MOForwardSMArg)
+		want error
+	}{
+		{"SM-RP-DA imsi empty", func(a *gsm_map.MOForwardSMArg) {
+			a.SmRPDA = gsm_map.NewSMRPDAImsi(gsm_map.IMSI{})
+		}, ErrSmRpDaIMSIDecodedEmpty},
+		{"SM-RP-DA serviceCentreAddressDA without digits", func(a *gsm_map.MOForwardSMArg) {
+			a.SmRPDA = gsm_map.NewSMRPDAServiceCentreAddressDA(gsm_map.AddressString(natureOnly))
+		}, ErrSmRpDaServiceCentreAddressDecodedEmpty},
+		{"SM-RP-OA msisdn without digits", func(a *gsm_map.MOForwardSMArg) {
+			a.SmRPOA = gsm_map.NewSMRPOAMsisdn(gsm_map.ISDNAddressString(natureOnly))
+		}, ErrSmRpOaMSISDNDecodedEmpty},
+		{"SM-RP-OA serviceCentreAddressOA without digits", func(a *gsm_map.MOForwardSMArg) {
+			a.SmRPOA = gsm_map.NewSMRPOAServiceCentreAddressOA(gsm_map.AddressString(natureOnly))
+		}, ErrSmRpOaServiceCentreAddressDecodedEmpty},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			arg := base
+			tc.edit(&arg)
+			data, err := arg.MarshalBER()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := ParseMoFsm(data); !errors.Is(err, tc.want) {
+				t.Errorf("ParseMoFsm: err = %v, want %v", err, tc.want)
+			}
+			// The same CHOICE types and converters serve MT-ForwardSM-Arg.
+			mt := gsm_map.MTForwardSMArg{SmRPDA: arg.SmRPDA, SmRPOA: arg.SmRPOA, SmRPUI: arg.SmRPUI}
+			mtData, err := mt.MarshalBER()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := ParseMtFsm(mtData); !errors.Is(err, tc.want) {
+				t.Errorf("ParseMtFsm: err = %v, want %v", err, tc.want)
+			}
+		})
+	}
+}

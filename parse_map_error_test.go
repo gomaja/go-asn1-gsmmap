@@ -32,7 +32,7 @@ func TestParseAbsentSubscriberSMParamRoundTrip(t *testing.T) {
 		t.Fatalf("MarshalBER fixture: %v", err)
 	}
 
-	got, err := ParseAbsentSubscriberSMParam(data)
+	got, err := parseAbsentSubscriberSMParam(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestParseAbsentSubscriberSMParamEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	got, err := ParseAbsentSubscriberSMParam(data)
+	got, err := parseAbsentSubscriberSMParam(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestParseUnknownSubscriberParamRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	got, err := ParseUnknownSubscriberParam(data)
+	got, err := parseUnknownSubscriberParam(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestParseCallBarredParamLegacyChoiceRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	got, err := ParseCallBarredParam(data)
+	got, err := parseCallBarredParam(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -124,7 +124,7 @@ func TestParseCallBarredParamExtensibleChoiceRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	got, err := ParseCallBarredParam(data)
+	got, err := parseCallBarredParam(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -157,7 +157,7 @@ func TestParseSystemFailureParamLegacyChoiceRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	got, err := ParseSystemFailureParam(data)
+	got, err := parseSystemFailureParam(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -183,7 +183,7 @@ func TestParseSystemFailureParamExtensibleChoiceRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	got, err := ParseSystemFailureParam(data)
+	got, err := parseSystemFailureParam(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestParseRoamingNotAllowedParamRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	got, err := ParseRoamingNotAllowedParam(data)
+	got, err := parseRoamingNotAllowedParam(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestParseFacilityNotSupParamRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	got, err := ParseFacilityNotSupParam(data)
+	got, err := parseFacilityNotSupParam(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -268,13 +268,13 @@ func TestParseEmptyParams(t *testing.T) {
 		fn   func([]byte) (any, error)
 	}{
 		{"UnauthorizedRequestingNetwork", func(data []byte) (any, error) {
-			return ParseUnauthorizedRequestingNetworkParam(data)
+			return parseUnauthorizedRequestingNetworkParam(data)
 		}},
 		{"TeleservNotProv", func(data []byte) (any, error) {
-			return ParseTeleservNotProvParam(data)
+			return parseTeleservNotProvParam(data)
 		}},
 		{"DataMissing", func(data []byte) (any, error) {
-			return ParseDataMissingParam(data)
+			return parseDataMissingParam(data)
 		}},
 	}
 	// Empty-SEQUENCE BER encoding.
@@ -344,9 +344,9 @@ func TestParseReturnErrorParameterEmptyData(t *testing.T) {
 // smoke test asserts both routing and a successful decode. CHOICE
 // types (CallBarred, SystemFailure) reject empty SEQUENCEs, so
 // they need a selected alternative.
-func buildDispatcherFixtures(t *testing.T) map[int64][]byte {
+func buildDispatcherFixtures(t *testing.T) map[MapErrorCode][]byte {
 	t.Helper()
-	fixtures := make(map[int64][]byte)
+	fixtures := make(map[MapErrorCode][]byte)
 
 	// errorCode=1 (UnknownSubscriberParam): empty SEQUENCE works
 	// (all fields optional).
@@ -366,8 +366,14 @@ func buildDispatcherFixtures(t *testing.T) map[int64][]byte {
 	}
 	fixtures[8] = rnaData
 
+	// errorCode=9 (IllegalSubscriberParam): empty SEQUENCE works.
+	fixtures[9] = []byte{0x30, 0x00}
+
 	// errorCode=11 (TeleservNotProvParam): empty SEQUENCE works.
 	fixtures[11] = []byte{0x30, 0x00}
+
+	// errorCode=12 (IllegalEquipmentParam): empty SEQUENCE works.
+	fixtures[12] = []byte{0x30, 0x00}
 
 	// errorCode=13 (CallBarredParam): CHOICE — provide legacy alt.
 	cb := gsm_map.NewCallBarredParamCallBarringCause(gsm_map.CallBarringCauseOperatorBarring)
@@ -394,6 +400,9 @@ func buildDispatcherFixtures(t *testing.T) map[int64][]byte {
 	// errorCode=35 (DataMissingParam): empty SEQUENCE works.
 	fixtures[35] = []byte{0x30, 0x00}
 
+	// errorCode=36 (UnexpectedDataParam): empty SEQUENCE works.
+	fixtures[36] = []byte{0x30, 0x00}
+
 	// errorCode=52 (UnauthorizedRequestingNetworkParam): empty SEQUENCE.
 	fixtures[52] = []byte{0x30, 0x00}
 
@@ -407,18 +416,21 @@ func TestParseReturnErrorParameterAllDispatchedTypes(t *testing.T) {
 	// so a routing regression is caught even on CHOICE types.
 	fixtures := buildDispatcherFixtures(t)
 	cases := []struct {
-		errorCode int64
+		errorCode MapErrorCode
 		want      string // type name
 	}{
 		{1, "*gsmmap.UnknownSubscriberParam"},
 		{6, "*gsmmap.AbsentSubscriberSMParam"},
 		{8, "*gsmmap.RoamingNotAllowedParam"},
+		{9, "*gsmmap.IllegalSubscriberParam"},
 		{11, "*gsmmap.TeleservNotProvParam"},
+		{12, "*gsmmap.IllegalEquipmentParam"},
 		{13, "*gsmmap.CallBarredParam"},
 		{21, "*gsmmap.FacilityNotSupParam"},
 		{27, "*gsmmap.AbsentSubscriberParam"},
 		{34, "*gsmmap.SystemFailureParam"},
 		{35, "*gsmmap.DataMissingParam"},
+		{36, "*gsmmap.UnexpectedDataParam"},
 		{52, "*gsmmap.UnauthorizedRequestingNetworkParam"},
 	}
 	for _, tc := range cases {

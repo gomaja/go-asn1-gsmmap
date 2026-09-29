@@ -1,12 +1,7 @@
 // parse_map_error.go
 //
-// Parse* helpers for the BER-encoded TCAP ReturnError.Parameter
-// payload, plus a dispatcher (ParseReturnErrorParameter) that selects
-// the right parser based on the MAP error opcode.
-//
-// PR F2 of the staged ReturnError.Parameter implementation, building
-// on PR #49 (types only) and convert_map_error.go (this PR's wire ↔
-// public-type converters).
+// ParseReturnErrorParameter, the decoder of the BER-encoded parameter of a
+// TCAP ReturnError component, and the per-error parsers it dispatches to.
 
 package gsmmap
 
@@ -16,65 +11,78 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// ParseReturnErrorParameter decodes the BER-encoded parameter of a
-// TCAP ReturnError component into a wrapper-level diagnostic struct.
-//
-// errorCode is the MAP error opcode from TCAP ReturnError.ErrorCode;
-// data is TCAP ReturnError.Parameter. The concrete type of the
-// returned value depends on errorCode:
+// ParseReturnErrorParameter decodes the BER-encoded parameter of a TCAP
+// ReturnError component: errorCode is the MAP local error code of the
+// component and data its parameter. The concrete type of the returned value
+// depends on errorCode (TS 29.002 §17.6.6 for the errors, §17.7.7 for their
+// parameters):
 //
 //	MapErrorUnknownSubscriber             (1)  → *UnknownSubscriberParam
 //	MapErrorAbsentSubscriberSM            (6)  → *AbsentSubscriberSMParam
 //	MapErrorRoamingNotAllowed             (8)  → *RoamingNotAllowedParam
+//	MapErrorIllegalSubscriber             (9)  → *IllegalSubscriberParam
 //	MapErrorTeleserviceNotProvisioned     (11) → *TeleservNotProvParam
+//	MapErrorIllegalEquipment              (12) → *IllegalEquipmentParam
 //	MapErrorCallBarred                    (13) → *CallBarredParam
 //	MapErrorFacilityNotSupported          (21) → *FacilityNotSupParam
 //	MapErrorAbsentSubscriber              (27) → *AbsentSubscriberParam
 //	MapErrorSystemFailure                 (34) → *SystemFailureParam
 //	MapErrorDataMissing                   (35) → *DataMissingParam
+//	MapErrorUnexpectedDataValue           (36) → *UnexpectedDataParam
 //	MapErrorUnauthorizedRequestingNetwork (52) → *UnauthorizedRequestingNetworkParam
 //
-// Returns (nil, nil) for unhandled error codes or when data is empty,
-// so callers can safely call this for every ReturnError without
-// branching first.
-//
-// errorCode is typed as int64 to match TCAP ReturnError.ErrorCode on
-// the wire. Callers using the typed MapErrorCode constants can pass
-// them with an explicit cast (int64(MapErrorAbsentSubscriberSM)) or
-// use the untyped numeric value directly.
-func ParseReturnErrorParameter(errorCode int64, data []byte) (any, error) {
+// unknownAlphabet (71) and ussd-Busy (72) have no parameter. For them, for
+// any error code not listed above, and when data is empty, the result is
+// (nil, nil), so a caller can pass every ReturnError without branching first.
+func ParseReturnErrorParameter(errorCode MapErrorCode, data []byte) (any, error) {
 	if len(data) == 0 {
 		return nil, nil
 	}
-	switch MapErrorCode(errorCode) {
+	switch errorCode {
 	case MapErrorUnknownSubscriber:
-		return ParseUnknownSubscriberParam(data)
+		return dispatched(parseUnknownSubscriberParam(data))
 	case MapErrorAbsentSubscriberSM:
-		return ParseAbsentSubscriberSMParam(data)
+		return dispatched(parseAbsentSubscriberSMParam(data))
 	case MapErrorRoamingNotAllowed:
-		return ParseRoamingNotAllowedParam(data)
+		return dispatched(parseRoamingNotAllowedParam(data))
+	case MapErrorIllegalSubscriber:
+		return dispatched(parseIllegalSubscriberParam(data))
 	case MapErrorTeleserviceNotProvisioned:
-		return ParseTeleservNotProvParam(data)
+		return dispatched(parseTeleservNotProvParam(data))
+	case MapErrorIllegalEquipment:
+		return dispatched(parseIllegalEquipmentParam(data))
 	case MapErrorCallBarred:
-		return ParseCallBarredParam(data)
+		return dispatched(parseCallBarredParam(data))
 	case MapErrorFacilityNotSupported:
-		return ParseFacilityNotSupParam(data)
+		return dispatched(parseFacilityNotSupParam(data))
 	case MapErrorAbsentSubscriber:
-		return ParseAbsentSubscriberParam(data)
+		return dispatched(parseAbsentSubscriberParam(data))
 	case MapErrorSystemFailure:
-		return ParseSystemFailureParam(data)
+		return dispatched(parseSystemFailureParam(data))
 	case MapErrorDataMissing:
-		return ParseDataMissingParam(data)
+		return dispatched(parseDataMissingParam(data))
+	case MapErrorUnexpectedDataValue:
+		return dispatched(parseUnexpectedDataParam(data))
 	case MapErrorUnauthorizedRequestingNetwork:
-		return ParseUnauthorizedRequestingNetworkParam(data)
+		return dispatched(parseUnauthorizedRequestingNetworkParam(data))
 	default:
 		return nil, nil
 	}
 }
 
-// ParseAbsentSubscriberSMParam decodes BER-encoded bytes into an
+// dispatched returns the result of a per-error parser as an untyped any: a
+// nil *T becomes a nil interface, so a failed or empty decode never yields a
+// non-nil any holding a nil pointer.
+func dispatched[T any](v *T, err error) (any, error) {
+	if err != nil || v == nil {
+		return nil, err
+	}
+	return v, nil
+}
+
+// parseAbsentSubscriberSMParam decodes BER-encoded bytes into an
 // AbsentSubscriberSMParam (errorCode 6).
-func ParseAbsentSubscriberSMParam(data []byte) (*AbsentSubscriberSMParam, error) {
+func parseAbsentSubscriberSMParam(data []byte) (*AbsentSubscriberSMParam, error) {
 	var w gsm_map.AbsentSubscriberSMParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding AbsentSubscriberSMParam: %w", err)
@@ -82,9 +90,9 @@ func ParseAbsentSubscriberSMParam(data []byte) (*AbsentSubscriberSMParam, error)
 	return convertWireToAbsentSubscriberSMParam(&w)
 }
 
-// ParseUnknownSubscriberParam decodes BER-encoded bytes into an
+// parseUnknownSubscriberParam decodes BER-encoded bytes into an
 // UnknownSubscriberParam (errorCode 1).
-func ParseUnknownSubscriberParam(data []byte) (*UnknownSubscriberParam, error) {
+func parseUnknownSubscriberParam(data []byte) (*UnknownSubscriberParam, error) {
 	var w gsm_map.UnknownSubscriberParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding UnknownSubscriberParam: %w", err)
@@ -92,10 +100,10 @@ func ParseUnknownSubscriberParam(data []byte) (*UnknownSubscriberParam, error) {
 	return convertWireToUnknownSubscriberParam(&w)
 }
 
-// ParseCallBarredParam decodes BER-encoded bytes into a CallBarredParam
+// parseCallBarredParam decodes BER-encoded bytes into a CallBarredParam
 // (errorCode 13). Handles both legacy (CallBarringCause alone) and
 // extensible (ExtensibleCallBarredParam) CHOICE variants.
-func ParseCallBarredParam(data []byte) (*CallBarredParam, error) {
+func parseCallBarredParam(data []byte) (*CallBarredParam, error) {
 	var w gsm_map.CallBarredParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding CallBarredParam: %w", err)
@@ -103,10 +111,10 @@ func ParseCallBarredParam(data []byte) (*CallBarredParam, error) {
 	return convertWireToCallBarredParam(&w)
 }
 
-// ParseSystemFailureParam decodes BER-encoded bytes into a
+// parseSystemFailureParam decodes BER-encoded bytes into a
 // SystemFailureParam (errorCode 34). Handles both legacy (NetworkResource
 // alone) and extensible (ExtensibleSystemFailureParam) CHOICE variants.
-func ParseSystemFailureParam(data []byte) (*SystemFailureParam, error) {
+func parseSystemFailureParam(data []byte) (*SystemFailureParam, error) {
 	var w gsm_map.SystemFailureParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding SystemFailureParam: %w", err)
@@ -114,9 +122,9 @@ func ParseSystemFailureParam(data []byte) (*SystemFailureParam, error) {
 	return convertWireToSystemFailureParam(&w)
 }
 
-// ParseRoamingNotAllowedParam decodes BER-encoded bytes into a
+// parseRoamingNotAllowedParam decodes BER-encoded bytes into a
 // RoamingNotAllowedParam (errorCode 8).
-func ParseRoamingNotAllowedParam(data []byte) (*RoamingNotAllowedParam, error) {
+func parseRoamingNotAllowedParam(data []byte) (*RoamingNotAllowedParam, error) {
 	var w gsm_map.RoamingNotAllowedParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding RoamingNotAllowedParam: %w", err)
@@ -124,9 +132,9 @@ func ParseRoamingNotAllowedParam(data []byte) (*RoamingNotAllowedParam, error) {
 	return convertWireToRoamingNotAllowedParam(&w)
 }
 
-// ParseUnauthorizedRequestingNetworkParam decodes BER-encoded bytes
+// parseUnauthorizedRequestingNetworkParam decodes BER-encoded bytes
 // into an UnauthorizedRequestingNetworkParam (errorCode 52).
-func ParseUnauthorizedRequestingNetworkParam(data []byte) (*UnauthorizedRequestingNetworkParam, error) {
+func parseUnauthorizedRequestingNetworkParam(data []byte) (*UnauthorizedRequestingNetworkParam, error) {
 	var w gsm_map.UnauthorizedRequestingNetworkParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding UnauthorizedRequestingNetworkParam: %w", err)
@@ -134,9 +142,9 @@ func ParseUnauthorizedRequestingNetworkParam(data []byte) (*UnauthorizedRequesti
 	return convertWireToUnauthorizedRequestingNetworkParam(&w)
 }
 
-// ParseFacilityNotSupParam decodes BER-encoded bytes into a
+// parseFacilityNotSupParam decodes BER-encoded bytes into a
 // FacilityNotSupParam (errorCode 21).
-func ParseFacilityNotSupParam(data []byte) (*FacilityNotSupParam, error) {
+func parseFacilityNotSupParam(data []byte) (*FacilityNotSupParam, error) {
 	var w gsm_map.FacilityNotSupParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding FacilityNotSupParam: %w", err)
@@ -144,9 +152,9 @@ func ParseFacilityNotSupParam(data []byte) (*FacilityNotSupParam, error) {
 	return convertWireToFacilityNotSupParam(&w)
 }
 
-// ParseTeleservNotProvParam decodes BER-encoded bytes into a
+// parseTeleservNotProvParam decodes BER-encoded bytes into a
 // TeleservNotProvParam (errorCode 11).
-func ParseTeleservNotProvParam(data []byte) (*TeleservNotProvParam, error) {
+func parseTeleservNotProvParam(data []byte) (*TeleservNotProvParam, error) {
 	var w gsm_map.TeleservNotProvParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding TeleservNotProvParam: %w", err)
@@ -154,9 +162,9 @@ func ParseTeleservNotProvParam(data []byte) (*TeleservNotProvParam, error) {
 	return convertWireToTeleservNotProvParam(&w)
 }
 
-// ParseDataMissingParam decodes BER-encoded bytes into a
+// parseDataMissingParam decodes BER-encoded bytes into a
 // DataMissingParam (errorCode 35).
-func ParseDataMissingParam(data []byte) (*DataMissingParam, error) {
+func parseDataMissingParam(data []byte) (*DataMissingParam, error) {
 	var w gsm_map.DataMissingParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding DataMissingParam: %w", err)
@@ -164,13 +172,43 @@ func ParseDataMissingParam(data []byte) (*DataMissingParam, error) {
 	return convertWireToDataMissingParam(&w)
 }
 
-// ParseAbsentSubscriberParam decodes BER-encoded bytes into an
+// parseAbsentSubscriberParam decodes BER-encoded bytes into an
 // AbsentSubscriberParam (errorCode 27). Distinct from
 // AbsentSubscriberSMParam (errorCode 6).
-func ParseAbsentSubscriberParam(data []byte) (*AbsentSubscriberParam, error) {
+func parseAbsentSubscriberParam(data []byte) (*AbsentSubscriberParam, error) {
 	var w gsm_map.AbsentSubscriberParam
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding AbsentSubscriberParam: %w", err)
 	}
 	return convertWireToAbsentSubscriberParam(&w)
+}
+
+// parseIllegalSubscriberParam decodes BER-encoded bytes into an
+// IllegalSubscriberParam (errorCode 9).
+func parseIllegalSubscriberParam(data []byte) (*IllegalSubscriberParam, error) {
+	var w gsm_map.IllegalSubscriberParam
+	if err := w.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding IllegalSubscriberParam: %w", err)
+	}
+	return convertWireToIllegalSubscriberParam(&w)
+}
+
+// parseIllegalEquipmentParam decodes BER-encoded bytes into an
+// IllegalEquipmentParam (errorCode 12).
+func parseIllegalEquipmentParam(data []byte) (*IllegalEquipmentParam, error) {
+	var w gsm_map.IllegalEquipmentParam
+	if err := w.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding IllegalEquipmentParam: %w", err)
+	}
+	return convertWireToIllegalEquipmentParam(&w)
+}
+
+// parseUnexpectedDataParam decodes BER-encoded bytes into an
+// UnexpectedDataParam (errorCode 36).
+func parseUnexpectedDataParam(data []byte) (*UnexpectedDataParam, error) {
+	var w gsm_map.UnexpectedDataParam
+	if err := w.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding UnexpectedDataParam: %w", err)
+	}
+	return convertWireToUnexpectedDataParam(&w)
 }

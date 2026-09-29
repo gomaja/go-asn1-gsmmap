@@ -1,10 +1,8 @@
 // convert_slr_res.go
 //
 // Top-level converter for SubscriberLocationReportRes (opCode 86) and
-// its Marshal()/ParseSubscriberLocationReportRes() entry points. PR G4
-// of the staged SLR implementation: completes the SubscriberLocationReport
-// operation after the Arg side (#53/#54/#55). Reuses the ISDN-address,
-// GSN-address, ReportingPLMNList, and NULL-flag helpers built for
+// its Marshal()/ParseSubscriberLocationReportRes() entry points. Reuses the
+// ISDN-address, GSN-address, ReportingPLMNList, and NULL-flag helpers of
 // ProvideSubscriberLocation.
 
 package gsmmap

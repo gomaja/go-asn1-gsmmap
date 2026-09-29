@@ -9,11 +9,6 @@ import (
 	"github.com/gomaja/go-sms/encoding/tpdu"
 )
 
-// GetErrorString converts a MAP error code to its string representation.
-func GetErrorString(errCode int64) string {
-	return MapErrorCode(errCode).String()
-}
-
 // HexBytes is a []byte that marshals to/from hex strings in JSON
 // instead of the default base64 encoding.
 type HexBytes []byte
@@ -83,12 +78,12 @@ type IpSmGwGuidance struct {
 // SriSm represents a Send Routing Info for Short Message request (opCode 45).
 type SriSm struct {
 	MSISDN               string
-	MSISDNNature         uint8 // address nature indicator (default: International)
-	MSISDNPlan           uint8 // numbering plan indicator (default: ISDN)
+	MSISDNNature         uint8 // address nature indicator
+	MSISDNPlan           uint8 // numbering plan indicator
 	SmRpPri              bool
 	ServiceCentreAddress string
-	SCANature            uint8 // address nature indicator (default: International)
-	SCAPlan              uint8 // numbering plan indicator (default: ISDN)
+	SCANature            uint8 // address nature indicator
+	SCAPlan              uint8 // numbering plan indicator
 
 	// Optional fields (post-extension marker).
 	GprsSupportIndicator    bool                   // [7] NULL — SMS-GMSC supports receiving two numbers from HLR
@@ -137,21 +132,11 @@ type LocationInfoWithLMSI struct {
 
 // MtFsm represents a Mobile Terminated Forward Short Message (opCode 44).
 type MtFsm struct {
-	// SM-RP-DA: destination address CHOICE.
-	// IMSI is the common variant. When SmRpDa is set it overrides IMSI and
-	// allows any SM-RP-DA alternative (IMSI, LMSI, serviceCentreAddressDA,
-	// noSM-RP-DA).
-	IMSI   string
-	SmRpDa *SmRpDa
-
-	// SM-RP-OA: originator address CHOICE.
-	// ServiceCentreAddressOA is the common variant. When SmRpOa is set it
-	// overrides ServiceCentreAddressOA and allows any SM-RP-OA alternative
-	// (msisdn, serviceCentreAddressOA, noSM-RP-OA).
-	ServiceCentreAddressOA string
-	SCAOANature            uint8   // address nature indicator (default: International)
-	SCAOAPlan              uint8   // numbering plan indicator (default: ISDN)
-	SmRpOa                 *SmRpOa // when set, overrides ServiceCentreAddressOA
+	// SmRpDa and SmRpOa are the mandatory SM-RP-DA and SM-RP-OA CHOICEs of
+	// MT-ForwardSM-Arg (3GPP TS 29.002 v19.1.0 clause 17.7.6). Exactly one
+	// alternative of each must be set.
+	SmRpDa SmRpDa
+	SmRpOa SmRpOa
 
 	TPDU               tpdu.TPDU
 	MoreMessagesToSend bool
@@ -183,7 +168,8 @@ const (
 )
 
 // SmRpDa represents the SM-RP-DA CHOICE (destination address).
-// Set exactly one field.
+// Exactly one alternative must be set: Marshal rejects zero or several, and
+// decoding sets exactly the alternative present on the wire.
 type SmRpDa struct {
 	IMSI                   string   // [0] IMSI (TBCD)
 	LMSI                   HexBytes // [1] 4 octets
@@ -194,7 +180,8 @@ type SmRpDa struct {
 }
 
 // SmRpOa represents the SM-RP-OA CHOICE (originator address).
-// Set exactly one field.
+// Exactly one alternative must be set: Marshal rejects zero or several, and
+// decoding sets exactly the alternative present on the wire.
 type SmRpOa struct {
 	MSISDN                 string // ISDNAddressString
 	MSISDNNature           uint8
@@ -207,23 +194,11 @@ type SmRpOa struct {
 
 // MoFsm represents a Mobile Originated Forward Short Message (opCode 46).
 type MoFsm struct {
-	// SM-RP-DA: destination address CHOICE.
-	// ServiceCentreAddressDA is the common variant. When SmRpDa is set it
-	// overrides ServiceCentreAddressDA and allows any SM-RP-DA alternative
-	// (IMSI, LMSI, serviceCentreAddressDA, noSM-RP-DA).
-	ServiceCentreAddressDA string
-	SCADANature            uint8   // address nature indicator (default: International)
-	SCADAPlan              uint8   // numbering plan indicator (default: ISDN)
-	SmRpDa                 *SmRpDa // when set, overrides ServiceCentreAddressDA
-
-	// SM-RP-OA: originator address CHOICE.
-	// MSISDN is the common variant. When SmRpOa is set it overrides MSISDN
-	// and allows any SM-RP-OA alternative (msisdn, serviceCentreAddressOA,
-	// noSM-RP-OA).
-	MSISDN       string
-	MSISDNNature uint8   // address nature indicator (default: International)
-	MSISDNPlan   uint8   // numbering plan indicator (default: ISDN)
-	SmRpOa       *SmRpOa // when set, overrides MSISDN
+	// SmRpDa and SmRpOa are the mandatory SM-RP-DA and SM-RP-OA CHOICEs of
+	// MO-ForwardSM-Arg (3GPP TS 29.002 v19.1.0 clause 17.7.6). Exactly one
+	// alternative of each must be set.
+	SmRpDa SmRpDa
+	SmRpOa SmRpOa
 
 	TPDU tpdu.TPDU
 
@@ -264,11 +239,11 @@ type SupportedRATTypes struct {
 type UpdateLocation struct {
 	IMSI      string
 	MSCNumber string
-	MSCNature uint8 // address nature indicator (default: International)
-	MSCPlan   uint8 // numbering plan indicator (default: ISDN)
+	MSCNature uint8 // address nature indicator
+	MSCPlan   uint8 // numbering plan indicator
 	VLRNumber string
-	VLRNature uint8 // address nature indicator (default: International)
-	VLRPlan   uint8 // numbering plan indicator (default: ISDN)
+	VLRNature uint8 // address nature indicator
+	VLRPlan   uint8 // numbering plan indicator
 
 	VlrCapability *VlrCapability
 
@@ -387,8 +362,8 @@ type PdnGwIdentity struct {
 type UpdateGprsLocation struct {
 	IMSI        string
 	SGSNNumber  string
-	SGSNNature  uint8 // address nature indicator (default: International)
-	SGSNPlan    uint8 // numbering plan indicator (default: ISDN)
+	SGSNNature  uint8 // address nature indicator
+	SGSNPlan    uint8 // numbering plan indicator
 	SGSNAddress string
 
 	SGSNCapability *SGSNCapability
@@ -506,8 +481,8 @@ type AnyTimeInterrogation struct {
 	SubscriberIdentity SubscriberIdentity
 	RequestedInfo      RequestedInfo
 	GsmSCFAddress      string
-	GsmSCFNature       uint8 // address nature indicator (default: International)
-	GsmSCFPlan         uint8 // numbering plan indicator (default: ISDN)
+	GsmSCFNature       uint8 // address nature indicator
+	GsmSCFPlan         uint8 // numbering plan indicator
 }
 
 // AnyTimeInterrogationRes represents an ATI response (opCode 71).
@@ -857,8 +832,8 @@ type DestinationNumberCriteria struct {
 // Reused for DestinationNumberList entries in CAMEL criteria.
 type ISDNNumber struct {
 	Digits string
-	Nature uint8 // default: International
-	Plan   uint8 // default: ISDN
+	Nature uint8
+	Plan   uint8
 }
 
 // OBcsmCamelTDPData per 3GPP TS 29.002. Originating BCSM CAMEL Trigger
@@ -868,9 +843,9 @@ type OBcsmCamelTDPData struct {
 	OBcsmTriggerDetectionPoint OBcsmTriggerDetectionPoint // mandatory
 	ServiceKey                 int64                      // mandatory (0..2147483647)
 	GsmSCFAddress              string                     // mandatory ISDN-AddressString
-	GsmSCFAddressNature        uint8                      // default: International
-	GsmSCFAddressPlan          uint8                      // default: ISDN
-	DefaultCallHandling        DefaultCallHandling        // mandatory
+	GsmSCFAddressNature        uint8
+	GsmSCFAddressPlan          uint8
+	DefaultCallHandling        DefaultCallHandling // mandatory
 }
 
 // OCSI (O-CSI) per 3GPP TS 29.002. Originating CAMEL Subscription Info.
@@ -896,9 +871,9 @@ type TBcsmCamelTDPData struct {
 	TBcsmTriggerDetectionPoint TBcsmTriggerDetectionPoint // mandatory
 	ServiceKey                 int64                      // mandatory
 	GsmSCFAddress              string                     // mandatory ISDN-AddressString
-	GsmSCFAddressNature        uint8                      // default: International
-	GsmSCFAddressPlan          uint8                      // default: ISDN
-	DefaultCallHandling        DefaultCallHandling        // mandatory
+	GsmSCFAddressNature        uint8
+	GsmSCFAddressPlan          uint8
+	DefaultCallHandling        DefaultCallHandling // mandatory
 }
 
 // TCSI (T-CSI) per 3GPP TS 29.002. Terminating CAMEL Subscription Info.
@@ -920,13 +895,13 @@ type TBcsmCamelTDPCriteria struct {
 // DPAnalysedInfoCriterium per 3GPP TS 29.002. Entry in DCSI's
 // DPAnalysedInfoCriteriaList — fires when a dialled number matches.
 type DPAnalysedInfoCriterium struct {
-	DialledNumber       string              // mandatory ISDN-AddressString
-	DialledNumberNature uint8               // default: International
-	DialledNumberPlan   uint8               // default: ISDN
-	ServiceKey          int64               // mandatory
-	GsmSCFAddress       string              // mandatory
-	GsmSCFAddressNature uint8               // default: International
-	GsmSCFAddressPlan   uint8               // default: ISDN
+	DialledNumber       string // mandatory ISDN-AddressString
+	DialledNumberNature uint8
+	DialledNumberPlan   uint8
+	ServiceKey          int64  // mandatory
+	GsmSCFAddress       string // mandatory
+	GsmSCFAddressNature uint8
+	GsmSCFAddressPlan   uint8
 	DefaultCallHandling DefaultCallHandling // mandatory
 }
 
@@ -959,10 +934,10 @@ type GmscCamelSubscriptionInfo struct {
 type SSCSI struct {
 	SsEventList       []SsCode // mandatory, 1..10 entries
 	GsmSCFAddress     string   // mandatory ISDN-AddressString
-	GsmSCFNature      uint8    // default: International
-	GsmSCFPlan        uint8    // default: ISDN
-	NotificationToCSE bool     // [0] NULL (ATSI/ATM/NSDC only)
-	CsiActive         bool     // [1] NULL (ATSI/ATM/NSDC only)
+	GsmSCFNature      uint8
+	GsmSCFPlan        uint8
+	NotificationToCSE bool // [0] NULL (ATSI/ATM/NSDC only)
+	CsiActive         bool // [1] NULL (ATSI/ATM/NSDC only)
 }
 
 // MCSI (M-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2517.
@@ -971,10 +946,10 @@ type MCSI struct {
 	MobilityTriggers  []byte // mandatory 1..10 MM-Code octets (1 byte each)
 	ServiceKey        int64  // mandatory 0..2147483647
 	GsmSCFAddress     string // [0] mandatory ISDN-AddressString
-	GsmSCFNature      uint8  // default: International
-	GsmSCFPlan        uint8  // default: ISDN
-	NotificationToCSE bool   // [2] NULL (ATSI/ATM/NSDC only)
-	CsiActive         bool   // [3] NULL (ATSI/ATM/NSDC only)
+	GsmSCFNature      uint8
+	GsmSCFPlan        uint8
+	NotificationToCSE bool // [2] NULL (ATSI/ATM/NSDC only)
+	CsiActive         bool // [3] NULL (ATSI/ATM/NSDC only)
 }
 
 // DefaultSMSHandling per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2509.
@@ -1005,9 +980,9 @@ type SMSCAMELTDPData struct {
 	SmsTriggerDetectionPoint SMSTriggerDetectionPoint // [0] mandatory
 	ServiceKey               int64                    // [1] mandatory 0..2147483647
 	GsmSCFAddress            string                   // [2] mandatory ISDN-AddressString
-	GsmSCFNature             uint8                    // default: International
-	GsmSCFPlan               uint8                    // default: ISDN
-	DefaultSMSHandling       DefaultSMSHandling       // [3] mandatory
+	GsmSCFNature             uint8
+	GsmSCFPlan               uint8
+	DefaultSMSHandling       DefaultSMSHandling // [3] mandatory
 }
 
 // SMSCSI (SMS-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2458.
@@ -1154,12 +1129,12 @@ type ExtForwFeature struct {
 	BasicService          *ExtBasicServiceCode // optional
 	SsStatus              HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status
 	ForwardedToNumber     string               // [5] optional ISDN-AddressString
-	ForwardedToNature     uint8                // default: International
-	ForwardedToPlan       uint8                // default: ISDN
-	ForwardedToSubaddress HexBytes             // [8] optional ISDN-SubaddressString
-	ForwardingOptions     HexBytes             // [6] optional 1..5 octets
-	NoReplyConditionTime  *int                 // [7] optional 1..100 (post-decode normalised to 5..30)
-	LongForwardedToNumber string               // [10] optional FTN-AddressString
+	ForwardedToNature     uint8
+	ForwardedToPlan       uint8
+	ForwardedToSubaddress HexBytes // [8] optional ISDN-SubaddressString
+	ForwardingOptions     HexBytes // [6] optional 1..5 octets
+	NoReplyConditionTime  *int     // [7] optional 1..100 (post-decode normalised to 5..30)
+	LongForwardedToNumber string   // [10] optional FTN-AddressString
 }
 
 // ExtForwInfo per TS 29.002 MAP-MS-DataTypes.asn:1833.
@@ -1324,12 +1299,11 @@ const (
 // parameters (RETURN RESULT TRUE), so no response type is defined here.
 type AlertServiceCentre struct {
 	MSISDN               string // mandatory
-	MSISDNNature         uint8  // default: International
-	MSISDNPlan           uint8  // default: ISDN
+	MSISDNNature         uint8
+	MSISDNPlan           uint8
 	ServiceCentreAddress string // mandatory
-	SCANature            uint8  // default: International
-	SCAPlan              uint8  // default: ISDN
-
+	SCANature            uint8
+	SCAPlan              uint8
 	// Optional fields (post-extension marker).
 	IMSI                      string                      // optional IMSI (TBCD)
 	CorrelationID             *SriSmCorrelationID         // SEQUENCE (reuses SRI-SM type)
@@ -1418,8 +1392,8 @@ type ReportSMDeliveryStatusRes struct {
 // This is a one-way MAP operation; no response is defined in 3GPP TS 29.002.
 type InformServiceCentre struct {
 	StoredMSISDN       string
-	StoredMSISDNNature uint8 // address nature indicator (default: International)
-	StoredMSISDNPlan   uint8 // numbering plan indicator (default: ISDN)
+	StoredMSISDNNature uint8 // address nature indicator
+	StoredMSISDNPlan   uint8 // numbering plan indicator
 
 	MwStatus *MwStatusFlags // MW-Status BIT STRING (6 bits defined)
 
@@ -1437,11 +1411,11 @@ type PurgeMS struct {
 
 	// Optional fields.
 	VLRNumber  string // [0] ISDN-AddressString
-	VLRNature  uint8  // address nature indicator (default: International)
-	VLRPlan    uint8  // numbering plan indicator (default: ISDN)
+	VLRNature  uint8  // address nature indicator
+	VLRPlan    uint8  // numbering plan indicator
 	SGSNNumber string // [1] ISDN-AddressString
-	SGSNNature uint8  // address nature indicator (default: International)
-	SGSNPlan   uint8  // numbering plan indicator (default: ISDN)
+	SGSNNature uint8  // address nature indicator
+	SGSNPlan   uint8  // numbering plan indicator
 
 	// Optional fields (post-extension marker).
 	LocationInformation     *CSLocationInformation   // [2]
@@ -1590,11 +1564,11 @@ type CancelLocation struct {
 	MtrfSupportedAndAuthorized    bool          // [1] NULL
 	MtrfSupportedAndNotAuthorized bool          // [2] NULL (mutually exclusive with the above)
 	NewMSCNumber                  string        // [3] ISDN-AddressString
-	NewMSCNumberNature            uint8         // address nature indicator (default: International)
-	NewMSCNumberPlan              uint8         // numbering plan indicator (default: ISDN)
+	NewMSCNumberNature            uint8         // address nature indicator
+	NewMSCNumberPlan              uint8         // numbering plan indicator
 	NewVLRNumber                  string        // [4] ISDN-AddressString
-	NewVLRNumberNature            uint8         // address nature indicator (default: International)
-	NewVLRNumberPlan              uint8         // numbering plan indicator (default: ISDN)
+	NewVLRNumberNature            uint8         // address nature indicator
+	NewVLRNumberPlan              uint8         // numbering plan indicator
 	NewLMSI                       HexBytes      // [5] LMSI, 4 octets when present
 	ReattachRequired              bool          // [6] NULL
 }
@@ -2342,10 +2316,8 @@ type LCSInformation struct {
 // ProvideSubscriberLocation foundation types (TS 29.002 MAP-LCS-DataTypes.asn)
 // ============================================================================
 //
-// First PR of a staged ProvideSubscriberLocation (opCode 83) implementation.
-// Lands the foundation LCS types so follow-up PRs can build top-level
-// converters without a monolithic diff. No PSL Arg/Res top-level types yet —
-// those land in a later PR alongside their converters.
+// The LCS types shared by ProvideSubscriberLocation (opCode 83) and
+// SubscriberLocationReport (opCode 86).
 
 // LocationEstimateType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:153.
 // Extensible enum; decoders preserve unknown values per Postel's law.
@@ -2405,25 +2377,25 @@ const (
 
 // LCSClientName (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:199.
 // NameString is a USSD-String of 1..63 octets per maxNameStringLength.
-// Surfaced as an opaque byte slice; the USSD-DataCodingScheme is preserved
-// verbatim so callers can decode per 3GPP TS 23.038 if needed.
+// Surfaced as an opaque byte slice coded per DataCodingScheme; decode it
+// with DataCodingScheme.Decode.
 //
 // Note: the spec assigns tags [0]/[2]/[3] (skipping [1]) for these fields;
 // the gap is intentional in the ASN.1 module and is not an off-by-one in
 // this Go surface.
 type LCSClientName struct {
-	DataCodingScheme   uint8               // [0] mandatory, USSD-DataCodingScheme single octet
-	NameString         HexBytes            // [2] mandatory, NameString 1..63 octets
-	LcsFormatIndicator *LCSFormatIndicator // [3] optional, present only past the extensibility marker
+	DataCodingScheme   USSDDataCodingScheme // [0] mandatory
+	NameString         HexBytes             // [2] mandatory, NameString 1..63 octets
+	LcsFormatIndicator *LCSFormatIndicator  // [3] optional, present only past the extensibility marker
 }
 
 // LCSRequestorID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:214.
 // RequestorIDString is a USSD-String of 1..63 octets per
 // maxRequestorIDStringLength.
 type LCSRequestorID struct {
-	DataCodingScheme   uint8               // [0] mandatory, USSD-DataCodingScheme single octet
-	RequestorIDString  HexBytes            // [1] mandatory, RequestorIDString 1..63 octets
-	LcsFormatIndicator *LCSFormatIndicator // [2] optional, present only past the extensibility marker
+	DataCodingScheme   USSDDataCodingScheme // [0] mandatory
+	RequestorIDString  HexBytes             // [1] mandatory, RequestorIDString 1..63 octets
+	LcsFormatIndicator *LCSFormatIndicator  // [2] optional, present only past the extensibility marker
 }
 
 // LCSClientID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:178.
@@ -2499,8 +2471,8 @@ type LCSPrivacyCheck struct {
 // LcsCodewordString is a USSD-String of 1..20 octets per
 // maxLCSCodewordStringLength.
 type LCSCodeword struct {
-	DataCodingScheme  uint8    // [0] mandatory, USSD-DataCodingScheme single octet
-	LcsCodewordString HexBytes // [1] mandatory, LCSCodewordString 1..20 octets
+	DataCodingScheme  USSDDataCodingScheme // [0] mandatory
+	LcsCodewordString HexBytes             // [1] mandatory, LCSCodewordString 1..20 octets
 }
 
 // AccuracyFulfilmentIndicator (ENUMERATED) per TS 29.002
@@ -2651,12 +2623,10 @@ const (
 // (TS 29.002 MAP-LCS-DataTypes.asn)
 // ============================================================================
 //
-// Third PR of the staged ProvideSubscriberLocation (opCode 83)
-// implementation. Lands the SEQUENCE/CHOICE/ENUMERATED types referenced
-// by PSL-Arg's areaEventInfo, periodicLDRInfo, and reportingPLMNList
-// fields, and PSL-Res's targetServingNodeForHandover CHOICE.
-//
-// Top-level Arg/Res structs and codec arrive in subsequent PRs.
+// The SEQUENCE/CHOICE/ENUMERATED types referenced by the
+// ProvideSubscriberLocation (opCode 83) PSL-Arg areaEventInfo,
+// periodicLDRInfo and reportingPLMNList fields, and PSL-Res's
+// targetServingNodeForHandover CHOICE.
 
 // AreaType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:337.
 // Extensible enum. Aliased from go-asn1.
@@ -2862,16 +2832,16 @@ type ProvideSubscriberLocationArg struct {
 	// Mandatory.
 	LocationType    LocationType
 	MlcNumber       string // ISDN-AddressString digits
-	MlcNumberNature uint8  // address nature indicator (default: International when 0)
-	MlcNumberPlan   uint8  // numbering plan indicator (default: ISDN when 0)
+	MlcNumberNature uint8  // address nature indicator
+	MlcNumberPlan   uint8  // numbering plan indicator
 
 	// Optional.
 	LcsClientID               *LCSClientID
 	PrivacyOverride           bool     // [1] NULL flag
 	IMSI                      string   // TBCD-decoded digits; "" = absent (5..15 BCD digits per TS 29.002, TBCD-STRING SIZE 3..8 octets)
 	MSISDN                    string   // ISDN-AddressString digits; "" = absent
-	MSISDNNature              uint8    // address nature indicator (default: International when 0)
-	MSISDNPlan                uint8    // numbering plan indicator (default: ISDN when 0)
+	MSISDNNature              uint8    // address nature indicator
+	MSISDNPlan                uint8    // numbering plan indicator
 	LMSI                      HexBytes // 4 octets opaque
 	IMEI                      string   // TBCD-decoded digits; "" = absent (15 BCD digits per TS 29.002)
 	LcsPriority               LCSPriority
@@ -2949,39 +2919,38 @@ type ProvideSubscriberLocationRes struct {
 // so callers can call String() for free, without dropping down to
 // gsm_map.* directly.
 
-// MapErrorCode is the typed MAP ReturnError local error code per
-// TS 29.002 §17.6. Aliased from the upstream go-asn1 generated
-// local-error-code type so callers can use either the local or upstream
-// constants interchangeably.
-type MapErrorCode = gsm_map.GSMMAPLocalErrorcode
+// MapErrorCode is a MAP ReturnError local error code: the CODE local
+// value of an ERROR in the MAP-Errors module of TS 29.002 §17.6.
+type MapErrorCode int64
 
-// MAP error opcodes per TS 29.002 §17.6, scoped to the SRI-SM / SRI /
-// ATI-relevant subset surfaced by ParseReturnErrorParameter. Aliased
-// from the upstream gsm_map.GSMMAPLocalErrorcode<Name> constants. The
-// full set lives in the gsm_map package for callers needing less-common
-// opcodes.
+// MAP local error codes per TS 29.002 §17.6.
+//
+// The USSD operations of TS 29.002 §17.6.4 return systemFailure, dataMissing,
+// unexpectedDataValue, absentSubscriber, illegalSubscriber, illegalEquipment,
+// callBarred, unknownAlphabet and ussd-Busy.
 const (
-	MapErrorUnknownSubscriber             = gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber             // 1
-	MapErrorAbsentSubscriberSM            = gsm_map.GSMMAPLocalErrorcodeAbsentSubscriberSM            // 6
-	MapErrorRoamingNotAllowed             = gsm_map.GSMMAPLocalErrorcodeRoamingNotAllowed             // 8
-	MapErrorTeleserviceNotProvisioned     = gsm_map.GSMMAPLocalErrorcodeTeleserviceNotProvisioned     // 11
-	MapErrorCallBarred                    = gsm_map.GSMMAPLocalErrorcodeCallBarred                    // 13
-	MapErrorFacilityNotSupported          = gsm_map.GSMMAPLocalErrorcodeFacilityNotSupported          // 21
-	MapErrorAbsentSubscriber              = gsm_map.GSMMAPLocalErrorcodeAbsentSubscriber              // 27
-	MapErrorSystemFailure                 = gsm_map.GSMMAPLocalErrorcodeSystemFailure                 // 34
-	MapErrorDataMissing                   = gsm_map.GSMMAPLocalErrorcodeDataMissing                   // 35
-	MapErrorUnauthorizedRequestingNetwork = gsm_map.GSMMAPLocalErrorcodeUnauthorizedRequestingNetwork // 52
+	MapErrorUnknownSubscriber             MapErrorCode = 1
+	MapErrorAbsentSubscriberSM            MapErrorCode = 6
+	MapErrorRoamingNotAllowed             MapErrorCode = 8
+	MapErrorIllegalSubscriber             MapErrorCode = 9
+	MapErrorTeleserviceNotProvisioned     MapErrorCode = 11
+	MapErrorIllegalEquipment              MapErrorCode = 12
+	MapErrorCallBarred                    MapErrorCode = 13
+	MapErrorFacilityNotSupported          MapErrorCode = 21
+	MapErrorAbsentSubscriber              MapErrorCode = 27
+	MapErrorSystemFailure                 MapErrorCode = 34
+	MapErrorDataMissing                   MapErrorCode = 35
+	MapErrorUnexpectedDataValue           MapErrorCode = 36
+	MapErrorUnauthorizedRequestingNetwork MapErrorCode = 52
+	MapErrorUnknownAlphabet               MapErrorCode = 71
+	MapErrorUSSDBusy                      MapErrorCode = 72
 )
 
-//
-// Parsers (Parse*Param functions) and the dispatcher
-// (ParseReturnErrorParameter) live in parse.go; see follow-up PRs.
-//
-// Coverage scope is the SRI-SM / SRI / ATI-relevant errors observed
-// on roaming networks: absentSubscriberSM, unknownSubscriber,
-// callBarred, systemFailure, roamingNotAllowed,
-// unauthorizedRequestingNetwork, facilityNotSupported,
-// teleserviceNotProvisioned, dataMissing.
+// String returns the ASN.1 name of the error (e.g. "absentSubscriberSM"),
+// or the decimal code when TS 29.002 defines no error with that code.
+func (c MapErrorCode) String() string {
+	return gsm_map.NewGSMMAPLocalErrorcodeInt64(int64(c)).String()
+}
 
 // AbsentSubscriberDiagnosticSM is the wrapper-level named type for
 // the AbsentSubscriberDiagnosticSM diagnostic carried by SRI-SM and
@@ -3153,17 +3122,33 @@ type AbsentSubscriberParam struct {
 	AbsentSubscriberReason *gsm_map.AbsentSubscriberReason // [0]
 }
 
+// IllegalSubscriberParam (SEQUENCE) per TS 29.002 §17.7.7. Returned with
+// errorCode 9 (illegalSubscriber), e.g. by unstructuredSS-Request and
+// unstructuredSS-Notify when the MS failed authentication (§11.10.3).
+// Carries only ExtensionContainer in the spec; the public type is empty.
+type IllegalSubscriberParam struct{}
+
+// IllegalEquipmentParam (SEQUENCE) per TS 29.002 §17.7.7. Returned with
+// errorCode 12 (illegalEquipment). Carries only ExtensionContainer in the
+// spec; the public type is empty.
+type IllegalEquipmentParam struct{}
+
+// UnexpectedDataParam (SEQUENCE) per TS 29.002 §17.7.7. Returned with
+// errorCode 36 (unexpectedDataValue), e.g. by the USSD operations when the
+// responder cannot deal with the contents of the USSD string (§11.9.3).
+type UnexpectedDataParam struct {
+	// UnexpectedSubscriber is the unexpectedSubscriber [0] NULL indication.
+	UnexpectedSubscriber bool
+}
+
 // ============================================================================
 // SubscriberLocationReport foundation types (TS 29.002 MAP-LCS-DataTypes.asn)
 // ============================================================================
 //
-// First PR of a staged SubscriberLocationReport (opCode 86)
-// implementation. Lands the foundation types unique to SLR that aren't
-// already covered by the ProvideSubscriberLocation (opCode 83) work:
-// LCSEvent, SequenceNumber, LCSLocationInfo, Deferredmt-lrData. The
-// shared LCS positioning/area/PLMN types are reused directly from the
-// PSL implementation. Top-level Arg/Res structs and converters arrive
-// in subsequent PRs.
+// The types of SubscriberLocationReport (opCode 86) that
+// ProvideSubscriberLocation (opCode 83) does not already define: LCSEvent,
+// SequenceNumber, LCSLocationInfo, Deferredmt-lrData. The shared LCS
+// positioning/area/PLMN types are those of ProvideSubscriberLocation.
 
 // LCSEvent (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:681.
 // Extensible enum; decoders preserve unknown values per Postel's law.
@@ -3200,8 +3185,8 @@ const (
 // RFC 6733.
 type LCSLocationInfo struct {
 	NetworkNodeNumber       string // mandatory ISDN-AddressString digits
-	NetworkNodeNumberNature uint8  // address nature indicator (default: International when 0)
-	NetworkNodeNumberPlan   uint8  // numbering plan indicator (default: ISDN when 0)
+	NetworkNodeNumberNature uint8  // address nature indicator
+	NetworkNodeNumberPlan   uint8  // numbering plan indicator
 
 	LMSI                        HexBytes                    // [0] optional, 4 octets
 	GprsNodeIndicator           bool                        // [2] optional NULL; set when NetworkNodeNumber is an SGSN number
@@ -3495,10 +3480,8 @@ type InsertSubscriberDataArg struct {
 	// CAMEL VLR-side
 	VlrCamelSubscriptionInfo *VlrCamelSubscriptionInfo // [13] optional
 
-	// PR E1a sub-types
 	NaeaPreferredCI *NaeaPreferredCI // [15] optional
 
-	// PR E1b1 sub-types
 	GprsSubscriptionData                           *GPRSSubscriptionData // [16] optional
 	RoamingRestrictedInSgsnDueToUnsupportedFeature bool                  // [23] optional NULL
 	NetworkAccessMode                              *NetworkAccessMode    // [24] optional
@@ -3546,7 +3529,6 @@ type InsertSubscriberDataArg struct {
 	CsToPsSRVCCAllowedIndicator  bool // [44]
 	PcscfRestorationRequest      bool // [45]
 
-	// PR E1a sub-types (continued)
 	AdjacentAccessRestrictionDataList AdjacentAccessRestrictionDataList // [46] optional, 1..50 entries
 	ImsiGroupIdList                   IMSIGroupIdList                   // [47] optional, 1..50 entries
 
@@ -3616,10 +3598,13 @@ var (
 	// ReportSMDeliveryStatus, …) via absentDiagToWire/absentDiagFromWire.
 	ErrAbsentSubscriberDiagnosticSMOutOfRange = errors.New("absentSubscriberDiagnosticSM: value must be 0..255")
 
-	// ErrIscInvalidAbsentSubscriberDiagnosticSM is retained as a
-	// backward-compatible alias of the shared range error (same value, so
-	// errors.Is matches either name).
-	ErrIscInvalidAbsentSubscriberDiagnosticSM = ErrAbsentSubscriberDiagnosticSMOutOfRange
+	// ErrAddressNatureInvalid is returned when an address nature of address
+	// is not one of the address.Nature* values (bits 7..5 of the first
+	// AddressString octet, 3GPP TS 29.002 V19.1.0 §17.7.8).
+	ErrAddressNatureInvalid = errors.New("address: nature of address must be one of address.Nature*")
+	// ErrAddressPlanInvalid is returned when an address numbering plan does
+	// not fit bits 4..1 of the first AddressString octet.
+	ErrAddressPlanInvalid = errors.New("address: numbering plan must be 0..15 (address.Plan*)")
 
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
@@ -3631,8 +3616,10 @@ var (
 	ErrUpdateLocationMissingMSCNumber = errors.New("updateLocation: MSCNumber is empty")
 	ErrUpdateLocationMissingVLRNumber = errors.New("updateLocation: VLRNumber is empty")
 
-	ErrMtFsmMissingIMSI                   = errors.New("mtFsm: IMSI is empty")
-	ErrMtFsmMissingServiceCentreAddressOA = errors.New("mtFsm: ServiceCentreAddressOA is empty")
+	ErrSmRpDaIMSIDecodedEmpty                 = errors.New("smRpDa: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpDaServiceCentreAddressDecodedEmpty = errors.New("smRpDa: present wire serviceCentreAddressDA decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpOaMSISDNDecodedEmpty               = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpOaServiceCentreAddressDecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
 
 	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
 	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
@@ -3816,7 +3803,6 @@ var (
 	ErrIsdIMSIInvalidSize             = errors.New("insertSubscriberDataArg: IMSI must be 3..8 octets per TS 29.002 MAP-CommonDataTypes.asn:327 (TBCD-STRING SIZE 3..8)")
 
 	ErrGPRSCamelTDPDataListSize          = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
-	ErrGPRSTriggerDetectionPointInvalid  = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be 1, 2, 11, 12, or 14 per TS 29.002 (extensible enum: unknown values preserved on decode)")
 	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
 	ErrCamelCapabilityHandlingOutOfRange = errors.New("gprsCSI/mgCSI: CamelCapabilityHandling must be 1..4 per TS 29.078")
 	ErrGPRSCSIRequiresTDPListAndPhase    = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")

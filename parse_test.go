@@ -231,11 +231,11 @@ func TestParseMoFsmRejectsCapturedMtForwardSMV2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseMtFsm: %v", err)
 	}
-	if mtFsm.IMSI != "228519273200607" {
-		t.Errorf("IMSI: got %q, want %q", mtFsm.IMSI, "228519273200607")
+	if mtFsm.SmRpDa.IMSI != "228519273200607" {
+		t.Errorf("SmRpDa.IMSI: got %q, want %q", mtFsm.SmRpDa.IMSI, "228519273200607")
 	}
-	if mtFsm.ServiceCentreAddressOA != "2348090000330" {
-		t.Errorf("ServiceCentreAddressOA: got %q, want %q", mtFsm.ServiceCentreAddressOA, "2348090000330")
+	if mtFsm.SmRpOa.ServiceCentreAddressOA != "2348090000330" {
+		t.Errorf("SmRpOa.ServiceCentreAddressOA: got %q, want %q", mtFsm.SmRpOa.ServiceCentreAddressOA, "2348090000330")
 	}
 
 	if _, err := ParseMoFsm(data); !errors.Is(err, ErrMoFsmUnexpectedTPDUType) {
@@ -260,10 +260,10 @@ func TestParseMtFsmAcceptsNoSmRpDaNoSmRpOaFromIssue3(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseMtFsm: %v", err)
 	}
-	if mtFsm.SmRpDa == nil || !mtFsm.SmRpDa.NoSmRpDa {
+	if !mtFsm.SmRpDa.NoSmRpDa {
 		t.Fatalf("SmRpDa: got %#v, want NoSmRpDa", mtFsm.SmRpDa)
 	}
-	if mtFsm.SmRpOa == nil || !mtFsm.SmRpOa.NoSmRpOa {
+	if !mtFsm.SmRpOa.NoSmRpOa {
 		t.Fatalf("SmRpOa: got %#v, want NoSmRpOa", mtFsm.SmRpOa)
 	}
 	if mtFsm.TPDU.SmsType() != tpdu.SmsDeliver {
