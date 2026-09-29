@@ -106,8 +106,13 @@ func (d USSDDataCodingScheme) classify() (ussdAlphabet, string) {
 		default:
 			return ussdAlphabetGSM7Reserved, "reserved coding in group 0001"
 		}
-	case 0x2, 0x3: // languages using / reserved for the GSM 7 bit default alphabet
-		return ussdAlphabetGSM7, ""
+	case 0x2:
+		if low <= 0x4 { // Czech, Hebrew, Arabic, Russian, Icelandic
+			return ussdAlphabetGSM7, ""
+		}
+		return ussdAlphabetGSM7Reserved, "reserved for other languages in group 0010"
+	case 0x3:
+		return ussdAlphabetGSM7Reserved, "reserved for other languages in group 0011"
 	case 0x4, 0x5, 0x6, 0x7: // general data coding indication
 		if d&0x20 != 0 {
 			return ussdAlphabetUnsupported, "compressed text (3GPP TS 23.042)"
@@ -131,6 +136,9 @@ func (d USSDDataCodingScheme) classify() (ussdAlphabet, string) {
 	case 0xE:
 		return ussdAlphabetUnsupported, "WAP Forum defined"
 	default: // 0xF: data coding / message handling
+		if d&0x08 != 0 {
+			return ussdAlphabetGSM7Reserved, "reserved bit 3 set in group 1111"
+		}
 		if d&0x04 != 0 {
 			return ussdAlphabetUnsupported, "8 bit data"
 		}

@@ -517,9 +517,9 @@ requires:
 
 | Coding | Decode | Encode |
 |---|---|---|
-| GSM 7 bit default alphabet (e.g. `0x0F`, the language groups, `01xx 00xx`, `1111 0xxx`) | yes, with the USSD packing of TS 23.038 §6.1.2.3.1 (a final `<CR>` pad is removed) and the extension table | yes |
+| GSM 7 bit default alphabet (`0000 xxxx`, e.g. `0x0F`; `0010 0000`–`0010 0100`; `01x0 00xx`; `1111 00xx`) | yes, with the USSD packing of TS 23.038 §6.1.2.3.1 (a final `<CR>` pad is removed) and the extension table | yes |
 | UCS2 (`01xx 10xx`, e.g. `0x48`) | yes | yes, for characters up to U+FFFF |
-| Reserved codings | as GSM 7 bit, which §5 requires of a receiving entity | no (a sender must not use them) |
+| Reserved codings (e.g. `0010 0101`–`0011 1111`, `1111 1xxx`) | as GSM 7 bit, which §5 requires of a receiving entity | no (a sender must not use them) |
 | Language indication (`0x10`, `0x11`, `0x12`), compressed, 8 bit data, UDH, I1, WAP | `ErrUSSDUnsupportedDataCodingScheme` | `ErrUSSDUnsupportedDataCodingScheme` |
 
 The 7 bit packing and the character tables come from go-sms

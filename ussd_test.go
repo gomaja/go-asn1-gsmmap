@@ -87,8 +87,13 @@ func ussdSpecClass(d uint8) string {
 		return "unsupported" // language indication codings
 	case b[:4] == "0001":
 		return "reserved"
-	case b[:4] == "0010", b[:4] == "0011":
-		return "gsm7"
+	case b[:4] == "0010":
+		if b[4:] <= "0100" { // Czech, Hebrew, Arabic, Russian, Icelandic
+			return "gsm7"
+		}
+		return "reserved" // reserved for other languages
+	case b[:4] == "0011":
+		return "reserved" // reserved for other languages
 	case b[:2] == "01":
 		if b[2] == '1' {
 			return "unsupported" // compressed
@@ -108,6 +113,9 @@ func ussdSpecClass(d uint8) string {
 	case b[:4] == "1001", b[:4] == "1101", b[:4] == "1110":
 		return "unsupported" // UDH, I1, WAP
 	default: // 1111
+		if b[4] == '1' {
+			return "reserved" // bit 3 is reserved, set to 0
+		}
 		if b[5] == '0' {
 			return "gsm7"
 		}
@@ -189,7 +197,7 @@ func TestUSSDDataCodingSchemeUnsupportedReasons(t *testing.T) {
 
 func TestUSSDDataCodingSchemeRoundTrip(t *testing.T) {
 	gsm7DCS := []USSDDataCodingScheme{
-		USSDDataCodingSchemeGSM7, 0x00, 0x01, 0x0E, 0x20, 0x24, 0x30, 0x3F, 0x40, 0x50, 0x10 | 0x40, 0xF0, 0xF3, 0x0F,
+		USSDDataCodingSchemeGSM7, 0x00, 0x01, 0x0E, 0x20, 0x22, 0x24, 0x40, 0x50, 0x10 | 0x40, 0xF0, 0xF3, 0x0F,
 	}
 	ucs2DCS := []USSDDataCodingScheme{USSDDataCodingSchemeUCS2, 0x58, 0x4B, 0x5B}
 	extended := "€[]{}\\~^|"
