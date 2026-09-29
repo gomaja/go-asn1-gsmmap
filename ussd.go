@@ -216,6 +216,9 @@ func (d USSDDataCodingScheme) Encode(text string) ([]byte, error) {
 		if !utf8.ValidString(text) {
 			return nil, errors.New("encoding UCS2 USSD-String: text is not valid UTF-8")
 		}
+		// UCS2 has 16 bits per character (3GPP TS 23.038 V20.0.0 §6.2.3),
+		// whereas ucs2.Encode writes a code point above U+FFFF as a UTF-16
+		// surrogate pair: https://github.com/gomaja/go-sms/issues/9
 		runes := []rune(text)
 		for i, r := range runes {
 			if r > 0xFFFF {
