@@ -205,42 +205,15 @@ func convertWireToSmRpOa(w *gsm_map.SMRPOA) (*SmRpOa, error) {
 // --- MO-ForwardSM ---
 
 func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
-	// SM-RP-DA
-	var smRpDa gsm_map.SMRPDA
-	if m.SmRpDa != nil {
-		da, err := convertSmRpDaToWire(m.SmRpDa)
-		if err != nil {
-			return nil, err
-		}
-		smRpDa = da
-	} else {
-		if m.ServiceCentreAddressDA == "" {
-			return nil, fmt.Errorf("MoFsm: ServiceCentreAddressDA is empty (set SmRpDa for other DA variants)")
-		}
-		scaDA, err := encodeAddressField(m.ServiceCentreAddressDA, m.SCADANature, m.SCADAPlan)
-		if err != nil {
-			return nil, fmt.Errorf("encoding ServiceCentreAddressDA: %w", err)
-		}
-		smRpDa = gsm_map.NewSMRPDAServiceCentreAddressDA(gsm_map.AddressString(scaDA))
+	// sm-RP-DA and sm-RP-OA are non-OPTIONAL CHOICEs in MO-ForwardSM-Arg
+	// per 3GPP TS 29.002 v19.1.0 clause 17.7.6.
+	smRpDa, err := convertSmRpDaToWire(&m.SmRpDa)
+	if err != nil {
+		return nil, err
 	}
-
-	// SM-RP-OA
-	var smRpOa gsm_map.SMRPOA
-	if m.SmRpOa != nil {
-		oa, err := convertSmRpOaToWire(m.SmRpOa)
-		if err != nil {
-			return nil, err
-		}
-		smRpOa = oa
-	} else {
-		if m.MSISDN == "" {
-			return nil, fmt.Errorf("MoFsm: MSISDN is empty (set SmRpOa for other OA variants)")
-		}
-		msisdn, err := encodeAddressField(m.MSISDN, m.MSISDNNature, m.MSISDNPlan)
-		if err != nil {
-			return nil, fmt.Errorf("encoding MSISDN: %w", err)
-		}
-		smRpOa = gsm_map.NewSMRPOAMsisdn(gsm_map.ISDNAddressString(msisdn))
+	smRpOa, err := convertSmRpOaToWire(&m.SmRpOa)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := validateMoForwardSMArgTPDU(m.TPDU); err != nil {
@@ -284,51 +257,16 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 func convertArgToMoFsm(arg *gsm_map.MOForwardSMArg) (*MoFsm, error) {
 	var moFsm MoFsm
 
-	// Extract SM-RP-DA
-	switch arg.SmRPDA.Choice {
-	case gsm_map.SMRPDAChoiceServiceCentreAddressDA:
-		if arg.SmRPDA.ServiceCentreAddressDA == nil {
-			return nil, fmt.Errorf("SMRPDA ServiceCentreAddressDA is nil")
-		}
-		sca, nature, plan, err := decodeAddressField(*arg.SmRPDA.ServiceCentreAddressDA)
-		if err != nil {
-			return nil, fmt.Errorf("decoding ServiceCentreAddressDA: %w", err)
-		}
-		moFsm.ServiceCentreAddressDA = sca
-		moFsm.SCADANature = nature
-		moFsm.SCADAPlan = plan
-	case gsm_map.SMRPDAChoiceImsi, gsm_map.SMRPDAChoiceLmsi, gsm_map.SMRPDAChoiceNoSMRPDA:
-		da, err := convertWireToSmRpDa(&arg.SmRPDA)
-		if err != nil {
-			return nil, err
-		}
-		moFsm.SmRpDa = da
-	default:
-		return nil, fmt.Errorf("unexpected SMRPDA choice: %d", arg.SmRPDA.Choice)
+	da, err := convertWireToSmRpDa(&arg.SmRPDA)
+	if err != nil {
+		return nil, err
 	}
-
-	// Extract SM-RP-OA
-	switch arg.SmRPOA.Choice {
-	case gsm_map.SMRPOAChoiceMsisdn:
-		if arg.SmRPOA.Msisdn == nil {
-			return nil, fmt.Errorf("SMRPOA MSISDN is nil")
-		}
-		msisdn, nature, plan, err := decodeAddressField(*arg.SmRPOA.Msisdn)
-		if err != nil {
-			return nil, fmt.Errorf("decoding MSISDN: %w", err)
-		}
-		moFsm.MSISDN = msisdn
-		moFsm.MSISDNNature = nature
-		moFsm.MSISDNPlan = plan
-	case gsm_map.SMRPOAChoiceServiceCentreAddressOA, gsm_map.SMRPOAChoiceNoSMRPOA:
-		oa, err := convertWireToSmRpOa(&arg.SmRPOA)
-		if err != nil {
-			return nil, err
-		}
-		moFsm.SmRpOa = oa
-	default:
-		return nil, fmt.Errorf("unexpected SMRPOA choice: %d", arg.SmRPOA.Choice)
+	moFsm.SmRpDa = *da
+	oa, err := convertWireToSmRpOa(&arg.SmRPOA)
+	if err != nil {
+		return nil, err
 	}
+	moFsm.SmRpOa = *oa
 
 	// Unmarshal TPDU
 	tpduResult, tpduErr := sms.Unmarshal(arg.SmRPUI, sms.AsMO)

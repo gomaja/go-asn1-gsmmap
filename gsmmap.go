@@ -132,21 +132,11 @@ type LocationInfoWithLMSI struct {
 
 // MtFsm represents a Mobile Terminated Forward Short Message (opCode 44).
 type MtFsm struct {
-	// SM-RP-DA: destination address CHOICE.
-	// IMSI is the common variant. When SmRpDa is set it overrides IMSI and
-	// allows any SM-RP-DA alternative (IMSI, LMSI, serviceCentreAddressDA,
-	// noSM-RP-DA).
-	IMSI   string
-	SmRpDa *SmRpDa
-
-	// SM-RP-OA: originator address CHOICE.
-	// ServiceCentreAddressOA is the common variant. When SmRpOa is set it
-	// overrides ServiceCentreAddressOA and allows any SM-RP-OA alternative
-	// (msisdn, serviceCentreAddressOA, noSM-RP-OA).
-	ServiceCentreAddressOA string
-	SCAOANature            uint8   // address nature indicator (default: International)
-	SCAOAPlan              uint8   // numbering plan indicator (default: ISDN)
-	SmRpOa                 *SmRpOa // when set, overrides ServiceCentreAddressOA
+	// SmRpDa and SmRpOa are the mandatory SM-RP-DA and SM-RP-OA CHOICEs of
+	// MT-ForwardSM-Arg (3GPP TS 29.002 v19.1.0 clause 17.7.6). Exactly one
+	// alternative of each must be set.
+	SmRpDa SmRpDa
+	SmRpOa SmRpOa
 
 	TPDU               tpdu.TPDU
 	MoreMessagesToSend bool
@@ -178,7 +168,8 @@ const (
 )
 
 // SmRpDa represents the SM-RP-DA CHOICE (destination address).
-// Set exactly one field.
+// Exactly one alternative must be set: Marshal rejects zero or several, and
+// decoding sets exactly the alternative present on the wire.
 type SmRpDa struct {
 	IMSI                   string   // [0] IMSI (TBCD)
 	LMSI                   HexBytes // [1] 4 octets
@@ -189,7 +180,8 @@ type SmRpDa struct {
 }
 
 // SmRpOa represents the SM-RP-OA CHOICE (originator address).
-// Set exactly one field.
+// Exactly one alternative must be set: Marshal rejects zero or several, and
+// decoding sets exactly the alternative present on the wire.
 type SmRpOa struct {
 	MSISDN                 string // ISDNAddressString
 	MSISDNNature           uint8
@@ -202,23 +194,11 @@ type SmRpOa struct {
 
 // MoFsm represents a Mobile Originated Forward Short Message (opCode 46).
 type MoFsm struct {
-	// SM-RP-DA: destination address CHOICE.
-	// ServiceCentreAddressDA is the common variant. When SmRpDa is set it
-	// overrides ServiceCentreAddressDA and allows any SM-RP-DA alternative
-	// (IMSI, LMSI, serviceCentreAddressDA, noSM-RP-DA).
-	ServiceCentreAddressDA string
-	SCADANature            uint8   // address nature indicator (default: International)
-	SCADAPlan              uint8   // numbering plan indicator (default: ISDN)
-	SmRpDa                 *SmRpDa // when set, overrides ServiceCentreAddressDA
-
-	// SM-RP-OA: originator address CHOICE.
-	// MSISDN is the common variant. When SmRpOa is set it overrides MSISDN
-	// and allows any SM-RP-OA alternative (msisdn, serviceCentreAddressOA,
-	// noSM-RP-OA).
-	MSISDN       string
-	MSISDNNature uint8   // address nature indicator (default: International)
-	MSISDNPlan   uint8   // numbering plan indicator (default: ISDN)
-	SmRpOa       *SmRpOa // when set, overrides MSISDN
+	// SmRpDa and SmRpOa are the mandatory SM-RP-DA and SM-RP-OA CHOICEs of
+	// MO-ForwardSM-Arg (3GPP TS 29.002 v19.1.0 clause 17.7.6). Exactly one
+	// alternative of each must be set.
+	SmRpDa SmRpDa
+	SmRpOa SmRpOa
 
 	TPDU tpdu.TPDU
 
@@ -3638,9 +3618,6 @@ var (
 	ErrUpdateLocationMissingIMSI      = errors.New("updateLocation: IMSI is empty")
 	ErrUpdateLocationMissingMSCNumber = errors.New("updateLocation: MSCNumber is empty")
 	ErrUpdateLocationMissingVLRNumber = errors.New("updateLocation: VLRNumber is empty")
-
-	ErrMtFsmMissingIMSI                   = errors.New("mtFsm: IMSI is empty")
-	ErrMtFsmMissingServiceCentreAddressOA = errors.New("mtFsm: ServiceCentreAddressOA is empty")
 
 	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
 	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
