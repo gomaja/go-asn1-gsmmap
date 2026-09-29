@@ -2,9 +2,8 @@
 //
 // Fuzz targets for the USSD parsers and for USSDDataCodingScheme.Decode.
 // Properties: never panic; whenever a parse and the following Marshal both
-// succeed, parsing the marshalled bytes yields the same value (a zero MSISDN
-// nature or plan is first normalised, as Marshal replaces it with the package
-// default).
+// succeed, parsing the marshalled bytes yields the same value. A zero MSISDN
+// nature or plan is "unknown" and is preserved exactly.
 
 package gsmmap
 
@@ -58,10 +57,6 @@ func FuzzParseUSSDArg(f *testing.F) {
 			return
 		}
 		want := *a
-		if want.MSISDN != "" {
-			want.MSISDNNature = natureOrDefault(want.MSISDNNature)
-			want.MSISDNPlan = planOrDefault(want.MSISDNPlan)
-		}
 		out, err := a.Marshal()
 		if err != nil {
 			return

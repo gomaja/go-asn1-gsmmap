@@ -398,17 +398,6 @@ func TestSriRespFullStressRoundTrip(t *testing.T) {
 		t.Fatalf("ParseSriResp: %v", err)
 	}
 
-	// Normalize nature/plan defaults in input (address.NatureInternational, address.PlanISDN)
-	in.VmscNature, in.VmscPlan = address.NatureInternational, address.PlanISDN
-	in.MSISDNNature, in.MSISDNPlan = address.NatureInternational, address.PlanISDN
-	if in.ExtendedRoutingInfo.RoutingInfo.ForwardingData != nil {
-		in.ExtendedRoutingInfo.RoutingInfo.ForwardingData.ForwardedToNumberNature = address.NatureInternational
-		in.ExtendedRoutingInfo.RoutingInfo.ForwardingData.ForwardedToNumberPlan = address.PlanISDN
-	}
-	if in.RoutingInfo2 != nil {
-		in.RoutingInfo2.RoamingNumberNature, in.RoutingInfo2.RoamingNumberPlan = address.NatureInternational, address.PlanISDN
-	}
-
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
 	}
@@ -466,10 +455,6 @@ func TestSriFullStressRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseSri: %v", err)
 	}
-
-	// Natures/plans normalize to International(0x10)/ISDN(1) when zero.
-	in.MSISDNNature, in.MSISDNPlan = address.NatureInternational, address.PlanISDN
-	in.GmscNature, in.GmscPlan = address.NatureInternational, address.PlanISDN
 
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)

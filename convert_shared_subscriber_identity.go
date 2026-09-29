@@ -3,8 +3,8 @@
 // Shared converter for the SubscriberIdentity CHOICE (IMSI or MSISDN)
 // per TS 29.002 MAP-CommonDataTypes.asn. Used by SendRoutingInfoForLCS
 // (opCode 85) and AnyTimeInterrogation (opCode 71). MSISDN carries its
-// AddressString Nature/Plan (defaulting to International/ISDN when zero),
-// so a non-international MSISDN survives a decode→encode round-trip.
+// AddressString Nature/Plan, so any MSISDN survives a decode→encode round
+// trip.
 
 package gsmmap
 

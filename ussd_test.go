@@ -426,35 +426,20 @@ func TestUSSDArgRoundTrip(t *testing.T) {
 		cases = append(cases, tc{"alerting " + p.String(), &USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: gsm, AlertingPattern: &p}})
 	}
 	for _, m := range []struct {
-		digits        string
-		nature, plan  uint8
-		defaultedFrom bool
+		digits       string
+		nature, plan uint8
 	}{
-		{"27761485722", 0x10, 0x01, false},
-		{"0612345678", 0x20, 0x08, false},
-		{"123", 0x40, 0x09, false},
-		{"98765", 0x60, 0x03, false},
-		{"41791234567", 0x10, 0x06, false},
-		{"12345", 0x00, 0x00, true}, // defaults: international / ISDN
+		{"27761485722", 0x10, 0x01},
+		{"0612345678", 0x20, 0x08},
+		{"123", 0x40, 0x09},
+		{"98765", 0x60, 0x03},
+		{"41791234567", 0x10, 0x06},
+		{"12345", 0x00, 0x00}, // unknown / unknown, kept as is
+		{"12345", 0x00, 0x01}, // unknown nature, ISDN plan
+		{"12345", 0x10, 0x00}, // international, unknown plan
 	} {
 		name := fmt.Sprintf("msisdn %s nature=0x%02X plan=0x%02X", m.digits, m.nature, m.plan)
-		in := &USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: gsm, MSISDN: m.digits, MSISDNNature: m.nature, MSISDNPlan: m.plan}
-		if m.defaultedFrom {
-			// Zero nature and plan encode as the package defaults.
-			data, err := in.Marshal()
-			if err != nil {
-				t.Fatal(err)
-			}
-			got, err := ParseUSSDArg(data)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.MSISDNNature != 0x10 || got.MSISDNPlan != 0x01 || got.MSISDN != m.digits {
-				t.Errorf("%s: got %+v, want international/ISDN defaults", name, got)
-			}
-			continue
-		}
-		cases = append(cases, tc{name, in})
+		cases = append(cases, tc{name, &USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: gsm, MSISDN: m.digits, MSISDNNature: m.nature, MSISDNPlan: m.plan}})
 	}
 	ap := AlertingCategory3
 	cases = append(cases, tc{"alerting + msisdn", &USSDArg{

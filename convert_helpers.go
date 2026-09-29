@@ -11,29 +11,23 @@ import (
 
 const errEncodingIMSI = "encoding IMSI: %w"
 
-// natureOrDefault returns the given nature if non-zero, otherwise International.
-func natureOrDefault(nature uint8) uint8 {
-	if nature == 0 {
-		return address.NatureInternational
-	}
-	return nature
-}
-
-// planOrDefault returns the given plan if non-zero, otherwise ISDN.
-func planOrDefault(plan uint8) uint8 {
-	if plan == 0 {
-		return address.PlanISDN
-	}
-	return plan
-}
-
-// encodeAddressField encodes a phone number string into an AddressString byte slice.
+// encodeAddressField encodes digits into an AddressString (3GPP TS 29.002
+// V19.1.0 §17.7.8) with the given nature of address (address.Nature*,
+// bits 7..5) and numbering plan (address.Plan*, bits 4..1). Zero is
+// address.NatureUnknown / address.PlanUnknown, exactly as on the wire, so a
+// decoded address encodes back to the same octets.
 func encodeAddressField(digits string, nature, plan uint8) ([]byte, error) {
+	if nature&^0b01110000 != 0 {
+		return nil, fmt.Errorf("nature of address 0x%02X: %w", nature, ErrAddressNatureInvalid)
+	}
+	if plan&^0b00001111 != 0 {
+		return nil, fmt.Errorf("numbering plan 0x%02X: %w", plan, ErrAddressPlanInvalid)
+	}
 	tbcdBytes, err := tbcd.Encode(digits)
 	if err != nil {
 		return nil, err
 	}
-	return address.Encode(address.ExtensionNo, natureOrDefault(nature), planOrDefault(plan), tbcdBytes), nil
+	return address.Encode(address.ExtensionNo, nature, plan, tbcdBytes), nil
 }
 
 // decodeAddressField decodes an AddressString byte slice into a phone number string and address components.
@@ -139,8 +133,7 @@ func validateAPN(b HexBytes, field string) error {
 
 // validateAPNOIReplacement checks the APN-OI-Replacement OCTET STRING
 // (SIZE 9..100) constraint per TS 29.002 MAP-MS-DataTypes.asn:1303.
-// Reused by GPRSSubscriptionData and PDPContext (PR E1b1) and
-// APN-Configuration (PR E1b2).
+// Used by GPRSSubscriptionData, PDPContext and APN-Configuration.
 func validateAPNOIReplacement(b HexBytes, field string) error {
 	if len(b) < 9 || len(b) > 100 {
 		return fmt.Errorf("%s: %w (got %d)", field, ErrAPNOIReplacementInvalidSize, len(b))
@@ -149,9 +142,8 @@ func validateAPNOIReplacement(b HexBytes, field string) error {
 }
 
 // validateFQDN checks the FQDN OCTET STRING (SIZE 9..255) constraint per
-// TS 29.002 MAP-MS-DataTypes.asn:1434. Reused by PDPContext.SCEFID
-// (PR E1b1), APN-Configuration (PR E1b2), and LCSClientExternalID
-// (PR E1b3).
+// TS 29.002 MAP-MS-DataTypes.asn:1434. Used by PDPContext.SCEFID,
+// APN-Configuration and LCSClientExternalID.
 func validateFQDN(b HexBytes, field string) error {
 	if len(b) < 9 || len(b) > 255 {
 		return fmt.Errorf("%s: %w (got %d)", field, ErrFQDNInvalidSize, len(b))

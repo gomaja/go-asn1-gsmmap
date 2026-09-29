@@ -291,11 +291,11 @@ type USSDArg struct {
 	// MSISDN is the digits of msisdn [0] ISDN-AddressString (§7.6.2.17), used
 	// by processUnstructuredSS-Request only (§11.9). "" means absent.
 	MSISDN string
-	// MSISDNNature is the nature of address of MSISDN; 0 selects international
-	// on encode.
+	// MSISDNNature is the nature of address of MSISDN (address.Nature*);
+	// 0 is unknown.
 	MSISDNNature uint8
-	// MSISDNPlan is the numbering plan of MSISDN; 0 selects ISDN/telephony on
-	// encode.
+	// MSISDNPlan is the numbering plan of MSISDN (address.Plan*); 0 is
+	// unknown.
 	MSISDNPlan uint8
 }
 

@@ -13,6 +13,7 @@ import (
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 
+	"github.com/gomaja/go-asn1-gsmmap/address"
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
@@ -327,11 +328,11 @@ func TestSaiDecodeRequestingNodeType_RejectsNegative(t *testing.T) {
 // fields are populated, so optional fields under test can be added in
 // isolation.
 func newSriArg() *gsm_map.SendRoutingInfoArg {
-	msisdn, err := encodeAddressField("31612345678", 1, 1)
+	msisdn, err := encodeAddressField("31612345678", address.NatureInternational, address.PlanISDN)
 	if err != nil {
 		panic(err)
 	}
-	gsmscf, err := encodeAddressField("31600000000", 1, 1)
+	gsmscf, err := encodeAddressField("31600000000", address.NatureInternational, address.PlanISDN)
 	if err != nil {
 		panic(err)
 	}
@@ -350,11 +351,11 @@ func newSriRes() *gsm_map.SendRoutingInfoRes {
 
 // newUpdateLocationArg returns a minimally valid UpdateLocationArg.
 func newUpdateLocationArg() *gsm_map.UpdateLocationArg {
-	msc, err := encodeAddressField("31600000001", 1, 1)
+	msc, err := encodeAddressField("31600000001", address.NatureInternational, address.PlanISDN)
 	if err != nil {
 		panic(err)
 	}
-	vlr, err := encodeAddressField("31600000002", 1, 1)
+	vlr, err := encodeAddressField("31600000002", address.NatureInternational, address.PlanISDN)
 	if err != nil {
 		panic(err)
 	}

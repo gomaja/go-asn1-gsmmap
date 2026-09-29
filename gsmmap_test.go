@@ -1361,10 +1361,6 @@ func TestSriSmFullStressRoundTrip(t *testing.T) {
 		t.Fatalf("ParseSriSm: %v", err)
 	}
 
-	// Natures/plans normalize to International/ISDN when zero.
-	in.MSISDNNature, in.MSISDNPlan = address.NatureInternational, address.PlanISDN
-	in.SCANature, in.SCAPlan = address.NatureInternational, address.PlanISDN
-
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
 	}
@@ -1423,18 +1419,6 @@ func TestSriSmRespFullStressRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseSriSmResp: %v", err)
 	}
-
-	// Normalize natures/plans.
-	in.LocationInfoWithLMSI.NetworkNodeNumberNature = address.NatureInternational
-	in.LocationInfoWithLMSI.NetworkNodeNumberPlan = address.PlanISDN
-	in.LocationInfoWithLMSI.AdditionalNumber.MscNumberNature = address.NatureInternational
-	in.LocationInfoWithLMSI.AdditionalNumber.MscNumberPlan = address.PlanISDN
-	in.LocationInfoWithLMSI.ThirdNumber.SgsnNumberNature = address.NatureInternational
-	in.LocationInfoWithLMSI.ThirdNumber.SgsnNumberPlan = address.PlanISDN
-	in.LocationInfoWithLMSI.Smsf3gppNumberNature = address.NatureInternational
-	in.LocationInfoWithLMSI.Smsf3gppNumberPlan = address.PlanISDN
-	in.LocationInfoWithLMSI.SmsfNon3gppNumberNature = address.NatureInternational
-	in.LocationInfoWithLMSI.SmsfNon3gppNumberPlan = address.PlanISDN
 
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
@@ -1549,10 +1533,6 @@ func TestMtFsmFullStressRoundTrip(t *testing.T) {
 		t.Fatalf("ParseMtFsm: %v", err)
 	}
 
-	// Normalize default natures/plans.
-	in.SmsGmscAddressNature = address.NatureInternational
-	in.SmsGmscAddressPlan = address.PlanISDN
-
 	if diff := cmp.Diff(in, got, equateTPDU); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
 	}
@@ -1586,12 +1566,22 @@ var smRpDaCases = []smRpDaCase{
 	},
 	{
 		name: "ServiceCentreAddressDA",
-		in:   SmRpDa{ServiceCentreAddressDA: "31612345678"},
+		in: SmRpDa{
+			ServiceCentreAddressDA: "31612345678",
+			SCADANature:            address.NatureInternational,
+			SCADAPlan:              address.PlanISDN,
+		},
 		want: SmRpDa{
 			ServiceCentreAddressDA: "31612345678",
 			SCADANature:            address.NatureInternational,
 			SCADAPlan:              address.PlanISDN,
 		},
+	},
+	{
+		// Zero nature and plan are "unknown" and survive the round trip.
+		name: "ServiceCentreAddressDA_UnknownNaturePlan",
+		in:   SmRpDa{ServiceCentreAddressDA: "31612345678"},
+		want: SmRpDa{ServiceCentreAddressDA: "31612345678"},
 	},
 	{
 		name: "ServiceCentreAddressDA_ExplicitNaturePlan",
@@ -1617,12 +1607,22 @@ var smRpDaCases = []smRpDaCase{
 var smRpOaCases = []smRpOaCase{
 	{
 		name: "MSISDN",
-		in:   SmRpOa{MSISDN: "31612345678"},
+		in: SmRpOa{
+			MSISDN:       "31612345678",
+			MSISDNNature: address.NatureInternational,
+			MSISDNPlan:   address.PlanISDN,
+		},
 		want: SmRpOa{
 			MSISDN:       "31612345678",
 			MSISDNNature: address.NatureInternational,
 			MSISDNPlan:   address.PlanISDN,
 		},
+	},
+	{
+		// Zero nature and plan are "unknown" and survive the round trip.
+		name: "MSISDN_UnknownNaturePlan",
+		in:   SmRpOa{MSISDN: "31612345678"},
+		want: SmRpOa{MSISDN: "31612345678"},
 	},
 	{
 		name: "MSISDN_ExplicitNaturePlan",
@@ -1639,12 +1639,21 @@ var smRpOaCases = []smRpOaCase{
 	},
 	{
 		name: "ServiceCentreAddressOA",
-		in:   SmRpOa{ServiceCentreAddressOA: "31699887766"},
+		in: SmRpOa{
+			ServiceCentreAddressOA: "31699887766",
+			SCAOANature:            address.NatureInternational,
+			SCAOAPlan:              address.PlanISDN,
+		},
 		want: SmRpOa{
 			ServiceCentreAddressOA: "31699887766",
 			SCAOANature:            address.NatureInternational,
 			SCAOAPlan:              address.PlanISDN,
 		},
+	},
+	{
+		name: "ServiceCentreAddressOA_UnknownNaturePlan",
+		in:   SmRpOa{ServiceCentreAddressOA: "31699887766"},
+		want: SmRpOa{ServiceCentreAddressOA: "31699887766"},
 	},
 	{
 		name: "NoSmRpOa",
@@ -2073,12 +2082,6 @@ func TestUpdateLocationFullStressRoundTrip(t *testing.T) {
 		t.Fatalf("ParseUpdateLocation: %v", err)
 	}
 
-	// Normalize natures/plans to defaults.
-	in.MSCNature = address.NatureInternational
-	in.MSCPlan = address.PlanISDN
-	in.VLRNature = address.NatureInternational
-	in.VLRPlan = address.PlanISDN
-
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
 	}
@@ -2099,10 +2102,6 @@ func TestUpdateLocationResFullRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseUpdateLocationRes: %v", err)
 	}
-
-	// Normalize nature/plan.
-	in.HLRNumberNature = address.NatureInternational
-	in.HLRNumberPlan = address.PlanISDN
 
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
@@ -2362,12 +2361,6 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 		t.Fatalf("ParseUpdateGprsLocation: %v", err)
 	}
 
-	// Normalize natures/plans to defaults.
-	in.SGSNNature = address.NatureInternational
-	in.SGSNPlan = address.PlanISDN
-	in.MmeNumberForMTSMSNature = address.NatureInternational
-	in.MmeNumberForMTSMSPlan = address.PlanISDN
-
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
 	}
@@ -2422,9 +2415,6 @@ func TestUpdateGprsLocationResFullRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseUpdateGprsLocationRes: %v", err)
 	}
-
-	in.HLRNumberNature = address.NatureInternational
-	in.HLRNumberPlan = address.PlanISDN
 
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
@@ -2521,10 +2511,6 @@ func TestInformServiceCentreFullStressRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseInformServiceCentre: %v", err)
 	}
-
-	// Normalize defaults.
-	in.StoredMSISDNNature = address.NatureInternational
-	in.StoredMSISDNPlan = address.PlanISDN
 
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
@@ -2647,12 +2633,6 @@ func TestAlertServiceCentreMandatoryRoundTrip(t *testing.T) {
 		t.Fatalf("ParseAlertServiceCentre: %v", err)
 	}
 
-	// Normalize default natures/plans.
-	in.MSISDNNature = address.NatureInternational
-	in.MSISDNPlan = address.PlanISDN
-	in.SCANature = address.NatureInternational
-	in.SCAPlan = address.PlanISDN
-
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
 	}
@@ -2697,18 +2677,6 @@ func TestAlertServiceCentreFullStressRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseAlertServiceCentre: %v", err)
 	}
-
-	// Normalize default natures/plans for all address fields.
-	in.MSISDNNature = address.NatureInternational
-	in.MSISDNPlan = address.PlanISDN
-	in.SCANature = address.NatureInternational
-	in.SCAPlan = address.PlanISDN
-	in.NewSGSNNumberNature = address.NatureInternational
-	in.NewSGSNNumberPlan = address.PlanISDN
-	in.NewMMENumberNature = address.NatureInternational
-	in.NewMMENumberPlan = address.PlanISDN
-	in.NewMSCNumberNature = address.NatureInternational
-	in.NewMSCNumberPlan = address.PlanISDN
 
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
@@ -2815,18 +2783,6 @@ func TestPurgeMSFullStressRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParsePurgeMS: %v", err)
 	}
-
-	// Normalize default natures/plans for all address fields.
-	in.VLRNature = address.NatureInternational
-	in.VLRPlan = address.PlanISDN
-	in.SGSNNature = address.NatureInternational
-	in.SGSNPlan = address.PlanISDN
-	in.LocationInformation.VlrNumberNature = address.NatureInternational
-	in.LocationInformation.VlrNumberPlan = address.PlanISDN
-	in.LocationInformation.MscNumberNature = address.NatureInternational
-	in.LocationInformation.MscNumberPlan = address.PlanISDN
-	in.LocationInformationGPRS.SgsnNumberNature = address.NatureInternational
-	in.LocationInformationGPRS.SgsnNumberPlan = address.PlanISDN
 
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
@@ -3313,10 +3269,6 @@ func TestProvideSubscriberInfoResRoundTrip(t *testing.T) {
 		t.Fatalf("ParseProvideSubscriberInfoRes: %v", err)
 	}
 
-	// Normalize default natures/plans for address fields.
-	in.SubscriberInfo.LocationInformation.VlrNumberNature = address.NatureInternational
-	in.SubscriberInfo.LocationInformation.VlrNumberPlan = address.PlanISDN
-
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
 	}
@@ -3446,11 +3398,6 @@ func TestCancelLocationFullStressRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseCancelLocation: %v", err)
 	}
-
-	in.NewMSCNumberNature = address.NatureInternational
-	in.NewMSCNumberPlan = address.PlanISDN
-	in.NewVLRNumberNature = address.NatureInternational
-	in.NewVLRNumberPlan = address.PlanISDN
 
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
@@ -3812,9 +3759,6 @@ func TestCamelOCSIRoundTrip(t *testing.T) {
 		},
 	}
 	got := camelRoundTrip(t, in)
-	// Normalize Nature/Plan defaults applied by encodeAddressField.
-	in.OCSI.OBcsmCamelTDPDataList[0].GsmSCFAddressNature = address.NatureInternational
-	in.OCSI.OBcsmCamelTDPDataList[0].GsmSCFAddressPlan = address.PlanISDN
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("OCSI round-trip diff (-want +got):\n%s", diff)
 	}
@@ -3842,10 +3786,6 @@ func TestCamelTCSIRoundTrip(t *testing.T) {
 		},
 	}
 	got := camelRoundTrip(t, in)
-	for i := range in.TCSI.TBcsmCamelTDPDataList {
-		in.TCSI.TBcsmCamelTDPDataList[i].GsmSCFAddressNature = address.NatureInternational
-		in.TCSI.TBcsmCamelTDPDataList[i].GsmSCFAddressPlan = address.PlanISDN
-	}
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("TCSI round-trip diff (-want +got):\n%s", diff)
 	}
@@ -3867,10 +3807,6 @@ func TestCamelDCSIRoundTrip(t *testing.T) {
 		},
 	}
 	got := camelRoundTrip(t, in)
-	in.DCSI.DPAnalysedInfoCriteriaList[0].DialledNumberNature = address.NatureInternational
-	in.DCSI.DPAnalysedInfoCriteriaList[0].DialledNumberPlan = address.PlanISDN
-	in.DCSI.DPAnalysedInfoCriteriaList[0].GsmSCFAddressNature = address.NatureInternational
-	in.DCSI.DPAnalysedInfoCriteriaList[0].GsmSCFAddressPlan = address.PlanISDN
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("DCSI round-trip diff (-want +got):\n%s", diff)
 	}
@@ -3898,10 +3834,6 @@ func TestCamelOCriteriaRoundTrip(t *testing.T) {
 		},
 	}
 	got := camelRoundTrip(t, in)
-	for i := range in.OBcsmCamelTDPCriteriaList[0].DestinationNumberCriteria.DestinationNumberList {
-		in.OBcsmCamelTDPCriteriaList[0].DestinationNumberCriteria.DestinationNumberList[i].Nature = address.NatureInternational
-		in.OBcsmCamelTDPCriteriaList[0].DestinationNumberCriteria.DestinationNumberList[i].Plan = address.PlanISDN
-	}
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("OBcsmCamelTDPCriteria round-trip diff (-want +got):\n%s", diff)
 	}
