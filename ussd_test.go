@@ -551,8 +551,8 @@ func TestUSSDArgMarshalReservedAlertingPattern(t *testing.T) {
 		v := v
 		a := &USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: []byte{0x31}, AlertingPattern: &v}
 		_, err := a.Marshal()
-		if !errors.Is(err, ErrUSSDReservedAlertingPattern) {
-			t.Errorf("0x%02X: err = %v, want ErrUSSDReservedAlertingPattern", uint8(v), err)
+		if !errors.Is(err, ErrAlertingPatternReserved) {
+			t.Errorf("0x%02X: err = %v, want ErrAlertingPatternReserved", uint8(v), err)
 		}
 	}
 }
@@ -579,8 +579,8 @@ func TestParseUSSDWireLengthErrors(t *testing.T) {
 	for _, dcs := range [][]byte{{}, {0x0F, 0x0F}, {0x0F, 0x00, 0x00}} {
 		t.Run(fmt.Sprintf("arg dcs %x", dcs), func(t *testing.T) {
 			data := ussdWireArg(t, &gsm_map.USSDArg{UssdDataCodingScheme: dcs, UssdString: str})
-			if _, err := ParseUSSDArg(data); !errors.Is(err, ErrUSSDInvalidDataCodingSchemeLength) {
-				t.Errorf("err = %v, want ErrUSSDInvalidDataCodingSchemeLength", err)
+			if _, err := ParseUSSDArg(data); !errors.Is(err, ErrUSSDDataCodingSchemeInvalidSize) {
+				t.Errorf("err = %v, want ErrUSSDDataCodingSchemeInvalidSize", err)
 			}
 		})
 		t.Run(fmt.Sprintf("res dcs %x", dcs), func(t *testing.T) {
@@ -588,8 +588,8 @@ func TestParseUSSDWireLengthErrors(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := ParseUSSDRes(data); !errors.Is(err, ErrUSSDInvalidDataCodingSchemeLength) {
-				t.Errorf("err = %v, want ErrUSSDInvalidDataCodingSchemeLength", err)
+			if _, err := ParseUSSDRes(data); !errors.Is(err, ErrUSSDDataCodingSchemeInvalidSize) {
+				t.Errorf("err = %v, want ErrUSSDDataCodingSchemeInvalidSize", err)
 			}
 		})
 	}
@@ -597,8 +597,8 @@ func TestParseUSSDWireLengthErrors(t *testing.T) {
 		t.Run(fmt.Sprintf("alerting pattern %x", ap), func(t *testing.T) {
 			ap := gsm_map.AlertingPattern(ap)
 			data := ussdWireArg(t, &gsm_map.USSDArg{UssdDataCodingScheme: []byte{0x0F}, UssdString: str, AlertingPattern: &ap})
-			if _, err := ParseUSSDArg(data); !errors.Is(err, ErrUSSDInvalidAlertingPatternLength) {
-				t.Errorf("err = %v, want ErrUSSDInvalidAlertingPatternLength", err)
+			if _, err := ParseUSSDArg(data); !errors.Is(err, ErrAlertingPatternInvalidSize) {
+				t.Errorf("err = %v, want ErrAlertingPatternInvalidSize", err)
 			}
 		})
 	}
@@ -616,7 +616,7 @@ func TestParseUSSDArgLenientAlertingPattern(t *testing.T) {
 		if got.AlertingPattern == nil || uint8(*got.AlertingPattern) != v {
 			t.Errorf("0x%02X: got %v", v, got.AlertingPattern)
 		}
-		if _, err := got.Marshal(); !errors.Is(err, ErrUSSDReservedAlertingPattern) {
+		if _, err := got.Marshal(); !errors.Is(err, ErrAlertingPatternReserved) {
 			t.Errorf("0x%02X: Marshal err = %v", v, err)
 		}
 	}

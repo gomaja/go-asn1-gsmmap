@@ -2377,25 +2377,25 @@ const (
 
 // LCSClientName (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:199.
 // NameString is a USSD-String of 1..63 octets per maxNameStringLength.
-// Surfaced as an opaque byte slice; the USSD-DataCodingScheme is preserved
-// verbatim so callers can decode per 3GPP TS 23.038 if needed.
+// Surfaced as an opaque byte slice coded per DataCodingScheme; decode it
+// with DataCodingScheme.Decode.
 //
 // Note: the spec assigns tags [0]/[2]/[3] (skipping [1]) for these fields;
 // the gap is intentional in the ASN.1 module and is not an off-by-one in
 // this Go surface.
 type LCSClientName struct {
-	DataCodingScheme   uint8               // [0] mandatory, USSD-DataCodingScheme single octet
-	NameString         HexBytes            // [2] mandatory, NameString 1..63 octets
-	LcsFormatIndicator *LCSFormatIndicator // [3] optional, present only past the extensibility marker
+	DataCodingScheme   USSDDataCodingScheme // [0] mandatory
+	NameString         HexBytes             // [2] mandatory, NameString 1..63 octets
+	LcsFormatIndicator *LCSFormatIndicator  // [3] optional, present only past the extensibility marker
 }
 
 // LCSRequestorID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:214.
 // RequestorIDString is a USSD-String of 1..63 octets per
 // maxRequestorIDStringLength.
 type LCSRequestorID struct {
-	DataCodingScheme   uint8               // [0] mandatory, USSD-DataCodingScheme single octet
-	RequestorIDString  HexBytes            // [1] mandatory, RequestorIDString 1..63 octets
-	LcsFormatIndicator *LCSFormatIndicator // [2] optional, present only past the extensibility marker
+	DataCodingScheme   USSDDataCodingScheme // [0] mandatory
+	RequestorIDString  HexBytes             // [1] mandatory, RequestorIDString 1..63 octets
+	LcsFormatIndicator *LCSFormatIndicator  // [2] optional, present only past the extensibility marker
 }
 
 // LCSClientID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:178.
@@ -2471,8 +2471,8 @@ type LCSPrivacyCheck struct {
 // LcsCodewordString is a USSD-String of 1..20 octets per
 // maxLCSCodewordStringLength.
 type LCSCodeword struct {
-	DataCodingScheme  uint8    // [0] mandatory, USSD-DataCodingScheme single octet
-	LcsCodewordString HexBytes // [1] mandatory, LCSCodewordString 1..20 octets
+	DataCodingScheme  USSDDataCodingScheme // [0] mandatory
+	LcsCodewordString HexBytes             // [1] mandatory, LCSCodewordString 1..20 octets
 }
 
 // AccuracyFulfilmentIndicator (ENUMERATED) per TS 29.002

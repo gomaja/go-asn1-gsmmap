@@ -83,6 +83,10 @@ What that means for a consumer:
   longer exported. `GetErrorString(code)` is `MapErrorCode(code).String()`.
 - `ErrIscInvalidAbsentSubscriberDiagnosticSM` is
   `ErrAbsentSubscriberDiagnosticSMOutOfRange`.
+- The `DataCodingScheme` of `LCSClientName`, `LCSRequestorID` and
+  `LCSCodeword` is a `USSDDataCodingScheme`, the type of every
+  USSD-DataCodingScheme, so their strings decode with
+  `DataCodingScheme.Decode`.
 
 ## Usage
 

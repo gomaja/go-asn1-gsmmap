@@ -42,16 +42,13 @@ var (
 	// ErrUSSDTextEmpty is returned when the text to encode, or the octets to
 	// decode, are empty: USSD-String is SIZE (1..maxUSSD-StringLength).
 	ErrUSSDTextEmpty = errors.New("ussd: empty text")
-	// ErrUSSDInvalidDataCodingSchemeLength is returned when a wire
-	// USSD-DataCodingScheme is not exactly one octet (SIZE (1)).
-	ErrUSSDInvalidDataCodingSchemeLength = errors.New("ussd: USSD-DataCodingScheme must be exactly 1 octet")
-	// ErrUSSDInvalidAlertingPatternLength is returned when a wire
-	// AlertingPattern is not exactly one octet (SIZE (1)).
-	ErrUSSDInvalidAlertingPatternLength = errors.New("ussd: AlertingPattern must be exactly 1 octet")
-	// ErrUSSDReservedAlertingPattern is returned when marshalling an
+	// ErrAlertingPatternInvalidSize is returned when a wire AlertingPattern is
+	// not exactly one octet (SIZE (1), 3GPP TS 29.002 V19.1.0 §17.7.8).
+	ErrAlertingPatternInvalidSize = errors.New("alertingPattern: must be exactly 1 octet")
+	// ErrAlertingPatternReserved is returned when marshalling an
 	// AlertingPattern that is not one of the seven values 3GPP TS 29.002
 	// V19.1.0 §17.7.8 defines.
-	ErrUSSDReservedAlertingPattern = errors.New("ussd: reserved AlertingPattern value")
+	ErrAlertingPatternReserved = errors.New("alertingPattern: reserved value")
 	// ErrUSSDMSISDNDecodedEmpty is returned when a wire MSISDN is present but
 	// carries no digits; presence cannot round-trip through the string API.
 	ErrUSSDMSISDNDecodedEmpty = errors.New("ussd: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")

@@ -16,7 +16,7 @@ import (
 // (SIZE (1), §17.7.4) into its uint8 form.
 func wireUSSDDataCodingScheme(b gsm_map.USSDDataCodingScheme) (USSDDataCodingScheme, error) {
 	if len(b) != 1 {
-		return 0, fmt.Errorf("USSD-DataCodingScheme has %d octets: %w", len(b), ErrUSSDInvalidDataCodingSchemeLength)
+		return 0, fmt.Errorf("USSD-DataCodingScheme has %d octets: %w", len(b), ErrUSSDDataCodingSchemeInvalidSize)
 	}
 	return USSDDataCodingScheme(b[0]), nil
 }
@@ -29,7 +29,7 @@ func validateAlertingPatternToWire(p AlertingPattern) error {
 		AlertingCategory1, AlertingCategory2, AlertingCategory3, AlertingCategory4:
 		return nil
 	}
-	return fmt.Errorf("value 0x%02X: %w", uint8(p), ErrUSSDReservedAlertingPattern)
+	return fmt.Errorf("value 0x%02X: %w", uint8(p), ErrAlertingPatternReserved)
 }
 
 func convertUSSDArgToWire(a *USSDArg) (*gsm_map.USSDArg, error) {
@@ -71,7 +71,7 @@ func convertWireToUSSDArg(w *gsm_map.USSDArg) (*USSDArg, error) {
 	}
 	if w.AlertingPattern != nil {
 		if len(*w.AlertingPattern) != 1 {
-			return nil, fmt.Errorf("USSDArg.AlertingPattern has %d octets: %w", len(*w.AlertingPattern), ErrUSSDInvalidAlertingPatternLength)
+			return nil, fmt.Errorf("USSDArg.AlertingPattern has %d octets: %w", len(*w.AlertingPattern), ErrAlertingPatternInvalidSize)
 		}
 		p := AlertingPattern((*w.AlertingPattern)[0])
 		out.AlertingPattern = &p
