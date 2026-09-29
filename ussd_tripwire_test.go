@@ -4,6 +4,7 @@
 // constraints are not enforced on encode or decode. The USSD codec does not
 // re-check them; these tests record today's behaviour and fail once go-asn1
 // enforces the constraint, at which point they must assert rejection instead.
+// Tracked upstream in https://github.com/gomaja/go-asn1/issues/64.
 
 package gsmmap
 

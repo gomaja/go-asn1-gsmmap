@@ -64,7 +64,8 @@ type USSDDataCodingScheme uint8
 
 const (
 	// USSDDataCodingSchemeGSM7 is the GSM 7 bit default alphabet, language
-	// unspecified (3GPP TS 23.038 V20.0.0 §5, coding group 1111, bit 2 = 0).
+	// unspecified (3GPP TS 23.038 V20.0.0 §5, coding group 0000, bits 3..0 =
+	// 1111).
 	USSDDataCodingSchemeGSM7 USSDDataCodingScheme = 0x0F
 	// USSDDataCodingSchemeUCS2 is general data coding, uncompressed, no
 	// message class, UCS2 (3GPP TS 23.038 V20.0.0 §5, coding group 01xx,
