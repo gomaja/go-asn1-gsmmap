@@ -572,4 +572,4 @@ Phone numbers are stored as plain digit strings. The nature of address and numbe
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
