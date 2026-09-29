@@ -333,3 +333,30 @@ func ParseReportSMDeliveryStatusRes(data []byte) (*ReportSMDeliveryStatusRes, er
 	}
 	return convertResToReportSMDeliveryStatusRes(&res)
 }
+
+// ParseUSSDArg decodes BER-encoded bytes into a USSD-Arg (3GPP TS 29.002
+// V19.1.0 §17.7.4). USSD-Arg is the argument of processUnstructuredSS-Request
+// (opCode 59), unstructuredSS-Request (opCode 60) and unstructuredSS-Notify
+// (opCode 61). A wire USSD-DataCodingScheme or AlertingPattern that is not
+// exactly one octet is rejected.
+func ParseUSSDArg(data []byte) (*USSDArg, error) {
+	var arg gsm_map.USSDArg
+	if err := arg.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding USSDArg: %w", err)
+	}
+	return convertWireToUSSDArg(&arg)
+}
+
+// ParseUSSDRes decodes BER-encoded bytes into a USSD-Res (3GPP TS 29.002
+// V19.1.0 §17.7.4). USSD-Res is the result of processUnstructuredSS-Request
+// (opCode 59) and unstructuredSS-Request (opCode 60). unstructuredSS-Notify
+// (opCode 61) has no result parameter (RETURN RESULT TRUE, §17.6.4), and the
+// result of unstructuredSS-Request may be absent (the "-- optional" comment in
+// §17.6.4), so there may be nothing to parse.
+func ParseUSSDRes(data []byte) (*USSDRes, error) {
+	var res gsm_map.USSDRes
+	if err := res.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding USSDRes: %w", err)
+	}
+	return convertWireToUSSDRes(&res)
+}
