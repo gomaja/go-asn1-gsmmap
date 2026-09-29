@@ -77,35 +77,35 @@ func TestGetErrorStringRegression(t *testing.T) {
 	}
 }
 
-// MapErrorCode is a type alias for gsm_map.GSMMAPLocalErrorcode, so callers can
-// use either form interchangeably without conversions. Verified by
-// passing each constant through a function whose parameter is typed
-// as the other side of the alias — if the alias relationship breaks,
-// these calls stop compiling, matching the TestPSLByteAliases
-// pattern used elsewhere in the package.
-func TestMapErrorCodeUpstreamInterchangeable(t *testing.T) {
-	// Pass a local constant where an upstream type is expected.
-	asUpstream := func(v gsm_map.GSMMAPLocalErrorcode) gsm_map.GSMMAPLocalErrorcode { return v }
-	if got := asUpstream(MapErrorCallBarred); got != gsm_map.GSMMAPLocalErrorcodeCallBarred {
-		t.Errorf("local MapErrorCallBarred → upstream gsm_map.GSMMAPLocalErrorcodeCallBarred: want %d, got %d",
-			gsm_map.GSMMAPLocalErrorcodeCallBarred, got)
+// Each local MapErrorCode constant carries the CODE local value that
+// go-asn1 generated from the MAP-Errors module, and String() returns the
+// generated ASN.1 name.
+func TestMapErrorCodeMatchesUpstream(t *testing.T) {
+	cases := []struct {
+		got      MapErrorCode
+		upstream int64
+		name     string
+	}{
+		{MapErrorUnknownSubscriber, gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber, "unknownSubscriber"},
+		{MapErrorAbsentSubscriberSM, gsm_map.GSMMAPLocalErrorcodeAbsentSubscriberSM, "absentSubscriberSM"},
+		{MapErrorRoamingNotAllowed, gsm_map.GSMMAPLocalErrorcodeRoamingNotAllowed, "roamingNotAllowed"},
+		{MapErrorTeleserviceNotProvisioned, gsm_map.GSMMAPLocalErrorcodeTeleserviceNotProvisioned, "teleserviceNotProvisioned"},
+		{MapErrorCallBarred, gsm_map.GSMMAPLocalErrorcodeCallBarred, "callBarred"},
+		{MapErrorFacilityNotSupported, gsm_map.GSMMAPLocalErrorcodeFacilityNotSupported, "facilityNotSupported"},
+		{MapErrorAbsentSubscriber, gsm_map.GSMMAPLocalErrorcodeAbsentSubscriber, "absentSubscriber"},
+		{MapErrorSystemFailure, gsm_map.GSMMAPLocalErrorcodeSystemFailure, "systemFailure"},
+		{MapErrorDataMissing, gsm_map.GSMMAPLocalErrorcodeDataMissing, "dataMissing"},
+		{MapErrorUnauthorizedRequestingNetwork, gsm_map.GSMMAPLocalErrorcodeUnauthorizedRequestingNetwork, "unauthorizedRequestingNetwork"},
 	}
-
-	// Pass an upstream constant where a local type is expected.
-	asLocal := func(v MapErrorCode) MapErrorCode { return v }
-	if got := asLocal(gsm_map.GSMMAPLocalErrorcodeSystemFailure); got != MapErrorSystemFailure {
-		t.Errorf("upstream gsm_map.GSMMAPLocalErrorcodeSystemFailure → local MapErrorSystemFailure: want %d, got %d",
-			MapErrorSystemFailure, got)
+	for _, tc := range cases {
+		if int64(tc.got) != tc.upstream {
+			t.Errorf("%s: local code %d, upstream code %d", tc.name, int64(tc.got), tc.upstream)
+		}
+		if s := tc.got.String(); s != tc.name {
+			t.Errorf("MapErrorCode(%d).String() = %q, want %q", int64(tc.got), s, tc.name)
+		}
 	}
-
-	// ParseReturnErrorParameter takes int64 to match TCAP's wire
-	// type; callers using MapErrorCode constants pass an explicit
-	// cast.
-	emptySeq := []byte{0x30, 0x00}
-	if _, err := ParseReturnErrorParameter(int64(MapErrorUnknownSubscriber), emptySeq); err != nil {
-		t.Errorf("ParseReturnErrorParameter(int64(MapErrorUnknownSubscriber)): %v", err)
-	}
-	if _, err := ParseReturnErrorParameter(int64(gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber), emptySeq); err != nil {
-		t.Errorf("ParseReturnErrorParameter(int64(gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber)): %v", err)
+	if s := MapErrorCode(250).String(); s != "250" {
+		t.Errorf("MapErrorCode(250).String() = %q, want \"250\"", s)
 	}
 }

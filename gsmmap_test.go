@@ -1555,7 +1555,7 @@ func TestMtFsmFullStressRoundTrip(t *testing.T) {
 	in.SmsGmscAddressNature = address.NatureInternational
 	in.SmsGmscAddressPlan = address.PlanISDN
 
-	if diff := cmp.Diff(in, got); diff != "" {
+	if diff := cmp.Diff(in, got, equateTPDU); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
 	}
 }
@@ -1977,7 +1977,7 @@ func TestMoFsmFullStressRoundTrip(t *testing.T) {
 		t.Fatalf("ParseMoFsm: %v", err)
 	}
 
-	if diff := cmp.Diff(in, got); diff != "" {
+	if diff := cmp.Diff(in, got, equateTPDU); diff != "" {
 		t.Errorf("round-trip diff (-want +got):\n%s", diff)
 	}
 }

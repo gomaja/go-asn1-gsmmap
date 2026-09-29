@@ -17,7 +17,7 @@ func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationAr
 		return nil, fmt.Errorf("AnyTimeInterrogation.SubscriberIdentity: %w", err)
 	}
 
-	reqInfo := buildMSRequestedInfo(&ati.RequestedInfo)
+	reqInfo := buildRequestedInfo(&ati.RequestedInfo)
 
 	scfAddr, err := encodeAddressField(ati.GsmSCFAddress, ati.GsmSCFNature, ati.GsmSCFPlan)
 	if err != nil {
@@ -31,51 +31,53 @@ func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationAr
 	}, nil
 }
 
-func buildMSRequestedInfo(ri *RequestedInfo) gsm_map.MSRequestedInfo {
-	var msri gsm_map.MSRequestedInfo
+// buildRequestedInfo converts the public RequestedInfo to gsm_map.RequestedInfo.
+// Shared between ATI (opCode 71) and PSI (opCode 70).
+func buildRequestedInfo(ri *RequestedInfo) gsm_map.RequestedInfo {
+	var wire gsm_map.RequestedInfo
 
 	nullMarker := &struct{}{}
 
 	if ri.LocationInformation {
-		msri.LocationInformation = nullMarker
+		wire.LocationInformation = nullMarker
 	}
 	if ri.SubscriberState {
-		msri.SubscriberState = nullMarker
+		wire.SubscriberState = nullMarker
 	}
 	if ri.CurrentLocation {
-		msri.CurrentLocation = nullMarker
+		wire.CurrentLocation = nullMarker
 	}
 	if ri.RequestedDomain != nil {
 		dt := *ri.RequestedDomain
-		msri.RequestedDomain = &dt
+		wire.RequestedDomain = &dt
 	}
 	if ri.MsClassmark {
-		msri.MsClassmark = nullMarker
+		wire.MsClassmark = nullMarker
 	}
 	if ri.IMEI {
-		msri.Imei = nullMarker
+		wire.Imei = nullMarker
 	}
 	if ri.MnpRequestedInfo {
-		msri.MnpRequestedInfo = nullMarker
+		wire.MnpRequestedInfo = nullMarker
 	}
 	if ri.LocationInformationEPSSupported {
-		msri.LocationInformationEPSSupported = nullMarker
+		wire.LocationInformationEPSSupported = nullMarker
 	}
 	if ri.TAdsData {
-		msri.TAdsData = nullMarker
+		wire.TAdsData = nullMarker
 	}
 	if ri.RequestedNodes != nil {
 		bs := convertRequestedNodesToBitString(ri.RequestedNodes)
-		msri.RequestedNodes = &bs
+		wire.RequestedNodes = &bs
 	}
 	if ri.ServingNodeIndication {
-		msri.ServingNodeIndication = nullMarker
+		wire.ServingNodeIndication = nullMarker
 	}
 	if ri.LocalTimeZoneRequest {
-		msri.LocalTimeZoneRequest = nullMarker
+		wire.LocalTimeZoneRequest = nullMarker
 	}
 
-	return msri
+	return wire
 }
 
 func convertArgToATI(arg *gsm_map.AnyTimeInterrogationArg) (*AnyTimeInterrogation, error) {
@@ -120,9 +122,9 @@ func convertResToATIRes(res *gsm_map.AnyTimeInterrogationRes) (*AnyTimeInterroga
 	return &AnyTimeInterrogationRes{SubscriberInfo: *si}, nil
 }
 
-// buildRequestedInfoFromWire converts gsm_map.MSRequestedInfo to the public
+// buildRequestedInfoFromWire converts gsm_map.RequestedInfo to the public
 // RequestedInfo type. Shared between ATI (opCode 71) and PSI (opCode 70).
-func buildRequestedInfoFromWire(ri *gsm_map.MSRequestedInfo) RequestedInfo {
+func buildRequestedInfoFromWire(ri *gsm_map.RequestedInfo) RequestedInfo {
 	var out RequestedInfo
 	out.LocationInformation = ri.LocationInformation != nil
 	out.SubscriberState = ri.SubscriberState != nil

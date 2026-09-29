@@ -55,10 +55,12 @@ func TestMtFsmMarshalAcceptsSubmitReportTPDU(t *testing.T) {
 	msg := &MtFsm{
 		IMSI:                   "228519273200607",
 		ServiceCentreAddressOA: "2348090000330",
+		// An SMS-SUBMIT-REPORT for RP-ACK, which has no TP-FCS
+		// (3GPP TS 23.040 Section 9.2.2.2a).
 		TPDU: tpdu.TPDU{
 			Direction:  tpdu.MT,
+			RPMessage:  tpdu.RPAck,
 			FirstOctet: 0x01,
-			FCS:        0x12,
 			SCTS: tpdu.Timestamp{
 				Time: time.Date(2015, time.May, 17, 23, 02, 50, 0, time.FixedZone("SCTS", 8*3600)),
 			},

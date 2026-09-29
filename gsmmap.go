@@ -2949,29 +2949,29 @@ type ProvideSubscriberLocationRes struct {
 // so callers can call String() for free, without dropping down to
 // gsm_map.* directly.
 
-// MapErrorCode is the typed MAP ReturnError local error code per
-// TS 29.002 §17.6. Aliased from the upstream go-asn1 generated
-// local-error-code type so callers can use either the local or upstream
-// constants interchangeably.
-type MapErrorCode = gsm_map.GSMMAPLocalErrorcode
+// MapErrorCode is a MAP ReturnError local error code: the CODE local
+// value of an ERROR in the MAP-Errors module of TS 29.002 §17.6.
+type MapErrorCode int64
 
-// MAP error opcodes per TS 29.002 §17.6, scoped to the SRI-SM / SRI /
-// ATI-relevant subset surfaced by ParseReturnErrorParameter. Aliased
-// from the upstream gsm_map.GSMMAPLocalErrorcode<Name> constants. The
-// full set lives in the gsm_map package for callers needing less-common
-// opcodes.
+// MAP local error codes per TS 29.002 §17.6.
 const (
-	MapErrorUnknownSubscriber             = gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber             // 1
-	MapErrorAbsentSubscriberSM            = gsm_map.GSMMAPLocalErrorcodeAbsentSubscriberSM            // 6
-	MapErrorRoamingNotAllowed             = gsm_map.GSMMAPLocalErrorcodeRoamingNotAllowed             // 8
-	MapErrorTeleserviceNotProvisioned     = gsm_map.GSMMAPLocalErrorcodeTeleserviceNotProvisioned     // 11
-	MapErrorCallBarred                    = gsm_map.GSMMAPLocalErrorcodeCallBarred                    // 13
-	MapErrorFacilityNotSupported          = gsm_map.GSMMAPLocalErrorcodeFacilityNotSupported          // 21
-	MapErrorAbsentSubscriber              = gsm_map.GSMMAPLocalErrorcodeAbsentSubscriber              // 27
-	MapErrorSystemFailure                 = gsm_map.GSMMAPLocalErrorcodeSystemFailure                 // 34
-	MapErrorDataMissing                   = gsm_map.GSMMAPLocalErrorcodeDataMissing                   // 35
-	MapErrorUnauthorizedRequestingNetwork = gsm_map.GSMMAPLocalErrorcodeUnauthorizedRequestingNetwork // 52
+	MapErrorUnknownSubscriber             MapErrorCode = 1
+	MapErrorAbsentSubscriberSM            MapErrorCode = 6
+	MapErrorRoamingNotAllowed             MapErrorCode = 8
+	MapErrorTeleserviceNotProvisioned     MapErrorCode = 11
+	MapErrorCallBarred                    MapErrorCode = 13
+	MapErrorFacilityNotSupported          MapErrorCode = 21
+	MapErrorAbsentSubscriber              MapErrorCode = 27
+	MapErrorSystemFailure                 MapErrorCode = 34
+	MapErrorDataMissing                   MapErrorCode = 35
+	MapErrorUnauthorizedRequestingNetwork MapErrorCode = 52
 )
+
+// String returns the ASN.1 name of the error (e.g. "absentSubscriberSM"),
+// or the decimal code when TS 29.002 defines no error with that code.
+func (c MapErrorCode) String() string {
+	return gsm_map.NewGSMMAPLocalErrorcodeInt64(int64(c)).String()
+}
 
 //
 // Parsers (Parse*Param functions) and the dispatcher
