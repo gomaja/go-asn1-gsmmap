@@ -20,9 +20,9 @@ func TestMoFsmMarshalRejectsMtTPDU(t *testing.T) {
 	}
 
 	msg := &MoFsm{
-		ServiceCentreAddressDA: "2348090000330",
-		MSISDN:                 "2348171182893",
-		TPDU:                   mtFsm.TPDU,
+		SmRpDa: SmRpDa{ServiceCentreAddressDA: "2348090000330"},
+		SmRpOa: SmRpOa{MSISDN: "2348171182893"},
+		TPDU:   mtFsm.TPDU,
 	}
 
 	if _, err := msg.Marshal(); !errors.Is(err, ErrMoFsmUnexpectedTPDUType) {
@@ -41,9 +41,9 @@ func TestMtFsmMarshalRejectsMoTPDU(t *testing.T) {
 	}
 
 	msg := &MtFsm{
-		IMSI:                   "228519273200607",
-		ServiceCentreAddressOA: "2348090000330",
-		TPDU:                   moFsm.TPDU,
+		SmRpDa: SmRpDa{IMSI: "228519273200607"},
+		SmRpOa: SmRpOa{ServiceCentreAddressOA: "2348090000330"},
+		TPDU:   moFsm.TPDU,
 	}
 
 	if _, err := msg.Marshal(); !errors.Is(err, ErrMtFsmUnexpectedTPDUType) {
@@ -53,8 +53,8 @@ func TestMtFsmMarshalRejectsMoTPDU(t *testing.T) {
 
 func TestMtFsmMarshalAcceptsSubmitReportTPDU(t *testing.T) {
 	msg := &MtFsm{
-		IMSI:                   "228519273200607",
-		ServiceCentreAddressOA: "2348090000330",
+		SmRpDa: SmRpDa{IMSI: "228519273200607"},
+		SmRpOa: SmRpOa{ServiceCentreAddressOA: "2348090000330"},
 		// An SMS-SUBMIT-REPORT for RP-ACK, which has no TP-FCS
 		// (3GPP TS 23.040 Section 9.2.2.2a).
 		TPDU: tpdu.TPDU{

@@ -67,9 +67,8 @@ func TestUpdateLocationMandatoryFields(t *testing.T) {
 	})
 }
 
-// MT-ForwardSM-Arg uses mandatory SM-RP-DA and SM-RP-OA CHOICE values.
-// The common IMSI and ServiceCentreAddressOA fields must be non-empty
-// when the corresponding full CHOICE field is not set.
+// MT-ForwardSM-Arg has mandatory SM-RP-DA and SM-RP-OA CHOICEs (3GPP TS
+// 29.002 v19.1.0 clause 17.7.6): a zero-value CHOICE must be rejected.
 func TestMtFsmMandatoryFields(t *testing.T) {
 	// Parse a known-valid MT-FSM (same hex as TestMtFsmFullStressRoundTrip)
 	// to obtain a populated TPDU value; synthesizing one from scratch would
@@ -88,27 +87,27 @@ func TestMtFsmMandatoryFields(t *testing.T) {
 		return &m
 	}
 
-	t.Run("MissingIMSI", func(t *testing.T) {
+	t.Run("MissingSmRpDa", func(t *testing.T) {
 		m := base()
-		m.IMSI = ""
+		m.SmRpDa = SmRpDa{}
 		_, err := m.Marshal()
 		if err == nil {
-			t.Fatal("expected error for missing IMSI")
+			t.Fatal("expected error for missing SmRpDa")
 		}
-		if !errors.Is(err, ErrMtFsmMissingIMSI) {
-			t.Errorf("expected ErrMtFsmMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrMtFsmSmRpDaNoAlternative) {
+			t.Errorf("expected ErrMtFsmSmRpDaNoAlternative, got: %v", err)
 		}
 	})
 
-	t.Run("MissingServiceCentreAddressOA", func(t *testing.T) {
+	t.Run("MissingSmRpOa", func(t *testing.T) {
 		m := base()
-		m.ServiceCentreAddressOA = ""
+		m.SmRpOa = SmRpOa{}
 		_, err := m.Marshal()
 		if err == nil {
-			t.Fatal("expected error for missing ServiceCentreAddressOA")
+			t.Fatal("expected error for missing SmRpOa")
 		}
-		if !errors.Is(err, ErrMtFsmMissingServiceCentreAddressOA) {
-			t.Errorf("expected ErrMtFsmMissingServiceCentreAddressOA, got: %v", err)
+		if !errors.Is(err, ErrMtFsmSmRpOaNoAlternative) {
+			t.Errorf("expected ErrMtFsmSmRpOaNoAlternative, got: %v", err)
 		}
 	})
 
