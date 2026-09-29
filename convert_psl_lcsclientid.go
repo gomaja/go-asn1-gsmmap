@@ -2,8 +2,6 @@
 //
 // Converters for the LCS-Client identifier tree referenced by the
 // ProvideSubscriberLocation (opCode 83) Arg's lcs-ClientID field.
-// PR D2 of the staged PSL implementation, building on PR #43 (leaf
-// converters + BIT STRING codecs).
 //
 // Container converters land in this file:
 //   - LCSClientName (USSD-DataCodingScheme + NameString + optional

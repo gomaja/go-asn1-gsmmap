@@ -1,12 +1,10 @@
 // convert_slr_arg.go
 //
-// Top-level converter for SubscriberLocationReportArg (opCode 86).
-// PR G3 of the staged SLR implementation: wires the foundation types
-// (PR #53) and sub-converters (PR #54) — together with the LCS leaf,
-// CellIdOrSai, ServingNodeAddress, and PeriodicLDRInfo converters
-// already built for ProvideSubscriberLocation — into a single arg
-// encoder/decoder pair. Marshal()/Parse() entry points live in
-// marshal.go / parse.go.
+// Top-level converter for SubscriberLocationReportArg (opCode 86): wires
+// the SLR foundation types and sub-converters, together with the LCS leaf,
+// CellIdOrSai, ServingNodeAddress, and PeriodicLDRInfo converters shared
+// with ProvideSubscriberLocation, into a single arg encoder/decoder pair.
+// Marshal()/Parse() entry points live in marshal.go / parse.go.
 
 package gsmmap
 

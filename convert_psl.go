@@ -1,10 +1,9 @@
 // convert_psl.go
 //
 // Converters for ProvideSubscriberLocation (opCode 83) leaf SEQUENCE
-// types and BIT STRING surrogates. PR D1 of the staged PSL
-// implementation. Container converters (LCSClientID,
-// AreaEventInfo, PeriodicLDRInfo, ReportingPLMNList) and the
-// top-level ProvideSubscriberLocationArg/Res live in subsequent PRs.
+// types and BIT STRING surrogates. The container converters (LCSClientID,
+// AreaEventInfo, PeriodicLDRInfo, ReportingPLMNList) and the top-level
+// ProvideSubscriberLocationArg/Res live in the other convert_psl_*.go files.
 //
 // Each converter pair:
 //   convertXToWire(*X) (*gsm_map.X, error)   — public type → wire

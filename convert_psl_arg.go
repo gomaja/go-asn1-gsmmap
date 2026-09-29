@@ -1,10 +1,9 @@
 // convert_psl_arg.go
 //
-// Top-level converter for ProvideSubscriberLocationArg (opCode 83).
-// PR D4 of the staged PSL implementation: wires the leaf, LCS-Client,
-// and area-event/periodic/PLMN-list converters from PRs #43, #44, and
-// #45 into a single arg encoder/decoder pair. Marshal()/Parse() entry
-// points live in marshal.go / parse.go.
+// Top-level converter for ProvideSubscriberLocationArg (opCode 83): wires
+// the leaf, LCS-Client, and area-event/periodic/PLMN-list converters into a
+// single arg encoder/decoder pair. Marshal()/Parse() entry points live in
+// marshal.go / parse.go.
 
 package gsmmap
 

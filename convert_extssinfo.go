@@ -1,11 +1,11 @@
-// Ext-SS-Info CHOICE converters (ISD PR D).
+// Ext-SS-Info CHOICE converters for InsertSubscriberData.
 //
 // Covers TS 29.002 MAP-MS-DataTypes.asn:1826-onwards: the 5-alternative
 // CHOICE used inside Ext-SS-InfoList plus all directly-referenced
 // nested SEQUENCEs (Ext-ForwInfo, Ext-CallBarInfo, CUG-Info,
 // Ext-SS-Data, EMLPP-Info) and CHOICEs (SS-SubscriptionOption).
 //
-// Reuses ExtBasicServiceCode (PR #7) and the SS-Code typedef.
+// Reuses ExtBasicServiceCode and the SS-Code typedef.
 //
 // CHOICE pattern: each public CHOICE struct has separate optional
 // pointer fields per alternative. The encoder counts the populated
@@ -164,7 +164,7 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 	}
 	if f.ForwardedToSubaddress != nil {
 		// ISDN-SubaddressString SIZE(1..21) per TS 29.002. Reject a non-nil
-		// empty slice rather than silently omitting it (PR #29 pattern).
+		// empty slice rather than silently omitting it.
 		if len(f.ForwardedToSubaddress) < 1 || len(f.ForwardedToSubaddress) > 21 {
 			return gsm_map.ExtForwFeature{}, ErrExtForwSubaddressInvalidSize
 		}

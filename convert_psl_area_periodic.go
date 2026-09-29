@@ -1,9 +1,7 @@
 // convert_psl_area_periodic.go
 //
 // Converters for the PSL-Arg area-event tree, periodic LDR info, and
-// reporting-PLMN list. PR D3 of the staged ProvideSubscriberLocation
-// (opCode 83) implementation, building on PRs #43 (leaf converters +
-// BIT STRING codecs) and #44 (LCS-Client identifier tree).
+// reporting-PLMN list of ProvideSubscriberLocation (opCode 83).
 //
 // Container converters added:
 //   - Area / AreaList / AreaDefinition / AreaEventInfo

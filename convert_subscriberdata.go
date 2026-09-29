@@ -1,9 +1,8 @@
 // SubscriberData sub-struct converters for InsertSubscriberData (opCode 7).
 //
 // This file covers the small, self-contained SubscriberData sub-types:
-// ODB-Data, ZoneCode(List), VBS/VGCS data entries + lists. Deeper
-// CHOICEs (Ext-SS-Info) and CAMEL subscription info are addressed in
-// follow-up PRs.
+// ODB-Data, ZoneCode(List), VBS/VGCS data entries + lists. Ext-SS-Info is
+// in convert_extssinfo.go and CAMEL subscription info in convert_camel.go.
 //
 // All converters follow the established *ToWire / *ToDomain naming
 // and propagate errors with a typed prefix so callers can match them

@@ -1,10 +1,9 @@
 // convert_slr.go
 //
 // Converters for SubscriberLocationReport (opCode 86) sub-types:
-// LCSLocationInfo and DeferredmtLrData. PR G2 of the staged SLR
-// implementation, building on PR #53 (foundation types). The
-// top-level SubscriberLocationReportArg/Res converters and
-// Marshal/Parse entry points land in subsequent PRs.
+// LCSLocationInfo and DeferredmtLrData. The top-level
+// SubscriberLocationReportArg/Res converters are in convert_slr_arg.go and
+// convert_slr_res.go.
 
 package gsmmap
 
