@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 // ussdFuzzSeedArgs are BER USSD-Arg seeds: the golden vectors (see
@@ -69,7 +70,7 @@ func FuzzParseUSSDArg(f *testing.F) {
 		if err != nil {
 			t.Fatalf("ParseUSSDArg(Marshal(x)) failed: %v\nx=%+v\nbytes=%x", err, a, out)
 		}
-		if diff := cmp.Diff(&want, back); diff != "" {
+		if diff := cmp.Diff(&want, back, cmpopts.EquateEmpty()); diff != "" {
 			t.Fatalf("round trip mismatch (-want +got):\n%s\nin=%x out=%x", diff, data, out)
 		}
 	})
@@ -92,7 +93,7 @@ func FuzzParseUSSDRes(f *testing.F) {
 		if err != nil {
 			t.Fatalf("ParseUSSDRes(Marshal(x)) failed: %v\nx=%+v\nbytes=%x", err, r, out)
 		}
-		if diff := cmp.Diff(r, back); diff != "" {
+		if diff := cmp.Diff(r, back, cmpopts.EquateEmpty()); diff != "" {
 			t.Fatalf("round trip mismatch (-want +got):\n%s\nin=%x out=%x", diff, data, out)
 		}
 	})
