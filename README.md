@@ -64,9 +64,10 @@ What that means for a consumer:
   `go build` and `go mod tidy` say nothing about it. `go get` warns that the
   selected version is retracted, and `go list -m -u all` marks it
   `(retracted)`; update the module that requires it.
-- A project that requires v1.0.x is warned that it is retracted, and moves to
-  the main branch with the command above. The v1.0.x API differs (see the
-  migration notes below).
+- A project that requires v1.0.x is warned that it is retracted. `go get -u`
+  leaves it there, because the main branch's pseudo-versions sort below
+  v1.0.x; it moves to the main branch with the command above. The v1.0.x API
+  differs (see the migration notes below).
 
 ### Migrating from v1.0.x
 
