@@ -3616,6 +3616,11 @@ var (
 	ErrUpdateLocationMissingMSCNumber = errors.New("updateLocation: MSCNumber is empty")
 	ErrUpdateLocationMissingVLRNumber = errors.New("updateLocation: VLRNumber is empty")
 
+	ErrSmRpDaIMSIDecodedEmpty                 = errors.New("smRpDa: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpDaServiceCentreAddressDecodedEmpty = errors.New("smRpDa: present wire serviceCentreAddressDA decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpOaMSISDNDecodedEmpty               = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpOaServiceCentreAddressDecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
+
 	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
 	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
 

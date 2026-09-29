@@ -85,6 +85,9 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpDa IMSI: %w", err)
 		}
+		if imsi == "" {
+			return nil, ErrSmRpDaIMSIDecodedEmpty
+		}
 		da.IMSI = imsi
 	case gsm_map.SMRPDAChoiceLmsi:
 		if w.Lmsi == nil {
@@ -101,6 +104,9 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 		sca, nature, plan, err := decodeAddressField(*w.ServiceCentreAddressDA)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpDa ServiceCentreAddressDA: %w", err)
+		}
+		if sca == "" {
+			return nil, ErrSmRpDaServiceCentreAddressDecodedEmpty
 		}
 		da.ServiceCentreAddressDA = sca
 		da.SCADANature = nature
@@ -180,6 +186,9 @@ func convertWireToSmRpOa(w *gsm_map.SMRPOA) (*SmRpOa, error) {
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpOa MSISDN: %w", err)
 		}
+		if msisdn == "" {
+			return nil, ErrSmRpOaMSISDNDecodedEmpty
+		}
 		oa.MSISDN = msisdn
 		oa.MSISDNNature = nature
 		oa.MSISDNPlan = plan
@@ -190,6 +199,9 @@ func convertWireToSmRpOa(w *gsm_map.SMRPOA) (*SmRpOa, error) {
 		sca, nature, plan, err := decodeAddressField(*w.ServiceCentreAddressOA)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpOa ServiceCentreAddressOA: %w", err)
+		}
+		if sca == "" {
+			return nil, ErrSmRpOaServiceCentreAddressDecodedEmpty
 		}
 		oa.ServiceCentreAddressOA = sca
 		oa.SCAOANature = nature
