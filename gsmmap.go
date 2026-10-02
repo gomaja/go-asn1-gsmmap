@@ -3407,7 +3407,10 @@ type SriLcsResp struct {
 // ============================================================================
 
 // GPRSTriggerDetectionPoint (ENUMERATED) per TS 29.002
-// MAP-MS-DataTypes.asn (extensible enum). Aliased from go-asn1.
+// MAP-MS-DataTypes.asn (extensible enum). Aliased from go-asn1. The encoder
+// accepts only the listed values; the decoder ignores a GPRSCamelTDPData
+// carrying any other value, and a GPRSCSI left without entries decodes as
+// absent (3GPP TS 29.002 V19.1.0 §17.7.1).
 type GPRSTriggerDetectionPoint = gsm_map.GPRSTriggerDetectionPoint
 
 const (
@@ -3838,6 +3841,7 @@ var (
 
 	ErrGPRSCamelTDPDataListSize          = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
 	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
+	ErrGPRSTriggerDetectionPointInvalid  = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be attach(1), attachChangeOfPosition(2), pdp-ContextEstablishment(11), pdp-ContextEstablishmentAcknowledgement(12) or pdp-ContextChangeOfPosition(14); a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelCapabilityHandlingOutOfRange = errors.New("camel: CamelCapabilityHandling must be 1..4 (CAMEL phases 1 to 4) when set; the decoder treats received values above 4 as phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrGPRSCSIRequiresTDPListAndPhase    = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")
 	ErrMobilityTriggersSize              = errors.New("mgCSI: MobilityTriggers must contain 1..10 entries (maxNumOfMobilityTriggers) per TS 29.002")

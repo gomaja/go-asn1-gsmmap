@@ -530,6 +530,73 @@ func TestParseTBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 	})
 }
 
+// --- GPRS-TriggerDetectionPoint, §17.7.1 ---
+
+func gprsTDPData(tdp GPRSTriggerDetectionPoint, serviceKey int64) GPRSCamelTDPData {
+	return GPRSCamelTDPData{
+		GprsTriggerDetectionPoint: tdp,
+		ServiceKey:                serviceKey,
+		GsmSCFAddress:             testGsmSCF,
+		GsmSCFAddressNature:       address.NatureInternational,
+		GsmSCFAddressPlan:         address.PlanISDN,
+		DefaultSessionHandling:    DefaultGPRSContinueTransaction,
+	}
+}
+
+// "For GPRS-CamelTDPData sequences containing this parameter with any other
+// value than the ones listed the receiver shall ignore the whole
+// GPRS-CamelTDPData sequence." The listed values are attach (1),
+// attachChangeOfPosition (2), pdp-ContextEstablishment (11),
+// pdp-ContextEstablishmentAcknowledgement (12) and
+// pdp-ContextChangeOfPosition (14).
+func TestParseGPRSTriggerDetectionPointIgnoresSequence(t *testing.T) {
+	kept := GPRSCamelTDPDataList{
+		gprsTDPData(GPRSTDPAttach, 30),
+		gprsTDPData(GPRSTDPPdpContextChangeOfPosition, 32),
+	}
+	for _, tdp := range []GPRSTriggerDetectionPoint{0, 3, 10, 13, 15, -1, math.MaxInt64} {
+		t.Run(fmt.Sprintf("wire %d", tdp), func(t *testing.T) {
+			in := camelISD()
+			in.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList = kept
+			w := isdWire(t, in)
+			l := w.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList
+			// The ignored entry carries a DefaultSessionHandling the decoder
+			// would reject, which proves that it skips the whole sequence.
+			e := l.Values[0]
+			e.GprsTriggerDetectionPoint, e.ServiceKey, e.DefaultSessionHandling = tdp, 31, -1
+			l.Values = slices.Insert(l.Values, 1, e)
+			got := parseISD(t, w).SgsnCAMELSubscriptionInfo.GprsCSI
+			if got == nil {
+				t.Fatal("GPRS-CSI absent, want the listed entries")
+			}
+			wantEqual(t, "GPRS-CamelTDPDataList", kept, got.GprsCamelTDPDataList)
+		})
+	}
+	// With every entry ignored the GPRS-CSI is absent; the other SGSN CSIs
+	// survive.
+	t.Run("all ignored", func(t *testing.T) {
+		w := isdWire(t, camelISD())
+		w.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList.Values[0].GprsTriggerDetectionPoint = 13
+		got := parseISD(t, w).SgsnCAMELSubscriptionInfo
+		if got.GprsCSI != nil {
+			t.Errorf("GPRS-CSI = %+v, want absent", got.GprsCSI)
+		}
+		if got.MoSmsCSI == nil || got.MtSmsCSI == nil {
+			t.Errorf("sibling CSIs lost: %+v", got)
+		}
+	})
+}
+
+func TestMarshalRejectsUnlistedGPRSTriggerDetectionPoint(t *testing.T) {
+	for _, tdp := range []GPRSTriggerDetectionPoint{0, 3, 13, 15, -1} {
+		a := camelISD()
+		a.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList[0].GprsTriggerDetectionPoint = tdp
+		if _, err := a.Marshal(); !errors.Is(err, ErrGPRSTriggerDetectionPointInvalid) {
+			t.Errorf("GprsTriggerDetectionPoint %d: got %v, want ErrGPRSTriggerDetectionPointInvalid", tdp, err)
+		}
+	}
+}
+
 // --- SMS-TriggerDetectionPoint, §17.7.1 ---
 
 // mo-sms-CSI keeps only sms-CollectedInfo (1); mt-sms-CSI and
