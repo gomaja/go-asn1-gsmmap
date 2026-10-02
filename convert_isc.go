@@ -116,18 +116,15 @@ func convertArgToInformServiceCentre(arg *gsm_map.InformServiceCentreArg) (*Info
 		if err != nil {
 			return nil, fmt.Errorf("decoding StoredMSISDN: %w", err)
 		}
+		if digits == "" {
+			return nil, ErrIscStoredMSISDNDecodedEmpty
+		}
 		out.StoredMSISDN = digits
 		out.StoredMSISDNNature = nature
 		out.StoredMSISDNPlan = plan
 	}
 
 	if arg.MwStatus != nil {
-		// MW-Status per 3GPP TS 29.002 has SIZE (6..16). Reject malformed
-		// wire values outside this range to avoid silently normalizing a
-		// short BIT STRING into a valid-looking flag struct.
-
-		// Capacity check: BitLength must fit within the provided byte slice.
-
 		out.MwStatus = convertBitStringToMwStatus(*arg.MwStatus)
 	}
 

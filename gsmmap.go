@@ -3528,6 +3528,11 @@ var (
 	// at all, not even the nature/plan octet.
 	ErrAddressStringEmpty = errors.New("address: AddressString has no octets")
 
+	// ErrIscStoredMSISDNDecodedEmpty is returned when a wire storedMSISDN
+	// carries no digits: StoredMSISDN "" means absent, so the field could not
+	// round-trip.
+	ErrIscStoredMSISDNDecodedEmpty = errors.New("informServiceCentre: present wire storedMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.

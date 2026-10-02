@@ -82,8 +82,23 @@ What that means for a consumer:
 - `ParseReturnErrorParameter` takes a `MapErrorCode` and is the only way to
   decode an error parameter; the per-error `Parse*Param` functions are no
   longer exported. `GetErrorString(code)` is `MapErrorCode(code).String()`.
-- `ErrIscInvalidAbsentSubscriberDiagnosticSM` is
-  `ErrAbsentSubscriberDiagnosticSMOutOfRange`.
+- A value outside its ASN.1 constraint is rejected by the go-asn1 BER codec
+  on both `Marshal` and `Parse`: an OCTET STRING, BIT STRING or SEQUENCE OF
+  of the wrong size, or an INTEGER out of range. The error wraps a
+  `*ber.ConstraintError` (package `github.com/gomaja/go-asn1/runtime/ber`),
+  which names the field and the constraint; inspect it with `errors.As`.
+  The package's own sentinels for those bounds, such as
+  `ErrAbsentSubscriberDiagnosticSMOutOfRange` and the `Err*InvalidSize` /
+  `Err*ListSize` errors, are removed.
+- TBCD digits use the alphabet of TS 29.002 §17.7.8, `0-9 * # a b c`, not
+  hexadecimal; IMSI, IMEI and IMEISV must be decimal digits. `GroupId` and
+  `LongGroupId` are TBCD digit strings, padded with filler to their field
+  size on the wire.
+- The decoders apply the receiver rules of TS 29.002 V19.1.0: values the
+  specification maps are mapped (e.g. CAMEL capability handling above 4 is
+  phase 4, DefaultCallHandling 2-31 is continueCall), and elements the
+  specification says to ignore are dropped instead of failing the message.
+  The encoders accept only the values a sender may send.
 - The `DataCodingScheme` of `LCSClientName`, `LCSRequestorID` and
   `LCSCodeword` is a `USSDDataCodingScheme`, the type of every
   USSD-DataCodingScheme, so their strings decode with
@@ -552,16 +567,17 @@ This library provides a **layered API**:
 - **Public types** (`SriSm`, `MtFsm`, etc.) use plain Go types — strings for phone numbers, bools for flags, `tpdu.TPDU` for SMS data.
 - **Internally**, these are converted to/from [go-asn1](https://github.com/gomaja/go-asn1)'s generated `gsm_map.*` structs for BER encoding.
 - **OpCode constants** can be imported directly from `github.com/gomaja/go-asn1/telecom/ss7/gsm_map` if needed for TCAP integration.
+- **Validation** of ASN.1 constraints (sizes and integer ranges) is done by go-asn1's strict BER codec, once, on both encode and decode. This package checks only what the codec does not: TS 29.002 semantics (presence rules, receiver mappings, the TBCD alphabet), and, until go-asn1 covers them, the SIZE of SEQUENCE OF elements ([go-asn1#79](https://github.com/gomaja/go-asn1/issues/79)), BIT STRING length consistency ([go-asn1#80](https://github.com/gomaja/go-asn1/issues/80)) and non-extensible ENUMERATED values ([go-asn1#81](https://github.com/gomaja/go-asn1/issues/81)).
 
 ### Address handling
 
-Phone numbers are stored as plain digit strings. The nature of address and numbering plan are companion fields (e.g., `MSISDNNature`, `MSISDNPlan`) holding the `address.Nature*` / `address.Plan*` values. Zero is unknown, exactly as on the wire, so a parsed address marshals back to the same octets; set the nature and plan explicitly when building a message.
+Phone numbers are stored as digit strings in the TBCD alphabet of TS 29.002 §17.7.8 (`0-9 * # a b c`). The nature of address and numbering plan are companion fields (e.g., `MSISDNNature`, `MSISDNPlan`) holding the `address.Nature*` / `address.Plan*` values. Zero is unknown, exactly as on the wire, so a parsed address marshals back to the same octets; set the nature and plan explicitly when building a message.
 
 ### Sub-packages
 
 | Package | Purpose |
 |---|---|
-| `tbcd` | TBCD (Telephony BCD) encoding/decoding |
+| `tbcd` | TBCD-STRING encoding/decoding per TS 29.002 §17.7.8 |
 | `address` | MAP AddressString encoding/decoding |
 | `gsn` | GSN address (IPv4/IPv6) encoding per 3GPP TS 23.003 |
 
