@@ -47,6 +47,53 @@ func convertWireToLCSClientExternalID(w *gsm_map.LCSClientExternalID) (*LCSClien
 }
 
 // ============================================================================
+// GMLC-Restriction / NotificationToMSUser — 3GPP TS 29.002 V19.1.0 §17.7.1
+// ============================================================================
+
+// isValidGMLCRestriction reports whether v is a listed GMLC-Restriction.
+func isValidGMLCRestriction(v GMLCRestriction) bool {
+	return v == GMLCRestrictionGmlcList || v == GMLCRestrictionHomeCountry
+}
+
+// isValidNotificationToMSUser reports whether v is a listed
+// NotificationToMSUser, locationNotAllowed included.
+func isValidNotificationToMSUser(v NotificationToMSUser) bool {
+	switch v {
+	case NotifyLocationAllowed,
+		NotifyAndVerifyLocationAllowedIfNoResponse,
+		NotifyAndVerifyLocationNotAllowedIfNoResponse,
+		NotificationLocationNotAllowed:
+		return true
+	}
+	return false
+}
+
+// gmlcRestrictionFromWire applies 3GPP TS 29.002 V19.1.0 §17.7.1
+// GMLC-Restriction: "At reception of any other value than the ones listed
+// the receiver shall ignore GMLC-Restriction." The parameter is OPTIONAL in
+// every container, so an ignored one decodes as absent (nil).
+func gmlcRestrictionFromWire(w *gsm_map.GMLCRestriction) *GMLCRestriction {
+	if w == nil || !isValidGMLCRestriction(*w) {
+		return nil
+	}
+	v := *w
+	return &v
+}
+
+// notificationToMSUserFromWire applies 3GPP TS 29.002 V19.1.0 §17.7.1
+// NotificationToMSUser: "At reception of any other value than the ones
+// listed the receiver shall ignore NotificationToMSUser." The parameter is
+// OPTIONAL in every container, so an ignored one decodes as absent (nil),
+// and the TS 23.271 default applies as when it is not received.
+func notificationToMSUserFromWire(w *gsm_map.NotificationToMSUser) *NotificationToMSUser {
+	if w == nil || !isValidNotificationToMSUser(*w) {
+		return nil
+	}
+	v := *w
+	return &v
+}
+
+// ============================================================================
 // ExternalClient / ExternalClientList / ExtExternalClientList
 // — TS 29.002 MAP-MS-DataTypes.asn:2003-2018
 // ============================================================================
@@ -59,15 +106,11 @@ func convertExternalClientToWire(c *ExternalClient) (*gsm_map.ExternalClient, er
 	if err != nil {
 		return nil, fmt.Errorf("ExternalClient.ClientIdentity: %w", err)
 	}
-	if c.GmlcRestriction != nil {
-		if v := *c.GmlcRestriction; v < 0 || v > 1 {
-			return nil, fmt.Errorf("ExternalClient.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, v)
-		}
+	if c.GmlcRestriction != nil && !isValidGMLCRestriction(*c.GmlcRestriction) {
+		return nil, fmt.Errorf("ExternalClient.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, *c.GmlcRestriction)
 	}
-	if c.NotificationToMSUser != nil {
-		if v := *c.NotificationToMSUser; v < 0 || v > 3 {
-			return nil, fmt.Errorf("ExternalClient.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
+	if c.NotificationToMSUser != nil && !isValidNotificationToMSUser(*c.NotificationToMSUser) {
+		return nil, fmt.Errorf("ExternalClient.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, *c.NotificationToMSUser)
 	}
 	out := &gsm_map.ExternalClient{ClientIdentity: *id}
 	if c.GmlcRestriction != nil {
@@ -89,22 +132,11 @@ func convertWireToExternalClient(w *gsm_map.ExternalClient) (*ExternalClient, er
 	if err != nil {
 		return nil, fmt.Errorf("ExternalClient.ClientIdentity: %w", err)
 	}
-	out := &ExternalClient{ClientIdentity: *id}
-	if w.GmlcRestriction != nil {
-		v := GMLCRestriction(*w.GmlcRestriction)
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("ExternalClient.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, v)
-		}
-		out.GmlcRestriction = &v
-	}
-	if w.NotificationToMSUser != nil {
-		v := NotificationToMSUser(*w.NotificationToMSUser)
-		if v < 0 || v > 3 {
-			return nil, fmt.Errorf("ExternalClient.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
-		out.NotificationToMSUser = &v
-	}
-	return out, nil
+	return &ExternalClient{
+		ClientIdentity:       *id,
+		GmlcRestriction:      gmlcRestrictionFromWire(w.GmlcRestriction),
+		NotificationToMSUser: notificationToMSUserFromWire(w.NotificationToMSUser),
+	}, nil
 }
 
 func convertExternalClientListToWire(list ExternalClientList) (*gsm_map.ExternalClientList, error) {
@@ -215,15 +247,11 @@ func convertServiceTypeToWire(s *ServiceType) (*gsm_map.ServiceType, error) {
 		return nil, nil
 	}
 
-	if s.GmlcRestriction != nil {
-		if v := *s.GmlcRestriction; v < 0 || v > 1 {
-			return nil, fmt.Errorf("ServiceType.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, v)
-		}
+	if s.GmlcRestriction != nil && !isValidGMLCRestriction(*s.GmlcRestriction) {
+		return nil, fmt.Errorf("ServiceType.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, *s.GmlcRestriction)
 	}
-	if s.NotificationToMSUser != nil {
-		if v := *s.NotificationToMSUser; v < 0 || v > 3 {
-			return nil, fmt.Errorf("ServiceType.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
+	if s.NotificationToMSUser != nil && !isValidNotificationToMSUser(*s.NotificationToMSUser) {
+		return nil, fmt.Errorf("ServiceType.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, *s.NotificationToMSUser)
 	}
 	out := &gsm_map.ServiceType{ServiceTypeIdentity: gsm_map.LCSServiceTypeID(s.ServiceTypeIdentity)}
 	if s.GmlcRestriction != nil {
@@ -242,22 +270,11 @@ func convertWireToServiceType(w *gsm_map.ServiceType) (*ServiceType, error) {
 		return nil, nil
 	}
 
-	out := &ServiceType{ServiceTypeIdentity: int64(w.ServiceTypeIdentity)}
-	if w.GmlcRestriction != nil {
-		v := GMLCRestriction(*w.GmlcRestriction)
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("ServiceType.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, v)
-		}
-		out.GmlcRestriction = &v
-	}
-	if w.NotificationToMSUser != nil {
-		v := NotificationToMSUser(*w.NotificationToMSUser)
-		if v < 0 || v > 3 {
-			return nil, fmt.Errorf("ServiceType.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
-		out.NotificationToMSUser = &v
-	}
-	return out, nil
+	return &ServiceType{
+		ServiceTypeIdentity:  int64(w.ServiceTypeIdentity),
+		GmlcRestriction:      gmlcRestrictionFromWire(w.GmlcRestriction),
+		NotificationToMSUser: notificationToMSUserFromWire(w.NotificationToMSUser),
+	}, nil
 }
 
 func convertServiceTypeListToWire(list ServiceTypeList) (*gsm_map.ServiceTypeList, error) {
@@ -302,10 +319,8 @@ func convertLCSPrivacyClassToWire(c *LCSPrivacyClass) (*gsm_map.LCSPrivacyClass,
 		return nil, nil
 	}
 
-	if c.NotificationToMSUser != nil {
-		if v := *c.NotificationToMSUser; v < 0 || v > 3 {
-			return nil, fmt.Errorf("LCSPrivacyClass.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
+	if c.NotificationToMSUser != nil && !isValidNotificationToMSUser(*c.NotificationToMSUser) {
+		return nil, fmt.Errorf("LCSPrivacyClass.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, *c.NotificationToMSUser)
 	}
 	out := &gsm_map.LCSPrivacyClass{
 		SsCode:   gsm_map.SSCode{byte(c.SsCode)},
@@ -352,15 +367,9 @@ func convertWireToLCSPrivacyClass(w *gsm_map.LCSPrivacyClass) (*LCSPrivacyClass,
 	}
 
 	out := &LCSPrivacyClass{
-		SsCode:   SsCode(w.SsCode[0]),
-		SsStatus: HexBytes(w.SsStatus),
-	}
-	if w.NotificationToMSUser != nil {
-		v := NotificationToMSUser(*w.NotificationToMSUser)
-		if v < 0 || v > 3 {
-			return nil, fmt.Errorf("LCSPrivacyClass.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
-		out.NotificationToMSUser = &v
+		SsCode:               SsCode(w.SsCode[0]),
+		SsStatus:             HexBytes(w.SsStatus),
+		NotificationToMSUser: notificationToMSUserFromWire(w.NotificationToMSUser),
 	}
 	if w.ExternalClientList != nil {
 		l, err := convertWireToExternalClientList(w.ExternalClientList)

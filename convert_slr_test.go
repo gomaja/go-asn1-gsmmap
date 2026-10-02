@@ -264,20 +264,3 @@ func TestDeferredmtLrDataTerminationCauseOutOfRangeRejected(t *testing.T) {
 		t.Errorf("want ErrTerminationCauseInvalid, got %v", err)
 	}
 }
-
-// TerminationCause is extensible — decoder preserves unknown values
-// per Postel even though the encoder rejects them.
-func TestDeferredmtLrDataTerminationCauseDecoderLenient(t *testing.T) {
-	bad := gsm_map.TerminationCause(99)
-	w := &gsm_map.DeferredmtLrData{
-		DeferredLocationEventType: convertDeferredLocationEventTypeToBitString(&DeferredLocationEventType{MsAvailable: true}),
-		TerminationCause:          &bad,
-	}
-	out, err := convertWireToDeferredmtLrData(w)
-	if err != nil {
-		t.Fatalf("decode TerminationCause=99: unexpected error %v", err)
-	}
-	if out.TerminationCause == nil || int64(*out.TerminationCause) != 99 {
-		t.Errorf("decoder leniency: want 99 preserved, got %v", out.TerminationCause)
-	}
-}

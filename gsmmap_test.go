@@ -4000,8 +4000,8 @@ func TestCamelValidationErrors(t *testing.T) {
 			},
 		}
 		_, err := convertGmscCamelSubInfoToWire(in)
-		if !errors.Is(err, ErrCamelInvalidCamelCapabilityHandling) {
-			t.Errorf("want ErrCamelInvalidCamelCapabilityHandling, got %v", err)
+		if !errors.Is(err, ErrCamelCapabilityHandlingOutOfRange) {
+			t.Errorf("want ErrCamelCapabilityHandlingOutOfRange, got %v", err)
 		}
 	})
 

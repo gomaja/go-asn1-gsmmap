@@ -478,8 +478,10 @@ func TestGMLCAddress_EmptyRejected(t *testing.T) {
 }
 
 func TestSGSNCAMELSubscriptionInfo_MtSmsCAMELTDPCriteriaListSize(t *testing.T) {
+	// MT-smsCAMELTDP-Criteria carries only sms-DeliveryRequest (2),
+	// 3GPP TS 29.002 V19.1.0 §17.7.1.
 	tdp := MTSmsCAMELTDPCriteria{
-		SmsTriggerDetectionPoint: SMSTriggerDetectionPoint(1),
+		SmsTriggerDetectionPoint: SMSTriggerDetectionPoint(2),
 	}
 	in := &SGSNCAMELSubscriptionInfo{
 		MtSmsCAMELTDPCriteriaList: []MTSmsCAMELTDPCriteria{},

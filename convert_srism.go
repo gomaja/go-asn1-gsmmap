@@ -9,6 +9,14 @@ import (
 
 // --- SRI-SM ---
 
+// isDefinedSmRpMti reports whether v is an SM-RP-MTI value 3GPP TS 29.002
+// V19.1.0 §17.7.6 defines: 0 (SMS Deliver) or 1 (SMS Status Report). The
+// other values of INTEGER (0..10) are reserved; the encoder rejects them and
+// the decoder discards them.
+func isDefinedSmRpMti(v gsm_map.SMRPMTI) bool {
+	return v == 0 || v == 1
+}
+
 func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 	// msisdn and serviceCentreAddress are non-OPTIONAL in
 	// RoutingInfoForSM-Arg per MAP-SM-DataTypes.asn:63-66.
@@ -40,6 +48,9 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 
 	if s.SmRpMti != nil {
 		v := gsm_map.SMRPMTI(*s.SmRpMti)
+		if !isDefinedSmRpMti(v) {
+			return nil, fmt.Errorf("%w (got %d)", ErrSriSmInvalidSmRpMti, *s.SmRpMti)
+		}
 		arg.SmRPMTI = &v
 	}
 
@@ -104,12 +115,12 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 	// Optional fields (post-extension marker).
 	s.GprsSupportIndicator = nullPtrToBool(arg.GprsSupportIndicator)
 
-	// SmRPMTI — 0..10 per TS 29.002.
-	if arg.SmRPMTI != nil {
-		v, err := narrowInt64Range(int64(*arg.SmRPMTI), 0, 10, "SmRPMTI")
-		if err != nil {
-			return nil, err
-		}
+	// SM-RP-MTI, 3GPP TS 29.002 V19.1.0 §17.7.6: values other than 0 (SMS
+	// Deliver) and 1 (SMS Status Report) "are reserved for future use and
+	// shall be discarded if received". The parameter is OPTIONAL, so a
+	// discarded one decodes as absent.
+	if arg.SmRPMTI != nil && isDefinedSmRpMti(*arg.SmRPMTI) {
+		v := int(*arg.SmRPMTI)
 		s.SmRpMti = &v
 	}
 

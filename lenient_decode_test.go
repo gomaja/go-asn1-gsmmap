@@ -17,51 +17,6 @@ import (
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
-// SupportedCCBSPhase: INTEGER (1..127), spec exception: values 2..127
-// shall be mapped to value 1. This decoder surfaces the raw value so the
-// caller can observe what the peer sent; the mapping is application
-// semantics.
-func TestSriDecodeSupportedCCBSPhase_AcceptsRangeUpTo127(t *testing.T) {
-	cases := []struct {
-		name string
-		in   gsm_map.SupportedCCBSPhase
-	}{
-		{"defined value 1", 1},
-		{"reserved value 2", 2},
-		{"reserved value 50", 50},
-		{"reserved value 127", 127},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			arg := newSriArg()
-			v := tc.in
-			arg.SupportedCCBSPhase = &v
-
-			s, err := convertArgToSri(arg)
-			if err != nil {
-				t.Fatalf("convertArgToSri: unexpected error: %v", err)
-			}
-			if s.SupportedCCBSPhase == nil {
-				t.Fatalf("SupportedCCBSPhase: got nil, want %d", tc.in)
-			}
-			if int64(*s.SupportedCCBSPhase) != int64(tc.in) {
-				t.Errorf("SupportedCCBSPhase: got %d, want %d", *s.SupportedCCBSPhase, tc.in)
-			}
-		})
-	}
-}
-
-func TestSriDecodeSupportedCCBSPhase_RejectsOutOfRange(t *testing.T) {
-	for _, v := range []gsm_map.SupportedCCBSPhase{0, -1, 128} {
-		arg := newSriArg()
-		x := v
-		arg.SupportedCCBSPhase = &x
-		if _, err := convertArgToSri(arg); err == nil {
-			t.Errorf("SupportedCCBSPhase=%d: expected error, got nil", v)
-		}
-	}
-}
-
 // IstSupportIndicator: ENUMERATED { 0, 1, ... }, spec exception: values
 // > 1 shall be mapped to istCommandSupported(1).
 func TestSriDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) {
