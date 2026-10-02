@@ -13,7 +13,6 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 const (
@@ -76,7 +75,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		if len(a.IMSI) < pslIMSIDigitsMin || len(a.IMSI) > pslIMSIDigitsMax {
 			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMSI digits=%d: %w", len(a.IMSI), ErrPSLArgIMSIInvalidSize)
 		}
-		imsiBytes, err := tbcd.Encode(a.IMSI)
+		imsiBytes, err := encodeIdentityDigits(a.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMSI: %w", err)
 		}
@@ -102,7 +101,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		if len(a.IMEI) != pslIMEIDigits {
 			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMEI digits=%d: %w", len(a.IMEI), ErrPSLArgIMEIInvalidSize)
 		}
-		imeiBytes, err := tbcd.Encode(a.IMEI)
+		imeiBytes, err := encodeIdentityDigits(a.IMEI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMEI: %w", err)
 		}
@@ -240,7 +239,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 	out.PrivacyOverride = nullPtrToBool(w.PrivacyOverride)
 
 	if w.Imsi != nil {
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(*w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.IMSI: %w", err)
 		}
@@ -271,7 +270,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.LMSI = HexBytes(*w.Lmsi)
 	}
 	if w.Imei != nil {
-		imei, err := tbcd.Decode(*w.Imei)
+		imei, err := decodeIdentityDigits(*w.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.IMEI: %w", err)
 		}

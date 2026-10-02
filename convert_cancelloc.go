@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -38,14 +37,14 @@ func isValidTypeOfUpdate(v TypeOfUpdate) bool {
 // assumes its input has been validated and focuses on conversion.
 func convertCancelLocationIdentityToWire(id *CancelLocationIdentity) (gsm_map.Identity, error) {
 	if id.IMSI != "" {
-		imsiBytes, err := tbcd.Encode(id.IMSI)
+		imsiBytes, err := encodeIdentityDigits(id.IMSI)
 		if err != nil {
 			return gsm_map.Identity{}, fmt.Errorf(errEncodingIMSI, err)
 		}
 		return gsm_map.NewIdentityImsi(gsm_map.IMSI(imsiBytes)), nil
 	}
 
-	imsiBytes, err := tbcd.Encode(id.IMSIWithLMSI.IMSI)
+	imsiBytes, err := encodeIdentityDigits(id.IMSIWithLMSI.IMSI)
 	if err != nil {
 		return gsm_map.Identity{}, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -63,7 +62,7 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 		if id.Imsi == nil || len(*id.Imsi) == 0 {
 			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
 		}
-		imsi, err := tbcd.Decode(*id.Imsi)
+		imsi, err := decodeIdentityDigits(*id.Imsi)
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}
@@ -78,7 +77,7 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 		if len(id.ImsiWithLMSI.Imsi) == 0 {
 			return CancelLocationIdentity{}, ErrCancelLocIdentityMissingIMSI
 		}
-		imsi, err := tbcd.Decode(id.ImsiWithLMSI.Imsi)
+		imsi, err := decodeIdentityDigits(id.ImsiWithLMSI.Imsi)
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}

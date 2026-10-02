@@ -14,7 +14,6 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // LcsEvent value bounds per TS 29.002 MAP-LCS-DataTypes.asn:681
@@ -75,7 +74,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		if len(a.IMSI) < pslIMSIDigitsMin || len(a.IMSI) > pslIMSIDigitsMax {
 			return nil, fmt.Errorf("SubscriberLocationReportArg.IMSI digits=%d: %w", len(a.IMSI), ErrSLRArgIMSIInvalidSize)
 		}
-		imsiBytes, err := tbcd.Encode(a.IMSI)
+		imsiBytes, err := encodeIdentityDigits(a.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.IMSI: %w", err)
 		}
@@ -87,7 +86,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		if len(a.IMEI) != pslIMEIDigits {
 			return nil, fmt.Errorf("SubscriberLocationReportArg.IMEI digits=%d: %w", len(a.IMEI), ErrSLRArgIMEIInvalidSize)
 		}
-		imeiBytes, err := tbcd.Encode(a.IMEI)
+		imeiBytes, err := encodeIdentityDigits(a.IMEI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.IMEI: %w", err)
 		}
@@ -328,7 +327,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.MSISDNPlan = plan
 	}
 	if w.Imsi != nil {
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(*w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.IMSI: %w", err)
 		}
@@ -341,7 +340,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.IMSI = imsi
 	}
 	if w.Imei != nil {
-		imei, err := tbcd.Decode(*w.Imei)
+		imei, err := decodeIdentityDigits(*w.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.IMEI: %w", err)
 		}

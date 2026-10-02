@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -35,7 +34,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 	}
 
 	if a.IMSI != "" {
-		imsiBytes, err := tbcd.Encode(a.IMSI)
+		imsiBytes, err := encodeIdentityDigits(a.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
@@ -136,7 +135,7 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	if arg.Imsi != nil {
-		imsi, err := tbcd.Decode(*arg.Imsi)
+		imsi, err := decodeIdentityDigits(*arg.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding optional IMSI: %w", err)
 		}

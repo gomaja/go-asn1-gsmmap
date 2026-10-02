@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -400,7 +399,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 // --- SRI Response (SendRoutingInfoRes) full converters ---
 
 func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
-	imsiBytes, err := tbcd.Encode(s.IMSI)
+	imsiBytes, err := encodeIdentityDigits(s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -569,7 +568,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// Imsi
 	if res.Imsi != nil {
-		imsi, err := tbcd.Decode(*res.Imsi)
+		imsi, err := decodeIdentityDigits(*res.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMSI: %w", err)
 		}

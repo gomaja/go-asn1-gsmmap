@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -16,7 +15,7 @@ func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
 		return nil, ErrPurgeMSMissingIMSI
 	}
 
-	imsiBytes, err := tbcd.Encode(p.IMSI)
+	imsiBytes, err := encodeIdentityDigits(p.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -82,7 +81,7 @@ func convertArgToPurgeMS(arg *gsm_map.PurgeMSArg) (*PurgeMS, error) {
 		return nil, ErrPurgeMSMissingIMSI
 	}
 
-	imsi, err := tbcd.Decode(arg.Imsi)
+	imsi, err := decodeIdentityDigits(arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}

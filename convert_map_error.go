@@ -9,7 +9,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -33,7 +32,7 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		out.AdditionalAbsentSubscriberDiagnosticSM = &v
 	}
 	if w.Imsi != nil {
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(*w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding AbsentSubscriberSMParam.IMSI: %w", err)
 		}
@@ -46,7 +45,7 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		out.RequestedRetransmissionTime = HexBytes(*w.RequestedRetransmissionTime)
 	}
 	if w.UserIdentifierAlert != nil {
-		uid, err := tbcd.Decode(*w.UserIdentifierAlert)
+		uid, err := decodeIdentityDigits(*w.UserIdentifierAlert)
 		if err != nil {
 			return nil, fmt.Errorf("decoding AbsentSubscriberSMParam.UserIdentifierAlert: %w", err)
 		}

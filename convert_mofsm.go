@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	sms "github.com/gomaja/go-sms"
 )
@@ -53,7 +52,7 @@ func convertSmRpDaToWireWithErrors(
 
 	switch {
 	case da.IMSI != "":
-		imsiBytes, err := tbcd.Encode(da.IMSI)
+		imsiBytes, err := encodeIdentityDigits(da.IMSI)
 		if err != nil {
 			return gsm_map.SMRPDA{}, fmt.Errorf("encoding SmRpDa IMSI: %w", err)
 		}
@@ -81,7 +80,7 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 		if w.Imsi == nil {
 			return nil, fmt.Errorf("SMRPDA IMSI is nil")
 		}
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(*w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpDa IMSI: %w", err)
 		}
@@ -244,7 +243,7 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 
 	// Optional fields (post-extension marker).
 	if m.IMSI != "" {
-		imsiBytes, err := tbcd.Encode(m.IMSI)
+		imsiBytes, err := encodeIdentityDigits(m.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
@@ -295,7 +294,7 @@ func convertArgToMoFsm(arg *gsm_map.MOForwardSMArg) (*MoFsm, error) {
 
 	// Optional fields (post-extension marker).
 	if arg.Imsi != nil {
-		imsi, err := tbcd.Decode(*arg.Imsi)
+		imsi, err := decodeIdentityDigits(*arg.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMSI: %w", err)
 		}

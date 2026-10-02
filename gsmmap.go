@@ -1764,21 +1764,27 @@ type AdditionalSubscriptions struct {
 }
 
 // VoiceBroadcastData per TS 29.002 MAP-MS-DataTypes.asn:2717.
-// GroupId must encode to exactly 3 TBCD octets (6 hex nibbles); pass
-// "ffffff" as the required filler when LongGroupId is present per spec.
-// LongGroupId must encode to exactly 4 TBCD octets (8 hex nibbles).
-// The encoder rejects inputs that violate these invariants.
+// GroupId and LongGroupId are TBCD digit strings (alphabet
+// "0123456789*#abc") of at most 6 and 8 characters; shorter values are
+// padded with the TBCD filler on the wire (GroupId ::= TBCD-STRING
+// (SIZE (3)), Long-GroupId ::= TBCD-STRING (SIZE (4))). When LongGroupId
+// is present GroupId must be empty and is sent as six TBCD fillers, per
+// the groupId comment of TS 29.002. The encoder rejects inputs that violate
+// these invariants.
 type VoiceBroadcastData struct {
-	GroupId                  string // mandatory TBCD, exactly 6 hex digits
+	GroupId                  string // mandatory TBCD digits, at most 6 (empty only with LongGroupId)
 	BroadcastInitEntitlement bool   // NULL marker
-	LongGroupId              string // optional TBCD, exactly 8 hex digits
+	LongGroupId              string // optional TBCD digits, at most 8
 }
 
 // VoiceGroupCallData per TS 29.002 MAP-MS-DataTypes.asn:2695.
-// GroupId must encode to exactly 3 TBCD octets (6 hex nibbles); pass
-// "ffffff" as the required filler when LongGroupId is present per spec.
-// LongGroupId must encode to exactly 4 TBCD octets (8 hex nibbles).
-// The encoder rejects inputs that violate these invariants.
+// GroupId and LongGroupId are TBCD digit strings (alphabet
+// "0123456789*#abc") of at most 6 and 8 characters; shorter values are
+// padded with the TBCD filler on the wire (GroupId ::= TBCD-STRING
+// (SIZE (3)), Long-GroupId ::= TBCD-STRING (SIZE (4))). When LongGroupId
+// is present GroupId must be empty and is sent as six TBCD fillers, per
+// the groupId comment of TS 29.002. The encoder rejects inputs that violate
+// these invariants.
 //
 // AdditionalInfo is an opaque BIT STRING (SIZE 1..136 per TS 43.068),
 // modeled here as HexBytes. This representation only preserves
@@ -1786,10 +1792,10 @@ type VoiceBroadcastData struct {
 // and the decoder discards any trailing sub-byte bits. The encoder
 // rejects values exceeding the 17-octet (136-bit) maximum.
 type VoiceGroupCallData struct {
-	GroupId                 string                   // mandatory TBCD, exactly 6 hex digits
+	GroupId                 string                   // mandatory TBCD digits, at most 6 (empty only with LongGroupId)
 	AdditionalSubscriptions *AdditionalSubscriptions // optional
 	AdditionalInfo          HexBytes                 // optional, byte-aligned only, at most 17 octets per TS 43.068
-	LongGroupId             string                   // optional TBCD, exactly 8 hex digits
+	LongGroupId             string                   // optional TBCD digits, at most 8
 }
 
 // Octet size constants for VBS/VGCS TBCD identifiers and AdditionalInfo
@@ -3606,6 +3612,19 @@ var (
 	// not fit bits 4..1 of the first AddressString octet.
 	ErrAddressPlanInvalid = errors.New("address: numbering plan must be 0..15 (address.Plan*)")
 
+	// ErrIdentityNotDigits is returned when an IMSI, IMEI or IMEISV holds a
+	// character other than 0-9. TBCD-STRING also carries * # a b c, but
+	// TS 23.003 defines these identities as decimal digit strings.
+	ErrIdentityNotDigits = errors.New("identity: IMSI, IMEI and IMEISV must consist of digits 0-9 only (TS 23.003)")
+
+	// ErrIdentityMissing is returned when an IMSI, IMEI or IMEISV octet
+	// string is nil, i.e. the field was absent.
+	ErrIdentityMissing = errors.New("identity: IMSI, IMEI or IMEISV octet string is absent")
+
+	// ErrAddressStringEmpty is returned when an AddressString has no octets
+	// at all, not even the nature/plan octet.
+	ErrAddressStringEmpty = errors.New("address: AddressString has no octets")
+
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
 	ErrAscInvalidSmsGmscAlertEvent    = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
@@ -3705,9 +3724,10 @@ var (
 	ErrVBSDataListInvalidSize          = errors.New("vbsData: VBSDataList must contain 1..50 entries")
 	ErrVGCSDataListInvalidSize         = errors.New("vgcsData: VGCSDataList must contain 1..50 entries")
 	ErrGroupIdMissingWithoutLong       = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId is mandatory")
-	ErrGroupIdFillerRequired           = errors.New("voiceGroupCallData/voiceBroadcastData: when LongGroupId is present, GroupId must be the six TBCD fillers \"ffffff\" per TS 29.002")
-	ErrGroupIdInvalidEncodedLength     = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId must encode to exactly 3 TBCD octets")
-	ErrLongGroupIdInvalidEncodedLength = errors.New("voiceGroupCallData/voiceBroadcastData: LongGroupId must encode to exactly 4 TBCD octets")
+	ErrGroupIdFillerRequired           = errors.New("voiceGroupCallData/voiceBroadcastData: when LongGroupId is present, GroupId must be empty (sent as six TBCD fillers) per TS 29.002")
+	ErrGroupIdInvalidEncodedLength     = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId must fit the 3 TBCD octets of GroupId ::= TBCD-STRING (SIZE (3))")
+	ErrLongGroupIdInvalidEncodedLength = errors.New("voiceGroupCallData/voiceBroadcastData: LongGroupId must fit the 4 TBCD octets of Long-GroupId ::= TBCD-STRING (SIZE (4))")
+	ErrLongGroupIdDecodedEmpty         = errors.New("voiceGroupCallData/voiceBroadcastData: present wire LongGroupId holds no digits; presence cannot round-trip through the string-based API")
 	ErrAdditionalInfoTooLong           = errors.New("voiceGroupCallData: AdditionalInfo exceeds the TS 43.068 maximum of 17 octets / 136 bits")
 
 	ErrMCSSInfoNbrSBOutOfRange   = errors.New("mcSSInfo: NbrSB (MaxMC-Bearers) must be 2..7 per TS 29.002")

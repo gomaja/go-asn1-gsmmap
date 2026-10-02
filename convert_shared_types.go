@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // --- SRI-SM helper converters ---
@@ -180,7 +178,7 @@ func convertWireToSuperChargerInfo(w *gsm_map.SuperChargerInfo) (*SuperChargerIn
 }
 
 func convertAddInfoToWire(a *AddInfo) (*gsm_map.ADDInfo, error) {
-	imeisvBytes, err := tbcd.Encode(a.IMEISV)
+	imeisvBytes, err := encodeIdentityDigits(a.IMEISV)
 	if err != nil {
 		return nil, fmt.Errorf("encoding IMEISV: %w", err)
 	}
@@ -192,7 +190,7 @@ func convertAddInfoToWire(a *AddInfo) (*gsm_map.ADDInfo, error) {
 }
 
 func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
-	imeisv, err := tbcd.Decode(w.Imeisv)
+	imeisv, err := decodeIdentityDigits(w.Imeisv)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMEISV: %w", err)
 	}

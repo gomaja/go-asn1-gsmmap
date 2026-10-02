@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -264,7 +263,7 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 		return nil, ErrSaiInvalidPLMNId
 	}
 
-	imsiBytes, err := tbcd.Encode(s.IMSI)
+	imsiBytes, err := encodeIdentityDigits(s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -313,7 +312,7 @@ func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) 
 		return nil, ErrSaiInvalidNumberOfRequestedVectors
 	}
 
-	imsi, err := tbcd.Decode(arg.Imsi)
+	imsi, err := decodeIdentityDigits(arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
