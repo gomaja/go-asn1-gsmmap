@@ -31,9 +31,7 @@ func convertLCSClientNameToWire(c *LCSClientName) (*gsm_map.LCSClientName, error
 	if c == nil {
 		return nil, nil
 	}
-	if len(c.NameString) < 1 || len(c.NameString) > NameStringMaxLen {
-		return nil, fmt.Errorf("LCSClientName.NameString len=%d: %w", len(c.NameString), ErrLCSClientNameNameStringSize)
-	}
+
 	out := &gsm_map.LCSClientName{
 		DataCodingScheme: gsm_map.USSDDataCodingScheme{byte(c.DataCodingScheme)},
 		NameString:       gsm_map.NameString(c.NameString),
@@ -55,13 +53,8 @@ func convertWireToLCSClientName(w *gsm_map.LCSClientName) (*LCSClientName, error
 	if w == nil {
 		return nil, nil
 	}
-	dcs, err := wireUSSDDataCodingScheme(w.DataCodingScheme)
-	if err != nil {
-		return nil, fmt.Errorf("LCSClientName.DataCodingScheme: %w", err)
-	}
-	if len(w.NameString) < 1 || len(w.NameString) > NameStringMaxLen {
-		return nil, fmt.Errorf("LCSClientName.NameString len=%d: %w", len(w.NameString), ErrLCSClientNameNameStringSize)
-	}
+	dcs := USSDDataCodingScheme(w.DataCodingScheme[0])
+
 	out := &LCSClientName{
 		DataCodingScheme: dcs,
 		NameString:       HexBytes(w.NameString),
@@ -81,9 +74,7 @@ func convertLCSRequestorIDToWire(r *LCSRequestorID) (*gsm_map.LCSRequestorID, er
 	if r == nil {
 		return nil, nil
 	}
-	if len(r.RequestorIDString) < 1 || len(r.RequestorIDString) > RequestorIDStringMaxLen {
-		return nil, fmt.Errorf("LCSRequestorID.RequestorIDString len=%d: %w", len(r.RequestorIDString), ErrLCSRequestorIDStringSize)
-	}
+
 	out := &gsm_map.LCSRequestorID{
 		DataCodingScheme:  gsm_map.USSDDataCodingScheme{byte(r.DataCodingScheme)},
 		RequestorIDString: gsm_map.RequestorIDString(r.RequestorIDString),
@@ -102,13 +93,8 @@ func convertWireToLCSRequestorID(w *gsm_map.LCSRequestorID) (*LCSRequestorID, er
 	if w == nil {
 		return nil, nil
 	}
-	dcs, err := wireUSSDDataCodingScheme(w.DataCodingScheme)
-	if err != nil {
-		return nil, fmt.Errorf("LCSRequestorID.DataCodingScheme: %w", err)
-	}
-	if len(w.RequestorIDString) < 1 || len(w.RequestorIDString) > RequestorIDStringMaxLen {
-		return nil, fmt.Errorf("LCSRequestorID.RequestorIDString len=%d: %w", len(w.RequestorIDString), ErrLCSRequestorIDStringSize)
-	}
+	dcs := USSDDataCodingScheme(w.DataCodingScheme[0])
+
 	out := &LCSRequestorID{
 		DataCodingScheme:  dcs,
 		RequestorIDString: HexBytes(w.RequestorIDString),
@@ -182,9 +168,6 @@ func convertLCSClientIDToWire(c *LCSClientID) (*gsm_map.LCSClientID, error) {
 		out.LcsClientName = nm
 	}
 	if len(c.LcsAPN) > 0 {
-		if err := validateAPN(c.LcsAPN, "LCSClientID.LcsAPN"); err != nil {
-			return nil, err
-		}
 		v := gsm_map.APN(c.LcsAPN)
 		out.LcsAPN = &v
 	}
@@ -243,9 +226,7 @@ func convertWireToLCSClientID(w *gsm_map.LCSClientID) (*LCSClientID, error) {
 	}
 	if w.LcsAPN != nil {
 		apn := HexBytes(*w.LcsAPN)
-		if err := validateAPN(apn, "LCSClientID.LcsAPN"); err != nil {
-			return nil, err
-		}
+
 		out.LcsAPN = apn
 	}
 	if w.LcsRequestorID != nil {

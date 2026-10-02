@@ -6,8 +6,6 @@
 package gsmmap
 
 import (
-	"errors"
-	"fmt"
 	"testing"
 )
 
@@ -83,78 +81,7 @@ func TestPSLUtranBaroPressureMeasAlias(t *testing.T) {
 	if int64(v) != 65000 {
 		t.Fatalf("UtranBaroPressureMeas alias: want 65000, got %d", v)
 	}
-	if UtranBaroPressureMeasMin != 30000 {
-		t.Errorf("UtranBaroPressureMeasMin: want 30000, got %d", UtranBaroPressureMeasMin)
-	}
-	if UtranBaroPressureMeasMax != 115000 {
-		t.Errorf("UtranBaroPressureMeasMax: want 115000, got %d", UtranBaroPressureMeasMax)
-	}
-	// Direct comparison without casts.
-	if v < UtranBaroPressureMeasMin || v > UtranBaroPressureMeasMax {
-		t.Errorf("range check: 65000 should be in [Min..Max]")
-	}
-}
 
-// Sentinel errors must be defined, distinct, and detectable through
-// errors.Is when wrapped via %w.
-func TestPSLGeoInfoSentinelErrors(t *testing.T) {
-	sentinels := []error{
-		ErrExtGeographicalInformationSize,
-		ErrAddGeographicalInformationSize,
-		ErrVelocityEstimateSize,
-		ErrPositioningDataInformationSize,
-		ErrUtranPositioningDataInfoSize,
-		ErrGeranGANSSpositioningDataSize,
-		ErrUtranGANSSpositioningDataSize,
-		ErrUtranAdditionalPositioningDataSize,
-		ErrUtranBaroPressureMeasOutOfRange,
-	}
-	seen := make(map[error]int, len(sentinels))
-	for i, s := range sentinels {
-		if s == nil {
-			t.Errorf("sentinel #%d is nil", i)
-			continue
-		}
-		if j, dup := seen[s]; dup {
-			t.Errorf("sentinel #%d aliases sentinel #%d (same error value)", i, j)
-		}
-		seen[s] = i
-		wrapped := fmt.Errorf("psl wrapper: %w", s)
-		if !errors.Is(wrapped, s) {
-			t.Errorf("sentinel #%d not detectable through errors.Is when wrapped with %%w", i)
-		}
-	}
-}
-
-// Spec-derived size constants must match TS 29.002.
-func TestPSLGeoInfoSpecConstants(t *testing.T) {
-	cases := []struct {
-		name string
-		got  int
-		want int
-	}{
-		{"ExtGeographicalInformationMinLen (asn:462)", ExtGeographicalInformationMinLen, 1},
-		{"ExtGeographicalInformationMaxLen (maxExt-GeographicalInformation, asn:518)", ExtGeographicalInformationMaxLen, 20},
-		{"AddGeographicalInformationMinLen (asn:601)", AddGeographicalInformationMinLen, 1},
-		{"AddGeographicalInformationMaxLen (maxAdd-GeographicalInformation, asn:619)", AddGeographicalInformationMaxLen, 91},
-		{"VelocityEstimateMinLen (asn:522)", VelocityEstimateMinLen, 4},
-		{"VelocityEstimateMaxLen (asn:522)", VelocityEstimateMaxLen, 7},
-		{"PositioningDataInformationMinLen (asn:552)", PositioningDataInformationMinLen, 2},
-		{"PositioningDataInformationMaxLen (maxPositioningDataInformation, asn:557)", PositioningDataInformationMaxLen, 10},
-		{"UtranPositioningDataInfoMinLen (asn:560)", UtranPositioningDataInfoMinLen, 3},
-		{"UtranPositioningDataInfoMaxLen (maxUtranPositioningDataInfo, asn:565)", UtranPositioningDataInfoMaxLen, 11},
-		{"GeranGANSSpositioningDataMinLen (asn:568)", GeranGANSSpositioningDataMinLen, 2},
-		{"GeranGANSSpositioningDataMaxLen (maxGeranGANSSpositioningData, asn:573)", GeranGANSSpositioningDataMaxLen, 10},
-		{"UtranGANSSpositioningDataMinLen (asn:576)", UtranGANSSpositioningDataMinLen, 1},
-		{"UtranGANSSpositioningDataMaxLen (maxUtranGANSSpositioningData, asn:581)", UtranGANSSpositioningDataMaxLen, 9},
-		{"UtranAdditionalPositioningDataMinLen (asn:584)", UtranAdditionalPositioningDataMinLen, 1},
-		{"UtranAdditionalPositioningDataMaxLen (maxUtranAdditionalPositioningData, asn:589)", UtranAdditionalPositioningDataMaxLen, 8},
-	}
-	for _, tc := range cases {
-		if tc.got != tc.want {
-			t.Errorf("%s: want %d, got %d", tc.name, tc.want, tc.got)
-		}
-	}
 }
 
 // Zero values for the aliases must compose cleanly with HexBytes.

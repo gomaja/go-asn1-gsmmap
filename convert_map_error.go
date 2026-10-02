@@ -37,9 +37,6 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		if err != nil {
 			return nil, fmt.Errorf("decoding AbsentSubscriberSMParam.IMSI: %w", err)
 		}
-		if imsi == "" {
-			return nil, fmt.Errorf("AbsentSubscriberSMParam.IMSI: present wire field decoded to empty digits; presence cannot round-trip through string-based API")
-		}
 		out.IMSI = imsi
 	}
 	if w.RequestedRetransmissionTime != nil {
@@ -91,6 +88,7 @@ func convertWireToCallBarredParam(w *gsm_map.CallBarredParam) (*CallBarredParam,
 		v := *w.CallBarringCause
 		// CallBarringCause is non-extensible (TS 29.002 MAP-ER-DataTypes.asn);
 		// reject out-of-range values per project convention.
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if int64(v) < 0 || int64(v) > 1 {
 			return nil, fmt.Errorf("CallBarredParam.CallBarringCause=%d: must be 0..1 per TS 29.002 MAP-ER-DataTypes.asn", v)
 		}
@@ -120,6 +118,7 @@ func convertWireToExtensibleCallBarredParam(w *gsm_map.ExtensibleCallBarredParam
 	}
 	if w.CallBarringCause != nil {
 		v := *w.CallBarringCause
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if int64(v) < 0 || int64(v) > 1 {
 			return nil, fmt.Errorf("ExtensibleCallBarredParam.CallBarringCause=%d: must be 0..1 per TS 29.002 MAP-ER-DataTypes.asn", v)
 		}
@@ -190,6 +189,7 @@ func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) (*Ro
 	// RoamingNotAllowedCause is non-extensible per TS 29.002
 	// MAP-ER-DataTypes.asn with non-contiguous values: 0
 	// (plmnRoamingNotAllowed) and 3 (operatorDeterminedBarring).
+	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	switch w.RoamingNotAllowedCause {
 	case gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
 		gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring:

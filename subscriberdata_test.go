@@ -91,31 +91,29 @@ func TestZoneCodeListDecoderEnforcesBounds(t *testing.T) {
 		}
 	})
 	t.Run("emptyNonNil", func(t *testing.T) {
-		_, err := convertWireToZoneCodeList(gsmMapEmptyZoneCodeList())
-		if !errors.Is(err, ErrZoneCodeListInvalidSize) {
-			t.Errorf("want ErrZoneCodeListInvalidSize, got %v", err)
-		}
+		wire := &gsm_map.InsertSubscriberDataArg{RegionalSubscriptionData: gsmMapEmptyZoneCodeList()}
+		wantConstraintError(t, strictDecodeWire(wire), "regionalSubscriptionData.ZoneCodeList", "SIZE (1..10)")
 	})
 }
 
 func TestZoneCodeListValidation(t *testing.T) {
 	t.Run("emptyList", func(t *testing.T) {
-		if _, err := convertZoneCodeListToWire(nil); !errors.Is(err, ErrZoneCodeListInvalidSize) {
-			t.Errorf("want ErrZoneCodeListInvalidSize, got %v", err)
+		if _, err := strictWire(convertZoneCodeListToWire(nil)); !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("tooManyEntries", func(t *testing.T) {
-		big := make(ZoneCodeList, MaxNumOfZoneCodes+1)
+		big := make(ZoneCodeList, 10+1)
 		for i := range big {
 			big[i] = ZoneCode{0, 0}
 		}
-		if _, err := convertZoneCodeListToWire(big); !errors.Is(err, ErrZoneCodeListInvalidSize) {
-			t.Errorf("want ErrZoneCodeListInvalidSize, got %v", err)
+		if _, err := strictWire(convertZoneCodeListToWire(big)); !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("shortEntry", func(t *testing.T) {
 		bad := ZoneCodeList{ZoneCode{0x12}} // 1 octet, need 2
-		if _, err := convertZoneCodeListToWire(bad); !errors.Is(err, ErrZoneCodeInvalidSize) {
+		if _, err := strictWire(convertZoneCodeListToWire(bad)); !errors.Is(err, ErrZoneCodeInvalidSize) {
 			t.Errorf("want ErrZoneCodeInvalidSize, got %v", err)
 		}
 	})
@@ -166,49 +164,49 @@ func TestVoiceBroadcastDataRoundTrip(t *testing.T) {
 
 func TestVoiceBroadcastDataValidation(t *testing.T) {
 	t.Run("missingGroupId", func(t *testing.T) {
-		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{})
+		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{}))
 		if !errors.Is(err, ErrGroupIdMissingWithoutLong) {
 			t.Errorf("want ErrGroupIdMissingWithoutLong, got %v", err)
 		}
 	})
 	t.Run("missingFillerWithLongId", func(t *testing.T) {
-		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{LongGroupId: "1234abcd"})
+		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{LongGroupId: "1234abcd"}))
 		if !errors.Is(err, ErrGroupIdFillerRequired) {
 			t.Errorf("want ErrGroupIdFillerRequired, got %v", err)
 		}
 	})
 	t.Run("nonFillerGroupIdWithLongId", func(t *testing.T) {
-		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
+		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
 			GroupId:     "123456",
 			LongGroupId: "1234abcd",
-		})
+		}))
 		if !errors.Is(err, ErrGroupIdFillerRequired) {
 			t.Errorf("want ErrGroupIdFillerRequired, got %v", err)
 		}
 	})
 	t.Run("wrongLengthGroupId", func(t *testing.T) {
 		// 4 hex chars = 2 TBCD octets, but spec demands exactly 3.
-		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{GroupId: "1234"})
-		if !errors.Is(err, ErrGroupIdInvalidEncodedLength) {
-			t.Errorf("want ErrGroupIdInvalidEncodedLength, got %v", err)
+		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{GroupId: "1234"}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("wrongLengthLongGroupId", func(t *testing.T) {
 		// 6 hex chars = 3 TBCD octets, but spec demands exactly 4.
-		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
+		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
 			GroupId:     "ffffff",
 			LongGroupId: "123456",
-		})
-		if !errors.Is(err, ErrLongGroupIdInvalidEncodedLength) {
-			t.Errorf("want ErrLongGroupIdInvalidEncodedLength, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("fillerGroupIdCaseInsensitive", func(t *testing.T) {
 		// Spec filler is six 'f' nibbles; accept uppercase too.
-		_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
+		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
 			GroupId:     "FFFFFF",
 			LongGroupId: "1234abcd",
-		})
+		}))
 		if err != nil {
 			t.Errorf("FFFFFF filler should be accepted case-insensitively: %v", err)
 		}
@@ -217,48 +215,48 @@ func TestVoiceBroadcastDataValidation(t *testing.T) {
 
 func TestVoiceGroupCallDataValidation(t *testing.T) {
 	t.Run("missingGroupId", func(t *testing.T) {
-		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{})
+		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{}))
 		if !errors.Is(err, ErrGroupIdMissingWithoutLong) {
 			t.Errorf("want ErrGroupIdMissingWithoutLong, got %v", err)
 		}
 	})
 	t.Run("nonFillerGroupIdWithLongId", func(t *testing.T) {
-		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
+		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
 			GroupId:     "abcdef",
 			LongGroupId: "1234abcd",
-		})
+		}))
 		if !errors.Is(err, ErrGroupIdFillerRequired) {
 			t.Errorf("want ErrGroupIdFillerRequired, got %v", err)
 		}
 	})
 	t.Run("additionalInfoTooLong", func(t *testing.T) {
-		big := make(HexBytes, MaxAdditionalInfoOctets+1)
-		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
+		big := make(HexBytes, 17+1)
+		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
 			GroupId:        "123456",
 			AdditionalInfo: big,
-		})
-		if !errors.Is(err, ErrAdditionalInfoTooLong) {
-			t.Errorf("want ErrAdditionalInfoTooLong, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("additionalInfoAtBoundary", func(t *testing.T) {
-		// Exactly MaxAdditionalInfoOctets bytes must be accepted.
-		ok := make(HexBytes, MaxAdditionalInfoOctets)
-		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
+		// Exactly 17 bytes must be accepted.
+		ok := make(HexBytes, 17)
+		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
 			GroupId:        "123456",
 			AdditionalInfo: ok,
-		})
+		}))
 		if err != nil {
-			t.Errorf("%d-octet AdditionalInfo should be accepted: %v", MaxAdditionalInfoOctets, err)
+			t.Errorf("%d-octet AdditionalInfo should be accepted: %v", 17, err)
 		}
 	})
 	t.Run("wrongLengthLongGroupId", func(t *testing.T) {
-		_, err := convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
+		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
 			GroupId:     "ffffff",
 			LongGroupId: "123456", // 3 octets, need 4
-		})
-		if !errors.Is(err, ErrLongGroupIdInvalidEncodedLength) {
-			t.Errorf("want ErrLongGroupIdInvalidEncodedLength, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }
@@ -327,17 +325,17 @@ func TestVBSDataListRoundTrip(t *testing.T) {
 
 func TestVBSDataListValidation(t *testing.T) {
 	t.Run("emptyList", func(t *testing.T) {
-		if _, err := convertVBSDataListToWire(nil); !errors.Is(err, ErrVBSDataListInvalidSize) {
-			t.Errorf("want ErrVBSDataListInvalidSize, got %v", err)
+		if _, err := strictWire(convertVBSDataListToWire(nil)); !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("tooManyEntries", func(t *testing.T) {
-		big := make(VBSDataList, MaxNumOfVBSGroupIds+1)
+		big := make(VBSDataList, 50+1)
 		for i := range big {
 			big[i] = VoiceBroadcastData{GroupId: "123456"}
 		}
-		if _, err := convertVBSDataListToWire(big); !errors.Is(err, ErrVBSDataListInvalidSize) {
-			t.Errorf("want ErrVBSDataListInvalidSize, got %v", err)
+		if _, err := strictWire(convertVBSDataListToWire(big)); !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }
@@ -418,17 +416,17 @@ func TestVGCSDataListRoundTrip(t *testing.T) {
 
 func TestVGCSDataListValidation(t *testing.T) {
 	t.Run("emptyList", func(t *testing.T) {
-		if _, err := convertVGCSDataListToWire(nil); !errors.Is(err, ErrVGCSDataListInvalidSize) {
-			t.Errorf("want ErrVGCSDataListInvalidSize, got %v", err)
+		if _, err := strictWire(convertVGCSDataListToWire(nil)); !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("tooManyEntries", func(t *testing.T) {
-		big := make(VGCSDataList, MaxNumOfVGCSGroupIds+1)
+		big := make(VGCSDataList, 50+1)
 		for i := range big {
 			big[i] = VoiceGroupCallData{GroupId: "123456"}
 		}
-		if _, err := convertVGCSDataListToWire(big); !errors.Is(err, ErrVGCSDataListInvalidSize) {
-			t.Errorf("want ErrVGCSDataListInvalidSize, got %v", err)
+		if _, err := strictWire(convertVGCSDataListToWire(big)); !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }

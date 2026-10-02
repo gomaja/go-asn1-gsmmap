@@ -58,20 +58,20 @@ func TestAreaOutOfRangeTypeRejected(t *testing.T) {
 }
 
 func TestAreaIdentificationSizeRejected(t *testing.T) {
-	_, err := convertAreaToWire(&Area{
+	_, err := strictWire(convertAreaToWire(&Area{
 		AreaType:           AreaTypeCountryCode,
 		AreaIdentification: HexBytes{0x01}, // too small (min 2)
-	})
-	if !errors.Is(err, ErrAreaIdentificationSize) {
-		t.Errorf("encode 1 octet: want ErrAreaIdentificationSize, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("encode 1 octet: want BER constraint error, got %v", err)
 	}
 	tooBig := make(HexBytes, 8) // too big (max 7)
-	_, err = convertAreaToWire(&Area{
+	_, err = strictWire(convertAreaToWire(&Area{
 		AreaType:           AreaTypeCountryCode,
 		AreaIdentification: tooBig,
-	})
-	if !errors.Is(err, ErrAreaIdentificationSize) {
-		t.Errorf("encode 8 octets: want ErrAreaIdentificationSize, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("encode 8 octets: want BER constraint error, got %v", err)
 	}
 }
 
@@ -98,20 +98,20 @@ func TestAreaListRoundTrip(t *testing.T) {
 }
 
 func TestAreaListEmptyRejected(t *testing.T) {
-	_, err := convertAreaListToWire(AreaList{})
-	if !errors.Is(err, ErrAreaListSize) {
-		t.Errorf("want ErrAreaListSize for empty list, got %v", err)
+	_, err := strictWire(convertAreaListToWire(AreaList{}))
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error for empty list, got %v", err)
 	}
 }
 
 func TestAreaListOversizedRejected(t *testing.T) {
-	tooMany := make(AreaList, AreaListMaxEntries+1)
+	tooMany := make(AreaList, 10+1)
 	for i := range tooMany {
 		tooMany[i] = Area{AreaType: AreaTypeCountryCode, AreaIdentification: HexBytes{0x01, 0x02}}
 	}
-	_, err := convertAreaListToWire(tooMany)
-	if !errors.Is(err, ErrAreaListSize) {
-		t.Errorf("want ErrAreaListSize for 11 entries, got %v", err)
+	_, err := strictWire(convertAreaListToWire(tooMany))
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error for 11 entries, got %v", err)
 	}
 }
 
@@ -161,25 +161,25 @@ func TestAreaEventInfoRoundTrip(t *testing.T) {
 
 func TestAreaEventInfoIntervalTimeOutOfRangeRejected(t *testing.T) {
 	bad := IntervalTime(0) // below min
-	_, err := convertAreaEventInfoToWire(&AreaEventInfo{
+	_, err := strictWire(convertAreaEventInfoToWire(&AreaEventInfo{
 		AreaDefinition: AreaDefinition{
 			AreaList: AreaList{{AreaType: AreaTypeCountryCode, AreaIdentification: HexBytes{0x01, 0x02}}},
 		},
 		IntervalTime: &bad,
-	})
-	if !errors.Is(err, ErrIntervalTimeOutOfRange) {
-		t.Errorf("encode IntervalTime=0: want ErrIntervalTimeOutOfRange, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("encode IntervalTime=0: want BER constraint error, got %v", err)
 	}
 
-	tooBig := IntervalTime(IntervalTimeMax + 1)
-	_, err = convertAreaEventInfoToWire(&AreaEventInfo{
+	tooBig := IntervalTime(32767 + 1)
+	_, err = strictWire(convertAreaEventInfoToWire(&AreaEventInfo{
 		AreaDefinition: AreaDefinition{
 			AreaList: AreaList{{AreaType: AreaTypeCountryCode, AreaIdentification: HexBytes{0x01, 0x02}}},
 		},
 		IntervalTime: &tooBig,
-	})
-	if !errors.Is(err, ErrIntervalTimeOutOfRange) {
-		t.Errorf("encode IntervalTime=32768: want ErrIntervalTimeOutOfRange, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("encode IntervalTime=32768: want BER constraint error, got %v", err)
 	}
 }
 
@@ -231,21 +231,20 @@ func TestPeriodicLDRInfoRoundTrip(t *testing.T) {
 
 func TestPeriodicLDRInfoOutOfRangeRejected(t *testing.T) {
 	cases := []struct {
-		name    string
-		in      *PeriodicLDRInfo
-		wantErr error
+		name string
+		in   *PeriodicLDRInfo
+		path string
 	}{
-		{"amount below min", &PeriodicLDRInfo{ReportingAmount: 0, ReportingInterval: 1}, ErrReportingAmountOutOfRange},
-		{"amount above max", &PeriodicLDRInfo{ReportingAmount: ReportingAmountMax + 1, ReportingInterval: 1}, ErrReportingAmountOutOfRange},
-		{"interval below min", &PeriodicLDRInfo{ReportingAmount: 1, ReportingInterval: 0}, ErrReportingIntervalOutOfRange},
-		{"interval above max", &PeriodicLDRInfo{ReportingAmount: 1, ReportingInterval: ReportingIntervalMax + 1}, ErrReportingIntervalOutOfRange},
+		{"amount below min", &PeriodicLDRInfo{ReportingAmount: 0, ReportingInterval: 1}, "reportingAmount"},
+		{"amount above max", &PeriodicLDRInfo{ReportingAmount: 8639999 + 1, ReportingInterval: 1}, "reportingAmount"},
+		{"interval below min", &PeriodicLDRInfo{ReportingAmount: 1, ReportingInterval: 0}, "reportingInterval"},
+		{"interval above max", &PeriodicLDRInfo{ReportingAmount: 1, ReportingInterval: 8639999 + 1}, "reportingInterval"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := convertPeriodicLDRInfoToWire(tc.in)
-			if !errors.Is(err, tc.wantErr) {
-				t.Errorf("want %v, got %v", tc.wantErr, err)
-			}
+			wire := &gsm_map.PeriodicLDRInfo{ReportingAmount: gsm_map.ReportingAmount(tc.in.ReportingAmount), ReportingInterval: gsm_map.ReportingInterval(tc.in.ReportingInterval)}
+			_, err := wire.MarshalBER()
+			wantConstraintError(t, err, tc.path, "(1..8639999)")
 		})
 	}
 }
@@ -306,11 +305,11 @@ func TestReportingPLMNRoundTrip(t *testing.T) {
 }
 
 func TestReportingPLMNInvalidPlmnIdRejected(t *testing.T) {
-	_, err := convertReportingPLMNToWire(&ReportingPLMN{
+	_, err := strictWire(convertReportingPLMNToWire(&ReportingPLMN{
 		PlmnId: HexBytes{0x01, 0x02}, // too short (must be exactly 3)
-	})
-	if !errors.Is(err, ErrPlmnIdInvalidSize) {
-		t.Errorf("want ErrPlmnIdInvalidSize, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -363,22 +362,22 @@ func TestReportingPLMNListRoundTrip(t *testing.T) {
 }
 
 func TestReportingPLMNListEmptyListRejected(t *testing.T) {
-	_, err := convertReportingPLMNListToWire(&ReportingPLMNList{
+	_, err := strictWire(convertReportingPLMNListToWire(&ReportingPLMNList{
 		PlmnList: PLMNList{},
-	})
-	if !errors.Is(err, ErrPLMNListSize) {
-		t.Errorf("want ErrPLMNListSize for empty list, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error for empty list, got %v", err)
 	}
 }
 
 func TestReportingPLMNListOversizedRejected(t *testing.T) {
-	tooMany := make(PLMNList, PLMNListMaxEntries+1)
+	tooMany := make(PLMNList, 20+1)
 	for i := range tooMany {
 		tooMany[i] = ReportingPLMN{PlmnId: HexBytes{0x32, 0xf4, 0x10}}
 	}
-	_, err := convertReportingPLMNListToWire(&ReportingPLMNList{PlmnList: tooMany})
-	if !errors.Is(err, ErrPLMNListSize) {
-		t.Errorf("want ErrPLMNListSize for 21 entries, got %v", err)
+	_, err := strictWire(convertReportingPLMNListToWire(&ReportingPLMNList{PlmnList: tooMany}))
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error for 21 entries, got %v", err)
 	}
 }
 

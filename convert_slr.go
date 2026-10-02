@@ -13,21 +13,9 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// diameterIdentityMinLen / diameterIdentityMaxLen (9..255 per RFC 6733,
-// TS 29.002 MAP-MS-DataTypes.asn:1434) are defined in convert_psl_res.go.
-
 // ============================================================================
 // LCSLocationInfo — TS 29.002 MAP-LCS-DataTypes.asn
 // ============================================================================
-
-// validateDiameterIdentity checks an optional DiameterIdentity FQDN
-// field (9..255 octets); empty/nil is treated as absent by the caller.
-func validateDiameterIdentity(b HexBytes, sentinel error) error {
-	if len(b) < diameterIdentityMinLen || len(b) > diameterIdentityMaxLen {
-		return fmt.Errorf("len=%d: %w", len(b), sentinel)
-	}
-	return nil
-}
 
 func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo, error) {
 	if l == nil {
@@ -46,9 +34,6 @@ func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo,
 	}
 
 	if len(l.LMSI) > 0 {
-		if len(l.LMSI) != 4 {
-			return nil, fmt.Errorf("LCSLocationInfo.LMSI len=%d: %w", len(l.LMSI), ErrLCSLocationInfoLMSIInvalidSize)
-		}
 		v := gsm_map.LMSI(l.LMSI)
 		out.Lmsi = &v
 	}
@@ -70,30 +55,18 @@ func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo,
 		out.AdditionalLCSCapabilitySets = &bs
 	}
 	if len(l.MmeName) > 0 {
-		if err := validateDiameterIdentity(l.MmeName, ErrLCSLocationInfoMmeNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.MmeName: %w", err)
-		}
 		v := gsm_map.DiameterIdentity(l.MmeName)
 		out.MmeName = &v
 	}
 	if len(l.AaaServerName) > 0 {
-		if err := validateDiameterIdentity(l.AaaServerName, ErrLCSLocationInfoAaaServerNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.AaaServerName: %w", err)
-		}
 		v := gsm_map.DiameterIdentity(l.AaaServerName)
 		out.AaaServerName = &v
 	}
 	if len(l.SgsnName) > 0 {
-		if err := validateDiameterIdentity(l.SgsnName, ErrLCSLocationInfoSgsnNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.SgsnName: %w", err)
-		}
 		v := gsm_map.DiameterIdentity(l.SgsnName)
 		out.SgsnName = &v
 	}
 	if len(l.SgsnRealm) > 0 {
-		if err := validateDiameterIdentity(l.SgsnRealm, ErrLCSLocationInfoSgsnRealmSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.SgsnRealm: %w", err)
-		}
 		v := gsm_map.DiameterIdentity(l.SgsnRealm)
 		out.SgsnRealm = &v
 	}
@@ -119,9 +92,6 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 	}
 
 	if w.Lmsi != nil {
-		if len(*w.Lmsi) != 4 {
-			return nil, fmt.Errorf("LCSLocationInfo.LMSI len=%d: %w", len(*w.Lmsi), ErrLCSLocationInfoLMSIInvalidSize)
-		}
 		out.LMSI = HexBytes(*w.Lmsi)
 	}
 	out.GprsNodeIndicator = nullPtrToBool(w.GprsNodeIndicator)
@@ -145,30 +115,22 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 	}
 	if w.MmeName != nil {
 		mme := HexBytes(*w.MmeName)
-		if err := validateDiameterIdentity(mme, ErrLCSLocationInfoMmeNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.MmeName: %w", err)
-		}
+
 		out.MmeName = mme
 	}
 	if w.AaaServerName != nil {
 		aaa := HexBytes(*w.AaaServerName)
-		if err := validateDiameterIdentity(aaa, ErrLCSLocationInfoAaaServerNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.AaaServerName: %w", err)
-		}
+
 		out.AaaServerName = aaa
 	}
 	if w.SgsnName != nil {
 		sgsn := HexBytes(*w.SgsnName)
-		if err := validateDiameterIdentity(sgsn, ErrLCSLocationInfoSgsnNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.SgsnName: %w", err)
-		}
+
 		out.SgsnName = sgsn
 	}
 	if w.SgsnRealm != nil {
 		realm := HexBytes(*w.SgsnRealm)
-		if err := validateDiameterIdentity(realm, ErrLCSLocationInfoSgsnRealmSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.SgsnRealm: %w", err)
-		}
+
 		out.SgsnRealm = realm
 	}
 	return out, nil

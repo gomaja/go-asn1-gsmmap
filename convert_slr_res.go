@@ -65,9 +65,6 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 	}
 	// [5] lcs-ReferenceNumber (OCTET STRING SIZE 1)
 	if len(r.LcsReferenceNumber) > 0 {
-		if len(r.LcsReferenceNumber) != 1 {
-			return nil, fmt.Errorf("SubscriberLocationReportRes.LcsReferenceNumber len=%d: %w", len(r.LcsReferenceNumber), ErrLCSReferenceNumberInvalidSize)
-		}
 		v := gsm_map.LCSReferenceNumber(r.LcsReferenceNumber)
 		out.LcsReferenceNumber = &v
 	}
@@ -79,8 +76,6 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 // struct back to the public type. Validation rules:
 //   - Round-trip safety: present-but-empty NaESRK/NaESRD decoded values
 //     are rejected (cannot round-trip through the string-based API).
-//   - LcsReferenceNumber byte size: rejected when != 1, symmetric with
-//     the encoder.
 //   - ExtensionContainer: dropped (opaque metadata not surfaced; see
 //     SubscriberLocationReportRes doc).
 func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationReportRes) (*SubscriberLocationReportRes, error) {
@@ -130,9 +125,6 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 		out.ReportingPLMNList = v
 	}
 	if w.LcsReferenceNumber != nil {
-		if len(*w.LcsReferenceNumber) != 1 {
-			return nil, fmt.Errorf("SubscriberLocationReportRes.LcsReferenceNumber len=%d: %w", len(*w.LcsReferenceNumber), ErrLCSReferenceNumberInvalidSize)
-		}
 		out.LcsReferenceNumber = LCSReferenceNumber(*w.LcsReferenceNumber)
 	}
 

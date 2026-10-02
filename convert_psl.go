@@ -67,9 +67,6 @@ func convertDeferredLocationEventTypeToBitString(d *DeferredLocationEventType) r
 // (1..16 bits) and decodes the 5 named bits. Bits past the 5 named bits
 // are tolerated and ignored on decode (forward-compat).
 func convertBitStringToDeferredLocationEventType(bs runtime.BitString) (*DeferredLocationEventType, error) {
-	if bs.BitLength < 1 || bs.BitLength > 16 {
-		return nil, fmt.Errorf("DeferredLocationEventType: %w (got %d bits)", ErrDeferredLocationEventTypeSize, bs.BitLength)
-	}
 	d := &DeferredLocationEventType{}
 	if bs.BitLength > 0 {
 		d.MsAvailable = bs.Has(0)
@@ -124,9 +121,6 @@ func convertSupportedGADShapesToBitString(g *SupportedGADShapes) runtime.BitStri
 // bits) and decodes the 7 named bits. Bits past the 7 named bits are
 // tolerated and ignored on decode.
 func convertBitStringToSupportedGADShapes(bs runtime.BitString) (*SupportedGADShapes, error) {
-	if bs.BitLength < 7 || bs.BitLength > 16 {
-		return nil, fmt.Errorf("SupportedGADShapes: %w (got %d bits)", ErrSupportedGADShapesSize, bs.BitLength)
-	}
 	g := &SupportedGADShapes{}
 	g.EllipsoidPoint = bs.Has(0)
 	g.EllipsoidPointWithUncertaintyCircle = bs.Has(1)
@@ -184,9 +178,7 @@ func convertLCSCodewordToWire(c *LCSCodeword) (*gsm_map.LCSCodeword, error) {
 	if c == nil {
 		return nil, nil
 	}
-	if len(c.LcsCodewordString) < 1 || len(c.LcsCodewordString) > LCSCodewordStringMaxLen {
-		return nil, fmt.Errorf("LCSCodeword.LcsCodewordString len=%d: %w", len(c.LcsCodewordString), ErrLCSCodewordStringSize)
-	}
+
 	out := &gsm_map.LCSCodeword{
 		DataCodingScheme:  gsm_map.USSDDataCodingScheme{byte(c.DataCodingScheme)},
 		LcsCodewordString: gsm_map.LCSCodewordString(c.LcsCodewordString),
@@ -198,13 +190,8 @@ func convertWireToLCSCodeword(w *gsm_map.LCSCodeword) (*LCSCodeword, error) {
 	if w == nil {
 		return nil, nil
 	}
-	dcs, err := wireUSSDDataCodingScheme(w.DataCodingScheme)
-	if err != nil {
-		return nil, fmt.Errorf("LCSCodeword.DataCodingScheme: %w", err)
-	}
-	if len(w.LcsCodewordString) < 1 || len(w.LcsCodewordString) > LCSCodewordStringMaxLen {
-		return nil, fmt.Errorf("LCSCodeword.LcsCodewordString len=%d: %w", len(w.LcsCodewordString), ErrLCSCodewordStringSize)
-	}
+	dcs := USSDDataCodingScheme(w.DataCodingScheme[0])
+
 	return &LCSCodeword{
 		DataCodingScheme:  dcs,
 		LcsCodewordString: HexBytes(w.LcsCodewordString),
@@ -304,9 +291,6 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 	out := &gsm_map.LCSQoS{}
 
 	if len(q.HorizontalAccuracy) > 0 {
-		if len(q.HorizontalAccuracy) != 1 {
-			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy len=%d: %w", len(q.HorizontalAccuracy), ErrHorizontalAccuracyInvalidSize)
-		}
 		// Spec mandates bit 8 = 0 (TS 29.002 MAP-LCS-DataTypes.asn:250):
 		// only the low 7 bits encode the uncertainty code per TS 23.032.
 		if q.HorizontalAccuracy[0]&0x80 != 0 {
@@ -317,9 +301,6 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 	}
 	out.VerticalCoordinateRequest = boolToNullPtr(q.VerticalCoordinateRequest)
 	if len(q.VerticalAccuracy) > 0 {
-		if len(q.VerticalAccuracy) != 1 {
-			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy len=%d: %w", len(q.VerticalAccuracy), ErrVerticalAccuracyInvalidSize)
-		}
 		// Spec mandates bit 8 = 0 (TS 29.002 MAP-LCS-DataTypes.asn:256):
 		// only the low 7 bits encode the vertical uncertainty code per TS 23.032.
 		if q.VerticalAccuracy[0]&0x80 != 0 {
@@ -345,9 +326,6 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 	}
 	out := &LCSQoS{}
 	if w.HorizontalAccuracy != nil {
-		if len(*w.HorizontalAccuracy) != 1 {
-			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy len=%d: %w", len(*w.HorizontalAccuracy), ErrHorizontalAccuracyInvalidSize)
-		}
 		if (*w.HorizontalAccuracy)[0]&0x80 != 0 {
 			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy=0x%02x: %w", (*w.HorizontalAccuracy)[0], ErrHorizontalAccuracyReservedBit)
 		}
@@ -355,9 +333,6 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 	}
 	out.VerticalCoordinateRequest = nullPtrToBool(w.VerticalCoordinateRequest)
 	if w.VerticalAccuracy != nil {
-		if len(*w.VerticalAccuracy) != 1 {
-			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy len=%d: %w", len(*w.VerticalAccuracy), ErrVerticalAccuracyInvalidSize)
-		}
 		if (*w.VerticalAccuracy)[0]&0x80 != 0 {
 			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy=0x%02x: %w", (*w.VerticalAccuracy)[0], ErrVerticalAccuracyReservedBit)
 		}

@@ -99,9 +99,9 @@ func TestServingNodeAddressMultipleAlternativesRejected(t *testing.T) {
 
 func TestServingNodeAddressMmeNumberSizeValidation(t *testing.T) {
 	short := &ServingNodeAddress{MmeNumber: HexBytes("short")} // 5 octets — under min 9
-	_, err := convertServingNodeAddressToWire(short)
-	if !errors.Is(err, ErrServingNodeAddressMmeNumberSize) {
-		t.Errorf("encode 5 octets: want ErrServingNodeAddressMmeNumberSize, got %v", err)
+	_, err := strictWire(convertServingNodeAddressToWire(short))
+	if !isConstraint(err) {
+		t.Errorf("encode 5 octets: want BER constraint error, got %v", err)
 	}
 }
 
@@ -302,9 +302,9 @@ func TestProvideSubscriberLocationResNilRejected(t *testing.T) {
 }
 
 func TestProvideSubscriberLocationResMissingLocationEstimateRejected(t *testing.T) {
-	_, err := convertProvideSubscriberLocationResToWire(&ProvideSubscriberLocationRes{})
-	if !errors.Is(err, ErrPSLResLocationEstimateMissing) {
-		t.Errorf("encode empty LocationEstimate: want ErrPSLResLocationEstimateMissing, got %v", err)
+	_, err := strictWire(convertProvideSubscriberLocationResToWire(&ProvideSubscriberLocationRes{}))
+	if !isConstraint(err) {
+		t.Errorf("encode empty LocationEstimate: want BER constraint error, got %v", err)
 	}
 }
 
@@ -325,9 +325,9 @@ func TestProvideSubscriberLocationResCellGlobalIdSizeValidation(t *testing.T) {
 		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
 		CellGlobalId:     HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be 7
 	}
-	_, err := convertProvideSubscriberLocationResToWire(in)
-	if !errors.Is(err, ErrPSLResCellGlobalIdSize) {
-		t.Errorf("encode CGI=3: want ErrPSLResCellGlobalIdSize, got %v", err)
+	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
+	if !isConstraint(err) {
+		t.Errorf("encode CGI=3: want BER constraint error, got %v", err)
 	}
 }
 
@@ -336,9 +336,9 @@ func TestProvideSubscriberLocationResLAISizeValidation(t *testing.T) {
 		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
 		LAI:              HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be 5
 	}
-	_, err := convertProvideSubscriberLocationResToWire(in)
-	if !errors.Is(err, ErrPSLResLAIInvalidSize) {
-		t.Errorf("encode LAI=3: want ErrPSLResLAIInvalidSize, got %v", err)
+	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
+	if !isConstraint(err) {
+		t.Errorf("encode LAI=3: want BER constraint error, got %v", err)
 	}
 }
 
@@ -348,9 +348,9 @@ func TestProvideSubscriberLocationResUtranBaroPressureRangeValidation(t *testing
 		LocationEstimate:      ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
 		UtranBaroPressureMeas: &low,
 	}
-	_, err := convertProvideSubscriberLocationResToWire(in)
-	if !errors.Is(err, ErrUtranBaroPressureMeasOutOfRange) {
-		t.Errorf("encode baro=29999: want ErrUtranBaroPressureMeasOutOfRange, got %v", err)
+	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
+	if !isConstraint(err) {
+		t.Errorf("encode baro=29999: want BER constraint error, got %v", err)
 	}
 }
 

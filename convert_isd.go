@@ -15,9 +15,7 @@ func convertExtSSInfoListToWire(list []ExtSSInfo) (*gsm_map.ExtSSInfoList, error
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfSS {
-		return nil, fmt.Errorf("%w (got %d)", ErrIsdProvisionedSSListSize, len(list))
-	}
+
 	out := gsm_map.ExtSSInfoList{Values: make([]gsm_map.ExtSSInfo, len(list))}
 	for i, e := range list {
 		w, err := convertExtSSInfoToWire(&e)
@@ -33,9 +31,7 @@ func convertWireToExtSSInfoList(w *gsm_map.ExtSSInfoList) ([]ExtSSInfo, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfSS {
-		return nil, fmt.Errorf("%w (got %d)", ErrIsdProvisionedSSListSize, len(w.Values))
-	}
+
 	out := make([]ExtSSInfo, len(w.Values))
 	for i, e := range w.Values {
 		v, err := convertWireToExtSSInfo(&e)
@@ -70,9 +66,6 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	}
 
 	if len(a.IMSI) > 0 {
-		if len(a.IMSI) < 3 || len(a.IMSI) > 8 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdIMSIInvalidSize, len(a.IMSI))
-		}
 		v := gsm_map.IMSI(a.IMSI)
 		out.Imsi = &v
 	}
@@ -85,9 +78,6 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.Msisdn = &v
 	}
 	if len(a.Category) > 0 {
-		if len(a.Category) != 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdCategoryInvalidSize, len(a.Category))
-		}
 		v := gsm_map.Category(a.Category)
 		out.Category = &v
 	}
@@ -96,9 +86,6 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.SubscriberStatus = &v
 	}
 	if a.BearerServiceList != nil {
-		if int64(len(a.BearerServiceList)) < 1 || int64(len(a.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(a.BearerServiceList))
-		}
 		out.BearerServiceList = &gsm_map.BearerServiceList{Values: make([]gsm_map.ExtBearerServiceCode, len(a.BearerServiceList))}
 		for i, b := range a.BearerServiceList {
 			if len(b) < 1 || len(b) > 5 {
@@ -108,9 +95,6 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		}
 	}
 	if a.TeleserviceList != nil {
-		if int64(len(a.TeleserviceList)) < 1 || int64(len(a.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(a.TeleserviceList))
-		}
 		out.TeleserviceList = &gsm_map.TeleserviceList{Values: make([]gsm_map.ExtTeleserviceCode, len(a.TeleserviceList))}
 		for i, t := range a.TeleserviceList {
 			if len(t) < 1 || len(t) > 5 {
@@ -194,9 +178,6 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.IstAlertTimer = &v
 	}
 	if len(a.SuperChargerSupportedInHLR) > 0 {
-		if len(a.SuperChargerSupportedInHLR) < 1 || len(a.SuperChargerSupportedInHLR) > 6 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdAgeIndicatorInvalidSize, len(a.SuperChargerSupportedInHLR))
-		}
 		v := gsm_map.AgeIndicator(a.SuperChargerSupportedInHLR)
 		out.SuperChargerSupportedInHLR = &v
 	}
@@ -208,9 +189,6 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.McSSInfo = w
 	}
 	if len(a.CsAllocationRetentionPriority) > 0 {
-		if len(a.CsAllocationRetentionPriority) != 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdCsAllocRetentionInvalidSize, len(a.CsAllocationRetentionPriority))
-		}
 		v := gsm_map.CSAllocationRetentionPriority(a.CsAllocationRetentionPriority)
 		out.CsAllocationRetentionPriority = &v
 	}
@@ -222,9 +200,6 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.SgsnCAMELSubscriptionInfo = w
 	}
 	if len(a.ChargingCharacteristics) > 0 {
-		if len(a.ChargingCharacteristics) != 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdChargingCharsInvalidSize, len(a.ChargingCharacteristics))
-		}
 		v := gsm_map.ChargingCharacteristics(a.ChargingCharacteristics)
 		out.ChargingCharacteristics = &v
 	}
@@ -259,9 +234,6 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.SgsnNumber = &v
 	}
 	if len(a.MmeName) > 0 {
-		if err := validateFQDN(a.MmeName, "InsertSubscriberDataArg.MmeName"); err != nil {
-			return nil, err
-		}
 		v := gsm_map.DiameterIdentity(a.MmeName)
 		out.MmeName = &v
 	}
@@ -354,9 +326,6 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 	}
 
 	if w.Imsi != nil {
-		if len(*w.Imsi) < 3 || len(*w.Imsi) > 8 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdIMSIInvalidSize, len(*w.Imsi))
-		}
 		out.IMSI = HexBytes(*w.Imsi)
 	}
 	if w.Msisdn != nil {
@@ -372,9 +341,6 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.MSISDNPlan = plan
 	}
 	if w.Category != nil {
-		if len(*w.Category) != 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdCategoryInvalidSize, len(*w.Category))
-		}
 		out.Category = HexBytes(*w.Category)
 	}
 	if w.SubscriberStatus != nil {
@@ -382,9 +348,6 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.SubscriberStatus = &v
 	}
 	if w.BearerServiceList != nil {
-		if int64(len(w.BearerServiceList.Values)) < 1 || int64(len(w.BearerServiceList.Values)) > gsm_map.MaxNumOfBearerServices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(w.BearerServiceList.Values))
-		}
 		out.BearerServiceList = make([]HexBytes, len(w.BearerServiceList.Values))
 		for i, b := range w.BearerServiceList.Values {
 			if len(b) < 1 || len(b) > 5 {
@@ -394,9 +357,6 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		}
 	}
 	if w.TeleserviceList != nil {
-		if int64(len(w.TeleserviceList.Values)) < 1 || int64(len(w.TeleserviceList.Values)) > gsm_map.MaxNumOfTeleservices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(w.TeleserviceList.Values))
-		}
 		out.TeleserviceList = make([]HexBytes, len(w.TeleserviceList.Values))
 		for i, t := range w.TeleserviceList.Values {
 			if len(t) < 1 || len(t) > 5 {
@@ -476,9 +436,6 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.IstAlertTimer = &v
 	}
 	if w.SuperChargerSupportedInHLR != nil {
-		if len(*w.SuperChargerSupportedInHLR) < 1 || len(*w.SuperChargerSupportedInHLR) > 6 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdAgeIndicatorInvalidSize, len(*w.SuperChargerSupportedInHLR))
-		}
 		out.SuperChargerSupportedInHLR = HexBytes(*w.SuperChargerSupportedInHLR)
 	}
 	if w.McSSInfo != nil {
@@ -489,9 +446,6 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.McSSInfo = v
 	}
 	if w.CsAllocationRetentionPriority != nil {
-		if len(*w.CsAllocationRetentionPriority) != 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdCsAllocRetentionInvalidSize, len(*w.CsAllocationRetentionPriority))
-		}
 		out.CsAllocationRetentionPriority = HexBytes(*w.CsAllocationRetentionPriority)
 	}
 	if w.SgsnCAMELSubscriptionInfo != nil {
@@ -502,9 +456,6 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.SgsnCAMELSubscriptionInfo = v
 	}
 	if w.ChargingCharacteristics != nil {
-		if len(*w.ChargingCharacteristics) != 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdChargingCharsInvalidSize, len(*w.ChargingCharacteristics))
-		}
 		out.ChargingCharacteristics = HexBytes(*w.ChargingCharacteristics)
 	}
 	if w.AccessRestrictionData != nil {
@@ -541,9 +492,6 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.SgsnNumberPlan = plan
 	}
 	if w.MmeName != nil {
-		if err := validateFQDN(HexBytes(*w.MmeName), "InsertSubscriberDataArg.MmeName"); err != nil {
-			return nil, err
-		}
 		out.MmeName = HexBytes(*w.MmeName)
 	}
 	if w.SubscribedPeriodicRAUTAUtimer != nil {
@@ -628,9 +576,6 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 	}
 	out := &gsm_map.InsertSubscriberDataRes{}
 	if r.TeleserviceList != nil {
-		if int64(len(r.TeleserviceList)) < 1 || int64(len(r.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(r.TeleserviceList))
-		}
 		out.TeleserviceList = &gsm_map.TeleserviceList{Values: make([]gsm_map.ExtTeleserviceCode, len(r.TeleserviceList))}
 		for i, t := range r.TeleserviceList {
 			if len(t) < 1 || len(t) > 5 {
@@ -640,9 +585,6 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 		}
 	}
 	if r.BearerServiceList != nil {
-		if int64(len(r.BearerServiceList)) < 1 || int64(len(r.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(r.BearerServiceList))
-		}
 		out.BearerServiceList = &gsm_map.BearerServiceList{Values: make([]gsm_map.ExtBearerServiceCode, len(r.BearerServiceList))}
 		for i, b := range r.BearerServiceList {
 			if len(b) < 1 || len(b) > 5 {
@@ -690,9 +632,6 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 	}
 	out := &InsertSubscriberDataRes{}
 	if w.TeleserviceList != nil {
-		if int64(len(w.TeleserviceList.Values)) < 1 || int64(len(w.TeleserviceList.Values)) > gsm_map.MaxNumOfTeleservices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(w.TeleserviceList.Values))
-		}
 		out.TeleserviceList = make([]HexBytes, len(w.TeleserviceList.Values))
 		for i, t := range w.TeleserviceList.Values {
 			if len(t) < 1 || len(t) > 5 {
@@ -702,9 +641,6 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 		}
 	}
 	if w.BearerServiceList != nil {
-		if int64(len(w.BearerServiceList.Values)) < 1 || int64(len(w.BearerServiceList.Values)) > gsm_map.MaxNumOfBearerServices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(w.BearerServiceList.Values))
-		}
 		out.BearerServiceList = make([]HexBytes, len(w.BearerServiceList.Values))
 		for i, b := range w.BearerServiceList.Values {
 			if len(b) < 1 || len(b) > 5 {

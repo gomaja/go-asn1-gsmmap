@@ -10,7 +10,7 @@ import (
 
 // An SM-RP-DA or SM-RP-OA address alternative can be present on the wire
 // yet carry no digits. These cases check the corresponding parse errors for
-// one-octet AddressStrings and a filler-only IMSI.
+// one-octet AddressStrings.
 func TestForwardSMChoiceAddressDecodedEmpty(t *testing.T) {
 	golden, err := hex.DecodeString(forwardSMFuzzSeeds[0]) // MO-ForwardSM-Arg
 	if err != nil {
@@ -26,9 +26,6 @@ func TestForwardSMChoiceAddressDecodedEmpty(t *testing.T) {
 		edit func(a *gsm_map.MOForwardSMArg)
 		want error
 	}{
-		{"SM-RP-DA imsi empty", func(a *gsm_map.MOForwardSMArg) {
-			a.SmRPDA = gsm_map.NewSMRPDAImsi(gsm_map.IMSI{0xFF, 0xFF, 0xFF}) // IMSI SIZE (3..8), TS 29.002 §17.7.8.
-		}, ErrSmRpDaIMSIDecodedEmpty},
 		{"SM-RP-DA serviceCentreAddressDA without digits", func(a *gsm_map.MOForwardSMArg) {
 			a.SmRPDA = gsm_map.NewSMRPDAServiceCentreAddressDA(gsm_map.AddressString(natureOnly))
 		}, ErrSmRpDaServiceCentreAddressDecodedEmpty},

@@ -13,15 +13,7 @@ func validateProvideSubscriberInfo(p *ProvideSubscriberInfo) error {
 	if p.IMSI == "" {
 		return ErrPsiMissingIMSI
 	}
-	if len(p.LMSI) != 0 && len(p.LMSI) != 4 {
-		return ErrPsiInvalidLMSI
-	}
-	if p.CallPriority != nil {
-		v := *p.CallPriority
-		if v < 0 || v > 15 {
-			return ErrPsiInvalidCallPriority
-		}
-	}
+
 	return nil
 }
 
@@ -60,9 +52,6 @@ func convertArgToProvideSubscriberInfo(arg *gsm_map.ProvideSubscriberInfoArg) (*
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
-	if imsi == "" {
-		return nil, ErrPsiMissingIMSI
-	}
 
 	out := &ProvideSubscriberInfo{
 		IMSI:          imsi,
@@ -72,18 +61,14 @@ func convertArgToProvideSubscriberInfo(arg *gsm_map.ProvideSubscriberInfoArg) (*
 	// LMSI (optional, must be exactly 4 octets when present).
 	if arg.Lmsi != nil {
 		lmsi := []byte(*arg.Lmsi)
-		if len(lmsi) != 4 {
-			return nil, ErrPsiInvalidLMSI
-		}
+
 		out.LMSI = HexBytes(lmsi)
 	}
 
 	// CallPriority (optional, 0..15).
 	if arg.CallPriority != nil {
 		v := int64(*arg.CallPriority)
-		if v < 0 || v > 15 {
-			return nil, ErrPsiInvalidCallPriority
-		}
+
 		iv := int(v)
 		out.CallPriority = &iv
 	}

@@ -61,6 +61,7 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		vlrCap.SolsaSupportIndicator = boolToNullPtr(u.VlrCapability.SolsaSupportIndicator)
 
 		if u.VlrCapability.IstSupportIndicator != nil {
+			// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 			if *u.VlrCapability.IstSupportIndicator < 0 || *u.VlrCapability.IstSupportIndicator > 1 {
 				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator out of range 0..1: %d", *u.VlrCapability.IstSupportIndicator)
 			}
@@ -98,9 +99,6 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 
 	// Optional fields.
 	if len(u.LMSI) > 0 {
-		if len(u.LMSI) != 4 {
-			return nil, fmt.Errorf("UpdateLocation: LMSI must be exactly 4 octets, got %d", len(u.LMSI))
-		}
 		v := gsm_map.LMSI(u.LMSI)
 		arg.Lmsi = &v
 	}
@@ -144,6 +142,7 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	if len(u.EplmnList) > 0 {
 		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(raw) != 3 {
 				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
 			}
@@ -230,9 +229,6 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		}
 
 		if arg.VlrCapability.SupportedRATTypesIndicator != nil && arg.VlrCapability.SupportedRATTypesIndicator.BitLength > 0 {
-			if arg.VlrCapability.SupportedRATTypesIndicator.BitLength < 2 || arg.VlrCapability.SupportedRATTypesIndicator.BitLength > 8 {
-				return nil, fmt.Errorf("UpdateLocation: SupportedRATTypes BitLength must be 2..8, got %d", arg.VlrCapability.SupportedRATTypesIndicator.BitLength)
-			}
 			vlrCap.SupportedRATTypesIndicator = convertBitStringToSupportedRATTypes(*arg.VlrCapability.SupportedRATTypesIndicator)
 		}
 
@@ -246,9 +242,6 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 	// Optional fields.
 	if arg.Lmsi != nil {
-		if len(*arg.Lmsi) != 4 {
-			return nil, fmt.Errorf("UpdateLocation: LMSI must be exactly 4 octets, got %d", len(*arg.Lmsi))
-		}
 		u.LMSI = HexBytes(*arg.Lmsi)
 	}
 
@@ -289,6 +282,7 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 	if arg.EplmnList != nil && len(arg.EplmnList.Values) > 0 {
 		list := make([]HexBytes, len(arg.EplmnList.Values))
 		for i, plmn := range arg.EplmnList.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(plmn) != 3 {
 				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
 			}

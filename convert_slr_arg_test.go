@@ -7,7 +7,6 @@
 package gsmmap
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 )
@@ -184,25 +183,25 @@ func TestSLRArgEncodeNegative(t *testing.T) {
 		{"IMSI too short", func(a *SubscriberLocationReportArg) { a.IMSI = "1234" }, ErrSLRArgIMSIInvalidSize},
 		{"IMSI too long", func(a *SubscriberLocationReportArg) { a.IMSI = "1234567890123456" }, ErrSLRArgIMSIInvalidSize},
 		{"IMEI wrong length", func(a *SubscriberLocationReportArg) { a.IMEI = "12345" }, ErrSLRArgIMEIInvalidSize},
-		{"LocationEstimate too long", func(a *SubscriberLocationReportArg) { a.LocationEstimate = make(HexBytes, 21) }, ErrExtGeographicalInformationSize},
-		{"AddLocationEstimate too long", func(a *SubscriberLocationReportArg) { a.AddLocationEstimate = make(HexBytes, 92) }, ErrAddGeographicalInformationSize},
-		{"LcsReferenceNumber wrong size", func(a *SubscriberLocationReportArg) { a.LcsReferenceNumber = HexBytes{0x01, 0x02} }, ErrLCSReferenceNumberInvalidSize},
-		{"GeranPositioningData too short", func(a *SubscriberLocationReportArg) { a.GeranPositioningData = HexBytes{0x01} }, ErrPositioningDataInformationSize},
-		{"UtranPositioningData too short", func(a *SubscriberLocationReportArg) { a.UtranPositioningData = HexBytes{0x01, 0x02} }, ErrUtranPositioningDataInfoSize},
-		{"CellGlobalId wrong size", func(a *SubscriberLocationReportArg) { a.CellGlobalId = HexBytes{0x01} }, ErrPSLResCellGlobalIdSize},
+		{"LocationEstimate too long", func(a *SubscriberLocationReportArg) { a.LocationEstimate = make(HexBytes, 21) }, nil},
+		{"AddLocationEstimate too long", func(a *SubscriberLocationReportArg) { a.AddLocationEstimate = make(HexBytes, 92) }, nil},
+		{"LcsReferenceNumber wrong size", func(a *SubscriberLocationReportArg) { a.LcsReferenceNumber = HexBytes{0x01, 0x02} }, nil},
+		{"GeranPositioningData too short", func(a *SubscriberLocationReportArg) { a.GeranPositioningData = HexBytes{0x01} }, nil},
+		{"UtranPositioningData too short", func(a *SubscriberLocationReportArg) { a.UtranPositioningData = HexBytes{0x01, 0x02} }, nil},
+		{"CellGlobalId wrong size", func(a *SubscriberLocationReportArg) { a.CellGlobalId = HexBytes{0x01} }, nil},
 		{"CGI and LAI both set", func(a *SubscriberLocationReportArg) {
 			a.CellGlobalId = make(HexBytes, 7)
 			a.LAI = make(HexBytes, 5)
 		}, ErrSLRArgCellGlobalIdAndLAIMutex},
-		{"LcsServiceTypeID out of range", func(a *SubscriberLocationReportArg) { v := int64(128); a.LcsServiceTypeID = &v }, ErrSLRArgLcsServiceTypeIDOutOfRange},
+		{"LcsServiceTypeID out of range", func(a *SubscriberLocationReportArg) { v := int64(128); a.LcsServiceTypeID = &v }, nil},
 		{"AccuracyFulfilmentIndicator out of range", func(a *SubscriberLocationReportArg) {
 			v := AccuracyFulfilmentIndicator(9)
 			a.AccuracyFulfilmentIndicator = &v
 		}, ErrAccuracyFulfilmentIndicatorInvalid},
-		{"VelocityEstimate too short", func(a *SubscriberLocationReportArg) { a.VelocityEstimate = HexBytes{0x01} }, ErrVelocityEstimateSize},
-		{"SequenceNumber too low", func(a *SubscriberLocationReportArg) { v := SequenceNumber(0); a.SequenceNumber = &v }, ErrSequenceNumberOutOfRange},
-		{"SequenceNumber too high", func(a *SubscriberLocationReportArg) { v := SequenceNumber(8640000); a.SequenceNumber = &v }, ErrSequenceNumberOutOfRange},
-		{"UtranBaroPressureMeas out of range", func(a *SubscriberLocationReportArg) { v := UtranBaroPressureMeas(1); a.UtranBaroPressureMeas = &v }, ErrUtranBaroPressureMeasOutOfRange},
+		{"VelocityEstimate too short", func(a *SubscriberLocationReportArg) { a.VelocityEstimate = HexBytes{0x01} }, nil},
+		{"SequenceNumber too low", func(a *SubscriberLocationReportArg) { v := SequenceNumber(0); a.SequenceNumber = &v }, nil},
+		{"SequenceNumber too high", func(a *SubscriberLocationReportArg) { v := SequenceNumber(8640000); a.SequenceNumber = &v }, nil},
+		{"UtranBaroPressureMeas out of range", func(a *SubscriberLocationReportArg) { v := UtranBaroPressureMeas(1); a.UtranBaroPressureMeas = &v }, nil},
 	}
 
 	for _, tc := range cases {
@@ -212,8 +211,8 @@ func TestSLRArgEncodeNegative(t *testing.T) {
 				in = minimalSLRArg()
 				tc.mut(in)
 			}
-			_, err := convertSubscriberLocationReportArgToWire(in)
-			if !errors.Is(err, tc.want) {
+			_, err := strictWire(convertSubscriberLocationReportArgToWire(in))
+			if !matchesExpected(err, tc.want) {
 				t.Errorf("want errors.Is(_, %v), got %v", tc.want, err)
 			}
 		})

@@ -59,9 +59,7 @@ func convertSmRpDaToWireWithErrors(
 		}
 		return gsm_map.NewSMRPDAImsi(gsm_map.IMSI(imsiBytes)), nil
 	case len(da.LMSI) > 0:
-		if len(da.LMSI) != 4 {
-			return gsm_map.SMRPDA{}, fmt.Errorf("SmRpDa LMSI must be exactly 4 octets, got %d", len(da.LMSI))
-		}
+
 		return gsm_map.NewSMRPDALmsi(gsm_map.LMSI(da.LMSI)), nil
 	case da.ServiceCentreAddressDA != "":
 		scaDA, err := encodeAddressField(da.ServiceCentreAddressDA, da.SCADANature, da.SCADAPlan)
@@ -85,17 +83,12 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpDa IMSI: %w", err)
 		}
-		if imsi == "" {
-			return nil, ErrSmRpDaIMSIDecodedEmpty
-		}
 		da.IMSI = imsi
 	case gsm_map.SMRPDAChoiceLmsi:
 		if w.Lmsi == nil {
 			return nil, fmt.Errorf("SMRPDA LMSI is nil")
 		}
-		if len(*w.Lmsi) != 4 {
-			return nil, fmt.Errorf("SmRpDa LMSI must be exactly 4 octets, got %d", len(*w.Lmsi))
-		}
+
 		da.LMSI = HexBytes(*w.Lmsi)
 	case gsm_map.SMRPDAChoiceServiceCentreAddressDA:
 		if w.ServiceCentreAddressDA == nil {

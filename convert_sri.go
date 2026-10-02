@@ -19,20 +19,9 @@ func validateSri(s *Sri) error {
 	if s.InterrogationType != InterrogationBasicCall && s.InterrogationType != InterrogationForwarding {
 		return ErrSriInvalidInterrogationType
 	}
-	if s.NumberOfForwarding != nil {
-		if *s.NumberOfForwarding < 1 || *s.NumberOfForwarding > 5 {
-			return ErrSriInvalidNumberOfForwarding
-		}
-	}
-	if s.OrCapability != nil {
-		if *s.OrCapability < 1 || *s.OrCapability > 127 {
-			return ErrSriInvalidOrCapability
-		}
-	}
-	if len(s.CallReferenceNumber) > 8 {
-		return ErrSriInvalidCallReferenceNumber
-	}
+
 	// ForwardingReason — 0..2 per TS 29.002.
+	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	if s.ForwardingReason != nil && (*s.ForwardingReason < 0 || *s.ForwardingReason > 2) {
 		return fmt.Errorf("ForwardingReason out of range 0..2: %d", *s.ForwardingReason)
 	}
@@ -43,9 +32,7 @@ func validateSri(s *Sri) error {
 		return fmt.Errorf("SupportedCCBSPhase out of range 1..127: %d", *s.SupportedCCBSPhase)
 	}
 	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
-	if s.CallPriority != nil && (*s.CallPriority < 0 || *s.CallPriority > 15) {
-		return fmt.Errorf("CallPriority out of range 0..15: %d", *s.CallPriority)
-	}
+
 	return nil
 }
 
@@ -162,6 +149,7 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// IstSupportIndicator
 	if s.IstSupportIndicator != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *s.IstSupportIndicator < 0 || *s.IstSupportIndicator > 1 {
 			return nil, fmt.Errorf("IstSupportIndicator out of range 0..1: %d", *s.IstSupportIndicator)
 		}
@@ -242,10 +230,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// NumberOfForwarding — 1..5 per TS 29.002.
 	if arg.NumberOfForwarding != nil {
-		v, err := narrowInt64Range(*arg.NumberOfForwarding, 1, 5, "NumberOfForwarding")
-		if err != nil {
-			return nil, err
-		}
+		v := int(*arg.NumberOfForwarding)
 		s.NumberOfForwarding = &v
 	}
 
@@ -254,23 +239,18 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// OrCapability — 1..127 per TS 29.002.
 	if arg.OrCapability != nil {
-		v, err := narrowInt64Range(*arg.OrCapability, 1, 127, "OrCapability")
-		if err != nil {
-			return nil, err
-		}
+		v := int(*arg.OrCapability)
 		s.OrCapability = &v
 	}
 
 	// CallReferenceNumber — OCTET STRING (SIZE(1..8)) per TS 29.002.
 	if arg.CallReferenceNumber != nil {
-		if len(*arg.CallReferenceNumber) < 1 || len(*arg.CallReferenceNumber) > 8 {
-			return nil, fmt.Errorf("CallReferenceNumber must be 1..8 octets, got %d", len(*arg.CallReferenceNumber))
-		}
 		s.CallReferenceNumber = HexBytes(*arg.CallReferenceNumber)
 	}
 
 	// ForwardingReason — 0..2 per TS 29.002.
 	if arg.ForwardingReason != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		v, err := narrowInt64Range(int64(*arg.ForwardingReason), 0, 2, "ForwardingReason")
 		if err != nil {
 			return nil, err
@@ -387,10 +367,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
 	if arg.CallPriority != nil {
-		v, err := narrowInt64Range(int64(*arg.CallPriority), 0, 15, "CallPriority")
-		if err != nil {
-			return nil, err
-		}
+		v := int(*arg.CallPriority)
 		s.CallPriority = &v
 	}
 
@@ -487,6 +464,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if s.NumberPortabilityStatus != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		switch *s.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
@@ -546,6 +524,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// UnavailabilityCause — 1..6 per TS 29.002.
 	if s.UnavailabilityCause != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *s.UnavailabilityCause < 1 || *s.UnavailabilityCause > 6 {
 			return nil, fmt.Errorf("UnavailabilityCause out of range 1..6: %d", *s.UnavailabilityCause)
 		}
@@ -606,6 +585,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	if res.SsList != nil && len(res.SsList.Values) > 0 {
 		out.SsList = make([]SsCode, len(res.SsList.Values))
 		for i, c := range res.SsList.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(c) != 1 {
 				return nil, fmt.Errorf("SsList[%d]: SS-Code must be exactly 1 octet, got %d", i, len(c))
 			}
@@ -664,6 +644,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	// exceed platform int are also treated as unknown (ignored), not as
 	// decode errors — consistent with the spec's "ignore" mandate.
 	if res.NumberPortabilityStatus != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		switch *res.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut,
 			MnpForeignNumberPortedToForeignNetwork,
@@ -704,6 +685,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	if res.SsList2 != nil && len(res.SsList2.Values) > 0 {
 		out.SsList2 = make([]SsCode, len(res.SsList2.Values))
 		for i, c := range res.SsList2.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(c) != 1 {
 				return nil, fmt.Errorf("SsList2[%d]: SS-Code must be exactly 1 octet, got %d", i, len(c))
 			}
@@ -732,6 +714,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	// service-unavailable is an application-layer concern.
 	if res.UnavailabilityCause != nil {
 		v64 := int64(*res.UnavailabilityCause)
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if v64 < 0 {
 			return nil, fmt.Errorf("UnavailabilityCause cannot be negative: %d", v64)
 		}

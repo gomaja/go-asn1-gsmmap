@@ -33,8 +33,7 @@ func isValidTypeOfUpdate(v TypeOfUpdate) bool {
 }
 
 // convertCancelLocationIdentityToWire encodes the Identity CHOICE.
-// All field-level validation (exactly-one-alternative, non-empty nested IMSI,
-// LMSI length) is performed up-front by validateCancelLocation; this helper
+// CHOICE validation is performed up-front by validateCancelLocation; this helper
 // assumes its input has been validated and focuses on conversion.
 func convertCancelLocationIdentityToWire(id *CancelLocationIdentity) (gsm_map.Identity, error) {
 	if id.IMSI != "" {
@@ -60,35 +59,25 @@ func convertCancelLocationIdentityToWire(id *CancelLocationIdentity) (gsm_map.Id
 func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIdentity, error) {
 	switch id.Choice {
 	case gsm_map.IdentityChoiceImsi:
-		if id.Imsi == nil || len(*id.Imsi) == 0 {
+		if id.Imsi == nil {
 			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
 		}
 		imsi, err := tbcd.Decode(*id.Imsi)
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}
-		if imsi == "" {
-			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
-		}
 		return CancelLocationIdentity{IMSI: imsi}, nil
 	case gsm_map.IdentityChoiceImsiWithLMSI:
 		if id.ImsiWithLMSI == nil {
 			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
 		}
-		if len(id.ImsiWithLMSI.Imsi) == 0 {
-			return CancelLocationIdentity{}, ErrCancelLocIdentityMissingIMSI
-		}
+
 		imsi, err := tbcd.Decode(id.ImsiWithLMSI.Imsi)
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}
-		if imsi == "" {
-			return CancelLocationIdentity{}, ErrCancelLocIdentityMissingIMSI
-		}
 		lmsi := []byte(id.ImsiWithLMSI.Lmsi)
-		if len(lmsi) != 4 {
-			return CancelLocationIdentity{}, ErrCancelLocIdentityInvalidLMSI
-		}
+
 		return CancelLocationIdentity{
 			IMSIWithLMSI: &CancelLocationIMSIWithLMSI{IMSI: imsi, LMSI: HexBytes(lmsi)},
 		}, nil
@@ -116,9 +105,6 @@ func validateCancelLocation(c *CancelLocation) error {
 		if c.Identity.IMSIWithLMSI.IMSI == "" {
 			return ErrCancelLocIdentityMissingIMSI
 		}
-		if len(c.Identity.IMSIWithLMSI.LMSI) != 4 {
-			return ErrCancelLocIdentityInvalidLMSI
-		}
 	}
 	if c.CancellationType != nil && !isValidCancellationType(*c.CancellationType) {
 		return ErrCancelLocInvalidCancellationType
@@ -138,9 +124,7 @@ func validateCancelLocation(c *CancelLocation) error {
 	if c.MtrfSupportedAndAuthorized && c.MtrfSupportedAndNotAuthorized {
 		return ErrCancelLocMtrfBothSet
 	}
-	if len(c.NewLMSI) > 0 && len(c.NewLMSI) != 4 {
-		return ErrCancelLocInvalidNewLMSI
-	}
+
 	return nil
 }
 
@@ -262,9 +246,7 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 
 	if arg.NewLmsi != nil {
 		lmsi := []byte(*arg.NewLmsi)
-		if len(lmsi) != 4 {
-			return nil, ErrCancelLocInvalidNewLMSI
-		}
+
 		out.NewLMSI = HexBytes(lmsi)
 	}
 

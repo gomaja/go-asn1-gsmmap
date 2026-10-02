@@ -102,24 +102,13 @@ func TestPSLAreaPeriodicIntegerAliases(t *testing.T) {
 	if int64(iv) != 60 {
 		t.Errorf("IntervalTime alias: want 60, got %d", iv)
 	}
-	if IntervalTimeMin != 1 || IntervalTimeMax != 32767 {
-		t.Errorf("IntervalTime bounds: want [1..32767], got [%d..%d]", IntervalTimeMin, IntervalTimeMax)
-	}
-	if iv < IntervalTimeMin || iv > IntervalTimeMax {
-		t.Error("IntervalTime range check: 60 should be in [Min..Max]")
-	}
 
 	var amt ReportingAmount = 10
 	var ivl ReportingInterval = 60
 	if int64(amt) != 10 || int64(ivl) != 60 {
 		t.Errorf("ReportingAmount/Interval aliases: want 10/60, got %d/%d", amt, ivl)
 	}
-	if ReportingAmountMin != 1 || ReportingAmountMax != 8639999 {
-		t.Errorf("ReportingAmount bounds: want [1..8639999], got [%d..%d]", ReportingAmountMin, ReportingAmountMax)
-	}
-	if ReportingIntervalMin != 1 || ReportingIntervalMax != 8639999 {
-		t.Errorf("ReportingInterval bounds: want [1..8639999], got [%d..%d]", ReportingIntervalMin, ReportingIntervalMax)
-	}
+
 	if PeriodicLDRProductMax != 8639999 {
 		t.Errorf("PeriodicLDRProductMax: want 8639999, got %d", PeriodicLDRProductMax)
 	}
@@ -130,19 +119,12 @@ func TestPSLAreaPeriodicIntegerAliases(t *testing.T) {
 func TestPSLAreaPeriodicSentinelErrors(t *testing.T) {
 	sentinels := []error{
 		ErrAreaTypeInvalid,
-		ErrAreaIdentificationSize,
-		ErrAreaListSize,
 		ErrOccurrenceInfoInvalid,
-		ErrIntervalTimeOutOfRange,
-		ErrReportingAmountOutOfRange,
-		ErrReportingIntervalOutOfRange,
 		ErrPeriodicLDRProductExceeded,
 		ErrRANTechnologyInvalid,
-		ErrPLMNListSize,
 		ErrTerminationCauseInvalid,
 		ErrServingNodeAddressMultipleAlts,
 		ErrServingNodeAddressNoAlt,
-		ErrServingNodeAddressMmeNumberSize,
 	}
 	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {
@@ -157,27 +139,6 @@ func TestPSLAreaPeriodicSentinelErrors(t *testing.T) {
 		wrapped := fmt.Errorf("psl wrapper: %w", s)
 		if !errors.Is(wrapped, s) {
 			t.Errorf("sentinel #%d not detectable through errors.Is when wrapped with %%w", i)
-		}
-	}
-}
-
-// Spec-derived size constants must match TS 29.002.
-func TestPSLAreaPeriodicSpecConstants(t *testing.T) {
-	cases := []struct {
-		name string
-		got  int
-		want int
-	}{
-		{"AreaIdentificationMinLen (asn:346)", AreaIdentificationMinLen, 2},
-		{"AreaIdentificationMaxLen (asn:346)", AreaIdentificationMaxLen, 7},
-		{"AreaListMinEntries (asn:328)", AreaListMinEntries, 1},
-		{"AreaListMaxEntries (maxNumOfAreas, asn:330)", AreaListMaxEntries, 10},
-		{"PLMNListMinEntries (asn:409)", PLMNListMinEntries, 1},
-		{"PLMNListMaxEntries (maxNumOfReportingPLMN, asn:412)", PLMNListMaxEntries, 20},
-	}
-	for _, tc := range cases {
-		if tc.got != tc.want {
-			t.Errorf("%s: want %d, got %d", tc.name, tc.want, tc.got)
 		}
 	}
 }

@@ -114,9 +114,6 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	// [5] locationEstimate
 	if len(a.LocationEstimate) > 0 {
-		if len(a.LocationEstimate) < ExtGeographicalInformationMinLen || len(a.LocationEstimate) > ExtGeographicalInformationMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.LocationEstimate len=%d: %w", len(a.LocationEstimate), ErrExtGeographicalInformationSize)
-		}
 		v := gsm_map.ExtGeographicalInformation(a.LocationEstimate)
 		out.LocationEstimate = &v
 	}
@@ -128,9 +125,6 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	// [7] slr-ArgExtensionContainer: opaque metadata; not surfaced.
 	// [8] add-LocationEstimate
 	if len(a.AddLocationEstimate) > 0 {
-		if len(a.AddLocationEstimate) < AddGeographicalInformationMinLen || len(a.AddLocationEstimate) > AddGeographicalInformationMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.AddLocationEstimate len=%d: %w", len(a.AddLocationEstimate), ErrAddGeographicalInformationSize)
-		}
 		v := gsm_map.AddGeographicalInformation(a.AddLocationEstimate)
 		out.AddLocationEstimate = &v
 	}
@@ -144,25 +138,16 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	// [10] lcs-ReferenceNumber (OCTET STRING SIZE 1)
 	if len(a.LcsReferenceNumber) > 0 {
-		if len(a.LcsReferenceNumber) != 1 {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.LcsReferenceNumber len=%d: %w", len(a.LcsReferenceNumber), ErrLCSReferenceNumberInvalidSize)
-		}
 		v := gsm_map.LCSReferenceNumber(a.LcsReferenceNumber)
 		out.LcsReferenceNumber = &v
 	}
 	// [11] geranPositioningData
 	if len(a.GeranPositioningData) > 0 {
-		if len(a.GeranPositioningData) < PositioningDataInformationMinLen || len(a.GeranPositioningData) > PositioningDataInformationMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.GeranPositioningData len=%d: %w", len(a.GeranPositioningData), ErrPositioningDataInformationSize)
-		}
 		v := gsm_map.PositioningDataInformation(a.GeranPositioningData)
 		out.GeranPositioningData = &v
 	}
 	// [12] utranPositioningData
 	if len(a.UtranPositioningData) > 0 {
-		if len(a.UtranPositioningData) < UtranPositioningDataInfoMinLen || len(a.UtranPositioningData) > UtranPositioningDataInfoMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.UtranPositioningData len=%d: %w", len(a.UtranPositioningData), ErrUtranPositioningDataInfoSize)
-		}
 		v := gsm_map.UtranPositioningDataInfo(a.UtranPositioningData)
 		out.UtranPositioningData = &v
 	}
@@ -187,9 +172,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	// [15] lcsServiceTypeID
 	if a.LcsServiceTypeID != nil {
 		v := *a.LcsServiceTypeID
-		if v < pslLcsServiceTypeIDMin || v > pslLcsServiceTypeIDMax {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.LcsServiceTypeID=%d: %w", v, ErrSLRArgLcsServiceTypeIDOutOfRange)
-		}
+
 		w := gsm_map.LCSServiceTypeID(v)
 		out.LcsServiceTypeID = &w
 	}
@@ -206,18 +189,13 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	// [20] velocityEstimate
 	if len(a.VelocityEstimate) > 0 {
-		if len(a.VelocityEstimate) < VelocityEstimateMinLen || len(a.VelocityEstimate) > VelocityEstimateMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.VelocityEstimate len=%d: %w", len(a.VelocityEstimate), ErrVelocityEstimateSize)
-		}
 		v := gsm_map.VelocityEstimate(a.VelocityEstimate)
 		out.VelocityEstimate = &v
 	}
 	// [21] sequenceNumber
 	if a.SequenceNumber != nil {
 		v := *a.SequenceNumber
-		if v < SequenceNumberMin || v > SequenceNumberMax {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.SequenceNumber=%d: %w", v, ErrSequenceNumberOutOfRange)
-		}
+
 		out.SequenceNumber = &v
 	}
 	// [22] periodicLDRInfo
@@ -232,17 +210,11 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	out.MoLrShortCircuitIndicator = boolToNullPtr(a.MoLrShortCircuitIndicator)
 	// [24] geranGANSSpositioningData
 	if len(a.GeranGANSSpositioningData) > 0 {
-		if len(a.GeranGANSSpositioningData) < GeranGANSSpositioningDataMinLen || len(a.GeranGANSSpositioningData) > GeranGANSSpositioningDataMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.GeranGANSSpositioningData len=%d: %w", len(a.GeranGANSSpositioningData), ErrGeranGANSSpositioningDataSize)
-		}
 		v := gsm_map.GeranGANSSpositioningData(a.GeranGANSSpositioningData)
 		out.GeranGANSSpositioningData = &v
 	}
 	// [25] utranGANSSpositioningData
 	if len(a.UtranGANSSpositioningData) > 0 {
-		if len(a.UtranGANSSpositioningData) < UtranGANSSpositioningDataMinLen || len(a.UtranGANSSpositioningData) > UtranGANSSpositioningDataMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.UtranGANSSpositioningData len=%d: %w", len(a.UtranGANSSpositioningData), ErrUtranGANSSpositioningDataSize)
-		}
 		v := gsm_map.UtranGANSSpositioningData(a.UtranGANSSpositioningData)
 		out.UtranGANSSpositioningData = &v
 	}
@@ -256,18 +228,13 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	// [27] utranAdditionalPositioningData
 	if len(a.UtranAdditionalPositioningData) > 0 {
-		if len(a.UtranAdditionalPositioningData) < UtranAdditionalPositioningDataMinLen || len(a.UtranAdditionalPositioningData) > UtranAdditionalPositioningDataMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.UtranAdditionalPositioningData len=%d: %w", len(a.UtranAdditionalPositioningData), ErrUtranAdditionalPositioningDataSize)
-		}
 		v := gsm_map.UtranAdditionalPositioningData(a.UtranAdditionalPositioningData)
 		out.UtranAdditionalPositioningData = &v
 	}
 	// [28] utranBaroPressureMeas
 	if a.UtranBaroPressureMeas != nil {
 		v := *a.UtranBaroPressureMeas
-		if v < UtranBaroPressureMeasMin || v > UtranBaroPressureMeasMax {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.UtranBaroPressureMeas=%d: %w", v, ErrUtranBaroPressureMeasOutOfRange)
-		}
+
 		out.UtranBaroPressureMeas = &v
 	}
 	// [29] utranCivicAddress
@@ -282,11 +249,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 // convertWireToSubscriberLocationReportArg unmarshals the wire-form
 // struct back to the public type. Validation rules mirror the encoder
 // and PSL's:
-//   - Fixed-domain identifiers (IMSI/IMEI digit counts, LcsReferenceNumber
-//     byte size, LcsServiceTypeID/SequenceNumber/UtranBaroPressureMeas
-//     ranges, positioning/estimate byte sizes): rejected when out of
-//     range, symmetric with the encoder.
-//   - Round-trip safety: present-but-empty MSISDN/IMSI/IMEI/NaESRD/NaESRK
+//   - Round-trip safety: present-but-empty MSISDN/NaESRD/NaESRK
 //     decoded values are rejected (cannot round-trip through the
 //     string-based public API).
 //   - Extensible enums (LcsEvent, AccuracyFulfilmentIndicator, and those
@@ -332,9 +295,6 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.IMSI: %w", err)
 		}
-		if imsi == "" {
-			return nil, ErrSLRArgIMSIDecodedEmpty
-		}
 		if len(imsi) < pslIMSIDigitsMin || len(imsi) > pslIMSIDigitsMax {
 			return nil, fmt.Errorf("SubscriberLocationReportArg.IMSI digits=%d: %w", len(imsi), ErrSLRArgIMSIInvalidSize)
 		}
@@ -344,9 +304,6 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		imei, err := tbcd.Decode(*w.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.IMEI: %w", err)
-		}
-		if imei == "" {
-			return nil, ErrSLRArgIMEIDecodedEmpty
 		}
 		if len(imei) != pslIMEIDigits {
 			return nil, fmt.Errorf("SubscriberLocationReportArg.IMEI digits=%d: %w", len(imei), ErrSLRArgIMEIInvalidSize)
@@ -378,9 +335,6 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.NaESRKPlan = plan
 	}
 	if w.LocationEstimate != nil {
-		if len(*w.LocationEstimate) < ExtGeographicalInformationMinLen || len(*w.LocationEstimate) > ExtGeographicalInformationMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.LocationEstimate len=%d: %w", len(*w.LocationEstimate), ErrExtGeographicalInformationSize)
-		}
 		out.LocationEstimate = ExtGeographicalInformation(*w.LocationEstimate)
 	}
 	if w.AgeOfLocationEstimate != nil {
@@ -388,9 +342,6 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.AgeOfLocationEstimate = &v
 	}
 	if w.AddLocationEstimate != nil {
-		if len(*w.AddLocationEstimate) < AddGeographicalInformationMinLen || len(*w.AddLocationEstimate) > AddGeographicalInformationMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.AddLocationEstimate len=%d: %w", len(*w.AddLocationEstimate), ErrAddGeographicalInformationSize)
-		}
 		out.AddLocationEstimate = AddGeographicalInformation(*w.AddLocationEstimate)
 	}
 	if w.DeferredmtLrData != nil {
@@ -401,21 +352,12 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.DeferredmtLrData = v
 	}
 	if w.LcsReferenceNumber != nil {
-		if len(*w.LcsReferenceNumber) != 1 {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.LcsReferenceNumber len=%d: %w", len(*w.LcsReferenceNumber), ErrLCSReferenceNumberInvalidSize)
-		}
 		out.LcsReferenceNumber = LCSReferenceNumber(*w.LcsReferenceNumber)
 	}
 	if w.GeranPositioningData != nil {
-		if len(*w.GeranPositioningData) < PositioningDataInformationMinLen || len(*w.GeranPositioningData) > PositioningDataInformationMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.GeranPositioningData len=%d: %w", len(*w.GeranPositioningData), ErrPositioningDataInformationSize)
-		}
 		out.GeranPositioningData = PositioningDataInformation(*w.GeranPositioningData)
 	}
 	if w.UtranPositioningData != nil {
-		if len(*w.UtranPositioningData) < UtranPositioningDataInfoMinLen || len(*w.UtranPositioningData) > UtranPositioningDataInfoMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.UtranPositioningData len=%d: %w", len(*w.UtranPositioningData), ErrUtranPositioningDataInfoSize)
-		}
 		out.UtranPositioningData = UtranPositioningDataInfo(*w.UtranPositioningData)
 	}
 	cgi, lai, err := convertWireToCellIdOrSai(w.CellIdOrSai)
@@ -434,9 +376,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 	}
 	if w.LcsServiceTypeID != nil {
 		v := int64(*w.LcsServiceTypeID)
-		if v < pslLcsServiceTypeIDMin || v > pslLcsServiceTypeIDMax {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.LcsServiceTypeID=%d: %w", v, ErrSLRArgLcsServiceTypeIDOutOfRange)
-		}
+
 		out.LcsServiceTypeID = &v
 	}
 	out.SaiPresent = nullPtrToBool(w.SaiPresent)
@@ -446,16 +386,11 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.AccuracyFulfilmentIndicator = &v
 	}
 	if w.VelocityEstimate != nil {
-		if len(*w.VelocityEstimate) < VelocityEstimateMinLen || len(*w.VelocityEstimate) > VelocityEstimateMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.VelocityEstimate len=%d: %w", len(*w.VelocityEstimate), ErrVelocityEstimateSize)
-		}
 		out.VelocityEstimate = VelocityEstimate(*w.VelocityEstimate)
 	}
 	if w.SequenceNumber != nil {
 		v := *w.SequenceNumber
-		if v < SequenceNumberMin || v > SequenceNumberMax {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.SequenceNumber=%d: %w", v, ErrSequenceNumberOutOfRange)
-		}
+
 		out.SequenceNumber = &v
 	}
 	if w.PeriodicLDRInfo != nil {
@@ -467,15 +402,9 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 	}
 	out.MoLrShortCircuitIndicator = nullPtrToBool(w.MoLrShortCircuitIndicator)
 	if w.GeranGANSSpositioningData != nil {
-		if len(*w.GeranGANSSpositioningData) < GeranGANSSpositioningDataMinLen || len(*w.GeranGANSSpositioningData) > GeranGANSSpositioningDataMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.GeranGANSSpositioningData len=%d: %w", len(*w.GeranGANSSpositioningData), ErrGeranGANSSpositioningDataSize)
-		}
 		out.GeranGANSSpositioningData = GeranGANSSpositioningData(*w.GeranGANSSpositioningData)
 	}
 	if w.UtranGANSSpositioningData != nil {
-		if len(*w.UtranGANSSpositioningData) < UtranGANSSpositioningDataMinLen || len(*w.UtranGANSSpositioningData) > UtranGANSSpositioningDataMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.UtranGANSSpositioningData len=%d: %w", len(*w.UtranGANSSpositioningData), ErrUtranGANSSpositioningDataSize)
-		}
 		out.UtranGANSSpositioningData = UtranGANSSpositioningData(*w.UtranGANSSpositioningData)
 	}
 	if w.TargetServingNodeForHandover != nil {
@@ -486,16 +415,11 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.TargetServingNodeForHandover = v
 	}
 	if w.UtranAdditionalPositioningData != nil {
-		if len(*w.UtranAdditionalPositioningData) < UtranAdditionalPositioningDataMinLen || len(*w.UtranAdditionalPositioningData) > UtranAdditionalPositioningDataMaxLen {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.UtranAdditionalPositioningData len=%d: %w", len(*w.UtranAdditionalPositioningData), ErrUtranAdditionalPositioningDataSize)
-		}
 		out.UtranAdditionalPositioningData = UtranAdditionalPositioningData(*w.UtranAdditionalPositioningData)
 	}
 	if w.UtranBaroPressureMeas != nil {
 		v := *w.UtranBaroPressureMeas
-		if v < UtranBaroPressureMeasMin || v > UtranBaroPressureMeasMax {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.UtranBaroPressureMeas=%d: %w", v, ErrUtranBaroPressureMeasOutOfRange)
-		}
+
 		out.UtranBaroPressureMeas = &v
 	}
 	if w.UtranCivicAddress != nil {

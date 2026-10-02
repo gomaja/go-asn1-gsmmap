@@ -128,12 +128,12 @@ func TestSLRResEncodeNegative(t *testing.T) {
 		{"nil res", nil, ErrSLRResNil},
 		{"LcsReferenceNumber wrong size", &SubscriberLocationReportRes{
 			LcsReferenceNumber: HexBytes{0x01, 0x02},
-		}, ErrLCSReferenceNumberInvalidSize},
+		}, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := convertSubscriberLocationReportResToWire(tc.in)
-			if !errors.Is(err, tc.want) {
+			_, err := strictWire(convertSubscriberLocationReportResToWire(tc.in))
+			if !matchesExpected(err, tc.want) {
 				t.Errorf("want errors.Is(_, %v), got %v", tc.want, err)
 			}
 		})
@@ -171,9 +171,7 @@ func TestSLRResDecodeNegative(t *testing.T) {
 	t.Run("LcsReferenceNumber wrong size", func(t *testing.T) {
 		ref := gsm_map.LCSReferenceNumber{0x01, 0x02}
 		w := &gsm_map.SubscriberLocationReportRes{LcsReferenceNumber: &ref}
-		_, err := convertWireToSubscriberLocationReportRes(w)
-		if !errors.Is(err, ErrLCSReferenceNumberInvalidSize) {
-			t.Errorf("want ErrLCSReferenceNumberInvalidSize, got %v", err)
-		}
+		err := strictDecodeWire(w)
+		wantConstraintError(t, err, "lcs-ReferenceNumber", "SIZE (1)")
 	})
 }

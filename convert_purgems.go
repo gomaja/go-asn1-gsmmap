@@ -78,10 +78,6 @@ func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
 // convertArgToPurgeMS converts a wire-level gsm_map.PurgeMSArg back into the
 // public PurgeMS type.
 func convertArgToPurgeMS(arg *gsm_map.PurgeMSArg) (*PurgeMS, error) {
-	if len(arg.Imsi) == 0 {
-		return nil, ErrPurgeMSMissingIMSI
-	}
-
 	imsi, err := tbcd.Decode(arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)

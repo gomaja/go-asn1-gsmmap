@@ -12,15 +12,6 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// wireUSSDDataCodingScheme converts the one-octet wire USSD-DataCodingScheme
-// (SIZE (1), §17.7.4) into its uint8 form.
-func wireUSSDDataCodingScheme(b gsm_map.USSDDataCodingScheme) (USSDDataCodingScheme, error) {
-	if len(b) != 1 {
-		return 0, fmt.Errorf("USSD-DataCodingScheme has %d octets: %w", len(b), ErrUSSDDataCodingSchemeInvalidSize)
-	}
-	return USSDDataCodingScheme(b[0]), nil
-}
-
 // validateAlertingPatternToWire accepts the seven values defined in
 // 3GPP TS 29.002 V19.1.0 §17.7.8; decode is lenient, encode is strict.
 func validateAlertingPatternToWire(p AlertingPattern) error {
@@ -61,18 +52,12 @@ func convertWireToUSSDArg(w *gsm_map.USSDArg) (*USSDArg, error) {
 	if w == nil {
 		return nil, ErrUSSDArgNil
 	}
-	dcs, err := wireUSSDDataCodingScheme(w.UssdDataCodingScheme)
-	if err != nil {
-		return nil, fmt.Errorf("USSDArg.DataCodingScheme: %w", err)
-	}
+	dcs := USSDDataCodingScheme(w.UssdDataCodingScheme[0])
 	out := &USSDArg{
 		DataCodingScheme: dcs,
 		USSDString:       slices.Clone([]byte(w.UssdString)),
 	}
 	if w.AlertingPattern != nil {
-		if len(*w.AlertingPattern) != 1 {
-			return nil, fmt.Errorf("USSDArg.AlertingPattern has %d octets: %w", len(*w.AlertingPattern), ErrAlertingPatternInvalidSize)
-		}
 		p := AlertingPattern((*w.AlertingPattern)[0])
 		out.AlertingPattern = &p
 	}
@@ -105,10 +90,7 @@ func convertWireToUSSDRes(w *gsm_map.USSDRes) (*USSDRes, error) {
 	if w == nil {
 		return nil, ErrUSSDResNil
 	}
-	dcs, err := wireUSSDDataCodingScheme(w.UssdDataCodingScheme)
-	if err != nil {
-		return nil, fmt.Errorf("USSDRes.DataCodingScheme: %w", err)
-	}
+	dcs := USSDDataCodingScheme(w.UssdDataCodingScheme[0])
 	return &USSDRes{
 		DataCodingScheme: dcs,
 		USSDString:       slices.Clone([]byte(w.UssdString)),

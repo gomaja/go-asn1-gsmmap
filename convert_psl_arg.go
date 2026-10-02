@@ -17,7 +17,6 @@ import (
 )
 
 const (
-	pslLMSILen = 4
 
 	// IMSI digit-count bounds per TS 29.002 MAP-CommonDataTypes.asn
 	// (TBCD-STRING SIZE 3..8 octets = 5..15 BCD digits per ITU E.212).
@@ -26,11 +25,6 @@ const (
 
 	// IMEI is 15 digits per 3GPP TS 23.003 (8 octets, last nibble is filler).
 	pslIMEIDigits = 15
-
-	// LCSServiceTypeID INTEGER (0..127) per TS 29.002
-	// MAP-CommonDataTypes.asn:436.
-	pslLcsServiceTypeIDMin int64 = 0
-	pslLcsServiceTypeIDMax int64 = 127
 )
 
 // convertProvideSubscriberLocationArgToWire builds the wire-form
@@ -92,9 +86,6 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		out.Msisdn = &v
 	}
 	if len(a.LMSI) > 0 {
-		if len(a.LMSI) != pslLMSILen {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LMSI len=%d: %w", len(a.LMSI), ErrPSLArgLMSIInvalidSize)
-		}
 		v := gsm_map.LMSI(a.LMSI)
 		out.Lmsi = &v
 	}
@@ -110,9 +101,6 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		out.Imei = &v
 	}
 	if len(a.LcsPriority) > 0 {
-		if len(a.LcsPriority) != 1 {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsPriority len=%d: %w", len(a.LcsPriority), ErrLCSPriorityInvalidSize)
-		}
 		v := gsm_map.LCSPriority(a.LcsPriority)
 		out.LcsPriority = &v
 	}
@@ -128,17 +116,12 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		out.SupportedGADShapes = &bs
 	}
 	if len(a.LcsReferenceNumber) > 0 {
-		if len(a.LcsReferenceNumber) != 1 {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsReferenceNumber len=%d: %w", len(a.LcsReferenceNumber), ErrLCSReferenceNumberInvalidSize)
-		}
 		v := gsm_map.LCSReferenceNumber(a.LcsReferenceNumber)
 		out.LcsReferenceNumber = &v
 	}
 	if a.LcsServiceTypeID != nil {
 		v := *a.LcsServiceTypeID
-		if v < pslLcsServiceTypeIDMin || v > pslLcsServiceTypeIDMax {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsServiceTypeID=%d: %w", v, ErrPSLArgLcsServiceTypeIDOutOfRange)
-		}
+
 		w := gsm_map.LCSServiceTypeID(v)
 		out.LcsServiceTypeID = &w
 	}
@@ -193,13 +176,8 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 
 // convertWireToProvideSubscriberLocationArg unmarshals the wire-form
 // struct back to the public type. Validation rules:
-//   - Fixed-domain identifiers (IMSI/IMEI digit counts, LMSI/LCSPriority/
-//     LCSReferenceNumber byte sizes, LcsServiceTypeID range,
-//     PrivacyCheckRelatedAction range): rejected when out of range,
-//     symmetric with the encoder.
-//   - Round-trip-safety: present-but-empty MlcNumber/MSISDN/IMSI/IMEI
-//     decoded values are rejected (cannot round-trip through the
-//     string-based public API).
+//   - Round-trip safety: present-but-empty MlcNumber/MSISDN decoded
+//     values are rejected (cannot round-trip through the string API).
 //   - Extensible enums (LocationEstimateType, LCSClientType,
 //     LCSFormatIndicator, AccuracyFulfilmentIndicator, AreaType,
 //     OccurrenceInfo, RANTechnology): unknown values preserved per
@@ -244,9 +222,6 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		if err != nil {
 			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.IMSI: %w", err)
 		}
-		if imsi == "" {
-			return nil, ErrPSLArgIMSIDecodedEmpty
-		}
 		if len(imsi) < pslIMSIDigitsMin || len(imsi) > pslIMSIDigitsMax {
 			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMSI digits=%d: %w", len(imsi), ErrPSLArgIMSIInvalidSize)
 		}
@@ -265,9 +240,6 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.MSISDNPlan = plan
 	}
 	if w.Lmsi != nil {
-		if len(*w.Lmsi) != pslLMSILen {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LMSI len=%d: %w", len(*w.Lmsi), ErrPSLArgLMSIInvalidSize)
-		}
 		out.LMSI = HexBytes(*w.Lmsi)
 	}
 	if w.Imei != nil {
@@ -275,18 +247,12 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		if err != nil {
 			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.IMEI: %w", err)
 		}
-		if imei == "" {
-			return nil, ErrPSLArgIMEIDecodedEmpty
-		}
 		if len(imei) != pslIMEIDigits {
 			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMEI digits=%d: %w", len(imei), ErrPSLArgIMEIInvalidSize)
 		}
 		out.IMEI = imei
 	}
 	if w.LcsPriority != nil {
-		if len(*w.LcsPriority) != 1 {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsPriority len=%d: %w", len(*w.LcsPriority), ErrLCSPriorityInvalidSize)
-		}
 		out.LcsPriority = LCSPriority(*w.LcsPriority)
 	}
 	if w.LcsQoS != nil {
@@ -304,16 +270,11 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.SupportedGADShapes = v
 	}
 	if w.LcsReferenceNumber != nil {
-		if len(*w.LcsReferenceNumber) != 1 {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsReferenceNumber len=%d: %w", len(*w.LcsReferenceNumber), ErrLCSReferenceNumberInvalidSize)
-		}
 		out.LcsReferenceNumber = LCSReferenceNumber(*w.LcsReferenceNumber)
 	}
 	if w.LcsServiceTypeID != nil {
 		v := int64(*w.LcsServiceTypeID)
-		if v < pslLcsServiceTypeIDMin || v > pslLcsServiceTypeIDMax {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsServiceTypeID=%d: %w", v, ErrPSLArgLcsServiceTypeIDOutOfRange)
-		}
+
 		out.LcsServiceTypeID = &v
 	}
 	if w.LcsCodeword != nil {

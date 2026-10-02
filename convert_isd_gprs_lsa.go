@@ -103,30 +103,7 @@ func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
 	if p == nil {
 		return nil, nil
 	}
-	if p.PdpContextId < 1 || int64(p.PdpContextId) > gsm_map.MaxNumOfPDPContexts {
-		return nil, fmt.Errorf("%w (got %d)", ErrPDPContextIdOutOfRange, p.PdpContextId)
-	}
-	if len(p.PdpType) != 2 {
-		return nil, fmt.Errorf("%w (got %d)", ErrPDPTypeInvalidSize, len(p.PdpType))
-	}
-	if len(p.QosSubscribed) != 3 {
-		return nil, fmt.Errorf("%w (got %d)", ErrQoSSubscribedInvalidSize, len(p.QosSubscribed))
-	}
-	if err := validateAPN(p.Apn, "PDPContext.Apn"); err != nil {
-		return nil, err
-	}
-	if p.ExtQoSSubscribed != nil && (len(p.ExtQoSSubscribed) < 1 || len(p.ExtQoSSubscribed) > 9) {
-		return nil, fmt.Errorf("%w (got %d)", ErrExtQoSSubscribedInvalidSize, len(p.ExtQoSSubscribed))
-	}
-	if p.Ext2QoSSubscribed != nil && (len(p.Ext2QoSSubscribed) < 1 || len(p.Ext2QoSSubscribed) > 3) {
-		return nil, fmt.Errorf("%w (got %d)", ErrExt2QoSSubscribedInvalidSize, len(p.Ext2QoSSubscribed))
-	}
-	if p.Ext3QoSSubscribed != nil && (len(p.Ext3QoSSubscribed) < 1 || len(p.Ext3QoSSubscribed) > 2) {
-		return nil, fmt.Errorf("%w (got %d)", ErrExt3QoSSubscribedInvalidSize, len(p.Ext3QoSSubscribed))
-	}
-	if p.Ext4QoSSubscribed != nil && len(p.Ext4QoSSubscribed) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrExt4QoSSubscribedInvalidSize, len(p.Ext4QoSSubscribed))
-	}
+
 	if err := validateExtQoSHierarchy(
 		p.ExtQoSSubscribed != nil,
 		p.Ext2QoSSubscribed != nil,
@@ -135,38 +112,13 @@ func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
 	); err != nil {
 		return nil, err
 	}
-	if p.PdpAddress != nil {
-		if err := validatePDPAddress(p.PdpAddress, "PDPContext.PdpAddress"); err != nil {
-			return nil, err
-		}
-	}
-	if p.ExtPdpType != nil && len(p.ExtPdpType) != 2 {
-		return nil, fmt.Errorf("%w (got %d)", ErrExtPDPTypeInvalidSize, len(p.ExtPdpType))
-	}
+
 	if p.ExtPdpAddress != nil {
 		if p.PdpAddress == nil {
 			return nil, ErrExtPDPAddressWithoutPDPAddress
 		}
-		if len(p.ExtPdpAddress) < 1 || len(p.ExtPdpAddress) > 16 {
-			return nil, fmt.Errorf("%w (got %d)", ErrExtPDPAddressInvalidSize, len(p.ExtPdpAddress))
-		}
 	}
-	if p.PdpChargingCharacteristics != nil && len(p.PdpChargingCharacteristics) != 2 {
-		return nil, fmt.Errorf("%w (got %d)", ErrPDPChargingCharsInvalidSize, len(p.PdpChargingCharacteristics))
-	}
-	if p.ApnOiReplacement != nil {
-		if err := validateAPNOIReplacement(p.ApnOiReplacement, "PDPContext.ApnOiReplacement"); err != nil {
-			return nil, err
-		}
-	}
-	if p.RestorationPriority != nil && len(p.RestorationPriority) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrRestorationPriorityInvalidSize, len(p.RestorationPriority))
-	}
-	if p.SCEFID != nil {
-		if err := validateFQDN(p.SCEFID, "PDPContext.SCEFID"); err != nil {
-			return nil, err
-		}
-	}
+
 	if p.SiptoPermission != nil {
 		if *p.SiptoPermission < 0 || *p.SiptoPermission > 1 {
 			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOPermissionInvalid, *p.SiptoPermission)
@@ -269,32 +221,8 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 	if w == nil {
 		return nil, nil
 	}
-	id, err := narrowInt64Range(int64(w.PdpContextId), 1, gsm_map.MaxNumOfPDPContexts, "PDPContext.PdpContextId")
-	if err != nil {
-		// Wrap to preserve encode/decode symmetry on errors.Is(...).
-		return nil, fmt.Errorf("%w: %v", ErrPDPContextIdOutOfRange, err)
-	}
-	if len(w.PdpType) != 2 {
-		return nil, fmt.Errorf("%w (got %d)", ErrPDPTypeInvalidSize, len(w.PdpType))
-	}
-	if len(w.QosSubscribed) != 3 {
-		return nil, fmt.Errorf("%w (got %d)", ErrQoSSubscribedInvalidSize, len(w.QosSubscribed))
-	}
-	if err := validateAPN(HexBytes(w.Apn), "PDPContext.Apn"); err != nil {
-		return nil, err
-	}
-	if w.ExtQoSSubscribed != nil && (len(*w.ExtQoSSubscribed) < 1 || len(*w.ExtQoSSubscribed) > 9) {
-		return nil, fmt.Errorf("%w (got %d)", ErrExtQoSSubscribedInvalidSize, len(*w.ExtQoSSubscribed))
-	}
-	if w.Ext2QoSSubscribed != nil && (len(*w.Ext2QoSSubscribed) < 1 || len(*w.Ext2QoSSubscribed) > 3) {
-		return nil, fmt.Errorf("%w (got %d)", ErrExt2QoSSubscribedInvalidSize, len(*w.Ext2QoSSubscribed))
-	}
-	if w.Ext3QoSSubscribed != nil && (len(*w.Ext3QoSSubscribed) < 1 || len(*w.Ext3QoSSubscribed) > 2) {
-		return nil, fmt.Errorf("%w (got %d)", ErrExt3QoSSubscribedInvalidSize, len(*w.Ext3QoSSubscribed))
-	}
-	if w.Ext4QoSSubscribed != nil && len(*w.Ext4QoSSubscribed) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrExt4QoSSubscribedInvalidSize, len(*w.Ext4QoSSubscribed))
-	}
+	id := int(w.PdpContextId)
+
 	if err := validateExtQoSHierarchy(
 		w.ExtQoSSubscribed != nil,
 		w.Ext2QoSSubscribed != nil,
@@ -311,18 +239,12 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 		VplmnAddressAllowed: nullPtrToBool(w.VplmnAddressAllowed),
 	}
 	if w.PdpAddress != nil {
-		if err := validatePDPAddress(HexBytes(*w.PdpAddress), "PDPContext.PdpAddress"); err != nil {
-			return nil, err
-		}
 		out.PdpAddress = HexBytes(*w.PdpAddress)
 	}
 	if w.ExtQoSSubscribed != nil {
 		out.ExtQoSSubscribed = HexBytes(*w.ExtQoSSubscribed)
 	}
 	if w.PdpChargingCharacteristics != nil {
-		if len(*w.PdpChargingCharacteristics) != 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrPDPChargingCharsInvalidSize, len(*w.PdpChargingCharacteristics))
-		}
 		out.PdpChargingCharacteristics = HexBytes(*w.PdpChargingCharacteristics)
 	}
 	if w.Ext2QoSSubscribed != nil {
@@ -335,24 +257,16 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 		out.Ext4QoSSubscribed = HexBytes(*w.Ext4QoSSubscribed)
 	}
 	if w.ApnOiReplacement != nil {
-		if err := validateAPNOIReplacement(HexBytes(*w.ApnOiReplacement), "PDPContext.ApnOiReplacement"); err != nil {
-			return nil, err
-		}
 		out.ApnOiReplacement = HexBytes(*w.ApnOiReplacement)
 	}
 	if w.ExtPdpType != nil {
-		if len(*w.ExtPdpType) != 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrExtPDPTypeInvalidSize, len(*w.ExtPdpType))
-		}
 		out.ExtPdpType = HexBytes(*w.ExtPdpType)
 	}
 	if w.ExtPdpAddress != nil {
 		if w.PdpAddress == nil {
 			return nil, ErrExtPDPAddressWithoutPDPAddress
 		}
-		if len(*w.ExtPdpAddress) < 1 || len(*w.ExtPdpAddress) > 16 {
-			return nil, fmt.Errorf("%w (got %d)", ErrExtPDPAddressInvalidSize, len(*w.ExtPdpAddress))
-		}
+
 		out.ExtPdpAddress = HexBytes(*w.ExtPdpAddress)
 	}
 	if w.Ambr != nil {
@@ -377,9 +291,6 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 		out.LipaPermission = &v
 	}
 	if w.RestorationPriority != nil {
-		if len(*w.RestorationPriority) != 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrRestorationPriorityInvalidSize, len(*w.RestorationPriority))
-		}
 		out.RestorationPriority = HexBytes(*w.RestorationPriority)
 	}
 	if w.SiptoLocalNetworkPermission != nil {
@@ -397,9 +308,6 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 		out.NIDDMechanism = &v
 	}
 	if w.SCEFID != nil {
-		if err := validateFQDN(HexBytes(*w.SCEFID), "PDPContext.SCEFID"); err != nil {
-			return nil, err
-		}
 		out.SCEFID = HexBytes(*w.SCEFID)
 	}
 	return out, nil
@@ -413,9 +321,7 @@ func convertGPRSDataListToWire(list GPRSDataList) (*gsm_map.GPRSDataList, error)
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfPDPContexts {
-		return nil, fmt.Errorf("%w (got %d)", ErrGPRSDataListSize, len(list))
-	}
+
 	out := gsm_map.GPRSDataList{Values: make([]gsm_map.PDPContext, len(list))}
 	for i, p := range list {
 		w, err := convertPDPContextToWire(&p)
@@ -431,9 +337,7 @@ func convertWireToGPRSDataList(w *gsm_map.GPRSDataList) (GPRSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfPDPContexts {
-		return nil, fmt.Errorf("%w (got %d)", ErrGPRSDataListSize, len(w.Values))
-	}
+
 	out := make(GPRSDataList, len(w.Values))
 	for i, p := range w.Values {
 		v, err := convertWireToPDPContext(&p)
@@ -461,9 +365,6 @@ func convertGPRSSubscriptionDataToWire(g *GPRSSubscriptionData) (*gsm_map.GPRSSu
 		CompleteDataListIncluded: boolToNullPtr(g.CompleteDataListIncluded),
 	}
 	if g.ApnOiReplacement != nil {
-		if err := validateAPNOIReplacement(g.ApnOiReplacement, "GPRSSubscriptionData.ApnOiReplacement"); err != nil {
-			return nil, err
-		}
 		v := gsm_map.APNOIReplacement(g.ApnOiReplacement)
 		out.ApnOiReplacement = &v
 	}
@@ -486,9 +387,6 @@ func convertWireToGPRSSubscriptionData(w *gsm_map.GPRSSubscriptionData) (*GPRSSu
 		CompleteDataListIncluded: nullPtrToBool(w.CompleteDataListIncluded),
 	}
 	if w.ApnOiReplacement != nil {
-		if err := validateAPNOIReplacement(HexBytes(*w.ApnOiReplacement), "GPRSSubscriptionData.ApnOiReplacement"); err != nil {
-			return nil, err
-		}
 		out.ApnOiReplacement = HexBytes(*w.ApnOiReplacement)
 	}
 	return out, nil
@@ -503,12 +401,7 @@ func convertLSADataToWire(l *LSAData) (*gsm_map.LSAData, error) {
 	if l == nil {
 		return nil, nil
 	}
-	if len(l.LsaIdentity) != 3 {
-		return nil, fmt.Errorf("%w (got %d)", ErrLSAIdentityInvalidSize, len(l.LsaIdentity))
-	}
-	if len(l.LsaAttributes) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrLSAAttributesInvalidSize, len(l.LsaAttributes))
-	}
+
 	return &gsm_map.LSAData{
 		LsaIdentity:            gsm_map.LSAIdentity(l.LsaIdentity),
 		LsaAttributes:          gsm_map.LSAAttributes(l.LsaAttributes),
@@ -520,12 +413,7 @@ func convertWireToLSAData(w *gsm_map.LSAData) (*LSAData, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w.LsaIdentity) != 3 {
-		return nil, fmt.Errorf("%w (got %d)", ErrLSAIdentityInvalidSize, len(w.LsaIdentity))
-	}
-	if len(w.LsaAttributes) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrLSAAttributesInvalidSize, len(w.LsaAttributes))
-	}
+
 	return &LSAData{
 		LsaIdentity:            HexBytes(w.LsaIdentity),
 		LsaAttributes:          HexBytes(w.LsaAttributes),
@@ -537,9 +425,7 @@ func convertLSADataListToWire(list LSADataList) (*gsm_map.LSADataList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfLSAs {
-		return nil, fmt.Errorf("%w (got %d)", ErrLSADataListSize, len(list))
-	}
+
 	out := gsm_map.LSADataList{Values: make([]gsm_map.LSAData, len(list))}
 	for i, l := range list {
 		w, err := convertLSADataToWire(&l)
@@ -555,9 +441,7 @@ func convertWireToLSADataList(w *gsm_map.LSADataList) (LSADataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfLSAs {
-		return nil, fmt.Errorf("%w (got %d)", ErrLSADataListSize, len(w.Values))
-	}
+
 	out := make(LSADataList, len(w.Values))
 	for i, l := range w.Values {
 		v, err := convertWireToLSAData(&l)

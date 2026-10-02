@@ -231,8 +231,8 @@ func TestProvideSubscriberLocationArgLMSISizeValidation(t *testing.T) {
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LMSI: HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be exactly 4
 	}
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgLMSIInvalidSize) {
-		t.Errorf("LMSI=3 octets: want ErrPSLArgLMSIInvalidSize, got %v", err)
+	if _, err := strictWire(convertProvideSubscriberLocationArgToWire(a)); !isConstraint(err) {
+		t.Errorf("LMSI=3 octets: want BER constraint error, got %v", err)
 	}
 }
 
@@ -243,14 +243,14 @@ func TestProvideSubscriberLocationArgLcsServiceTypeIDOutOfRange(t *testing.T) {
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LcsServiceTypeID: &bad,
 	}
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgLcsServiceTypeIDOutOfRange) {
-		t.Errorf("LcsServiceTypeID=128: want ErrPSLArgLcsServiceTypeIDOutOfRange, got %v", err)
+	if _, err := strictWire(convertProvideSubscriberLocationArgToWire(a)); !isConstraint(err) {
+		t.Errorf("LcsServiceTypeID=128: want BER constraint error, got %v", err)
 	}
 
 	negative := int64(-1)
 	a.LcsServiceTypeID = &negative
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrPSLArgLcsServiceTypeIDOutOfRange) {
-		t.Errorf("LcsServiceTypeID=-1: want ErrPSLArgLcsServiceTypeIDOutOfRange, got %v", err)
+	if _, err := strictWire(convertProvideSubscriberLocationArgToWire(a)); !isConstraint(err) {
+		t.Errorf("LcsServiceTypeID=-1: want BER constraint error, got %v", err)
 	}
 }
 
@@ -260,8 +260,8 @@ func TestProvideSubscriberLocationArgLcsPrioritySizeValidation(t *testing.T) {
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LcsPriority: LCSPriority{0x01, 0x02}, // 2 octets — must be 1
 	}
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrLCSPriorityInvalidSize) {
-		t.Errorf("LcsPriority=2 octets: want ErrLCSPriorityInvalidSize, got %v", err)
+	if _, err := strictWire(convertProvideSubscriberLocationArgToWire(a)); !isConstraint(err) {
+		t.Errorf("LcsPriority=2 octets: want BER constraint error, got %v", err)
 	}
 }
 
@@ -271,8 +271,8 @@ func TestProvideSubscriberLocationArgLcsReferenceNumberSizeValidation(t *testing
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LcsReferenceNumber: LCSReferenceNumber{0x01, 0x02}, // 2 octets — must be 1
 	}
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrLCSReferenceNumberInvalidSize) {
-		t.Errorf("LcsReferenceNumber=2 octets: want ErrLCSReferenceNumberInvalidSize, got %v", err)
+	if _, err := strictWire(convertProvideSubscriberLocationArgToWire(a)); !isConstraint(err) {
+		t.Errorf("LcsReferenceNumber=2 octets: want BER constraint error, got %v", err)
 	}
 }
 
@@ -313,11 +313,7 @@ func TestProvideSubscriberLocationArgMlcNumberDecodedEmptyRejected(t *testing.T)
 	}
 }
 
-// IMSI / IMEI present-but-empty wire fields are rejected on decode for
-// round-trip fidelity (parallel to the MSISDN/MlcNumber tests above).
-// A zero-length wire octet string decodes to "" after tbcd.Decode,
-// which would silently collapse to "absent" on re-encode without this
-// guard.
+// Strict BER rejects zero-octet IMSI and IMEI fields before conversion.
 func TestProvideSubscriberLocationArgIMSIDecodedEmptyRejected(t *testing.T) {
 	mlc := gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x32, 0x54, 0x76, 0x98}
 	emptyImsi := gsm_map.IMSI{} // zero octets → "" after Decode
@@ -326,10 +322,7 @@ func TestProvideSubscriberLocationArgIMSIDecodedEmptyRejected(t *testing.T) {
 		MlcNumber:    mlc,
 		Imsi:         &emptyImsi,
 	}
-	_, err := convertWireToProvideSubscriberLocationArg(w)
-	if !errors.Is(err, ErrPSLArgIMSIDecodedEmpty) {
-		t.Errorf("IMSI zero-length: want ErrPSLArgIMSIDecodedEmpty, got %v", err)
-	}
+	wantConstraintError(t, strictDecodeWire(w), "imsi", "SIZE (3..8)")
 }
 
 func TestProvideSubscriberLocationArgIMEIDecodedEmptyRejected(t *testing.T) {
@@ -340,10 +333,7 @@ func TestProvideSubscriberLocationArgIMEIDecodedEmptyRejected(t *testing.T) {
 		MlcNumber:    mlc,
 		Imei:         &emptyImei,
 	}
-	_, err := convertWireToProvideSubscriberLocationArg(w)
-	if !errors.Is(err, ErrPSLArgIMEIDecodedEmpty) {
-		t.Errorf("IMEI zero-length: want ErrPSLArgIMEIDecodedEmpty, got %v", err)
-	}
+	wantConstraintError(t, strictDecodeWire(w), "imei", "SIZE (8)")
 }
 
 // Decode-side size / range validation: every encode-path size/range
@@ -388,9 +378,9 @@ func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {
 		w := mkBase()
 		lmsi := gsm_map.LMSI{0x01, 0x02, 0x03} // 3 octets
 		w.Lmsi = &lmsi
-		_, err := convertWireToProvideSubscriberLocationArg(w)
-		if !errors.Is(err, ErrPSLArgLMSIInvalidSize) {
-			t.Errorf("want ErrPSLArgLMSIInvalidSize, got %v", err)
+		err := strictDecodeWire(w)
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 
@@ -399,9 +389,9 @@ func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {
 		w := mkBase()
 		pri := gsm_map.LCSPriority{0x01, 0x02} // 2 octets
 		w.LcsPriority = &pri
-		_, err := convertWireToProvideSubscriberLocationArg(w)
-		if !errors.Is(err, ErrLCSPriorityInvalidSize) {
-			t.Errorf("want ErrLCSPriorityInvalidSize, got %v", err)
+		err := strictDecodeWire(w)
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 
@@ -410,9 +400,9 @@ func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {
 		w := mkBase()
 		ref := gsm_map.LCSReferenceNumber{0x01, 0x02} // 2 octets
 		w.LcsReferenceNumber = &ref
-		_, err := convertWireToProvideSubscriberLocationArg(w)
-		if !errors.Is(err, ErrLCSReferenceNumberInvalidSize) {
-			t.Errorf("want ErrLCSReferenceNumberInvalidSize, got %v", err)
+		err := strictDecodeWire(w)
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 
@@ -421,9 +411,9 @@ func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {
 		w := mkBase()
 		sid := gsm_map.LCSServiceTypeID(128)
 		w.LcsServiceTypeID = &sid
-		_, err := convertWireToProvideSubscriberLocationArg(w)
-		if !errors.Is(err, ErrPSLArgLcsServiceTypeIDOutOfRange) {
-			t.Errorf("want ErrPSLArgLcsServiceTypeIDOutOfRange, got %v", err)
+		err := strictDecodeWire(w)
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }

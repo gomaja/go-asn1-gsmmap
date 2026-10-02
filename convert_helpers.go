@@ -113,51 +113,12 @@ func int64FromBigInt(v *big.Int, field string) (int64, error) {
 	return v.Int64(), nil
 }
 
-// validatePlmnId is the canonical 3-octet PLMN-Id check per TS 23.003,
-// shared across all converters that surface a PLMN-Id field.
-func validatePlmnId(b HexBytes, field string) error {
-	if len(b) != 3 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrPlmnIdInvalidSize, len(b))
-	}
-	return nil
-}
-
-// validateAPN checks the APN OCTET STRING (SIZE 2..63) constraint per
-// TS 29.002 MAP-MS-DataTypes.asn:1654.
+// validateAPN checks the APN element of a LIPAAllowedAPNList. The codec does
+// not yet enforce SEQUENCE OF element SIZE constraints:
+// https://github.com/gomaja/go-asn1/issues/79 (TS 29.002 §17.7.1).
 func validateAPN(b HexBytes, field string) error {
 	if len(b) < 2 || len(b) > 63 {
 		return fmt.Errorf("%s: %w (got %d)", field, ErrAPNInvalidSize, len(b))
-	}
-	return nil
-}
-
-// validateAPNOIReplacement checks the APN-OI-Replacement OCTET STRING
-// (SIZE 9..100) constraint per TS 29.002 MAP-MS-DataTypes.asn:1303.
-// Used by GPRSSubscriptionData, PDPContext and APN-Configuration.
-func validateAPNOIReplacement(b HexBytes, field string) error {
-	if len(b) < 9 || len(b) > 100 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrAPNOIReplacementInvalidSize, len(b))
-	}
-	return nil
-}
-
-// validateFQDN checks the FQDN OCTET STRING (SIZE 9..255) constraint per
-// TS 29.002 MAP-MS-DataTypes.asn:1434. Used by PDPContext.SCEFID,
-// APN-Configuration and LCSClientExternalID.
-func validateFQDN(b HexBytes, field string) error {
-	if len(b) < 9 || len(b) > 255 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrFQDNInvalidSize, len(b))
-	}
-	return nil
-}
-
-// validatePDPAddress checks the PDP-Address OCTET STRING (SIZE 1..16)
-// constraint per TS 29.002 MAP-MS-DataTypes.asn:1665. Reused by
-// PDPContext (PdpAddress, ExtPdpAddress) and APN-Configuration
-// (ServedPartyIPIPv4Address, ServedPartyIPIPv6Address).
-func validatePDPAddress(b HexBytes, field string) error {
-	if len(b) < 1 || len(b) > 16 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrPDPAddressInvalidSize, len(b))
 	}
 	return nil
 }

@@ -127,62 +127,62 @@ func TestExtForwInfoRoundTrip(t *testing.T) {
 
 func TestExtForwInfoValidation(t *testing.T) {
 	t.Run("emptyFeatureList", func(t *testing.T) {
-		_, err := convertExtForwInfoToWire(&ExtForwInfo{SsCode: 0x21})
-		if !errors.Is(err, ErrExtForwFeatureListInvalidSize) {
-			t.Errorf("want ErrExtForwFeatureListInvalidSize, got %v", err)
+		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{SsCode: 0x21}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("featureListTooLong", func(t *testing.T) {
-		big := make([]ExtForwFeature, MaxNumOfExtBasicServiceGroups+1)
+		big := make([]ExtForwFeature, 32+1)
 		for i := range big {
 			big[i] = ExtForwFeature{SsStatus: HexBytes{0x05}}
 		}
-		_, err := convertExtForwInfoToWire(&ExtForwInfo{SsCode: 0x21, ForwardingFeatureList: big})
-		if !errors.Is(err, ErrExtForwFeatureListInvalidSize) {
-			t.Errorf("want ErrExtForwFeatureListInvalidSize, got %v", err)
+		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{SsCode: 0x21, ForwardingFeatureList: big}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("ssStatusEmpty", func(t *testing.T) {
-		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{
 			SsCode:                0x21,
 			ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{}}},
-		})
-		if !errors.Is(err, ErrExtSSStatusInvalidSize) {
-			t.Errorf("want ErrExtSSStatusInvalidSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("ssStatusTooLong", func(t *testing.T) {
-		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{
 			SsCode:                0x21,
 			ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{1, 2, 3, 4, 5, 6}}},
-		})
-		if !errors.Is(err, ErrExtSSStatusInvalidSize) {
-			t.Errorf("want ErrExtSSStatusInvalidSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("forwardingOptionsTooLong", func(t *testing.T) {
-		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{
 			SsCode: 0x21,
 			ForwardingFeatureList: []ExtForwFeature{{
 				SsStatus:          HexBytes{0x05},
 				ForwardingOptions: HexBytes{1, 2, 3, 4, 5, 6}, // 6 octets, max is 5
 			}},
-		})
-		if !errors.Is(err, ErrExtForwOptionsInvalidSize) {
-			t.Errorf("want ErrExtForwOptionsInvalidSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("noRepCondTimeOutOfRange", func(t *testing.T) {
 		bad := 200
-		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{
 			SsCode: 0x21,
 			ForwardingFeatureList: []ExtForwFeature{{
 				SsStatus:             HexBytes{0x05},
 				NoReplyConditionTime: &bad,
 			}},
-		})
-		if !errors.Is(err, ErrExtNoRepCondTimeOutOfRange) {
-			t.Errorf("want ErrExtNoRepCondTimeOutOfRange, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }
@@ -218,39 +218,39 @@ func TestExtForwFeatureLongForwardedToNumberRoundTripPreservesNaturePlan(t *test
 // at both encode and decode (PR #29 pattern).
 func TestExtForwFeatureNilVsEmptyDiscipline(t *testing.T) {
 	t.Run("encoderRejectsEmptySubaddress", func(t *testing.T) {
-		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{
 			SsCode: 0x21,
 			ForwardingFeatureList: []ExtForwFeature{{
 				SsStatus:              HexBytes{0x05},
 				ForwardedToSubaddress: HexBytes{}, // non-nil, empty
 			}},
-		})
-		if !errors.Is(err, ErrExtForwSubaddressInvalidSize) {
-			t.Errorf("want ErrExtForwSubaddressInvalidSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("encoderRejectsOversizeSubaddress", func(t *testing.T) {
-		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{
 			SsCode: 0x21,
 			ForwardingFeatureList: []ExtForwFeature{{
 				SsStatus:              HexBytes{0x05},
 				ForwardedToSubaddress: make(HexBytes, 22), // 22 octets, max is 21
 			}},
-		})
-		if !errors.Is(err, ErrExtForwSubaddressInvalidSize) {
-			t.Errorf("want ErrExtForwSubaddressInvalidSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("encoderRejectsEmptyForwOptions", func(t *testing.T) {
-		_, err := convertExtForwInfoToWire(&ExtForwInfo{
+		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{
 			SsCode: 0x21,
 			ForwardingFeatureList: []ExtForwFeature{{
 				SsStatus:          HexBytes{0x05},
 				ForwardingOptions: HexBytes{}, // non-nil, empty
 			}},
-		})
-		if !errors.Is(err, ErrExtForwOptionsInvalidSize) {
-			t.Errorf("want ErrExtForwOptionsInvalidSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }
@@ -281,19 +281,17 @@ func TestExtForwFeatureLenientNoRepCondTime(t *testing.T) {
 					NoReplyConditionTime: intPtrV(20),
 				}},
 			}
-			wire, err := convertExtForwInfoToWire(in)
+			wire, err := strictWire(convertExtForwInfoToWire(in))
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
 			v := gsm_map.ExtNoRepCondTime(tc.wire)
 			wire.ForwardingFeatureList.Values[0].NoReplyConditionTime = &v
-			got, err := convertWireToExtForwInfo(wire)
 			if tc.want < 0 {
-				if !errors.Is(err, ErrExtNoRepCondTimeOutOfRange) {
-					t.Errorf("wire=%d: want ErrExtNoRepCondTimeOutOfRange, got %v", tc.wire, err)
-				}
+				wantConstraintError(t, strictDecodeWire(wire), "forwardingFeatureList.element[0].noReplyConditionTime", "(1..100)")
 				return
 			}
+			got, err := convertWireToExtForwInfo(wire)
 			if err != nil {
 				t.Fatalf("decode: %v", err)
 			}
@@ -333,9 +331,9 @@ func TestExtCallBarInfoRoundTrip(t *testing.T) {
 
 func TestExtCallBarInfoValidation(t *testing.T) {
 	t.Run("emptyList", func(t *testing.T) {
-		_, err := convertExtCallBarInfoToWire(&ExtCallBarInfo{SsCode: 0x91})
-		if !errors.Is(err, ErrExtCallBarFeatureListInvalidSize) {
-			t.Errorf("want ErrExtCallBarFeatureListInvalidSize, got %v", err)
+		_, err := strictWire(convertExtCallBarInfoToWire(&ExtCallBarInfo{SsCode: 0x91}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }
@@ -407,58 +405,59 @@ func TestCUGInfoRoundTrip(t *testing.T) {
 
 func TestCUGInfoValidation(t *testing.T) {
 	t.Run("subListTooLong", func(t *testing.T) {
-		big := make([]CUGSubscription, MaxNumOfCUG+1)
+		big := make([]CUGSubscription, 10+1)
 		for i := range big {
 			big[i] = CUGSubscription{
 				CugInterlock:    HexBytes{0, 0, 0, 0},
 				IntraCUGOptions: IntraCUGNoRestrictions,
 			}
 		}
-		_, err := convertCUGInfoToWire(&CUGInfo{CugSubscriptionList: big})
-		if !errors.Is(err, ErrCUGSubscriptionListInvalidSize) {
-			t.Errorf("want ErrCUGSubscriptionListInvalidSize, got %v", err)
+		_, err := strictWire(convertCUGInfoToWire(&CUGInfo{CugSubscriptionList: big}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("cugIndexOutOfRange", func(t *testing.T) {
-		_, err := convertCUGInfoToWire(&CUGInfo{
+		_, err := strictWire(convertCUGInfoToWire(&CUGInfo{
 			CugSubscriptionList: []CUGSubscription{{
 				CugIndex:        32768, // > 32767
 				CugInterlock:    HexBytes{0, 0, 0, 0},
 				IntraCUGOptions: IntraCUGNoRestrictions,
 			}},
-		})
-		if !errors.Is(err, ErrCUGIndexOutOfRange) {
-			t.Errorf("want ErrCUGIndexOutOfRange, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("interlockWrongLength", func(t *testing.T) {
-		_, err := convertCUGInfoToWire(&CUGInfo{
+		_, err := strictWire(convertCUGInfoToWire(&CUGInfo{
 			CugSubscriptionList: []CUGSubscription{{
 				CugInterlock:    HexBytes{0, 0, 0}, // 3 octets, need 4
 				IntraCUGOptions: IntraCUGNoRestrictions,
 			}},
-		})
-		if !errors.Is(err, ErrCUGInterlockInvalidSize) {
-			t.Errorf("want ErrCUGInterlockInvalidSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("invalidIntraOpts", func(t *testing.T) {
-		_, err := convertCUGInfoToWire(&CUGInfo{
+		_, err := strictWire(convertCUGInfoToWire(&CUGInfo{
 			CugSubscriptionList: []CUGSubscription{{
 				CugInterlock:    HexBytes{0, 0, 0, 0},
 				IntraCUGOptions: IntraCUGOptions(99),
 			}},
-		})
+		}))
 		if !errors.Is(err, ErrIntraCUGOptionsInvalidValue) {
 			t.Errorf("want ErrIntraCUGOptionsInvalidValue, got %v", err)
 		}
 	})
 	t.Run("featureListEmpty", func(t *testing.T) {
-		_, err := convertCUGInfoToWire(&CUGInfo{
-			CugFeatureList: []CUGFeature{}, // non-nil, empty
-		})
-		if !errors.Is(err, ErrCUGFeatureListInvalidSize) {
-			t.Errorf("want ErrCUGFeatureListInvalidSize, got %v", err)
+		_, err := strictWire(convertCUGInfoToWire(&CUGInfo{
+			CugSubscriptionList: []CUGSubscription{{CugInterlock: HexBytes{0, 0, 0, 0}, IntraCUGOptions: IntraCUGNoRestrictions}},
+			CugFeatureList:      []CUGFeature{}, // non-nil, empty
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }
@@ -547,9 +546,7 @@ func TestEMLPPInfoLenientDecode(t *testing.T) {
 			}
 			got, err := convertWireToEMLPPInfo(w)
 			if tc.fail {
-				if !errors.Is(err, ErrEMLPPPriorityOutOfRange) {
-					t.Errorf("wire=%d: want ErrEMLPPPriorityOutOfRange, got %v", tc.wire, err)
-				}
+				wantConstraintError(t, strictDecodeWire(w), "maximumentitledPriority", "(0..15)")
 				return
 			}
 			if err != nil {

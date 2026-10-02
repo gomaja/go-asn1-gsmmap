@@ -33,7 +33,7 @@ func TestLCSClientNameRoundTrip(t *testing.T) {
 		}},
 		{"max-length name string (63 octets)", &LCSClientName{
 			DataCodingScheme: 0x0f,
-			NameString:       make(HexBytes, NameStringMaxLen),
+			NameString:       make(HexBytes, 63),
 		}},
 	}
 	for _, tc := range cases {
@@ -65,23 +65,23 @@ func TestLCSClientNameNilPassesThrough(t *testing.T) {
 }
 
 func TestLCSClientNameEmptyNameStringRejected(t *testing.T) {
-	_, err := convertLCSClientNameToWire(&LCSClientName{
+	_, err := strictWire(convertLCSClientNameToWire(&LCSClientName{
 		DataCodingScheme: 0x0f,
 		NameString:       HexBytes{},
-	})
-	if !errors.Is(err, ErrLCSClientNameNameStringSize) {
-		t.Errorf("want ErrLCSClientNameNameStringSize on encode, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error on encode, got %v", err)
 	}
 }
 
 func TestLCSClientNameOversizedNameStringRejected(t *testing.T) {
-	tooBig := make(HexBytes, NameStringMaxLen+1)
-	_, err := convertLCSClientNameToWire(&LCSClientName{
+	tooBig := make(HexBytes, 63+1)
+	_, err := strictWire(convertLCSClientNameToWire(&LCSClientName{
 		DataCodingScheme: 0x0f,
 		NameString:       tooBig,
-	})
-	if !errors.Is(err, ErrLCSClientNameNameStringSize) {
-		t.Errorf("want ErrLCSClientNameNameStringSize on encode, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error on encode, got %v", err)
 	}
 }
 
@@ -90,9 +90,9 @@ func TestLCSClientNameWireDataCodingSchemeMustBeOneOctet(t *testing.T) {
 		DataCodingScheme: gsm_map.USSDDataCodingScheme{0x0f, 0x10}, // too long
 		NameString:       gsm_map.NameString{0x41},
 	}
-	_, err := convertWireToLCSClientName(w)
-	if !errors.Is(err, ErrUSSDDataCodingSchemeInvalidSize) {
-		t.Errorf("want ErrUSSDDataCodingSchemeInvalidSize, got %v", err)
+	err := strictDecodeWire(w)
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -117,7 +117,7 @@ func TestLCSRequestorIDRoundTrip(t *testing.T) {
 		}},
 		{"max-length requestor string (63 octets)", &LCSRequestorID{
 			DataCodingScheme:  0x0f,
-			RequestorIDString: make(HexBytes, RequestorIDStringMaxLen),
+			RequestorIDString: make(HexBytes, 63),
 		}},
 	}
 	for _, tc := range cases {
@@ -149,23 +149,23 @@ func TestLCSRequestorIDNilPassesThrough(t *testing.T) {
 }
 
 func TestLCSRequestorIDEmptyStringRejected(t *testing.T) {
-	_, err := convertLCSRequestorIDToWire(&LCSRequestorID{
+	_, err := strictWire(convertLCSRequestorIDToWire(&LCSRequestorID{
 		DataCodingScheme:  0x0f,
 		RequestorIDString: HexBytes{},
-	})
-	if !errors.Is(err, ErrLCSRequestorIDStringSize) {
-		t.Errorf("want ErrLCSRequestorIDStringSize, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
 func TestLCSRequestorIDOversizedStringRejected(t *testing.T) {
-	tooBig := make(HexBytes, RequestorIDStringMaxLen+1)
-	_, err := convertLCSRequestorIDToWire(&LCSRequestorID{
+	tooBig := make(HexBytes, 63+1)
+	_, err := strictWire(convertLCSRequestorIDToWire(&LCSRequestorID{
 		DataCodingScheme:  0x0f,
 		RequestorIDString: tooBig,
-	})
-	if !errors.Is(err, ErrLCSRequestorIDStringSize) {
-		t.Errorf("want ErrLCSRequestorIDStringSize, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -174,9 +174,9 @@ func TestLCSRequestorIDWireDataCodingSchemeMustBeOneOctet(t *testing.T) {
 		DataCodingScheme:  gsm_map.USSDDataCodingScheme{0x0f, 0x10},
 		RequestorIDString: gsm_map.RequestorIDString{0x41},
 	}
-	_, err := convertWireToLCSRequestorID(w)
-	if !errors.Is(err, ErrUSSDDataCodingSchemeInvalidSize) {
-		t.Errorf("want ErrUSSDDataCodingSchemeInvalidSize, got %v", err)
+	err := strictDecodeWire(w)
+	if !isConstraint(err) {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -366,37 +366,30 @@ func TestLCSClientIDInternalIDOutOfRangeRejected(t *testing.T) {
 	}
 }
 
-// LcsAPN must satisfy APN SIZE(2..63) per TS 29.002 MAP-MS-DataTypes.asn.
-// Use the shared validateAPN helper for symmetry with PDPContext etc.
+// LcsAPN must satisfy APN SIZE(2..63) per TS 29.002 §17.7.1.
 func TestLCSClientIDAPNSizeValidation(t *testing.T) {
 	// 1-octet APN is too small (spec minimum is 2).
-	_, err := convertLCSClientIDToWire(&LCSClientID{
+	_, err := strictWire(convertLCSClientIDToWire(&LCSClientID{
 		LcsClientType: LCSClientTypeEmergencyServices,
 		LcsAPN:        HexBytes{0x01},
-	})
-	if err == nil {
-		t.Error("encode: 1-octet APN should be rejected")
-	}
+	}))
+	wantConstraintError(t, err, "lcsAPN", "SIZE (2..63)")
 
 	// 64-octet APN is too large.
 	tooBig := make(HexBytes, 64)
-	_, err = convertLCSClientIDToWire(&LCSClientID{
+	_, err = strictWire(convertLCSClientIDToWire(&LCSClientID{
 		LcsClientType: LCSClientTypeEmergencyServices,
 		LcsAPN:        tooBig,
-	})
-	if err == nil {
-		t.Error("encode: 64-octet APN should be rejected")
-	}
+	}))
+	wantConstraintError(t, err, "lcsAPN", "SIZE (2..63)")
 
 	// Decode-side parity.
 	tooSmallWire := gsm_map.APN{0x01}
-	_, err = convertWireToLCSClientID(&gsm_map.LCSClientID{
+	err = strictDecodeWire(&gsm_map.LCSClientID{
 		LcsClientType: gsm_map.LCSClientTypeEmergencyServices,
 		LcsAPN:        &tooSmallWire,
 	})
-	if err == nil {
-		t.Error("decode: 1-octet APN should be rejected")
-	}
+	wantConstraintError(t, err, "lcsAPN", "SIZE (2..63)")
 }
 
 // LcsFormatIndicator (extensible enum, encoder strict, decoder lenient)

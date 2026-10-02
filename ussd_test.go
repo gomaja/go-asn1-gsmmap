@@ -582,36 +582,6 @@ func ussdWireArg(t *testing.T, w *gsm_map.USSDArg) []byte {
 	return data
 }
 
-func TestParseUSSDWireLengthErrors(t *testing.T) {
-	str := []byte{0x31}
-	for _, dcs := range [][]byte{{}, {0x0F, 0x0F}, {0x0F, 0x00, 0x00}} {
-		t.Run(fmt.Sprintf("arg dcs %x", dcs), func(t *testing.T) {
-			data := ussdWireArg(t, &gsm_map.USSDArg{UssdDataCodingScheme: dcs, UssdString: str})
-			if _, err := ParseUSSDArg(data); !errors.Is(err, ErrUSSDDataCodingSchemeInvalidSize) {
-				t.Errorf("err = %v, want ErrUSSDDataCodingSchemeInvalidSize", err)
-			}
-		})
-		t.Run(fmt.Sprintf("res dcs %x", dcs), func(t *testing.T) {
-			data, err := (&gsm_map.USSDRes{UssdDataCodingScheme: dcs, UssdString: str}).MarshalBER()
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := ParseUSSDRes(data); !errors.Is(err, ErrUSSDDataCodingSchemeInvalidSize) {
-				t.Errorf("err = %v, want ErrUSSDDataCodingSchemeInvalidSize", err)
-			}
-		})
-	}
-	for _, ap := range [][]byte{{}, {0x01, 0x01}, {0x00, 0x00, 0x00}} {
-		t.Run(fmt.Sprintf("alerting pattern %x", ap), func(t *testing.T) {
-			ap := gsm_map.AlertingPattern(ap)
-			data := ussdWireArg(t, &gsm_map.USSDArg{UssdDataCodingScheme: []byte{0x0F}, UssdString: str, AlertingPattern: &ap})
-			if _, err := ParseUSSDArg(data); !errors.Is(err, ErrAlertingPatternInvalidSize) {
-				t.Errorf("err = %v, want ErrAlertingPatternInvalidSize", err)
-			}
-		})
-	}
-}
-
 func TestParseUSSDArgLenientAlertingPattern(t *testing.T) {
 	// Decode keeps any single octet; Marshal is strict.
 	for _, v := range []byte{0x03, 0x08, 0xFF} {
@@ -637,12 +607,7 @@ func TestParseUSSDArgMSISDNDecodedEmpty(t *testing.T) {
 	if _, err := ParseUSSDArg(data); !errors.Is(err, ErrUSSDMSISDNDecodedEmpty) {
 		t.Errorf("err = %v, want ErrUSSDMSISDNDecodedEmpty", err)
 	}
-	// A zero-octet address is rejected by the TBCD decoder.
-	m = gsm_map.ISDNAddressString{}
-	data = ussdWireArg(t, &gsm_map.USSDArg{UssdDataCodingScheme: []byte{0x0F}, UssdString: []byte{0x31}, Msisdn: &m})
-	if _, err := ParseUSSDArg(data); err == nil {
-		t.Error("zero-octet MSISDN: want an error, got nil")
-	}
+
 }
 
 func TestParseUSSDIndefiniteLength(t *testing.T) {

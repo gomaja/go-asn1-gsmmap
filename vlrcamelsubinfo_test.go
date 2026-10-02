@@ -68,20 +68,20 @@ func TestSSCSIRoundTrip(t *testing.T) {
 
 func TestSSCSIValidation(t *testing.T) {
 	t.Run("emptyEventList", func(t *testing.T) {
-		_, err := convertSSCSIToWire(&SSCSI{GsmSCFAddress: "111"})
-		if !errors.Is(err, ErrCamelInvalidSSEventListSize) {
-			t.Errorf("want ErrCamelInvalidSSEventListSize, got %v", err)
+		_, err := strictWire(convertSSCSIToWire(&SSCSI{GsmSCFAddress: "111"}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("tooManyEvents", func(t *testing.T) {
 		big := make([]SsCode, 11)
-		_, err := convertSSCSIToWire(&SSCSI{SsEventList: big, GsmSCFAddress: "1"})
-		if !errors.Is(err, ErrCamelInvalidSSEventListSize) {
-			t.Errorf("want ErrCamelInvalidSSEventListSize, got %v", err)
+		_, err := strictWire(convertSSCSIToWire(&SSCSI{SsEventList: big, GsmSCFAddress: "1"}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("missingGsmSCF", func(t *testing.T) {
-		_, err := convertSSCSIToWire(&SSCSI{SsEventList: []SsCode{0x31}})
+		_, err := strictWire(convertSSCSIToWire(&SSCSI{SsEventList: []SsCode{0x31}}))
 		if !errors.Is(err, ErrCamelMissingGsmSCFAddress) {
 			t.Errorf("want ErrCamelMissingGsmSCFAddress, got %v", err)
 		}
@@ -113,30 +113,30 @@ func TestMCSIRoundTrip(t *testing.T) {
 
 func TestMCSIValidation(t *testing.T) {
 	t.Run("emptyTriggers", func(t *testing.T) {
-		_, err := convertMCSIToWire(&MCSI{GsmSCFAddress: "1"})
-		if !errors.Is(err, ErrCamelInvalidMobilityTriggersSize) {
-			t.Errorf("want ErrCamelInvalidMobilityTriggersSize, got %v", err)
+		_, err := strictWire(convertMCSIToWire(&MCSI{GsmSCFAddress: "1"}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("tooManyTriggers", func(t *testing.T) {
 		big := make([]byte, 11)
-		_, err := convertMCSIToWire(&MCSI{MobilityTriggers: big, GsmSCFAddress: "1"})
-		if !errors.Is(err, ErrCamelInvalidMobilityTriggersSize) {
-			t.Errorf("want ErrCamelInvalidMobilityTriggersSize, got %v", err)
+		_, err := strictWire(convertMCSIToWire(&MCSI{MobilityTriggers: big, GsmSCFAddress: "1"}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("serviceKeyOutOfRange", func(t *testing.T) {
-		_, err := convertMCSIToWire(&MCSI{
+		_, err := strictWire(convertMCSIToWire(&MCSI{
 			MobilityTriggers: []byte{0x00},
 			ServiceKey:       -1,
 			GsmSCFAddress:    "1",
-		})
-		if !errors.Is(err, ErrCamelInvalidServiceKey) {
-			t.Errorf("want ErrCamelInvalidServiceKey, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("missingGsmSCF", func(t *testing.T) {
-		_, err := convertMCSIToWire(&MCSI{MobilityTriggers: []byte{0x00}})
+		_, err := strictWire(convertMCSIToWire(&MCSI{MobilityTriggers: []byte{0x00}}))
 		if !errors.Is(err, ErrCamelMissingGsmSCFAddress) {
 			t.Errorf("want ErrCamelMissingGsmSCFAddress, got %v", err)
 		}
@@ -184,9 +184,9 @@ func TestSMSCSIValidation(t *testing.T) {
 	t.Run("missingTDPList", func(t *testing.T) {
 		// Empty TDP list: per spec §8.8.1 the field is required, so the
 		// "missing" sentinel applies (not the size sentinel).
-		_, err := convertSMSCSIToWire(&SMSCSI{CamelCapabilityHandling: &cch})
-		if !errors.Is(err, ErrCamelSMSCSIMissingTDPData) {
-			t.Errorf("want ErrCamelSMSCSIMissingTDPData, got %v", err)
+		_, err := strictWire(convertSMSCSIToWire(&SMSCSI{CamelCapabilityHandling: &cch}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("oversizeTDPList", func(t *testing.T) {
@@ -199,12 +199,12 @@ func TestSMSCSIValidation(t *testing.T) {
 				DefaultSMSHandling:       DefaultSMSHandlingContinueTransaction,
 			}
 		}
-		_, err := convertSMSCSIToWire(&SMSCSI{
+		_, err := strictWire(convertSMSCSIToWire(&SMSCSI{
 			SmsCAMELTDPDataList:     big,
 			CamelCapabilityHandling: &cch,
-		})
-		if !errors.Is(err, ErrCamelInvalidSMSTDPDataListSize) {
-			t.Errorf("want ErrCamelInvalidSMSTDPDataListSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("missingCapabilityHandling", func(t *testing.T) {
@@ -288,12 +288,12 @@ func TestMTSmsCAMELTDPCriteriaValidation(t *testing.T) {
 	})
 	t.Run("tpduListTooLong", func(t *testing.T) {
 		big := make([]MTSMSTPDUType, 6)
-		_, err := convertMTSmsCAMELTDPCriteriaToWire(&MTSmsCAMELTDPCriteria{
+		_, err := strictWire(convertMTSmsCAMELTDPCriteriaToWire(&MTSmsCAMELTDPCriteria{
 			SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest,
 			TpduTypeCriterion:        big,
-		})
-		if !errors.Is(err, ErrCamelInvalidTPDUTypeCriterionSize) {
-			t.Errorf("want ErrCamelInvalidTPDUTypeCriterionSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("invalidTpduType", func(t *testing.T) {
@@ -450,50 +450,54 @@ func TestVlrCamelSubscriptionInfoMinimalRoundTrip(t *testing.T) {
 }
 
 func TestVlrCamelSubscriptionInfoCriteriaListBoundaries(t *testing.T) {
-	t.Run("MtSmsCAMELTDPCriteriaListTooLong", func(t *testing.T) {
-		big := make([]MTSmsCAMELTDPCriteria, 6)
-		for i := range big {
-			big[i] = MTSmsCAMELTDPCriteria{SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest}
+	for n := 6; n <= 11; n++ {
+		criteria := make([]MTSmsCAMELTDPCriteria, n)
+		for i := range criteria {
+			criteria[i] = MTSmsCAMELTDPCriteria{SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest}
 		}
-		_, err := convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{MtSmsCAMELTDPCriteriaList: big})
-		if !errors.Is(err, ErrCamelInvalidMTSmsCAMELCriteriaSize) {
-			t.Errorf("want ErrCamelInvalidMTSmsCAMELCriteriaSize, got %v", err)
+		_, err := strictWire(convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{MtSmsCAMELTDPCriteriaList: criteria}))
+		if n <= 10 {
+			if err != nil {
+				t.Errorf("%d criteria should be accepted: %v", n, err)
+			}
+		} else {
+			wantConstraintError(t, err, "mt-smsCAMELTDP-CriteriaList", "SIZE (1..10)")
 		}
-	})
+	}
 
 	// PR #29 pattern: a non-nil but empty optional list violates SIZE(1..N)
 	// and must be rejected at both encode and decode.
 	t.Run("OBcsmCriteriaListEmptyRejected", func(t *testing.T) {
-		_, err := convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{
+		_, err := strictWire(convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{
 			OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{},
-		})
-		if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
-			t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("TBcsmCriteriaListEmptyRejected", func(t *testing.T) {
-		_, err := convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{
+		_, err := strictWire(convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{
 			TBcsmCamelTDPCriteriaList: []TBcsmCamelTDPCriteria{},
-		})
-		if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
-			t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("MtSmsCAMELTDPCriteriaListEmptyRejected", func(t *testing.T) {
-		_, err := convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{
+		_, err := strictWire(convertVlrCamelSubscriptionInfoToWire(&VlrCamelSubscriptionInfo{
 			MtSmsCAMELTDPCriteriaList: []MTSmsCAMELTDPCriteria{},
-		})
-		if !errors.Is(err, ErrCamelInvalidMTSmsCAMELCriteriaSize) {
-			t.Errorf("want ErrCamelInvalidMTSmsCAMELCriteriaSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("TpduTypeCriterionEmptyRejected", func(t *testing.T) {
-		_, err := convertMTSmsCAMELTDPCriteriaToWire(&MTSmsCAMELTDPCriteria{
+		_, err := strictWire(convertMTSmsCAMELTDPCriteriaToWire(&MTSmsCAMELTDPCriteria{
 			SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest,
 			TpduTypeCriterion:        []MTSMSTPDUType{}, // non-nil, empty
-		})
-		if !errors.Is(err, ErrCamelInvalidTPDUTypeCriterionSize) {
-			t.Errorf("want ErrCamelInvalidTPDUTypeCriterionSize, got %v", err)
+		}))
+		if !isConstraint(err) {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }

@@ -142,7 +142,7 @@ type MtFsm struct {
 	MoreMessagesToSend bool
 
 	// Optional fields (post-extension marker).
-	SmDeliveryTimer           *int                // SM-DeliveryTimerValue: MinSmDeliveryTimer..MaxSmDeliveryTimer seconds
+	SmDeliveryTimer           *int                // SM-DeliveryTimerValue: 30..600 seconds
 	SmDeliveryStartTime       HexBytes            // Time octet string; nil if absent
 	SmsOverIPOnlyIndicator    bool                // [0] NULL
 	CorrelationID             *SriSmCorrelationID // [1] reuse SRI-SM type
@@ -1032,19 +1032,10 @@ type VlrCamelSubscriptionInfo struct {
 	TBcsmCamelTDPCriteriaList []TBcsmCamelTDPCriteria // [8]
 	DCSI                      *DCSI                   // [9]
 	MtSmsCSI                  *SMSCSI                 // [10]
-	MtSmsCAMELTDPCriteriaList []MTSmsCAMELTDPCriteria // [11] 1..5 entries
+	MtSmsCAMELTDPCriteriaList []MTSmsCAMELTDPCriteria // [11] 1..10 entries, TS 29.002 §17.7.1
 }
 
 // --- Ext-SS-Info (MAP-MS-DataTypes.asn:1826) — 5-alternative CHOICE ---
-
-// MaxNumOfExtBasicServiceGroups is the spec upper bound on the various
-// Ext-BasicServiceGroupList instances throughout TS 29.002 (asn:1942).
-const MaxNumOfExtBasicServiceGroups = 32
-
-// MaxNumOfCUG is the upper bound on CUG-SubscriptionList per TS 29.002
-// (asn:1934). Note the lower bound is 0 (peer is allowed to send an
-// empty CUG-SubscriptionList, unlike most other lists).
-const MaxNumOfCUG = 10
 
 // CliRestrictionOption per TS 29.002 MAP-SS-DataTypes.asn:177.
 // ENUMERATED { permanent(0), temporaryDefaultRestricted(1),
@@ -1269,10 +1260,6 @@ type SriResp struct {
 }
 
 // SM-DeliveryTimerValue range per 3GPP TS 29.002.
-const (
-	MinSmDeliveryTimer = 30
-	MaxSmDeliveryTimer = 600
-)
 
 // MwStatusFlags is the MW-Status BIT STRING (6 bits defined).
 // Bit 0=scAddressNotIncluded, 1=mnrfSet, 2=mcefSet, 3=mnrgSet, 4=mnr5gSet, 5=mnr5gn3gSet.
@@ -1744,15 +1731,6 @@ type ZoneCode HexBytes
 // MAP-MS-DataTypes.asn:2070.
 type ZoneCodeList []ZoneCode
 
-// MaxNumOfZoneCodes is the upper bound on ZoneCodeList per TS 29.002.
-const MaxNumOfZoneCodes = 10
-
-// MaxNumOfVBSGroupIds is the upper bound on VBSDataList per TS 29.002.
-const MaxNumOfVBSGroupIds = 50
-
-// MaxNumOfVGCSGroupIds is the upper bound on VGCSDataList per TS 29.002.
-const MaxNumOfVGCSGroupIds = 50
-
 // AdditionalSubscriptions (BIT STRING SIZE 3..8) per TS 29.002
 // MAP-MS-DataTypes.asn:2711. Carries VGCS uplink-request privileges.
 // Bits other than the three listed below shall be discarded by the
@@ -1792,14 +1770,6 @@ type VoiceGroupCallData struct {
 	LongGroupId             string                   // optional TBCD, exactly 8 hex digits
 }
 
-// Octet size constants for VBS/VGCS TBCD identifiers and AdditionalInfo
-// per TS 29.002 MAP-MS-DataTypes.asn:2729-2738 and TS 43.068.
-const (
-	GroupIdOctets           = 3
-	LongGroupIdOctets       = 4
-	MaxAdditionalInfoOctets = 17 // 136 bits
-)
-
 // VBSDataList per TS 29.002 MAP-MS-DataTypes.asn:2685 (SIZE 1..50).
 type VBSDataList []VoiceBroadcastData
 
@@ -1838,10 +1808,6 @@ type CSGSubscriptionDataList []CSGSubscriptionData
 // per TS 29.002 MAP-MS-DataTypes.asn:1271. Same shape as CSGSubscriptionDataList.
 type VPLMNCSGSubscriptionDataList []CSGSubscriptionData
 
-// MaxNumOfCSGSubscriptions is the upper bound on CSGSubscriptionDataList and
-// VPLMNCSGSubscriptionDataList per TS 29.002.
-const MaxNumOfCSGSubscriptions = 50
-
 // CSGIdBitLength is the spec-mandated bit length for CSG-Id per
 // TS 29.002 MAP-MS-DataTypes.asn:1274 (BIT STRING SIZE 27).
 const CSGIdBitLength = 27
@@ -1858,10 +1824,6 @@ type AdjacentAccessRestrictionData struct {
 // AdjacentAccessRestrictionData) per TS 29.002 MAP-MS-DataTypes.asn:1475.
 type AdjacentAccessRestrictionDataList []AdjacentAccessRestrictionData
 
-// MaxNumOfAdjacentPLMN is the upper bound on AdjacentAccessRestrictionDataList
-// per TS 29.002.
-const MaxNumOfAdjacentPLMN = 50
-
 // IMSIGroupId (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1245.
 type IMSIGroupId struct {
 	GroupServiceID uint32   // [0] mandatory: 0..4294967295
@@ -1872,9 +1834,6 @@ type IMSIGroupId struct {
 // IMSIGroupIdList (SEQUENCE SIZE 1..50 OF IMSI-GroupId) per TS 29.002
 // MAP-MS-DataTypes.asn:1242.
 type IMSIGroupIdList []IMSIGroupId
-
-// MaxNumOfIMSIGroupId is the upper bound on IMSIGroupIdList per TS 29.002.
-const MaxNumOfIMSIGroupId = 50
 
 // EDRXCycleLength (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1210.
 // EDRXCycleLengthValue is a single-octet code per 3GPP TS 29.272 clause 7.3.216.
@@ -1890,16 +1849,10 @@ type EDRXCycleLength struct {
 // MAP-MS-DataTypes.asn:1207.
 type EDRXCycleLengthList []EDRXCycleLength
 
-// MaxNumOfEDRXCycleLength is the upper bound on EDRXCycleLengthList per TS 29.002.
-const MaxNumOfEDRXCycleLength = 8
-
 // ResetIdList (SEQUENCE SIZE 1..50 OF Reset-Id) per TS 29.002
 // MAP-MS-DataTypes.asn:1223. Each Reset-Id is an OCTET STRING (SIZE 1..4)
 // unique within the HPLMN.
 type ResetIdList []HexBytes
-
-// MaxNumOfResetId is the upper bound on ResetIdList per TS 29.002.
-const MaxNumOfResetId = 50
 
 // MaxResetIdOctets is the upper bound on a single Reset-Id per TS 29.002
 // (OCTET STRING SIZE 1..4).
@@ -2175,12 +2128,6 @@ type EPSSubscriptionData struct {
 // gsm_map.MaxNumOfSpecificAPNInfos (50) respectively — converters
 // reference those constants directly per project rule
 // "GSM-MAP spec constants must come from go-asn1, not defined locally".
-
-// MaxRFSPID is the upper bound on RFSP-ID per TS 29.002
-// MAP-MS-DataTypes.asn:1306 (`RFSP-ID ::= INTEGER (1..256)`). go-asn1
-// v0.1.8 does not export this bound (`type RFSPID = int64`), so it is
-// defined here pending upstream surfacing.
-const MaxRFSPID = 256
 
 // ============================================================================
 // LCS-Information (TS 29.002 MAP-MS-DataTypes.asn:1490)
@@ -2505,18 +2452,6 @@ type LCSPriority = HexBytes
 // MAP-CommonDataTypes.asn — single-octet PSL/SLR correlation reference.
 type LCSReferenceNumber = HexBytes
 
-// LCSCodewordStringMaxLen is the maxLCSCodewordStringLength constant
-// from TS 29.002 MAP-LCS-DataTypes.asn:300.
-const LCSCodewordStringMaxLen = 20
-
-// NameStringMaxLen is the maxNameStringLength constant from TS 29.002
-// MAP-LCS-DataTypes.asn:212.
-const NameStringMaxLen = 63
-
-// RequestorIDStringMaxLen is the maxRequestorIDStringLength constant
-// from TS 29.002 MAP-LCS-DataTypes.asn:222.
-const RequestorIDStringMaxLen = 63
-
 // ============================================================================
 // PSL geographical / positioning data types (TS 29.002 MAP-LCS-DataTypes.asn)
 // ============================================================================
@@ -2585,38 +2520,6 @@ type UtranCivicAddress = HexBytes
 // here. Aliased from go-asn1's gsm_map.UtranBaroPressureMeas, which is
 // int64-backed.
 type UtranBaroPressureMeas = gsm_map.UtranBaroPressureMeas
-
-// Size constants for PSL geographical / positioning data fields, per
-// TS 29.002 MAP-LCS-DataTypes.asn:518/619/522/552/557/560/565/568/573/
-// 576/581/584/589.
-//
-// Both Min and Max bounds are surfaced explicitly (including Min=1 for
-// SIZE(1..N) fields) so the codec PRs can validate without magic
-// numbers.
-const (
-	ExtGeographicalInformationMinLen     = 1
-	ExtGeographicalInformationMaxLen     = 20
-	AddGeographicalInformationMinLen     = 1
-	AddGeographicalInformationMaxLen     = 91
-	VelocityEstimateMinLen               = 4
-	VelocityEstimateMaxLen               = 7
-	PositioningDataInformationMinLen     = 2
-	PositioningDataInformationMaxLen     = 10
-	UtranPositioningDataInfoMinLen       = 3
-	UtranPositioningDataInfoMaxLen       = 11
-	GeranGANSSpositioningDataMinLen      = 2
-	GeranGANSSpositioningDataMaxLen      = 10
-	UtranGANSSpositioningDataMinLen      = 1
-	UtranGANSSpositioningDataMaxLen      = 9
-	UtranAdditionalPositioningDataMinLen = 1
-	UtranAdditionalPositioningDataMaxLen = 8
-
-	// UtranBaroPressureMeas range bounds (TS 29.002 MAP-LCS-DataTypes.asn:592).
-	// Typed as UtranBaroPressureMeas so future range checks compose without
-	// explicit casts even if the alias is later replaced by a defined type.
-	UtranBaroPressureMeasMin UtranBaroPressureMeas = 30000
-	UtranBaroPressureMeasMax UtranBaroPressureMeas = 115000
-)
 
 // ============================================================================
 // PSL area-event / periodic / reporting-PLMN / serving-node types
@@ -2777,30 +2680,11 @@ type ServingNodeAddress struct {
 	MmeNumber        HexBytes // DiameterIdentity octets; nil/empty = alternative not selected
 }
 
-// Spec-derived size / range constants for PR C types, per TS 29.002
-// MAP-LCS-DataTypes.asn:328/330/346/366/380/382/384/387/409/412.
 const (
-	AreaIdentificationMinLen = 2
-	AreaIdentificationMaxLen = 7
-
-	AreaListMinEntries = 1
-	AreaListMaxEntries = 10 // maxNumOfAreas
-
-	IntervalTimeMin IntervalTime = 1
-	IntervalTimeMax IntervalTime = 32767
-
-	ReportingAmountMin   ReportingAmount   = 1
-	ReportingAmountMax   ReportingAmount   = 8639999 // maxReportingAmount
-	ReportingIntervalMin ReportingInterval = 1
-	ReportingIntervalMax ReportingInterval = 8639999 // maxReportingInterval
-
 	// PeriodicLDRInfo combined cap: ReportingInterval × ReportingAmount
 	// must not exceed this value (99 days, 23 hours, 59 minutes, 59
 	// seconds) for compatibility with OMA MLP and RLP.
 	PeriodicLDRProductMax int64 = 8639999
-
-	PLMNListMinEntries = 1
-	PLMNListMaxEntries = 20 // maxNumOfReportingPLMN
 )
 
 // ============================================================================
@@ -3168,13 +3052,6 @@ const (
 // MAP-LCS-DataTypes.asn. Identifies a periodic LDR report within a
 // reporting sequence. Aliased from go-asn1 to int64.
 type SequenceNumber = gsm_map.SequenceNumber
-
-// SequenceNumber range bounds (TS 29.002 MAP-LCS-DataTypes.asn:380,
-// shares maxReportingAmount with ReportingAmount).
-const (
-	SequenceNumberMin SequenceNumber = 1
-	SequenceNumberMax SequenceNumber = 8639999
-)
 
 // LCSLocationInfo (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn.
 // Identifies the network node that produced the location report.
@@ -3559,19 +3436,14 @@ type InsertSubscriberDataRes struct {
 
 // MAP operation sentinel errors.
 var (
-	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
-	ErrSriMissingGmsc                = errors.New("sri: GmscOrGsmSCFAddress is empty")
+	ErrSriMissingMSISDN = errors.New("sri: MSISDN is empty")
+	ErrSriMissingGmsc   = errors.New("sri: GmscOrGsmSCFAddress is empty")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrSriInvalidInterrogationType   = errors.New("sri: InterrogationType must be 0 or 1")
-	ErrSriInvalidNumberOfForwarding  = errors.New("sri: NumberOfForwarding must be 1..5")
-	ErrSriInvalidOrCapability        = errors.New("sri: OrCapability must be 1..127")
-	ErrSriInvalidCallReferenceNumber = errors.New("sri: CallReferenceNumber, if set, must be 1..8 octets")
 	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
 	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
 
-	ErrSriSmMissingSipUriB            = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
-	ErrSriSmInvalidDeliveryTimerValue = errors.New("sriSm: SM-DeliveryTimerValue must be 30..600")
-
-	ErrMtFsmInvalidDeliveryTimer = errors.New("mtFsm: SmDeliveryTimer must be 30..600")
+	ErrSriSmMissingSipUriB = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
 
 	ErrMtFsmUnexpectedTPDUType = errors.New("mtFsm: unexpected TPDU type")
 	ErrMoFsmUnexpectedTPDUType = errors.New("moFsm: unexpected TPDU type")
@@ -3592,12 +3464,6 @@ var (
 	ErrAtiPsSubscriberStateNoAlternative        = errors.New("ati: PsSubscriberState CHOICE has no alternative set")
 	ErrAtiPsSubscriberStateMultipleAlternatives = errors.New("ati: PsSubscriberState CHOICE has multiple alternatives set")
 
-	// ErrAbsentSubscriberDiagnosticSMOutOfRange is the operation-agnostic
-	// range error for an AbsentSubscriberDiagnosticSM value (0..255). It is
-	// shared by every operation that carries the field (InformServiceCentre,
-	// ReportSMDeliveryStatus, …) via absentDiagToWire/absentDiagFromWire.
-	ErrAbsentSubscriberDiagnosticSMOutOfRange = errors.New("absentSubscriberDiagnosticSM: value must be 0..255")
-
 	// ErrAddressNatureInvalid is returned when an address nature of address
 	// is not one of the address.Nature* values (bits 7..5 of the first
 	// AddressString octet, 3GPP TS 29.002 V19.1.0 §17.7.8).
@@ -3608,7 +3474,8 @@ var (
 
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
-	ErrAscInvalidSmsGmscAlertEvent    = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrAscInvalidSmsGmscAlertEvent = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
 
 	ErrPurgeMSMissingIMSI = errors.New("purgeMS: IMSI is empty")
 
@@ -3616,7 +3483,6 @@ var (
 	ErrUpdateLocationMissingMSCNumber = errors.New("updateLocation: MSCNumber is empty")
 	ErrUpdateLocationMissingVLRNumber = errors.New("updateLocation: VLRNumber is empty")
 
-	ErrSmRpDaIMSIDecodedEmpty                 = errors.New("smRpDa: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpDaServiceCentreAddressDecodedEmpty = errors.New("smRpDa: present wire serviceCentreAddressDA decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpOaMSISDNDecodedEmpty               = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpOaServiceCentreAddressDecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
@@ -3624,277 +3490,170 @@ var (
 	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
 	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
 
-	ErrSaiMissingIMSI                               = errors.New("sai: IMSI is empty")
-	ErrSaiInvalidNumberOfRequestedVectors           = errors.New("sai: NumberOfRequestedVectors must be 1..5")
-	ErrSaiInvalidNumberOfRequestedAdditionalVectors = errors.New("sai: NumberOfRequestedAdditionalVectors must be 1..5")
-	ErrSaiInvalidUeUsageType                        = errors.New("sai: UeUsageType must be exactly 4 octets")
-	ErrSaiInvalidPLMNId                             = errors.New("sai: RequestingPLMNId must be exactly 3 octets")
-	ErrSaiAuthSetListChoiceMultipleAlternatives     = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
-	ErrSaiAuthSetListChoiceNoAlternative            = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
-	ErrSaiInvalidRequestingNodeType                 = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
-	ErrSaiInvalidEpsAuthSetListSize                 = errors.New("sai: EpsAuthenticationSetList size must be at most 5 entries when present")
+	ErrSaiMissingIMSI                           = errors.New("sai: IMSI is empty")
+	ErrSaiAuthSetListChoiceMultipleAlternatives = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
+	ErrSaiAuthSetListChoiceNoAlternative        = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrSaiInvalidRequestingNodeType = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
 
-	ErrPsiMissingIMSI         = errors.New("psi: IMSI is empty")
-	ErrPsiInvalidLMSI         = errors.New("psi: LMSI, if set, must be exactly 4 octets")
-	ErrPsiInvalidCallPriority = errors.New("psi: CallPriority must be 0..15")
+	ErrPsiMissingIMSI = errors.New("psi: IMSI is empty")
 
 	ErrCancelLocIdentityChoiceNoAlternative = errors.New("cancelLocation: Identity CHOICE has no alternative set")
 	ErrCancelLocIdentityChoiceMultiple      = errors.New("cancelLocation: Identity CHOICE has multiple alternatives set")
 	ErrCancelLocIdentityMissingIMSI         = errors.New("cancelLocation: IMSIWithLMSI.IMSI is empty")
-	ErrCancelLocIdentityInvalidLMSI         = errors.New("cancelLocation: IMSIWithLMSI.LMSI must be exactly 4 octets")
-	ErrCancelLocInvalidCancellationType     = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2)")
-	ErrCancelLocInvalidTypeOfUpdate         = errors.New("cancelLocation: TypeOfUpdate must be one of sgsn-change(0), mme-change(1)")
-	ErrCancelLocTypeOfUpdateNotApplicable   = errors.New("cancelLocation: TypeOfUpdate is only valid when CancellationType is updateProcedure or initialAttachProcedure")
-	ErrCancelLocMtrfBothSet                 = errors.New("cancelLocation: MtrfSupportedAndAuthorized and MtrfSupportedAndNotAuthorized are mutually exclusive")
-	ErrCancelLocInvalidNewLMSI              = errors.New("cancelLocation: NewLMSI, if set, must be exactly 4 octets")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrCancelLocInvalidCancellationType = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrCancelLocInvalidTypeOfUpdate       = errors.New("cancelLocation: TypeOfUpdate must be one of sgsn-change(0), mme-change(1)")
+	ErrCancelLocTypeOfUpdateNotApplicable = errors.New("cancelLocation: TypeOfUpdate is only valid when CancellationType is updateProcedure or initialAttachProcedure")
+	ErrCancelLocMtrfBothSet               = errors.New("cancelLocation: MtrfSupportedAndAuthorized and MtrfSupportedAndNotAuthorized are mutually exclusive")
 
-	ErrCamelInvalidOTriggerPoint             = errors.New("camel: O-BcsmTriggerDetectionPoint must be collectedInfo(2) or routeSelectFailure(4)")
-	ErrCamelInvalidTTriggerPoint             = errors.New("camel: T-BcsmTriggerDetectionPoint must be termAttemptAuthorized(12), tBusy(13), or tNoAnswer(14)")
-	ErrCamelInvalidDefaultCallHandling       = errors.New("camel: DefaultCallHandling must be continueCall(0) or releaseCall(1)")
-	ErrCamelInvalidCallTypeCriteria          = errors.New("camel: CallTypeCriteria must be forwarded(0) or notForwarded(1)")
-	ErrCamelInvalidMatchType                 = errors.New("camel: MatchType must be inhibiting(0) or enabling(1)")
-	ErrCamelInvalidServiceKey                = errors.New("camel: ServiceKey must be 0..2147483647")
-	ErrCamelMissingGsmSCFAddress             = errors.New("camel: GsmSCFAddress is mandatory and must be non-empty")
-	ErrCamelMissingDialledNumber             = errors.New("camel: DialledNumber is mandatory on DPAnalysedInfoCriterium")
-	ErrCamelInvalidCamelCapabilityHandling   = errors.New("camel: CamelCapabilityHandling must be 1..4 when set")
-	ErrCamelInvalidTDPDataListSize           = errors.New("camel: TDP data list must contain 1..10 entries")
-	ErrCamelInvalidDPAnalysedInfoListSize    = errors.New("camel: DPAnalysedInfoCriteriaList must contain 1..10 entries when present")
-	ErrCamelInvalidCauseValue                = errors.New("camel: CauseValue must be 0..127")
+	ErrCamelInvalidOTriggerPoint       = errors.New("camel: O-BcsmTriggerDetectionPoint must be collectedInfo(2) or routeSelectFailure(4)")
+	ErrCamelInvalidTTriggerPoint       = errors.New("camel: T-BcsmTriggerDetectionPoint must be termAttemptAuthorized(12), tBusy(13), or tNoAnswer(14)")
+	ErrCamelInvalidDefaultCallHandling = errors.New("camel: DefaultCallHandling must be continueCall(0) or releaseCall(1)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrCamelInvalidCallTypeCriteria = errors.New("camel: CallTypeCriteria must be forwarded(0) or notForwarded(1)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrCamelInvalidMatchType               = errors.New("camel: MatchType must be inhibiting(0) or enabling(1)")
+	ErrCamelMissingGsmSCFAddress           = errors.New("camel: GsmSCFAddress is mandatory and must be non-empty")
+	ErrCamelMissingDialledNumber           = errors.New("camel: DialledNumber is mandatory on DPAnalysedInfoCriterium")
+	ErrCamelInvalidCamelCapabilityHandling = errors.New("camel: CamelCapabilityHandling must be 1..4 when set")
+	ErrCamelInvalidCauseValue              = errors.New("camel: CauseValue must be 0..127")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrCamelInvalidCauseValueOctetLength     = errors.New("camel: CauseValue is OCTET STRING (SIZE(1)) — each entry must be exactly 1 octet")
-	ErrCamelInvalidCauseValueListSize        = errors.New("camel: CauseValueCriteria must contain 1..5 entries when present")
-	ErrCamelInvalidDestinationNumberLength   = errors.New("camel: DestinationNumberLength must be 1..15")
 	ErrCamelMissingDestinationNumber         = errors.New("camel: DestinationNumberList entry must have non-empty Digits")
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
-	ErrCamelInvalidCriteriaListSize          = errors.New("camel: TDP-CriteriaList must contain 1..10 entries when present")
-	ErrCamelInvalidSSEventListSize           = errors.New("camel: SsEventList must contain 1..10 entries")
-	ErrCamelInvalidMobilityTriggersSize      = errors.New("camel: MobilityTriggers must contain 1..10 single-octet entries")
-	ErrCamelInvalidMobilityTriggerOctet      = errors.New("camel: each MobilityTriggers entry must be exactly 1 octet")
-	ErrCamelInvalidSMSTDPDataListSize        = errors.New("camel: SmsCAMELTDPDataList must contain 1..10 entries")
-	ErrCamelSMSCSIMissingTDPData             = errors.New("camel: SMS-CSI must include SmsCAMELTDPDataList per TS 29.002 clause 8.8.1")
-	ErrCamelSMSCSIMissingCapabilityHandling  = errors.New("camel: SMS-CSI must include CamelCapabilityHandling per TS 29.002 clause 8.8.1")
-	ErrCamelInvalidSMSTriggerDetectionPoint  = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) or sms-DeliveryRequest(2)")
-	ErrCamelInvalidDefaultSMSHandling        = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
-	ErrCamelInvalidMTSmsCAMELCriteriaSize    = errors.New("camel: MtSmsCAMELTDPCriteriaList must contain 1..5 entries when present")
-	ErrCamelInvalidTPDUTypeCriterionSize     = errors.New("camel: TpduTypeCriterion must contain 1..5 entries when present")
-	ErrCamelInvalidMTSMSTPDUType             = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0), sms-SUBMIT-REPORT(1), or sms-STATUS-REPORT(2)")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+	ErrCamelInvalidMobilityTriggerOctet     = errors.New("camel: each MobilityTriggers entry must be exactly 1 octet")
+	ErrCamelSMSCSIMissingCapabilityHandling = errors.New("camel: SMS-CSI must include CamelCapabilityHandling per TS 29.002 clause 8.8.1")
+	ErrCamelInvalidSMSTriggerDetectionPoint = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) or sms-DeliveryRequest(2)")
+	ErrCamelInvalidDefaultSMSHandling       = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
+	ErrCamelInvalidMTSMSTPDUType            = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0), sms-SUBMIT-REPORT(1), or sms-STATUS-REPORT(2)")
 
 	// Ext-SS-Info CHOICE / nested SEQUENCE validation
-	ErrExtSSInfoChoiceNoAlternative                   = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
-	ErrExtSSInfoChoiceMultipleAlternatives            = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
-	ErrExtSSStatusInvalidSize                         = errors.New("extSSInfo: SsStatus (Ext-SS-Status) must be 1..5 octets")
-	ErrExtForwOptionsInvalidSize                      = errors.New("extSSInfo: ForwardingOptions (Ext-ForwOptions) must be 1..5 octets")
-	ErrExtNoRepCondTimeOutOfRange                     = errors.New("extSSInfo: NoReplyConditionTime must be 1..100 per Ext-NoRepCondTime")
-	ErrExtForwSubaddressInvalidSize                   = errors.New("extSSInfo: ForwardedToSubaddress (ISDN-SubaddressString) must be 1..21 octets")
-	ErrExtForwFeatureListInvalidSize                  = errors.New("extSSInfo: ForwardingFeatureList must contain 1..32 entries")
-	ErrExtCallBarFeatureListInvalidSize               = errors.New("extSSInfo: CallBarringFeatureList must contain 1..32 entries")
-	ErrExtBasicServiceGroupListInvalidSize            = errors.New("extSSInfo: BasicServiceGroupList must contain 1..32 entries when present")
-	ErrCUGSubscriptionListInvalidSize                 = errors.New("extSSInfo: CugSubscriptionList must contain 0..10 entries")
-	ErrCUGFeatureListInvalidSize                      = errors.New("extSSInfo: CugFeatureList must contain 1..32 entries when present")
-	ErrCUGIndexOutOfRange                             = errors.New("extSSInfo: CugIndex must be 0..32767")
-	ErrCUGInterlockInvalidSize                        = errors.New("extSSInfo: CugInterlock must be exactly 4 octets")
+	ErrExtSSInfoChoiceNoAlternative        = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
+	ErrExtSSInfoChoiceMultipleAlternatives = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrIntraCUGOptionsInvalidValue                    = errors.New("extSSInfo: IntraCUGOptions must be noCUG-Restrictions(0), cugIC-CallBarred(1), or cugOG-CallBarred(2)")
 	ErrSSSubscriptionOptionChoiceNoAlternative        = errors.New("extSSInfo: SsSubscriptionOption requires exactly one of CliRestriction or Override")
 	ErrSSSubscriptionOptionChoiceMultipleAlternatives = errors.New("extSSInfo: SsSubscriptionOption may only have one of CliRestriction or Override set")
-	ErrCliRestrictionOptionInvalidValue               = errors.New("extSSInfo: CliRestrictionOption must be permanent(0), temporaryDefaultRestricted(1), or temporaryDefaultAllowed(2)")
-	ErrOverrideCategoryInvalidValue                   = errors.New("extSSInfo: OverrideCategory must be overrideEnabled(0) or overrideDisabled(1)")
-	ErrEMLPPPriorityOutOfRange                        = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrCliRestrictionOptionInvalidValue = errors.New("extSSInfo: CliRestrictionOption must be permanent(0), temporaryDefaultRestricted(1), or temporaryDefaultAllowed(2)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrOverrideCategoryInvalidValue = errors.New("extSSInfo: OverrideCategory must be overrideEnabled(0) or overrideDisabled(1)")
+	ErrEMLPPPriorityOutOfRange      = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
 
-	ErrODBDataMissingGeneralData       = errors.New("odbData: OdbGeneralData is mandatory and must be non-nil")
-	ErrZoneCodeInvalidSize             = errors.New("zoneCode: each entry must be exactly 2 octets")
-	ErrZoneCodeListInvalidSize         = errors.New("zoneCode: ZoneCodeList must contain 1..10 entries")
-	ErrVBSDataListInvalidSize          = errors.New("vbsData: VBSDataList must contain 1..50 entries")
-	ErrVGCSDataListInvalidSize         = errors.New("vgcsData: VGCSDataList must contain 1..50 entries")
-	ErrGroupIdMissingWithoutLong       = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId is mandatory")
-	ErrGroupIdFillerRequired           = errors.New("voiceGroupCallData/voiceBroadcastData: when LongGroupId is present, GroupId must be the six TBCD fillers \"ffffff\" per TS 29.002")
-	ErrGroupIdInvalidEncodedLength     = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId must encode to exactly 3 TBCD octets")
-	ErrLongGroupIdInvalidEncodedLength = errors.New("voiceGroupCallData/voiceBroadcastData: LongGroupId must encode to exactly 4 TBCD octets")
-	ErrAdditionalInfoTooLong           = errors.New("voiceGroupCallData: AdditionalInfo exceeds the TS 43.068 maximum of 17 octets / 136 bits")
+	ErrODBDataMissingGeneralData = errors.New("odbData: OdbGeneralData is mandatory and must be non-nil")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+	ErrZoneCodeInvalidSize       = errors.New("zoneCode: each entry must be exactly 2 octets")
+	ErrGroupIdMissingWithoutLong = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId is mandatory")
+	ErrGroupIdFillerRequired     = errors.New("voiceGroupCallData/voiceBroadcastData: when LongGroupId is present, GroupId must be the six TBCD fillers \"ffffff\" per TS 29.002")
 
-	ErrMCSSInfoNbrSBOutOfRange   = errors.New("mcSSInfo: NbrSB (MaxMC-Bearers) must be 2..7 per TS 29.002")
-	ErrMCSSInfoNbrUserOutOfRange = errors.New("mcSSInfo: NbrUser (MC-Bearers) must be 1..7 per TS 29.002")
-	ErrMCSSInfoSsCodeInvalidSize = errors.New("mcSSInfo: SsCode must be exactly 1 octet per TS 29.002 (mandatory tag [0])")
+	// Encode still checks bit length against bytes: https://github.com/gomaja/go-asn1/issues/80.
+	ErrCSGIdInvalidSize = errors.New("csgSubscriptionData: CsgId BIT STRING (SIZE 27) requires exactly 4 octets carrying 27 bits; CsgIdBitLength must be set to 27")
+	ErrAPNInvalidSize   = errors.New("apn: each entry must be 2..63 octets per TS 29.002 MAP-MS-DataTypes.asn:1654")
 
-	ErrCSGIdInvalidSize            = errors.New("csgSubscriptionData: CsgId BIT STRING (SIZE 27) requires exactly 4 octets carrying 27 bits; CsgIdBitLength must be set to 27")
-	ErrCSGSubscriptionDataListSize = errors.New("csgSubscriptionDataList: must contain 1..50 entries when present")
-	ErrLipaAllowedAPNListSize      = errors.New("csgSubscriptionData: LipaAllowedAPNList must contain 1..50 entries when present per TS 29.002")
-	ErrAPNInvalidSize              = errors.New("apn: each entry must be 2..63 octets per TS 29.002 MAP-MS-DataTypes.asn:1654")
-	ErrPlmnIdInvalidSize           = errors.New("plmnId must be exactly 3 octets per TS 23.003")
-
-	ErrAdjacentAccessRestrictionListSize = errors.New("adjacentAccessRestrictionDataList: must contain 1..50 entries when present")
-
-	ErrIMSIGroupIdListSize        = errors.New("imsiGroupIdList: must contain 1..50 entries when present")
-	ErrIMSIGroupServiceIDOverflow = errors.New("imsiGroupId: GroupServiceID must fit in 0..4294967295")
-	ErrLocalGroupIDInvalidSize    = errors.New("imsiGroupId: LocalGroupID must be 1..10 octets per TS 29.002")
-
-	ErrEDRXCycleLengthListSize  = errors.New("eDRXCycleLengthList: must contain 1..8 entries when present")
-	ErrEDRXCycleLengthValueSize = errors.New("eDRXCycleLength: EDRXCycleLengthValue must be exactly 1 octet per TS 29.002")
-
-	ErrResetIdListSize    = errors.New("resetIdList: must contain 1..50 entries when present")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrResetIdInvalidSize = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")
 
-	ErrPDPContextIdOutOfRange             = errors.New("pdpContext: PdpContextId must be 1..50 (maxNumOfPDP-Contexts) per TS 29.002")
-	ErrPDPTypeInvalidSize                 = errors.New("pdpContext: PdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1657")
-	ErrQoSSubscribedInvalidSize           = errors.New("pdpContext: QosSubscribed must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1673 (mandatory tag [18])")
-	ErrExtQoSSubscribedInvalidSize        = errors.New("pdpContext: ExtQoSSubscribed must be 1..9 octets per TS 29.002 MAP-MS-DataTypes.asn:1677")
-	ErrExt2QoSSubscribedInvalidSize       = errors.New("pdpContext: Ext2QoSSubscribed must be 1..3 octets per TS 29.002 MAP-MS-DataTypes.asn:1685")
-	ErrExt3QoSSubscribedInvalidSize       = errors.New("pdpContext: Ext3QoSSubscribed must be 1..2 octets per TS 29.002 MAP-MS-DataTypes.asn:1690")
-	ErrExt4QoSSubscribedInvalidSize       = errors.New("pdpContext: Ext4QoSSubscribed must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1693")
-	ErrExtQoSHierarchyViolated            = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per TS 29.002 MAP-MS-DataTypes.asn:1534-1538 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
-	ErrExtPDPAddressWithoutPDPAddress     = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per TS 29.002 MAP-MS-DataTypes.asn:1549")
-	ErrExtPDPTypeInvalidSize              = errors.New("pdpContext: ExtPdpType must be exactly 2 octets per TS 29.002 MAP-MS-DataTypes.asn:1661")
-	ErrPDPAddressInvalidSize              = errors.New("pdpContext: PdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665")
-	ErrExtPDPAddressInvalidSize           = errors.New("pdpContext: ExtPdpAddress must be 1..16 octets per TS 29.002 MAP-MS-DataTypes.asn:1665 (PDP-Address)")
-	ErrPDPChargingCharsInvalidSize        = errors.New("pdpContext: PdpChargingCharacteristics must be exactly 2 octets per TS 29.002")
-	ErrAPNOIReplacementInvalidSize        = errors.New("apnOIReplacement: must be 9..100 octets per TS 29.002 MAP-MS-DataTypes.asn:1303")
-	ErrFQDNInvalidSize                    = errors.New("fqdn: must be 9..255 octets per TS 29.002 MAP-MS-DataTypes.asn:1434")
-	ErrRestorationPriorityInvalidSize     = errors.New("pdpContext: RestorationPriority must be exactly 1 octet per TS 29.002")
-	ErrGPRSDataListSize                   = errors.New("gprsDataList: must contain 1..50 entries (maxNumOfPDP-Contexts) per TS 29.002")
-	ErrGPRSSubscriptionDataMissingList    = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
-	ErrAMBRBandwidthOutOfRange            = errors.New("ambr: bandwidth fields must be non-negative")
-	ErrSIPTOPermissionInvalid             = errors.New("pdpContext: SiptoPermission must be siptoAboveRanAllowed(0) or siptoAboveRanNotAllowed(1)")
+	ErrExtQoSHierarchyViolated         = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per TS 29.002 MAP-MS-DataTypes.asn:1534-1538 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
+	ErrExtPDPAddressWithoutPDPAddress  = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per TS 29.002 MAP-MS-DataTypes.asn:1549")
+	ErrGPRSSubscriptionDataMissingList = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
+	ErrAMBRBandwidthOutOfRange         = errors.New("ambr: bandwidth fields must be non-negative")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrSIPTOPermissionInvalid = errors.New("pdpContext: SiptoPermission must be siptoAboveRanAllowed(0) or siptoAboveRanNotAllowed(1)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrSIPTOLocalNetworkPermissionInvalid = errors.New("pdpContext: SiptoLocalNetworkPermission must be siptoAtLocalNetworkAllowed(0) or siptoAtLocalNetworkNotAllowed(1)")
-	ErrLIPAPermissionInvalid              = errors.New("pdpContext: LipaPermission must be lipaProhibited(0), lipaOnly(1), or lipaConditional(2)")
-	ErrNIDDMechanismInvalid               = errors.New("pdpContext: NIDDMechanism must be sGi-based-data-delivery(0) or sCEF-based-data-delivery(1)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrLIPAPermissionInvalid = errors.New("pdpContext: LipaPermission must be lipaProhibited(0), lipaOnly(1), or lipaConditional(2)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrNIDDMechanismInvalid = errors.New("pdpContext: NIDDMechanism must be sGi-based-data-delivery(0) or sCEF-based-data-delivery(1)")
 
-	ErrLSAIdentityInvalidSize        = errors.New("lsaData: LsaIdentity must be exactly 3 octets per TS 29.002 MAP-MS-DataTypes.asn:1728")
-	ErrLSAAttributesInvalidSize      = errors.New("lsaData: LsaAttributes must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1731")
-	ErrLSADataListSize               = errors.New("lsaDataList: must contain 1..20 entries (maxNumOfLSAs) per TS 29.002")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrLSAOnlyAccessIndicatorInvalid = errors.New("lsaInformation: LsaOnlyAccessIndicator must be accessOutsideLSAsAllowed(0) or accessOutsideLSAsRestricted(1)")
 
-	ErrPDNTypeInvalidSize                  = errors.New("apnConfiguration: PdnType must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:1369")
-	ErrQoSClassIdentifierOutOfRange        = errors.New("epsQoSSubscribed: QosClassIdentifier must be 1..9 per TS 29.002 MAP-MS-DataTypes.asn:1415")
-	ErrRFSPIDOutOfRange                    = errors.New("epsSubscriptionData: RfspId must be 1..MaxRFSPID (256) per TS 29.002 MAP-MS-DataTypes.asn:1306")
-	ErrPDNGWAllocationTypeInvalid          = errors.New("apnConfiguration: PdnGwAllocationType must be static(0) or dynamic(1) per TS 29.002 MAP-MS-DataTypes.asn:1437")
-	ErrPDNConnectionContinuityInvalid      = errors.New("apnConfiguration: PdnConnectionContinuity must be 0..2 per TS 29.002 MAP-MS-DataTypes.asn:1356")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrPDNGWAllocationTypeInvalid = errors.New("apnConfiguration: PdnGwAllocationType must be static(0) or dynamic(1) per TS 29.002 MAP-MS-DataTypes.asn:1437")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrPDNConnectionContinuityInvalid = errors.New("apnConfiguration: PdnConnectionContinuity must be 0..2 per TS 29.002 MAP-MS-DataTypes.asn:1356")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrWLANOffloadabilityIndicationInvalid = errors.New("wlanOffloadability: WLAN-Offloadability-Indication must be notAllowed(0) or allowed(1)")
-	ErrSpecificAPNInfoListSize             = errors.New("specificAPNInfoList: must contain 1..50 entries (maxNumOfSpecificAPNInfos) per TS 29.002")
-	ErrEPSDataListSize                     = errors.New("epsDataList: must contain 1..50 entries (maxNumOfAPN-Configurations) per TS 29.002")
 	ErrAPNConfigurationProfileMissingList  = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")
 
-	ErrGMLCListSize                      = errors.New("gmlcList: must contain 1..5 entries (maxNumOfGMLC) per TS 29.002")
-	ErrLCSPrivacyExceptionListSize       = errors.New("lcsPrivacyExceptionList: must contain 1..4 entries (maxNumOfPrivacyClass) per TS 29.002")
-	ErrExternalClientListSize            = errors.New("externalClientList: must contain 0..5 entries (maxNumOfExternalClient) per TS 29.002")
-	ErrPLMNClientListSize                = errors.New("plmnClientList: must contain 1..5 entries (maxNumOfPLMNClient) per TS 29.002")
-	ErrExtExternalClientListSize         = errors.New("extExternalClientList: must contain 1..35 entries (maxNumOfExt-ExternalClient) per TS 29.002")
-	ErrServiceTypeListSize               = errors.New("serviceTypeList: must contain 1..32 entries (maxNumOfServiceType) per TS 29.002")
-	ErrMOLRListSize                      = errors.New("molrList: must contain 1..3 entries (maxNumOfMOLR-Class) per TS 29.002")
-	ErrGMLCRestrictionInvalid            = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
-	ErrNotificationToMSUserInvalid       = errors.New("notificationToMSUser: must be 0..3 per TS 29.002 MAP-MS-DataTypes.asn:2035")
-	ErrLCSClientInternalIDInvalid        = errors.New("plmnClientList: LCSClientInternalID must be 0..4 per TS 29.002 MAP-CommonDataTypes.asn")
-	ErrServiceTypeIdentityRange          = errors.New("serviceType: ServiceTypeIdentity must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
-	ErrLCSPrivacyClassSsCodeInvalidSize  = errors.New("lcsPrivacyClass: SsCode must be exactly 1 octet per TS 29.002 (mandatory SS-Code)")
-	ErrMOLRClassSsCodeInvalidSize        = errors.New("molrClass: SsCode must be exactly 1 octet per TS 29.002 (mandatory SS-Code)")
-	ErrGMLCAddressEmpty                  = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
-	ErrSGSNMtSmsCAMELTDPCriteriaListSize = errors.New("sgsnCAMELSubscriptionInfo: MtSmsCAMELTDPCriteriaList must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002 MAP-MS-DataTypes.asn:2199")
+	ErrGMLCRestrictionInvalid      = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
+	ErrNotificationToMSUserInvalid = errors.New("notificationToMSUser: must be 0..3 per TS 29.002 MAP-MS-DataTypes.asn:2035")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrLCSClientInternalIDInvalid = errors.New("plmnClientList: LCSClientInternalID must be 0..4 per TS 29.002 MAP-CommonDataTypes.asn")
+	ErrGMLCAddressEmpty           = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
 
-	ErrIsdArgNil                      = errors.New("insertSubscriberDataArg: argument must not be nil")
-	ErrIsdResNil                      = errors.New("insertSubscriberDataRes: argument must not be nil")
-	ErrIsdCategoryInvalidSize         = errors.New("insertSubscriberDataArg: Category must be exactly 1 octet per TS 29.002")
-	ErrIsdChargingCharsInvalidSize    = errors.New("insertSubscriberDataArg: ChargingCharacteristics must be exactly 2 octets per TS 29.002")
-	ErrIsdCsAllocRetentionInvalidSize = errors.New("insertSubscriberDataArg: CsAllocationRetentionPriority must be exactly 1 octet per TS 29.002")
-	ErrIsdAgeIndicatorInvalidSize     = errors.New("insertSubscriberDataArg: SuperChargerSupportedInHLR (AgeIndicator) must be 1..6 octets per TS 29.002")
-	ErrIsdBearerServiceCodeSize       = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
-	ErrIsdTeleserviceCodeSize         = errors.New("insertSubscriberDataArg: each Ext-TeleserviceCode must be 1..5 octets per TS 29.002")
-	ErrIsdBearerServiceListSize       = errors.New("insertSubscriberDataArg: BearerServiceList must contain 1..50 entries (maxNumOfBearerServices) per TS 29.002")
-	ErrIsdTeleserviceListSize         = errors.New("insertSubscriberDataArg: TeleserviceList must contain 1..20 entries (maxNumOfTeleservices) per TS 29.002")
-	ErrIsdProvisionedSSListSize       = errors.New("insertSubscriberDataArg: ProvisionedSS must contain 1..30 entries (maxNumOfSS) per TS 29.002 MAP-MS-DataTypes.asn:1508")
-	ErrIsdResSsListSize               = errors.New("insertSubscriberDataRes: SsList entries must each be exactly 1 octet (SS-Code) per TS 29.002")
-	ErrIsdMSISDNDecodedEmpty          = errors.New("insertSubscriberDataArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrIsdIMSIInvalidSize             = errors.New("insertSubscriberDataArg: IMSI must be 3..8 octets per TS 29.002 MAP-CommonDataTypes.asn:327 (TBCD-STRING SIZE 3..8)")
+	ErrIsdArgNil = errors.New("insertSubscriberDataArg: argument must not be nil")
+	ErrIsdResNil = errors.New("insertSubscriberDataRes: argument must not be nil")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+	ErrIsdBearerServiceCodeSize = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+	ErrIsdTeleserviceCodeSize = errors.New("insertSubscriberDataArg: each Ext-TeleserviceCode must be 1..5 octets per TS 29.002")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+	ErrIsdResSsListSize      = errors.New("insertSubscriberDataRes: SsList entries must each be exactly 1 octet (SS-Code) per TS 29.002")
+	ErrIsdMSISDNDecodedEmpty = errors.New("insertSubscriberDataArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
 
-	ErrGPRSCamelTDPDataListSize          = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
 	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
 	ErrCamelCapabilityHandlingOutOfRange = errors.New("gprsCSI/mgCSI: CamelCapabilityHandling must be 1..4 per TS 29.078")
 	ErrGPRSCSIRequiresTDPListAndPhase    = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")
-	ErrMobilityTriggersSize              = errors.New("mgCSI: MobilityTriggers must contain 1..10 entries (maxNumOfMobilityTriggers) per TS 29.002")
-	ErrMMCodeInvalidSize                 = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+	ErrMMCodeInvalidSize = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
 
-	ErrLocationEstimateTypeInvalid        = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (extensible enum: unknown values preserved on decode)")
-	ErrLCSClientTypeInvalid               = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (extensible enum: unknown values preserved on decode)")
-	ErrLCSFormatIndicatorInvalid          = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
-	ErrPrivacyCheckRelatedActionInvalid   = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:307")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrLocationEstimateTypeInvalid = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (extensible enum: unknown values preserved on decode)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrLCSClientTypeInvalid = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (extensible enum: unknown values preserved on decode)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrLCSFormatIndicatorInvalid        = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
+	ErrPrivacyCheckRelatedActionInvalid = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:307")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:457 (extensible enum: unknown values preserved on decode)")
-	ErrResponseTimeCategoryInvalid        = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
-	ErrLCSPriorityInvalidSize             = errors.New("psl: LCSPriority must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:232")
-	ErrLCSReferenceNumberInvalidSize      = errors.New("psl: LCSReferenceNumber must be exactly 1 octet per TS 29.002 MAP-CommonDataTypes.asn (LCS-ReferenceNumber)")
-	ErrHorizontalAccuracyInvalidSize      = errors.New("lcsQoS: HorizontalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:249 (7-bit Uncertainty Code per TS 23.032)")
-	ErrHorizontalAccuracyReservedBit      = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:250 (only the low 7 bits encode the uncertainty code per TS 23.032)")
-	ErrVerticalAccuracyInvalidSize        = errors.New("lcsQoS: VerticalAccuracy must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:255 (7-bit Vertical Uncertainty Code per TS 23.032)")
-	ErrVerticalAccuracyReservedBit        = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:256 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")
-	ErrUSSDDataCodingSchemeInvalidSize    = errors.New("ussd: USSD-DataCodingScheme must be exactly 1 octet on the wire per TS 29.002 MAP-SS-DataTypes.asn (USSD-DataCodingScheme ::= OCTET STRING (SIZE (1)))")
-	ErrLCSCodewordStringSize              = errors.New("lcsCodeword: LcsCodewordString must be 1..20 octets (maxLCSCodewordStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:298")
-	ErrLCSClientNameNameStringSize        = errors.New("lcsClientName: NameString must be 1..63 octets (maxNameStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:210")
-	ErrLCSRequestorIDStringSize           = errors.New("lcsRequestorID: RequestorIDString must be 1..63 octets (maxRequestorIDStringLength) per TS 29.002 MAP-LCS-DataTypes.asn:220")
-	ErrDeferredLocationEventTypeSize      = errors.New("locationType: DeferredLocationEventType BIT STRING must be 1..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:165 (5 named bits, padded to multiple of 8 on the wire)")
-	ErrSupportedGADShapesSize             = errors.New("psl: SupportedGADShapes BIT STRING must be 7..16 bits per TS 29.002 MAP-LCS-DataTypes.asn:280 (7 named bits, padded to multiple of 8 on the wire)")
-	ErrLCSClientIDDialedByMSEmpty         = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrResponseTimeCategoryInvalid   = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
+	ErrHorizontalAccuracyReservedBit = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:250 (only the low 7 bits encode the uncertainty code per TS 23.032)")
+	ErrVerticalAccuracyReservedBit   = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:256 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")
+	ErrLCSClientIDDialedByMSEmpty    = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
 
-	ErrExtGeographicalInformationSize     = errors.New("psl: ExtGeographicalInformation must be 1..20 octets (maxExt-GeographicalInformation) per TS 29.002 MAP-LCS-DataTypes.asn:462")
-	ErrAddGeographicalInformationSize     = errors.New("psl: AddGeographicalInformation must be 1..91 octets (maxAdd-GeographicalInformation) per TS 29.002 MAP-LCS-DataTypes.asn:601")
-	ErrVelocityEstimateSize               = errors.New("psl: VelocityEstimate must be 4..7 octets per TS 29.002 MAP-LCS-DataTypes.asn:522")
-	ErrPositioningDataInformationSize     = errors.New("psl: PositioningDataInformation must be 2..10 octets (maxPositioningDataInformation) per TS 29.002 MAP-LCS-DataTypes.asn:552")
-	ErrUtranPositioningDataInfoSize       = errors.New("psl: UtranPositioningDataInfo must be 3..11 octets (maxUtranPositioningDataInfo) per TS 29.002 MAP-LCS-DataTypes.asn:560")
-	ErrGeranGANSSpositioningDataSize      = errors.New("psl: GeranGANSSpositioningData must be 2..10 octets (maxGeranGANSSpositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:568")
-	ErrUtranGANSSpositioningDataSize      = errors.New("psl: UtranGANSSpositioningData must be 1..9 octets (maxUtranGANSSpositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:576")
-	ErrUtranAdditionalPositioningDataSize = errors.New("psl: UtranAdditionalPositioningData must be 1..8 octets (maxUtranAdditionalPositioningData) per TS 29.002 MAP-LCS-DataTypes.asn:584")
-	ErrUtranBaroPressureMeasOutOfRange    = errors.New("psl: UtranBaroPressureMeas must be 30000..115000 per TS 29.002 MAP-LCS-DataTypes.asn:592")
-
-	ErrAreaTypeInvalid                          = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
-	ErrAreaIdentificationSize                   = errors.New("area: AreaIdentification must be 2..7 octets per TS 29.002 MAP-LCS-DataTypes.asn:346")
-	ErrAreaListSize                             = errors.New("areaDefinition: AreaList must contain 1..10 entries (maxNumOfAreas) per TS 29.002 MAP-LCS-DataTypes.asn:328-330")
-	ErrOccurrenceInfoInvalid                    = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:361 (extensible enum: unknown values preserved on decode)")
-	ErrIntervalTimeOutOfRange                   = errors.New("areaEventInfo: IntervalTime must be 1..32767 seconds per TS 29.002 MAP-LCS-DataTypes.asn:366")
-	ErrReportingAmountOutOfRange                = errors.New("periodicLDRInfo: ReportingAmount must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn:380-382")
-	ErrReportingIntervalOutOfRange              = errors.New("periodicLDRInfo: ReportingInterval must be 1..8639999 seconds (maxReportingInterval) per TS 29.002 MAP-LCS-DataTypes.asn:384-387")
-	ErrPeriodicLDRProductExceeded               = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrAreaTypeInvalid = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrOccurrenceInfoInvalid      = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:361 (extensible enum: unknown values preserved on decode)")
+	ErrPeriodicLDRProductExceeded = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrRANTechnologyInvalid                     = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
-	ErrPLMNListSize                             = errors.New("reportingPLMNList: PlmnList must contain 1..20 entries (maxNumOfReportingPLMN) per TS 29.002 MAP-LCS-DataTypes.asn:409-412")
 	ErrTerminationCauseInvalid                  = errors.New("deferredmt-lrData: TerminationCause must be 0..9 per TS 29.002 MAP-LCS-DataTypes.asn:696 (extensible enum: unknown values preserved on decode)")
 	ErrServingNodeAddressMultipleAlts           = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
 	ErrServingNodeAddressNoAlt                  = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
-	ErrServingNodeAddressMmeNumberSize          = errors.New("servingNodeAddress: MmeNumber must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
 	ErrServingNodeAddressMscNumberDecodedEmpty  = errors.New("servingNodeAddress: present wire MscNumber decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrServingNodeAddressSgsnNumberDecodedEmpty = errors.New("servingNodeAddress: present wire SgsnNumber decoded to empty digits; presence cannot round-trip through string-based API")
 
-	ErrPSLArgNil                        = errors.New("provideSubscriberLocationArg: argument must not be nil")
-	ErrPSLArgMlcNumberEmpty             = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory; empty value is not permitted on encode")
-	ErrPSLArgMlcNumberDecodedEmpty      = errors.New("provideSubscriberLocationArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgMSISDNDecodedEmpty         = errors.New("provideSubscriberLocationArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgIMSIDecodedEmpty           = errors.New("provideSubscriberLocationArg: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgIMSIInvalidSize            = errors.New("provideSubscriberLocationArg: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8 octets per ITU E.212)")
-	ErrPSLArgIMEIDecodedEmpty           = errors.New("provideSubscriberLocationArg: present wire IMEI decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgIMEIInvalidSize            = errors.New("provideSubscriberLocationArg: IMEI must be exactly 15 BCD digits per 3GPP TS 23.003 (TBCD-STRING SIZE 8 octets)")
-	ErrPSLArgLMSIInvalidSize            = errors.New("provideSubscriberLocationArg: LMSI must be exactly 4 octets per TS 29.002 MAP-CommonDataTypes.asn")
-	ErrPSLArgLcsServiceTypeIDOutOfRange = errors.New("provideSubscriberLocationArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
+	ErrPSLArgNil                   = errors.New("provideSubscriberLocationArg: argument must not be nil")
+	ErrPSLArgMlcNumberEmpty        = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory; empty value is not permitted on encode")
+	ErrPSLArgMlcNumberDecodedEmpty = errors.New("provideSubscriberLocationArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPSLArgMSISDNDecodedEmpty    = errors.New("provideSubscriberLocationArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPSLArgIMSIInvalidSize       = errors.New("provideSubscriberLocationArg: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8 octets per ITU E.212)")
+	ErrPSLArgIMEIInvalidSize       = errors.New("provideSubscriberLocationArg: IMEI must be exactly 15 BCD digits per 3GPP TS 23.003 (TBCD-STRING SIZE 8 octets)")
 
 	ErrPSLResNil                      = errors.New("provideSubscriberLocationRes: argument must not be nil")
-	ErrPSLResLocationEstimateMissing  = errors.New("provideSubscriberLocationRes: LocationEstimate is mandatory; nil/empty value is not permitted on encode")
-	ErrPSLResCellGlobalIdSize         = errors.New("provideSubscriberLocationRes: CellGlobalId must be exactly 7 octets per TS 29.002 MAP-CommonDataTypes.asn (CellGlobalIdOrServiceAreaIdFixedLength)")
-	ErrPSLResLAIInvalidSize           = errors.New("provideSubscriberLocationRes: LAI must be exactly 5 octets per TS 29.002 MAP-CommonDataTypes.asn (LAIFixedLength)")
 	ErrPSLResCellGlobalIdAndLAIMutex  = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
 	ErrPSLResCellIdOrSaiInvalidChoice = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrLCSEventInvalid                        = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (extensible enum: unknown values preserved on decode)")
-	ErrSequenceNumberOutOfRange               = errors.New("subscriberLocationReport: SequenceNumber must be 1..8639999 (maxReportingAmount) per TS 29.002 MAP-LCS-DataTypes.asn")
 	ErrLCSLocationInfoNetworkNodeEmpty        = errors.New("lcsLocationInfo: NetworkNodeNumber digits are mandatory; empty value is not permitted on encode")
 	ErrLCSLocationInfoNetworkNodeDecodedEmpty = errors.New("lcsLocationInfo: present wire NetworkNodeNumber decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrLCSLocationInfoLMSIInvalidSize         = errors.New("lcsLocationInfo: LMSI must be exactly 4 octets per TS 29.002 MAP-CommonDataTypes.asn")
-	ErrLCSLocationInfoMmeNameSize             = errors.New("lcsLocationInfo: MmeName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
-	ErrLCSLocationInfoAaaServerNameSize       = errors.New("lcsLocationInfo: AaaServerName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
-	ErrLCSLocationInfoSgsnNameSize            = errors.New("lcsLocationInfo: SgsnName must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
-	ErrLCSLocationInfoSgsnRealmSize           = errors.New("lcsLocationInfo: SgsnRealm must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
 
 	// SubscriberLocationReportArg top-level (TS 29.002 MAP-LCS-DataTypes.asn:622).
-	ErrSLRArgNil                        = errors.New("subscriberLocationReportArg: nil argument is not permitted")
-	ErrSLRArgIMSIInvalidSize            = errors.New("subscriberLocationReportArg: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8)")
-	ErrSLRArgIMSIDecodedEmpty           = errors.New("subscriberLocationReportArg: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSLRArgIMEIInvalidSize            = errors.New("subscriberLocationReportArg: IMEI must be exactly 15 BCD digits per 3GPP TS 23.003")
-	ErrSLRArgIMEIDecodedEmpty           = errors.New("subscriberLocationReportArg: present wire IMEI decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSLRArgMSISDNDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSLRArgNaESRDDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSLRArgNaESRKDecodedEmpty         = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSLRArgLcsServiceTypeIDOutOfRange = errors.New("subscriberLocationReportArg: LcsServiceTypeID must be 0..127 per TS 29.002 MAP-CommonDataTypes.asn:436 (LCSServiceTypeID INTEGER (0..127))")
-	ErrSLRArgCellGlobalIdAndLAIMutex    = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
+	ErrSLRArgNil                     = errors.New("subscriberLocationReportArg: nil argument is not permitted")
+	ErrSLRArgIMSIInvalidSize         = errors.New("subscriberLocationReportArg: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8)")
+	ErrSLRArgIMEIInvalidSize         = errors.New("subscriberLocationReportArg: IMEI must be exactly 15 BCD digits per 3GPP TS 23.003")
+	ErrSLRArgMSISDNDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgNaESRDDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgNaESRKDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgCellGlobalIdAndLAIMutex = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
 
 	// SubscriberLocationReportRes top-level (TS 29.002 MAP-LCS-DataTypes.asn:691).
 	ErrSLRResNil                = errors.New("subscriberLocationReportRes: nil argument is not permitted")
@@ -3904,7 +3663,6 @@ var (
 	// SubscriberIdentity CHOICE (TS 29.002 MAP-CommonDataTypes.asn).
 	ErrSubscriberIdentityNoAlt              = errors.New("subscriberIdentity: exactly one of IMSI or MSISDN must be set (CHOICE); neither was provided")
 	ErrSubscriberIdentityMultipleAlts       = errors.New("subscriberIdentity: exactly one of IMSI or MSISDN must be set (CHOICE); both were provided")
-	ErrSubscriberIdentityIMSIDecodedEmpty   = errors.New("subscriberIdentity: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSubscriberIdentityMSISDNDecodedEmpty = errors.New("subscriberIdentity: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSubscriberIdentityUnknownChoice      = errors.New("subscriberIdentity: CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 
@@ -3918,14 +3676,14 @@ var (
 	ErrAnyTimeInterrogationNil = errors.New("anyTimeInterrogation: nil argument is not permitted")
 
 	// ReportSMDeliveryStatus top-level (TS 29.002 MAP-SM-DataTypes.asn).
-	ErrReportSMDeliveryStatusNil                  = errors.New("reportSMDeliveryStatus: nil argument is not permitted")
-	ErrReportSMDeliveryStatusMSISDNEmpty          = errors.New("reportSMDeliveryStatus: MSISDN digits are mandatory; empty value is not permitted on encode")
-	ErrReportSMDeliveryStatusMSISDNDecodedEmpty   = errors.New("reportSMDeliveryStatus: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrReportSMDeliveryStatusSCAEmpty             = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory; empty value is not permitted on encode")
-	ErrReportSMDeliveryStatusSCADecodedEmpty      = errors.New("reportSMDeliveryStatus: present wire ServiceCentreAddress decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrReportSMDeliveryStatusNil                = errors.New("reportSMDeliveryStatus: nil argument is not permitted")
+	ErrReportSMDeliveryStatusMSISDNEmpty        = errors.New("reportSMDeliveryStatus: MSISDN digits are mandatory; empty value is not permitted on encode")
+	ErrReportSMDeliveryStatusMSISDNDecodedEmpty = errors.New("reportSMDeliveryStatus: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrReportSMDeliveryStatusSCAEmpty           = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory; empty value is not permitted on encode")
+	ErrReportSMDeliveryStatusSCADecodedEmpty    = errors.New("reportSMDeliveryStatus: present wire ServiceCentreAddress decoded to empty digits; presence cannot round-trip through string-based API")
+	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrReportSMDeliveryStatusOutcomeInvalid       = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 MAP-SM-DataTypes.asn")
 	ErrReportSMDeliveryStatusIMSIInvalidSize      = errors.New("reportSMDeliveryStatus: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8)")
-	ErrReportSMDeliveryStatusIMSIDecodedEmpty     = errors.New("reportSMDeliveryStatus: present wire IMSI decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrReportSMDeliveryStatusResNil               = errors.New("reportSMDeliveryStatusRes: nil argument is not permitted")
 	ErrReportSMDeliveryStatusResStoredMSISDNEmpty = errors.New("reportSMDeliveryStatusRes: present wire StoredMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 )

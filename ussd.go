@@ -42,9 +42,6 @@ var (
 	// ErrUSSDTextEmpty is returned when the text to encode, or the octets to
 	// decode, are empty: USSD-String is SIZE (1..maxUSSD-StringLength).
 	ErrUSSDTextEmpty = errors.New("ussd: empty text")
-	// ErrAlertingPatternInvalidSize is returned when a wire AlertingPattern is
-	// not exactly one octet (SIZE (1), 3GPP TS 29.002 V19.1.0 §17.7.8).
-	ErrAlertingPatternInvalidSize = errors.New("alertingPattern: must be exactly 1 octet")
 	// ErrAlertingPatternReserved is returned when marshalling an
 	// AlertingPattern that is not one of the seven values 3GPP TS 29.002
 	// V19.1.0 §17.7.8 defines.

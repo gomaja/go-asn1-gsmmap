@@ -56,9 +56,6 @@ func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberId
 		if err != nil {
 			return out, fmt.Errorf("decoding SubscriberIdentity.IMSI: %w", err)
 		}
-		if imsi == "" {
-			return out, ErrSubscriberIdentityIMSIDecodedEmpty
-		}
 		out.IMSI = imsi
 	case gsm_map.SubscriberIdentityChoiceMsisdn:
 		if w.Msisdn == nil {

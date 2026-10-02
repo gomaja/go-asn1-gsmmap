@@ -52,9 +52,6 @@ func convertWireToODBData(w *gsm_map.ODBData) *ODBData {
 // --- ZoneCode / ZoneCodeList (MAP-MS-DataTypes.asn:2070) ---
 
 func convertZoneCodeListToWire(z ZoneCodeList) (*gsm_map.ZoneCodeList, error) {
-	if len(z) < 1 || len(z) > MaxNumOfZoneCodes {
-		return nil, ErrZoneCodeListInvalidSize
-	}
 	out := gsm_map.ZoneCodeList{Values: make([]gsm_map.ZoneCode, 0, len(z))}
 	for i, zc := range z {
 		if len(zc) != 2 {
@@ -69,9 +66,7 @@ func convertWireToZoneCodeList(w *gsm_map.ZoneCodeList) (ZoneCodeList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w.Values) < 1 || len(w.Values) > MaxNumOfZoneCodes {
-		return nil, ErrZoneCodeListInvalidSize
-	}
+
 	out := make(ZoneCodeList, 0, len(w.Values))
 	for i, zc := range w.Values {
 		if len(zc) != 2 {
@@ -115,9 +110,6 @@ func convertWireToVoiceBroadcastData(w *gsm_map.VoiceBroadcastData) (*VoiceBroad
 }
 
 func convertVBSDataListToWire(list VBSDataList) (*gsm_map.VBSDataList, error) {
-	if len(list) < 1 || len(list) > MaxNumOfVBSGroupIds {
-		return nil, ErrVBSDataListInvalidSize
-	}
 	out := gsm_map.VBSDataList{Values: make([]gsm_map.VoiceBroadcastData, 0, len(list))}
 	for i := range list {
 		w, err := convertVoiceBroadcastDataToWire(&list[i])
@@ -133,9 +125,7 @@ func convertWireToVBSDataList(w *gsm_map.VBSDataList) (VBSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w.Values) < 1 || len(w.Values) > MaxNumOfVBSGroupIds {
-		return nil, ErrVBSDataListInvalidSize
-	}
+
 	out := make(VBSDataList, 0, len(w.Values))
 	for i := range w.Values {
 		v, err := convertWireToVoiceBroadcastData(&w.Values[i])
@@ -160,9 +150,6 @@ func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroup
 		out.AdditionalSubscriptions = &bs
 	}
 	if len(v.AdditionalInfo) > 0 {
-		if len(v.AdditionalInfo) > MaxAdditionalInfoOctets {
-			return nil, fmt.Errorf("VoiceGroupCallData.AdditionalInfo: %w", ErrAdditionalInfoTooLong)
-		}
 		// AdditionalInfo is modeled as HexBytes per the public type's
 		// godoc — byte-aligned only. Set BitLength to len(bytes)*8;
 		// non-byte-aligned peer values are lossy on decode.
@@ -194,9 +181,7 @@ func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroup
 		// Spec max is 136 bits = 17 octets; reject larger inputs. Use the
 		// ceiling of BitLength to catch over-spec encodings that also
 		// carry sub-byte trailing bits.
-		if (w.AdditionalInfo.BitLength+7)/8 > MaxAdditionalInfoOctets {
-			return nil, fmt.Errorf("VoiceGroupCallData.AdditionalInfo: %w", ErrAdditionalInfoTooLong)
-		}
+
 		if byteLen > len(w.AdditionalInfo.Bytes) {
 			byteLen = len(w.AdditionalInfo.Bytes)
 		}
@@ -211,9 +196,6 @@ func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroup
 }
 
 func convertVGCSDataListToWire(list VGCSDataList) (*gsm_map.VGCSDataList, error) {
-	if len(list) < 1 || len(list) > MaxNumOfVGCSGroupIds {
-		return nil, ErrVGCSDataListInvalidSize
-	}
 	out := gsm_map.VGCSDataList{Values: make([]gsm_map.VoiceGroupCallData, 0, len(list))}
 	for i := range list {
 		w, err := convertVoiceGroupCallDataToWire(&list[i])
@@ -229,9 +211,7 @@ func convertWireToVGCSDataList(w *gsm_map.VGCSDataList) (VGCSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w.Values) < 1 || len(w.Values) > MaxNumOfVGCSGroupIds {
-		return nil, ErrVGCSDataListInvalidSize
-	}
+
 	out := make(VGCSDataList, 0, len(w.Values))
 	for i := range w.Values {
 		v, err := convertWireToVoiceGroupCallData(&w.Values[i])
@@ -260,9 +240,7 @@ func encodeGroupID(gid string, hasLong bool) (gsm_map.GroupId, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(enc) != GroupIdOctets {
-		return nil, fmt.Errorf("%w: got %d octets from %q", ErrGroupIdInvalidEncodedLength, len(enc), gid)
-	}
+
 	return gsm_map.GroupId(enc), nil
 }
 
@@ -273,9 +251,7 @@ func encodeLongGroupID(s string) (gsm_map.LongGroupId, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(enc) != LongGroupIdOctets {
-		return nil, fmt.Errorf("%w: got %d octets from %q", ErrLongGroupIdInvalidEncodedLength, len(enc), s)
-	}
+
 	return gsm_map.LongGroupId(enc), nil
 }
 

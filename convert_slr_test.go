@@ -127,14 +127,14 @@ func TestLCSLocationInfoEmptyNetworkNodeRejected(t *testing.T) {
 }
 
 func TestLCSLocationInfoLMSISizeRejected(t *testing.T) {
-	_, err := convertLCSLocationInfoToWire(&LCSLocationInfo{
+	_, err := strictWire(convertLCSLocationInfoToWire(&LCSLocationInfo{
 		NetworkNodeNumber:       "31650000000",
 		NetworkNodeNumberNature: 0x10,
 		NetworkNodeNumberPlan:   0x01,
 		LMSI:                    HexBytes{0x01, 0x02, 0x03}, // 3 octets, must be 4
-	})
-	if !errors.Is(err, ErrLCSLocationInfoLMSIInvalidSize) {
-		t.Errorf("encode LMSI=3: want ErrLCSLocationInfoLMSIInvalidSize, got %v", err)
+	}))
+	if !isConstraint(err) {
+		t.Errorf("encode LMSI=3: want BER constraint error, got %v", err)
 	}
 }
 
@@ -151,17 +151,17 @@ func TestLCSLocationInfoDiameterIdentitySizeRejected(t *testing.T) {
 		mutate  func(*LCSLocationInfo)
 		wantErr error
 	}{
-		{"MmeName too short", func(l *LCSLocationInfo) { l.MmeName = HexBytes("short") }, ErrLCSLocationInfoMmeNameSize},
-		{"AaaServerName too short", func(l *LCSLocationInfo) { l.AaaServerName = HexBytes("short") }, ErrLCSLocationInfoAaaServerNameSize},
-		{"SgsnName too short", func(l *LCSLocationInfo) { l.SgsnName = HexBytes("short") }, ErrLCSLocationInfoSgsnNameSize},
-		{"SgsnRealm too short", func(l *LCSLocationInfo) { l.SgsnRealm = HexBytes("short") }, ErrLCSLocationInfoSgsnRealmSize},
+		{"MmeName too short", func(l *LCSLocationInfo) { l.MmeName = HexBytes("short") }, nil},
+		{"AaaServerName too short", func(l *LCSLocationInfo) { l.AaaServerName = HexBytes("short") }, nil},
+		{"SgsnName too short", func(l *LCSLocationInfo) { l.SgsnName = HexBytes("short") }, nil},
+		{"SgsnRealm too short", func(l *LCSLocationInfo) { l.SgsnRealm = HexBytes("short") }, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := base()
 			tc.mutate(in)
-			_, err := convertLCSLocationInfoToWire(in)
-			if !errors.Is(err, tc.wantErr) {
+			_, err := strictWire(convertLCSLocationInfoToWire(in))
+			if !matchesExpected(err, tc.wantErr) {
 				t.Errorf("want %v, got %v", tc.wantErr, err)
 			}
 		})

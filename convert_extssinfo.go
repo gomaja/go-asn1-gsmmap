@@ -23,13 +23,6 @@ import (
 
 // --- Ext-SS-Status helpers (OCTET STRING SIZE 1..5) ---
 
-func validateExtSSStatus(b HexBytes, field string) error {
-	if len(b) < 1 || len(b) > 5 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrExtSSStatusInvalidSize, len(b))
-	}
-	return nil
-}
-
 // --- SSSubscriptionOption (CHOICE) ---
 
 func convertSSSubscriptionOptionToWire(o *SSSubscriptionOption) (*gsm_map.SSSubscriptionOption, error) {
@@ -108,9 +101,7 @@ func convertExtBasicServiceGroupListToWire(in []ExtBasicServiceCode) (*gsm_map.E
 	if in == nil {
 		return nil, nil
 	}
-	if len(in) < 1 || len(in) > MaxNumOfExtBasicServiceGroups {
-		return nil, ErrExtBasicServiceGroupListInvalidSize
-	}
+
 	out := gsm_map.ExtBasicServiceGroupList{Values: make([]gsm_map.ExtBasicServiceCode, len(in))}
 	for i := range in {
 		w, err := convertExtBasicServiceCodeToWire(&in[i])
@@ -126,9 +117,7 @@ func convertWireToExtBasicServiceGroupList(w *gsm_map.ExtBasicServiceGroupList) 
 	if w == nil {
 		return nil, nil
 	}
-	if len(w.Values) < 1 || len(w.Values) > MaxNumOfExtBasicServiceGroups {
-		return nil, ErrExtBasicServiceGroupListInvalidSize
-	}
+
 	out := make([]ExtBasicServiceCode, len(w.Values))
 	for i := range w.Values {
 		d, err := convertWireToExtBasicServiceCode(&w.Values[i])
@@ -143,9 +132,6 @@ func convertWireToExtBasicServiceGroupList(w *gsm_map.ExtBasicServiceGroupList) 
 // --- Ext-ForwFeature / Ext-ForwInfo ---
 
 func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, error) {
-	if err := validateExtSSStatus(f.SsStatus, "Ext-ForwFeature.SsStatus"); err != nil {
-		return gsm_map.ExtForwFeature{}, err
-	}
 	out := gsm_map.ExtForwFeature{SsStatus: gsm_map.ExtSSStatus(f.SsStatus)}
 	if f.BasicService != nil {
 		bs, err := convertExtBasicServiceCodeToWire(f.BasicService)
@@ -165,25 +151,19 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 	if f.ForwardedToSubaddress != nil {
 		// ISDN-SubaddressString SIZE(1..21) per TS 29.002. Reject a non-nil
 		// empty slice rather than silently omitting it.
-		if len(f.ForwardedToSubaddress) < 1 || len(f.ForwardedToSubaddress) > 21 {
-			return gsm_map.ExtForwFeature{}, ErrExtForwSubaddressInvalidSize
-		}
+
 		v := gsm_map.ISDNSubaddressString(f.ForwardedToSubaddress)
 		out.ForwardedToSubaddress = &v
 	}
 	if f.ForwardingOptions != nil {
 		// Ext-ForwOptions OCTET STRING (SIZE 1..5) per TS 29.002.
-		if len(f.ForwardingOptions) < 1 || len(f.ForwardingOptions) > 5 {
-			return gsm_map.ExtForwFeature{}, ErrExtForwOptionsInvalidSize
-		}
+
 		v := gsm_map.ExtForwOptions(f.ForwardingOptions)
 		out.ForwardingOptions = &v
 	}
 	if f.NoReplyConditionTime != nil {
 		v64 := int64(*f.NoReplyConditionTime)
-		if v64 < 1 || v64 > 100 {
-			return gsm_map.ExtForwFeature{}, ErrExtNoRepCondTimeOutOfRange
-		}
+
 		v := gsm_map.ExtNoRepCondTime(v64)
 		out.NoReplyConditionTime = &v
 	}
@@ -199,9 +179,6 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 }
 
 func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, error) {
-	if err := validateExtSSStatus(HexBytes(w.SsStatus), "Ext-ForwFeature.SsStatus"); err != nil {
-		return ExtForwFeature{}, err
-	}
 	out := ExtForwFeature{SsStatus: HexBytes(w.SsStatus)}
 	if w.BasicService != nil {
 		bs, err := convertWireToExtBasicServiceCode(w.BasicService)
@@ -221,15 +198,10 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 	}
 	if w.ForwardedToSubaddress != nil {
 		// ISDN-SubaddressString SIZE(1..21) per TS 29.002.
-		if len(*w.ForwardedToSubaddress) < 1 || len(*w.ForwardedToSubaddress) > 21 {
-			return ExtForwFeature{}, ErrExtForwSubaddressInvalidSize
-		}
+
 		out.ForwardedToSubaddress = HexBytes(*w.ForwardedToSubaddress)
 	}
 	if w.ForwardingOptions != nil {
-		if len(*w.ForwardingOptions) < 1 || len(*w.ForwardingOptions) > 5 {
-			return ExtForwFeature{}, ErrExtForwOptionsInvalidSize
-		}
 		out.ForwardingOptions = HexBytes(*w.ForwardingOptions)
 	}
 	if w.NoReplyConditionTime != nil {
@@ -237,9 +209,7 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		// out of spec entirely. Apply the lenient mapping in int64
 		// space so 32-bit narrowing can't bypass it.
 		v64 := int64(*w.NoReplyConditionTime)
-		if v64 < 1 || v64 > 100 {
-			return ExtForwFeature{}, ErrExtNoRepCondTimeOutOfRange
-		}
+
 		switch {
 		case v64 >= 1 && v64 <= 4:
 			v64 = 5
@@ -272,9 +242,6 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 }
 
 func convertExtForwInfoToWire(f *ExtForwInfo) (*gsm_map.ExtForwInfo, error) {
-	if len(f.ForwardingFeatureList) < 1 || len(f.ForwardingFeatureList) > MaxNumOfExtBasicServiceGroups {
-		return nil, ErrExtForwFeatureListInvalidSize
-	}
 	list := gsm_map.ExtForwFeatureList{Values: make([]gsm_map.ExtForwFeature, len(f.ForwardingFeatureList))}
 	for i := range f.ForwardingFeatureList {
 		w, err := convertExtForwFeatureToWire(&f.ForwardingFeatureList[i])
@@ -290,12 +257,6 @@ func convertExtForwInfoToWire(f *ExtForwInfo) (*gsm_map.ExtForwInfo, error) {
 }
 
 func convertWireToExtForwInfo(w *gsm_map.ExtForwInfo) (*ExtForwInfo, error) {
-	if len(w.SsCode) != 1 {
-		return nil, fmt.Errorf("Ext-ForwInfo.SsCode: must be 1 octet, got %d", len(w.SsCode))
-	}
-	if w.ForwardingFeatureList == nil || len(w.ForwardingFeatureList.Values) < 1 || len(w.ForwardingFeatureList.Values) > MaxNumOfExtBasicServiceGroups {
-		return nil, ErrExtForwFeatureListInvalidSize
-	}
 	out := &ExtForwInfo{
 		SsCode:                SsCode(w.SsCode[0]),
 		ForwardingFeatureList: make([]ExtForwFeature, len(w.ForwardingFeatureList.Values)),
@@ -313,9 +274,6 @@ func convertWireToExtForwInfo(w *gsm_map.ExtForwInfo) (*ExtForwInfo, error) {
 // --- Ext-CallBarringFeature / Ext-CallBarInfo ---
 
 func convertExtCallBarringFeatureToWire(f *ExtCallBarringFeature) (gsm_map.ExtCallBarringFeature, error) {
-	if err := validateExtSSStatus(f.SsStatus, "Ext-CallBarringFeature.SsStatus"); err != nil {
-		return gsm_map.ExtCallBarringFeature{}, err
-	}
 	out := gsm_map.ExtCallBarringFeature{SsStatus: gsm_map.ExtSSStatus(f.SsStatus)}
 	if f.BasicService != nil {
 		bs, err := convertExtBasicServiceCodeToWire(f.BasicService)
@@ -328,9 +286,6 @@ func convertExtCallBarringFeatureToWire(f *ExtCallBarringFeature) (gsm_map.ExtCa
 }
 
 func convertWireToExtCallBarringFeature(w *gsm_map.ExtCallBarringFeature) (ExtCallBarringFeature, error) {
-	if err := validateExtSSStatus(HexBytes(w.SsStatus), "Ext-CallBarringFeature.SsStatus"); err != nil {
-		return ExtCallBarringFeature{}, err
-	}
 	out := ExtCallBarringFeature{SsStatus: HexBytes(w.SsStatus)}
 	if w.BasicService != nil {
 		bs, err := convertWireToExtBasicServiceCode(w.BasicService)
@@ -343,9 +298,6 @@ func convertWireToExtCallBarringFeature(w *gsm_map.ExtCallBarringFeature) (ExtCa
 }
 
 func convertExtCallBarInfoToWire(c *ExtCallBarInfo) (*gsm_map.ExtCallBarInfo, error) {
-	if len(c.CallBarringFeatureList) < 1 || len(c.CallBarringFeatureList) > MaxNumOfExtBasicServiceGroups {
-		return nil, ErrExtCallBarFeatureListInvalidSize
-	}
 	list := gsm_map.ExtCallBarFeatureList{Values: make([]gsm_map.ExtCallBarringFeature, len(c.CallBarringFeatureList))}
 	for i := range c.CallBarringFeatureList {
 		w, err := convertExtCallBarringFeatureToWire(&c.CallBarringFeatureList[i])
@@ -361,12 +313,6 @@ func convertExtCallBarInfoToWire(c *ExtCallBarInfo) (*gsm_map.ExtCallBarInfo, er
 }
 
 func convertWireToExtCallBarInfo(w *gsm_map.ExtCallBarInfo) (*ExtCallBarInfo, error) {
-	if len(w.SsCode) != 1 {
-		return nil, fmt.Errorf("Ext-CallBarInfo.SsCode: must be 1 octet, got %d", len(w.SsCode))
-	}
-	if w.CallBarringFeatureList == nil || len(w.CallBarringFeatureList.Values) < 1 || len(w.CallBarringFeatureList.Values) > MaxNumOfExtBasicServiceGroups {
-		return nil, ErrExtCallBarFeatureListInvalidSize
-	}
 	out := &ExtCallBarInfo{
 		SsCode:                 SsCode(w.SsCode[0]),
 		CallBarringFeatureList: make([]ExtCallBarringFeature, len(w.CallBarringFeatureList.Values)),
@@ -392,12 +338,6 @@ func isValidIntraCUGOptions(v IntraCUGOptions) bool {
 }
 
 func convertCUGSubscriptionToWire(s *CUGSubscription) (gsm_map.CUGSubscription, error) {
-	if s.CugIndex < 0 || s.CugIndex > 32767 {
-		return gsm_map.CUGSubscription{}, ErrCUGIndexOutOfRange
-	}
-	if len(s.CugInterlock) != 4 {
-		return gsm_map.CUGSubscription{}, ErrCUGInterlockInvalidSize
-	}
 	if !isValidIntraCUGOptions(s.IntraCUGOptions) {
 		return gsm_map.CUGSubscription{}, ErrIntraCUGOptionsInvalidValue
 	}
@@ -421,12 +361,7 @@ func convertWireToCUGSubscription(w *gsm_map.CUGSubscription) (CUGSubscription, 
 	if err != nil {
 		return CUGSubscription{}, fmt.Errorf("CugIndex: %w", err)
 	}
-	if idxRaw < 0 || idxRaw > 32767 {
-		return CUGSubscription{}, ErrCUGIndexOutOfRange
-	}
-	if len(w.CugInterlock) != 4 {
-		return CUGSubscription{}, ErrCUGInterlockInvalidSize
-	}
+
 	optRaw, err := narrowInt64(int64(w.IntraCUGOptions))
 	if err != nil {
 		return CUGSubscription{}, fmt.Errorf("IntraCUGOptions: %w", err)
@@ -463,9 +398,7 @@ func convertCUGFeatureToWire(f *CUGFeature) (gsm_map.CUGFeature, error) {
 	}
 	if f.PreferentialCUGIndex != nil {
 		v := *f.PreferentialCUGIndex
-		if v < 0 || v > 32767 {
-			return gsm_map.CUGFeature{}, ErrCUGIndexOutOfRange
-		}
+
 		idx := gsm_map.CUGIndex(int64(v))
 		out.PreferentialCUGIndicator = &idx
 	}
@@ -473,9 +406,6 @@ func convertCUGFeatureToWire(f *CUGFeature) (gsm_map.CUGFeature, error) {
 }
 
 func convertWireToCUGFeature(w *gsm_map.CUGFeature) (CUGFeature, error) {
-	if len(w.InterCUGRestrictions) != 1 {
-		return CUGFeature{}, fmt.Errorf("CUG-Feature.InterCUGRestrictions: must be exactly 1 octet, got %d", len(w.InterCUGRestrictions))
-	}
 	out := CUGFeature{InterCUGRestrictions: w.InterCUGRestrictions[0]}
 	if w.BasicService != nil {
 		bs, err := convertWireToExtBasicServiceCode(w.BasicService)
@@ -489,9 +419,7 @@ func convertWireToCUGFeature(w *gsm_map.CUGFeature) (CUGFeature, error) {
 		if err != nil {
 			return CUGFeature{}, fmt.Errorf("PreferentialCUGIndicator: %w", err)
 		}
-		if idx < 0 || idx > 32767 {
-			return CUGFeature{}, ErrCUGIndexOutOfRange
-		}
+
 		out.PreferentialCUGIndex = &idx
 	}
 	return out, nil
@@ -499,9 +427,7 @@ func convertWireToCUGFeature(w *gsm_map.CUGFeature) (CUGFeature, error) {
 
 func convertCUGInfoToWire(c *CUGInfo) (*gsm_map.CUGInfo, error) {
 	// Per spec the SubscriptionList SIZE is 0..10 (lower bound is 0).
-	if len(c.CugSubscriptionList) > MaxNumOfCUG {
-		return nil, ErrCUGSubscriptionListInvalidSize
-	}
+
 	out := &gsm_map.CUGInfo{}
 	if c.CugSubscriptionList != nil {
 		subs := gsm_map.CUGSubscriptionList{Values: make([]gsm_map.CUGSubscription, len(c.CugSubscriptionList))}
@@ -515,9 +441,6 @@ func convertCUGInfoToWire(c *CUGInfo) (*gsm_map.CUGInfo, error) {
 		out.CugSubscriptionList = &subs
 	}
 	if c.CugFeatureList != nil {
-		if len(c.CugFeatureList) < 1 || len(c.CugFeatureList) > MaxNumOfExtBasicServiceGroups {
-			return nil, ErrCUGFeatureListInvalidSize
-		}
 		feats := gsm_map.CUGFeatureList{Values: make([]gsm_map.CUGFeature, len(c.CugFeatureList))}
 		for i := range c.CugFeatureList {
 			w, err := convertCUGFeatureToWire(&c.CugFeatureList[i])
@@ -532,9 +455,6 @@ func convertCUGInfoToWire(c *CUGInfo) (*gsm_map.CUGInfo, error) {
 }
 
 func convertWireToCUGInfo(w *gsm_map.CUGInfo) (*CUGInfo, error) {
-	if w.CugSubscriptionList != nil && len(w.CugSubscriptionList.Values) > MaxNumOfCUG {
-		return nil, ErrCUGSubscriptionListInvalidSize
-	}
 	out := &CUGInfo{}
 	if w.CugSubscriptionList != nil {
 		out.CugSubscriptionList = make([]CUGSubscription, len(w.CugSubscriptionList.Values))
@@ -547,9 +467,6 @@ func convertWireToCUGInfo(w *gsm_map.CUGInfo) (*CUGInfo, error) {
 		}
 	}
 	if w.CugFeatureList != nil {
-		if len(w.CugFeatureList.Values) < 1 || len(w.CugFeatureList.Values) > MaxNumOfExtBasicServiceGroups {
-			return nil, ErrCUGFeatureListInvalidSize
-		}
 		out.CugFeatureList = make([]CUGFeature, len(w.CugFeatureList.Values))
 		for i := range w.CugFeatureList.Values {
 			d, err := convertWireToCUGFeature(&w.CugFeatureList.Values[i])
@@ -565,9 +482,6 @@ func convertWireToCUGInfo(w *gsm_map.CUGInfo) (*CUGInfo, error) {
 // --- Ext-SS-Data ---
 
 func convertExtSSDataToWire(d *ExtSSData) (*gsm_map.ExtSSData, error) {
-	if err := validateExtSSStatus(d.SsStatus, "Ext-SS-Data.SsStatus"); err != nil {
-		return nil, err
-	}
 	out := &gsm_map.ExtSSData{
 		SsCode:   gsm_map.SSCode{byte(d.SsCode)},
 		SsStatus: gsm_map.ExtSSStatus(d.SsStatus),
@@ -590,12 +504,6 @@ func convertExtSSDataToWire(d *ExtSSData) (*gsm_map.ExtSSData, error) {
 }
 
 func convertWireToExtSSData(w *gsm_map.ExtSSData) (*ExtSSData, error) {
-	if len(w.SsCode) != 1 {
-		return nil, fmt.Errorf("Ext-SS-Data.SsCode: must be 1 octet, got %d", len(w.SsCode))
-	}
-	if err := validateExtSSStatus(HexBytes(w.SsStatus), "Ext-SS-Data.SsStatus"); err != nil {
-		return nil, err
-	}
 	out := &ExtSSData{
 		SsCode:   SsCode(w.SsCode[0]),
 		SsStatus: HexBytes(w.SsStatus),
@@ -646,15 +554,10 @@ func convertEMLPPInfoToWire(e *EMLPPInfo) (*gsm_map.EMLPPInfo, error) {
 func convertWireToEMLPPInfo(w *gsm_map.EMLPPInfo) (*EMLPPInfo, error) {
 	// Lenient decode per TS 29.002: 7..15 → 4. Apply in int64 space.
 	mapPriority := func(field string, v int64) (int, error) {
-		if v < 0 {
-			return 0, fmt.Errorf("%s: %w (got %d)", field, ErrEMLPPPriorityOutOfRange, v)
-		}
 		if v >= 7 && v <= 15 {
 			return 4, nil
 		}
-		if v > 15 {
-			return 0, fmt.Errorf("%s: %w (got %d)", field, ErrEMLPPPriorityOutOfRange, v)
-		}
+
 		return int(v), nil
 	}
 	maxP, err := mapPriority("MaximumEntitledPriority", int64(w.MaximumentitledPriority))

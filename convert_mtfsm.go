@@ -40,9 +40,7 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 	// Optional fields (post-extension marker).
 	if m.SmDeliveryTimer != nil {
 		v := *m.SmDeliveryTimer
-		if v < MinSmDeliveryTimer || v > MaxSmDeliveryTimer {
-			return nil, ErrMtFsmInvalidDeliveryTimer
-		}
+
 		val := gsm_map.SMDeliveryTimerValue(v)
 		arg.SmDeliveryTimer = &val
 	}
@@ -110,9 +108,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 	// Optional fields (post-extension marker).
 	if arg.SmDeliveryTimer != nil {
 		v := int(*arg.SmDeliveryTimer)
-		if v < MinSmDeliveryTimer || v > MaxSmDeliveryTimer {
-			return nil, ErrMtFsmInvalidDeliveryTimer
-		}
+
 		mtFsm.SmDeliveryTimer = &v
 	}
 	if arg.SmDeliveryStartTime != nil {

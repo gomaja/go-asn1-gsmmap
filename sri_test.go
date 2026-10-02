@@ -3,7 +3,6 @@ package gsmmap
 
 import (
 	"bytes"
-	"errors"
 	"testing"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
@@ -40,9 +39,6 @@ func TestSriSentinelErrorsExist(t *testing.T) {
 		ErrSriMissingMSISDN,
 		ErrSriMissingGmsc,
 		ErrSriInvalidInterrogationType,
-		ErrSriInvalidNumberOfForwarding,
-		ErrSriInvalidOrCapability,
-		ErrSriInvalidCallReferenceNumber,
 		ErrSriChoiceMultipleAlternatives,
 		ErrSriChoiceNoAlternative,
 	}
@@ -286,14 +282,14 @@ func TestSriValidationErrors(t *testing.T) {
 		{"missing msisdn", &Sri{GmscOrGsmSCFAddress: "1"}, ErrSriMissingMSISDN},
 		{"missing gmsc", &Sri{MSISDN: "1"}, ErrSriMissingGmsc},
 		{"bad interrogation", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}, ErrSriInvalidInterrogationType},
-		{"bad numberOfForwarding", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", NumberOfForwarding: intPtr(9)}, ErrSriInvalidNumberOfForwarding},
-		{"bad orCapability", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", OrCapability: intPtr(200)}, ErrSriInvalidOrCapability},
-		{"bad callref", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", CallReferenceNumber: make(HexBytes, 9)}, ErrSriInvalidCallReferenceNumber},
+		{"bad numberOfForwarding", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", NumberOfForwarding: intPtr(9)}, nil},
+		{"bad orCapability", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", OrCapability: intPtr(200)}, nil},
+		{"bad callref", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", CallReferenceNumber: make(HexBytes, 9)}, nil},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := tc.in.Marshal()
-			if !errors.Is(err, tc.err) {
+			if !matchesExpected(err, tc.err) {
 				t.Errorf("got %v, want %v", err, tc.err)
 			}
 		})

@@ -89,21 +89,11 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	}
 
 	// [0] / [5] / [8] / [14] / [17] absent-subscriber diagnostics.
-	if out.AbsentSubscriberDiagnosticSM, err = absentDiagToWire("ReportSMDeliveryStatus.AbsentSubscriberDiagnosticSM", r.AbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.AdditionalAbsentSubscriberDiagnosticSM, err = absentDiagToWire("ReportSMDeliveryStatus.AdditionalAbsentSubscriberDiagnosticSM", r.AdditionalAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.IpSmGwAbsentSubscriberDiagnosticSM, err = absentDiagToWire("ReportSMDeliveryStatus.IpSmGwAbsentSubscriberDiagnosticSM", r.IpSmGwAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.Smsf3gppAbsentSubscriberDiagSM, err = absentDiagToWire("ReportSMDeliveryStatus.Smsf3gppAbsentSubscriberDiagnosticSM", r.Smsf3gppAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.SmsfNon3gppAbsentSubscriberDiagSM, err = absentDiagToWire("ReportSMDeliveryStatus.SmsfNon3gppAbsentSubscriberDiagnosticSM", r.SmsfNon3gppAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
+	out.AbsentSubscriberDiagnosticSM = absentDiagToWire(r.AbsentSubscriberDiagnosticSM)
+	out.AdditionalAbsentSubscriberDiagnosticSM = absentDiagToWire(r.AdditionalAbsentSubscriberDiagnosticSM)
+	out.IpSmGwAbsentSubscriberDiagnosticSM = absentDiagToWire(r.IpSmGwAbsentSubscriberDiagnosticSM)
+	out.Smsf3gppAbsentSubscriberDiagSM = absentDiagToWire(r.Smsf3gppAbsentSubscriberDiagnosticSM)
+	out.SmsfNon3gppAbsentSubscriberDiagSM = absentDiagToWire(r.SmsfNon3gppAbsentSubscriberDiagnosticSM)
 
 	// [4] / [7] / [13] / [16] additional outcomes.
 	if out.AdditionalSMDeliveryOutcome, err = optOutcomeToWire(r.AdditionalSMDeliveryOutcome); err != nil {
@@ -185,21 +175,11 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 		SmDeliveryOutcome:    w.SmDeliveryOutcome,
 	}
 
-	if out.AbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.AbsentSubscriberDiagnosticSM", w.AbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.AdditionalAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.AdditionalAbsentSubscriberDiagnosticSM", w.AdditionalAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.IpSmGwAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.IpSmGwAbsentSubscriberDiagnosticSM", w.IpSmGwAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.Smsf3gppAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.Smsf3gppAbsentSubscriberDiagnosticSM", w.Smsf3gppAbsentSubscriberDiagSM); err != nil {
-		return nil, err
-	}
-	if out.SmsfNon3gppAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.SmsfNon3gppAbsentSubscriberDiagnosticSM", w.SmsfNon3gppAbsentSubscriberDiagSM); err != nil {
-		return nil, err
-	}
+	out.AbsentSubscriberDiagnosticSM = absentDiagFromWire(w.AbsentSubscriberDiagnosticSM)
+	out.AdditionalAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.AdditionalAbsentSubscriberDiagnosticSM)
+	out.IpSmGwAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.IpSmGwAbsentSubscriberDiagnosticSM)
+	out.Smsf3gppAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.Smsf3gppAbsentSubscriberDiagSM)
+	out.SmsfNon3gppAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.SmsfNon3gppAbsentSubscriberDiagSM)
 
 	if out.AdditionalSMDeliveryOutcome, err = optOutcomeFromWire(w.AdditionalSMDeliveryOutcome); err != nil {
 		return nil, fmt.Errorf("ReportSMDeliveryStatus.AdditionalSMDeliveryOutcome: %w", err)
@@ -225,9 +205,6 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 		imsi, err := tbcd.Decode(*w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.IMSI: %w", err)
-		}
-		if imsi == "" {
-			return nil, ErrReportSMDeliveryStatusIMSIDecodedEmpty
 		}
 		if len(imsi) < pslIMSIDigitsMin || len(imsi) > pslIMSIDigitsMax {
 			return nil, fmt.Errorf("ReportSMDeliveryStatus.IMSI digits=%d: %w", len(imsi), ErrReportSMDeliveryStatusIMSIInvalidSize)

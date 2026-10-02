@@ -28,9 +28,7 @@ func convertAreaToWire(a *Area) (*gsm_map.Area, error) {
 	if int64(a.AreaType) < 0 || int64(a.AreaType) > 5 {
 		return nil, fmt.Errorf("Area.AreaType=%d: %w", a.AreaType, ErrAreaTypeInvalid)
 	}
-	if len(a.AreaIdentification) < AreaIdentificationMinLen || len(a.AreaIdentification) > AreaIdentificationMaxLen {
-		return nil, fmt.Errorf("Area.AreaIdentification len=%d: %w", len(a.AreaIdentification), ErrAreaIdentificationSize)
-	}
+
 	return &gsm_map.Area{
 		AreaType:           a.AreaType,
 		AreaIdentification: gsm_map.AreaIdentification(a.AreaIdentification),
@@ -41,9 +39,7 @@ func convertWireToArea(w *gsm_map.Area) (*Area, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w.AreaIdentification) < AreaIdentificationMinLen || len(w.AreaIdentification) > AreaIdentificationMaxLen {
-		return nil, fmt.Errorf("Area.AreaIdentification len=%d: %w", len(w.AreaIdentification), ErrAreaIdentificationSize)
-	}
+
 	// AreaType is extensible (TS 29.002:337); decoder lenient,
 	// preserving unknown values per Postel.
 	return &Area{
@@ -57,9 +53,6 @@ func convertWireToArea(w *gsm_map.Area) (*Area, error) {
 // ============================================================================
 
 func convertAreaListToWire(list AreaList) (*gsm_map.AreaList, error) {
-	if len(list) < AreaListMinEntries || len(list) > AreaListMaxEntries {
-		return nil, fmt.Errorf("AreaList len=%d: %w", len(list), ErrAreaListSize)
-	}
 	out := gsm_map.AreaList{Values: make([]gsm_map.Area, 0, len(list))}
 	for i := range list {
 		w, err := convertAreaToWire(&list[i])
@@ -75,9 +68,7 @@ func convertWireToAreaList(w *gsm_map.AreaList) (AreaList, error) {
 	if w == nil {
 		w = &gsm_map.AreaList{}
 	}
-	if len(w.Values) < AreaListMinEntries || len(w.Values) > AreaListMaxEntries {
-		return nil, fmt.Errorf("AreaList len=%d: %w", len(w.Values), ErrAreaListSize)
-	}
+
 	out := make(AreaList, 0, len(w.Values))
 	for i := range w.Values {
 		area, err := convertWireToArea(&w.Values[i])
@@ -139,9 +130,7 @@ func convertAreaEventInfoToWire(a *AreaEventInfo) (*gsm_map.AreaEventInfo, error
 	}
 	if a.IntervalTime != nil {
 		v := *a.IntervalTime
-		if v < IntervalTimeMin || v > IntervalTimeMax {
-			return nil, fmt.Errorf("AreaEventInfo.IntervalTime=%d: %w", v, ErrIntervalTimeOutOfRange)
-		}
+
 		out.IntervalTime = &v
 	}
 	return out, nil
@@ -162,9 +151,7 @@ func convertWireToAreaEventInfo(w *gsm_map.AreaEventInfo) (*AreaEventInfo, error
 	}
 	if w.IntervalTime != nil {
 		v := *w.IntervalTime
-		if v < IntervalTimeMin || v > IntervalTimeMax {
-			return nil, fmt.Errorf("AreaEventInfo.IntervalTime=%d: %w", v, ErrIntervalTimeOutOfRange)
-		}
+
 		out.IntervalTime = &v
 	}
 	return out, nil
@@ -182,12 +169,7 @@ func convertPeriodicLDRInfoToWire(p *PeriodicLDRInfo) (*gsm_map.PeriodicLDRInfo,
 	if p == nil {
 		return nil, nil
 	}
-	if p.ReportingAmount < ReportingAmountMin || p.ReportingAmount > ReportingAmountMax {
-		return nil, fmt.Errorf("PeriodicLDRInfo.ReportingAmount=%d: %w", p.ReportingAmount, ErrReportingAmountOutOfRange)
-	}
-	if p.ReportingInterval < ReportingIntervalMin || p.ReportingInterval > ReportingIntervalMax {
-		return nil, fmt.Errorf("PeriodicLDRInfo.ReportingInterval=%d: %w", p.ReportingInterval, ErrReportingIntervalOutOfRange)
-	}
+
 	if p.ReportingAmount*p.ReportingInterval > PeriodicLDRProductMax {
 		return nil, fmt.Errorf("PeriodicLDRInfo: ReportingAmount(%d) × ReportingInterval(%d) = %d: %w",
 			p.ReportingAmount, p.ReportingInterval, p.ReportingAmount*p.ReportingInterval, ErrPeriodicLDRProductExceeded)
@@ -202,12 +184,7 @@ func convertWireToPeriodicLDRInfo(w *gsm_map.PeriodicLDRInfo) (*PeriodicLDRInfo,
 	if w == nil {
 		return nil, nil
 	}
-	if w.ReportingAmount < ReportingAmountMin || w.ReportingAmount > ReportingAmountMax {
-		return nil, fmt.Errorf("PeriodicLDRInfo.ReportingAmount=%d: %w", w.ReportingAmount, ErrReportingAmountOutOfRange)
-	}
-	if w.ReportingInterval < ReportingIntervalMin || w.ReportingInterval > ReportingIntervalMax {
-		return nil, fmt.Errorf("PeriodicLDRInfo.ReportingInterval=%d: %w", w.ReportingInterval, ErrReportingIntervalOutOfRange)
-	}
+
 	if w.ReportingAmount*w.ReportingInterval > PeriodicLDRProductMax {
 		return nil, fmt.Errorf("PeriodicLDRInfo: ReportingAmount(%d) × ReportingInterval(%d) = %d: %w",
 			w.ReportingAmount, w.ReportingInterval, w.ReportingAmount*w.ReportingInterval, ErrPeriodicLDRProductExceeded)
@@ -226,9 +203,7 @@ func convertReportingPLMNToWire(r *ReportingPLMN) (*gsm_map.ReportingPLMN, error
 	if r == nil {
 		return nil, nil
 	}
-	if err := validatePlmnId(r.PlmnId, "ReportingPLMN.PlmnId"); err != nil {
-		return nil, err
-	}
+
 	out := &gsm_map.ReportingPLMN{
 		PlmnId: gsm_map.PLMNId(r.PlmnId),
 	}
@@ -249,9 +224,7 @@ func convertWireToReportingPLMN(w *gsm_map.ReportingPLMN) (*ReportingPLMN, error
 	if w == nil {
 		return nil, nil
 	}
-	if err := validatePlmnId(HexBytes(w.PlmnId), "ReportingPLMN.PlmnId"); err != nil {
-		return nil, err
-	}
+
 	out := &ReportingPLMN{
 		PlmnId: HexBytes(w.PlmnId),
 	}
@@ -268,9 +241,6 @@ func convertWireToReportingPLMN(w *gsm_map.ReportingPLMN) (*ReportingPLMN, error
 // ============================================================================
 
 func convertPLMNListToWire(list PLMNList) (*gsm_map.PLMNList, error) {
-	if len(list) < PLMNListMinEntries || len(list) > PLMNListMaxEntries {
-		return nil, fmt.Errorf("PLMNList len=%d: %w", len(list), ErrPLMNListSize)
-	}
 	out := gsm_map.PLMNList{Values: make([]gsm_map.ReportingPLMN, 0, len(list))}
 	for i := range list {
 		w, err := convertReportingPLMNToWire(&list[i])
@@ -286,9 +256,7 @@ func convertWireToPLMNList(w *gsm_map.PLMNList) (PLMNList, error) {
 	if w == nil {
 		w = &gsm_map.PLMNList{}
 	}
-	if len(w.Values) < PLMNListMinEntries || len(w.Values) > PLMNListMaxEntries {
-		return nil, fmt.Errorf("PLMNList len=%d: %w", len(w.Values), ErrPLMNListSize)
-	}
+
 	out := make(PLMNList, 0, len(w.Values))
 	for i := range w.Values {
 		plmn, err := convertWireToReportingPLMN(&w.Values[i])

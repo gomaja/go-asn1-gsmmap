@@ -118,30 +118,17 @@ func convertWireToCorrelationID(w *gsm_map.CorrelationID) (*SriSmCorrelationID, 
 }
 
 func convertIpSmGwGuidanceToWire(g *IpSmGwGuidance) (*gsm_map.IPSMGWGuidance, error) {
-	if g.MinimumDeliveryTimeValue < MinSmDeliveryTimer || g.MinimumDeliveryTimeValue > MaxSmDeliveryTimer ||
-		g.RecommendedDeliveryTimeValue < MinSmDeliveryTimer || g.RecommendedDeliveryTimeValue > MaxSmDeliveryTimer {
-		return nil, ErrSriSmInvalidDeliveryTimerValue
-	}
 	return &gsm_map.IPSMGWGuidance{
 		MinimumDeliveryTimeValue:     gsm_map.SMDeliveryTimerValue(g.MinimumDeliveryTimeValue),
 		RecommendedDeliveryTimeValue: gsm_map.SMDeliveryTimerValue(g.RecommendedDeliveryTimeValue),
 	}, nil
 }
 
-// convertWireToIpSmGwGuidance decodes IPSMGWGuidance, enforcing the same
-// MinSmDeliveryTimer..MaxSmDeliveryTimer range as the encoder on each timer.
+// convertWireToIpSmGwGuidance decodes IPSMGWGuidance.
 func convertWireToIpSmGwGuidance(w *gsm_map.IPSMGWGuidance) (*IpSmGwGuidance, error) {
-	mdt, err := narrowInt64Range(int64(w.MinimumDeliveryTimeValue), MinSmDeliveryTimer, MaxSmDeliveryTimer, "IpSmGwGuidance.MinimumDeliveryTimeValue")
-	if err != nil {
-		return nil, err
-	}
-	rdt, err := narrowInt64Range(int64(w.RecommendedDeliveryTimeValue), MinSmDeliveryTimer, MaxSmDeliveryTimer, "IpSmGwGuidance.RecommendedDeliveryTimeValue")
-	if err != nil {
-		return nil, err
-	}
 	return &IpSmGwGuidance{
-		MinimumDeliveryTimeValue:     mdt,
-		RecommendedDeliveryTimeValue: rdt,
+		MinimumDeliveryTimeValue:     int(w.MinimumDeliveryTimeValue),
+		RecommendedDeliveryTimeValue: int(w.RecommendedDeliveryTimeValue),
 	}, nil
 }
 

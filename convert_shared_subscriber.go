@@ -73,6 +73,7 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 
 	// ImsVoiceOverPSSessionsIndication — 0..2 per TS 29.002.
 	if s.ImsVoiceOverPSSessionsIndication != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *s.ImsVoiceOverPSSessionsIndication < 0 || *s.ImsVoiceOverPSSessionsIndication > 2 {
 			return nil, fmt.Errorf("ImsVoiceOverPSSessionsIndication out of range 0..2: %d", *s.ImsVoiceOverPSSessionsIndication)
 		}
@@ -116,6 +117,7 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 
 	// DaylightSavingTime — 0..2 per TS 29.002.
 	if s.DaylightSavingTime != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *s.DaylightSavingTime < 0 || *s.DaylightSavingTime > 2 {
 			return nil, fmt.Errorf("DaylightSavingTime out of range 0..2: %d", *s.DaylightSavingTime)
 		}
@@ -173,9 +175,6 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	// the wire it must be exactly 8 octets — empty/non-8-octet IMEI is
 	// a spec violation, not "absent".
 	if si.Imei != nil {
-		if len(*si.Imei) != 8 {
-			return nil, fmt.Errorf("IMEI: TBCD-STRING must be exactly 8 octets, got %d", len(*si.Imei))
-		}
 		imei, err := tbcd.Decode(*si.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMEI: %w", err)
@@ -201,6 +200,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 
 	// ImsVoiceOverPSSessionsIndication — 0..2 per TS 29.002.
 	if si.ImsVoiceOverPSSessionsIndication != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		v, err := narrowInt64Range(int64(*si.ImsVoiceOverPSSessionsIndication), 0, 2, "ImsVoiceOverPSSessionsIndication")
 		if err != nil {
 			return nil, err
@@ -242,6 +242,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 
 	// DaylightSavingTime — 0..2 per TS 29.002.
 	if si.DaylightSavingTime != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		v, err := narrowInt64Range(int64(*si.DaylightSavingTime), 0, 2, "DaylightSavingTime")
 		if err != nil {
 			return nil, err
@@ -327,6 +328,7 @@ func convertPsSubscriberStateToWire(p *PsSubscriberState) (*gsm_map.PSSubscriber
 		return &v, nil
 	case p.NetDetNotReachable != nil:
 		// NotReachableReason — 0..3 per TS 29.002.
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *p.NetDetNotReachable < 0 || *p.NetDetNotReachable > 3 {
 			return nil, fmt.Errorf("PsSubscriberState.NetDetNotReachable out of range 0..3: %d", *p.NetDetNotReachable)
 		}
@@ -365,6 +367,7 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 		}
 		// NotReachableReason — 0..3 per TS 29.002 (msPurged / imsiDetached /
 		// restrictedArea / notRegistered).
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		v, err := narrowInt64Range(int64(*w.NetDetNotReachable), 0, 3, "PsSubscriberState.NetDetNotReachable")
 		if err != nil {
 			return nil, err
@@ -385,9 +388,7 @@ func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, err
 	if list == nil {
 		list = &gsm_map.PDPContextInfoList{}
 	}
-	if len(list.Values) < 1 || len(list.Values) > 50 {
-		return nil, fmt.Errorf("PDPContextInfoList: must contain 1..50 entries when present, got %d", len(list.Values))
-	}
+
 	out := make([]HexBytes, len(list.Values))
 	for i := range list.Values {
 		ctx := list.Values[i]
@@ -404,9 +405,6 @@ func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, err
 // back into its gsm_map.PDPContextInfo struct. Enforces SIZE(1..50) strictly
 // (callers only invoke this when the list CHOICE alternative is selected).
 func decodePDPContextInfoList(list []HexBytes) (*gsm_map.PDPContextInfoList, error) {
-	if len(list) < 1 || len(list) > 50 {
-		return nil, fmt.Errorf("PDPContextInfoList: must contain 1..50 entries when present, got %d", len(list))
-	}
 	out := gsm_map.PDPContextInfoList{Values: make([]gsm_map.PDPContextInfo, len(list))}
 	for i, b := range list {
 		var ctx gsm_map.PDPContextInfo
@@ -448,6 +446,7 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 
 	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if m.NumberPortabilityStatus != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		switch *m.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
@@ -493,6 +492,7 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 		// Match against the defined set in int64 space so wire values that
 		// exceed platform int are also treated as unknown (ignored), not as
 		// decode errors — consistent with the spec's "ignore" mandate.
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		switch *w.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut,
 			MnpForeignNumberPortedToForeignNetwork,
@@ -532,12 +532,10 @@ func convertWireToGprsMSClass(w *gsm_map.GPRSMSClass) *GprsMSClass {
 // --- UserCSGInformation (opCode 71) ---
 
 func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInformation, error) {
-	if u.CsgIDBits < 0 {
-		return nil, fmt.Errorf("CsgIDBits (%d) must be non-negative", u.CsgIDBits)
-	}
 	if len(u.CsgID) > 0 && u.CsgIDBits == 0 {
 		return nil, fmt.Errorf("CsgIDBits must be set when CsgID has bytes (got len %d)", len(u.CsgID))
 	}
+	// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
 	if u.CsgIDBits > len(u.CsgID)*8 {
 		return nil, fmt.Errorf("CsgIDBits (%d) exceeds len(CsgID)*8 (%d)", u.CsgIDBits, len(u.CsgID)*8)
 	}
@@ -617,9 +615,6 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.VplmnID != nil {
-		if len(l.VplmnID) != 3 {
-			return nil, fmt.Errorf("LocationInformation5GS: VplmnID must be exactly 3 octets, got %d", len(l.VplmnID))
-		}
 		p := gsm_map.PLMNId(l.VplmnID)
 		out.VplmnId = &p
 	}
@@ -684,9 +679,7 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 
 	if w.VplmnId != nil {
 		p := []byte(*w.VplmnId)
-		if len(p) != 3 {
-			return nil, fmt.Errorf("LocationInformation5GS: VplmnID must be exactly 3 octets, got %d", len(p))
-		}
+
 		out.VplmnID = p
 	}
 

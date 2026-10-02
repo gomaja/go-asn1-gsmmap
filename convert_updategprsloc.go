@@ -107,6 +107,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if len(u.EplmnList) > 0 {
 		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(raw) != 3 {
 				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
 			}
@@ -151,6 +152,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if len(u.AdjacentPLMNList) > 0 {
 		list := gsm_map.AdjacentPLMNList{Values: make([]gsm_map.PLMNId, len(u.AdjacentPLMNList))}
 		for i, raw := range u.AdjacentPLMNList {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(raw) != 3 {
 				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
 			}
@@ -163,15 +165,9 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 }
 
 func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*UpdateGprsLocation, error) {
-	if len(arg.Imsi) == 0 {
-		return nil, fmt.Errorf("UpdateGprsLocation: IMSI is mandatory and must be non-empty")
-	}
 	imsi, err := tbcd.Decode(arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
-	}
-	if imsi == "" {
-		return nil, fmt.Errorf("UpdateGprsLocation: IMSI decoded to empty string")
 	}
 
 	sgsnNum, sgsnNature, sgsnPlan, err := decodeAddressField(arg.SgsnNumber)
@@ -256,6 +252,7 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	if arg.EplmnList != nil && len(arg.EplmnList.Values) > 0 {
 		list := make([]HexBytes, len(arg.EplmnList.Values))
 		for i, plmn := range arg.EplmnList.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(plmn) != 3 {
 				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
 			}
@@ -296,6 +293,7 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	if arg.AdjacentPLMNList != nil && len(arg.AdjacentPLMNList.Values) > 0 {
 		list := make([]HexBytes, len(arg.AdjacentPLMNList.Values))
 		for i, plmn := range arg.AdjacentPLMNList.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(plmn) != 3 {
 				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
 			}
@@ -347,6 +345,7 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	}
 
 	if s.SupportedFeaturesBits > 0 {
+		// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
 		if len(s.SupportedFeatures) == 0 || s.SupportedFeaturesBits > len(s.SupportedFeatures)*8 {
 			return nil, fmt.Errorf("SGSNCapability: SupportedFeaturesBits (%d) inconsistent with bytes (%d)", s.SupportedFeaturesBits, len(s.SupportedFeatures))
 		}
@@ -367,6 +366,7 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	out.ResetIdsSupported = boolToNullPtr(s.ResetIdsSupported)
 
 	if s.ExtSupportedFeaturesBits > 0 {
+		// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
 		if len(s.ExtSupportedFeatures) == 0 || s.ExtSupportedFeaturesBits > len(s.ExtSupportedFeatures)*8 {
 			return nil, fmt.Errorf("SGSNCapability: ExtSupportedFeaturesBits (%d) inconsistent with bytes (%d)", s.ExtSupportedFeaturesBits, len(s.ExtSupportedFeatures))
 		}
@@ -407,18 +407,12 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 	out.SmsCallBarringSupportIndicator = nullPtrToBool(w.SmsCallBarringSupportIndicator)
 
 	if w.SupportedRATTypesIndicator != nil && w.SupportedRATTypesIndicator.BitLength > 0 {
-		if w.SupportedRATTypesIndicator.BitLength < 2 || w.SupportedRATTypesIndicator.BitLength > 8 {
-			return nil, fmt.Errorf("SGSNCapability: SupportedRATTypes BitLength must be 2..8, got %d", w.SupportedRATTypesIndicator.BitLength)
-		}
 		out.SupportedRATTypesIndicator = convertBitStringToSupportedRATTypes(*w.SupportedRATTypesIndicator)
 	}
 
 	if w.SupportedFeatures != nil && w.SupportedFeatures.BitLength > 0 {
 		// BitString capacity must be consistent with Bytes length.
-		if int64(w.SupportedFeatures.BitLength) > int64(len(w.SupportedFeatures.Bytes))*8 {
-			return nil, fmt.Errorf("SGSNCapability: SupportedFeatures BitLength %d exceeds len(Bytes)*8 = %d",
-				w.SupportedFeatures.BitLength, len(w.SupportedFeatures.Bytes)*8)
-		}
+
 		out.SupportedFeatures = HexBytes(append([]byte(nil), w.SupportedFeatures.Bytes...))
 		out.SupportedFeaturesBits = w.SupportedFeatures.BitLength
 	}
@@ -436,10 +430,6 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 	out.ResetIdsSupported = nullPtrToBool(w.ResetIdsSupported)
 
 	if w.ExtSupportedFeatures != nil && w.ExtSupportedFeatures.BitLength > 0 {
-		if int64(w.ExtSupportedFeatures.BitLength) > int64(len(w.ExtSupportedFeatures.Bytes))*8 {
-			return nil, fmt.Errorf("SGSNCapability: ExtSupportedFeatures BitLength %d exceeds len(Bytes)*8 = %d",
-				w.ExtSupportedFeatures.BitLength, len(w.ExtSupportedFeatures.Bytes)*8)
-		}
 		out.ExtSupportedFeatures = HexBytes(append([]byte(nil), w.ExtSupportedFeatures.Bytes...))
 		out.ExtSupportedFeaturesBits = w.ExtSupportedFeatures.BitLength
 	}
@@ -466,10 +456,9 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 		v := gsm_map.NewEPSInfoPdnGwUpdate(*pgu)
 		return &v, nil
 	}
-	// IsrInformation is BIT STRING (SIZE(1..8)) per TS 29.002.
-	if e.IsrInformationBits < 1 || e.IsrInformationBits > 8 {
-		return nil, fmt.Errorf("EpsInfo: IsrInformationBits must be 1..8, got %d", e.IsrInformationBits)
-	}
+	// IsrInformation is BIT STRING (SIZE(3..8)) per TS 29.002 §17.7.1.
+
+	// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
 	if len(e.IsrInformation) == 0 || e.IsrInformationBits > len(e.IsrInformation)*8 {
 		return nil, fmt.Errorf("EpsInfo: IsrInformationBits (%d) inconsistent with bytes (%d)", e.IsrInformationBits, len(e.IsrInformation))
 	}
@@ -493,14 +482,9 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 		if w.IsrInformation == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		// IsrInformation is BIT STRING (SIZE(1..8)) per TS 29.002.
+		// IsrInformation is BIT STRING (SIZE(3..8)) per TS 29.002 §17.7.1.
 		bits := w.IsrInformation.BitLength
-		if bits < 1 || bits > 8 {
-			return nil, fmt.Errorf("IsrInformation BitLength must be 1..8, got %d", bits)
-		}
-		if int64(bits) > int64(len(w.IsrInformation.Bytes))*8 {
-			return nil, fmt.Errorf("IsrInformation BitLength %d exceeds len(Bytes)*8 = %d", bits, len(w.IsrInformation.Bytes)*8)
-		}
+
 		return &EpsInfo{
 			IsrInformation:     HexBytes(append([]byte(nil), w.IsrInformation.Bytes...)),
 			IsrInformationBits: bits,
@@ -524,9 +508,6 @@ func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 		out.PdnGwIdentity = id
 	}
 	if p.ContextID != nil {
-		if *p.ContextID < 1 || *p.ContextID > 50 {
-			return nil, fmt.Errorf("ContextId out of range 1..50: %d", *p.ContextID)
-		}
 		v := gsm_map.ContextId(int64(*p.ContextID))
 		out.ContextId = &v
 	}
@@ -548,10 +529,7 @@ func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) (*PdnGwUpdate, error) {
 		out.PdnGwIdentity = pid
 	}
 	if w.ContextId != nil {
-		v, err := narrowInt64Range(*w.ContextId, 1, 50, "ContextId")
-		if err != nil {
-			return nil, err
-		}
+		v := int(*w.ContextId)
 		out.ContextID = &v
 	}
 	return out, nil

@@ -18,9 +18,7 @@ func convertGPRSCamelTDPDataToWire(d *GPRSCamelTDPData) (*gsm_map.GPRSCamelTDPDa
 	if d.GsmSCFAddress == "" {
 		return nil, fmt.Errorf("GPRSCamelTDPData.GsmSCFAddress: mandatory field must not be empty on encode")
 	}
-	if d.ServiceKey < 0 || d.ServiceKey > 2147483647 {
-		return nil, fmt.Errorf("GPRSCamelTDPData.ServiceKey: %w (got %d)", ErrCamelInvalidServiceKey, d.ServiceKey)
-	}
+
 	addr, err := encodeAddressField(d.GsmSCFAddress, d.GsmSCFAddressNature, d.GsmSCFAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding GPRSCamelTDPData.GsmSCFAddress: %w", err)
@@ -42,9 +40,7 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 	if w == nil {
 		return nil, nil
 	}
-	if len(w.GsmSCFAddress) == 0 {
-		return nil, fmt.Errorf("GPRSCamelTDPData.GsmSCFAddress: mandatory field must be present on the wire")
-	}
+
 	addr, nature, plan, err := decodeAddressField([]byte(w.GsmSCFAddress))
 	if err != nil {
 		return nil, fmt.Errorf("decoding GPRSCamelTDPData.GsmSCFAddress: %w", err)
@@ -52,9 +48,7 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 	if addr == "" {
 		return nil, fmt.Errorf("decoding GPRSCamelTDPData.GsmSCFAddress: empty digits in mandatory ISDN-AddressString")
 	}
-	if int64(w.ServiceKey) < 0 || int64(w.ServiceKey) > 2147483647 {
-		return nil, fmt.Errorf("GPRSCamelTDPData.ServiceKey: %w (got %d)", ErrCamelInvalidServiceKey, w.ServiceKey)
-	}
+
 	sk := int64(w.ServiceKey)
 	// DefaultGPRSHandling: spec exception clause (TS 29.002
 	// MAP-MS-DataTypes.asn:1638-1640) says decoders MUST treat
@@ -83,9 +77,7 @@ func convertGPRSCamelTDPDataListToWire(list GPRSCamelTDPDataList) (*gsm_map.GPRS
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfCamelTDPData {
-		return nil, fmt.Errorf("%w (got %d)", ErrGPRSCamelTDPDataListSize, len(list))
-	}
+
 	out := gsm_map.GPRSCamelTDPDataList{Values: make([]gsm_map.GPRSCamelTDPData, len(list))}
 	for i, d := range list {
 		w, err := convertGPRSCamelTDPDataToWire(&d)
@@ -101,9 +93,7 @@ func convertWireToGPRSCamelTDPDataList(w *gsm_map.GPRSCamelTDPDataList) (GPRSCam
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfCamelTDPData {
-		return nil, fmt.Errorf("%w (got %d)", ErrGPRSCamelTDPDataListSize, len(w.Values))
-	}
+
 	out := make(GPRSCamelTDPDataList, len(w.Values))
 	for i, d := range w.Values {
 		v, err := convertWireToGPRSCamelTDPData(&d)
@@ -188,9 +178,7 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 	if m == nil {
 		return nil, nil
 	}
-	if int64(len(m.MobilityTriggers)) < 1 || int64(len(m.MobilityTriggers)) > gsm_map.MaxNumOfMobilityTriggers {
-		return nil, fmt.Errorf("%w (got %d)", ErrMobilityTriggersSize, len(m.MobilityTriggers))
-	}
+
 	mt := gsm_map.MobilityTriggers{Values: make([]gsm_map.MMCode, len(m.MobilityTriggers))}
 	for i, c := range m.MobilityTriggers {
 		if len(c) != 1 {
@@ -201,9 +189,7 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 	if m.GsmSCFAddress == "" {
 		return nil, fmt.Errorf("MGCSI.GsmSCFAddress: mandatory field must not be empty on encode")
 	}
-	if m.ServiceKey < 0 || m.ServiceKey > 2147483647 {
-		return nil, fmt.Errorf("MGCSI.ServiceKey: %w (got %d)", ErrCamelInvalidServiceKey, m.ServiceKey)
-	}
+
 	addr, err := encodeAddressField(m.GsmSCFAddress, m.GsmSCFAddressNature, m.GsmSCFAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding MGCSI.GsmSCFAddress: %w", err)
@@ -225,9 +211,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 	if triggers == nil {
 		triggers = &gsm_map.MobilityTriggers{}
 	}
-	if int64(len(triggers.Values)) < 1 || int64(len(triggers.Values)) > gsm_map.MaxNumOfMobilityTriggers {
-		return nil, fmt.Errorf("%w (got %d)", ErrMobilityTriggersSize, len(triggers.Values))
-	}
+
 	mt := make([]HexBytes, len(triggers.Values))
 	for i, c := range triggers.Values {
 		if len(c) != 1 {
@@ -235,9 +219,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 		}
 		mt[i] = HexBytes(c)
 	}
-	if len(w.GsmSCFAddress) == 0 {
-		return nil, fmt.Errorf("MGCSI.GsmSCFAddress: mandatory field must be present on the wire")
-	}
+
 	addr, nature, plan, err := decodeAddressField([]byte(w.GsmSCFAddress))
 	if err != nil {
 		return nil, fmt.Errorf("decoding MGCSI.GsmSCFAddress: %w", err)
@@ -245,9 +227,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("decoding MGCSI.GsmSCFAddress: empty digits in mandatory ISDN-AddressString")
 	}
-	if int64(w.ServiceKey) < 0 || int64(w.ServiceKey) > 2147483647 {
-		return nil, fmt.Errorf("MGCSI.ServiceKey: %w (got %d)", ErrCamelInvalidServiceKey, w.ServiceKey)
-	}
+
 	sk := int64(w.ServiceKey)
 	return &MGCSI{
 		MobilityTriggers:    mt,
@@ -296,9 +276,7 @@ func convertSGSNCAMELSubscriptionInfoToWire(s *SGSNCAMELSubscriptionInfo) (*gsm_
 	if s.MtSmsCAMELTDPCriteriaList != nil {
 		// Reuse PR C per-element converter. List bound is enforced by
 		// the SMS-CSI domain (1..10 entries per spec).
-		if int64(len(s.MtSmsCAMELTDPCriteriaList)) < 1 || int64(len(s.MtSmsCAMELTDPCriteriaList)) > gsm_map.MaxNumOfCamelTDPData {
-			return nil, fmt.Errorf("%w (got %d)", ErrSGSNMtSmsCAMELTDPCriteriaListSize, len(s.MtSmsCAMELTDPCriteriaList))
-		}
+
 		list := gsm_map.MTSmsCAMELTDPCriteriaList{Values: make([]gsm_map.MTSmsCAMELTDPCriteria, len(s.MtSmsCAMELTDPCriteriaList))}
 		for i, c := range s.MtSmsCAMELTDPCriteriaList {
 			w, err := convertMTSmsCAMELTDPCriteriaToWire(&c)
@@ -346,9 +324,6 @@ func convertWireToSGSNCAMELSubscriptionInfo(w *gsm_map.SGSNCAMELSubscriptionInfo
 		out.MtSmsCSI = v
 	}
 	if w.MtSmsCAMELTDPCriteriaList != nil {
-		if int64(len(w.MtSmsCAMELTDPCriteriaList.Values)) < 1 || int64(len(w.MtSmsCAMELTDPCriteriaList.Values)) > gsm_map.MaxNumOfCamelTDPData {
-			return nil, fmt.Errorf("%w (got %d)", ErrSGSNMtSmsCAMELTDPCriteriaListSize, len(w.MtSmsCAMELTDPCriteriaList.Values))
-		}
 		list := make([]MTSmsCAMELTDPCriteria, len(w.MtSmsCAMELTDPCriteriaList.Values))
 		for i, c := range w.MtSmsCAMELTDPCriteriaList.Values {
 			v, err := convertWireToMTSmsCAMELTDPCriteria(&c)
