@@ -355,7 +355,7 @@ func intPtr(v int) *int { return &v }
 func TestSriRespFullStressRoundTrip(t *testing.T) {
 	mnp := MnpOwnNumberPortedOut
 	ua := UnavailCallBarred
-	timer := 5
+	timer := 15 // IST-AlertTimerValue (15..255), TS 29.002 §17.7.1.
 	camel4 := &OfferedCamel4CSIs{OCSI: true, TCSI: true, PsiEnhancements: true}
 
 	in := &SriResp{

@@ -27,8 +27,9 @@ func TestParseSriSm(t *testing.T) {
 			matchMarshaledBytes: true,
 		},
 		{
-			name:                "Valid SRI SM - nonDER",
-			hexString:           "3019800a915282051447720982f9810101820891328490001015f8",
+			name: "Valid SRI SM - nonDER",
+			// msisdn is ISDN-AddressString SIZE (1..9), TS 29.002 §17.7.8; sm-RP-PRI TRUE=0x01 is non-DER.
+			hexString:           "30188009915282051447720982810101820891328490001015f8",
 			expectError:         false,
 			matchMarshaledBytes: false,
 		},

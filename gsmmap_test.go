@@ -831,7 +831,7 @@ func TestATIResFullRoundTrip(t *testing.T) {
 			},
 			IMEI:               "353456789012345",
 			MsClassmark2:       []byte{0x33, 0x19, 0x83},
-			TimeZone:           []byte{0x08},
+			TimeZone:           []byte{0x08, 0x00}, // TimeZone SIZE (2..3), TS 29.002 §17.7.1.
 			DaylightSavingTime: &dst,
 		},
 	}
@@ -876,8 +876,8 @@ func TestATIResFullRoundTrip(t *testing.T) {
 	}
 
 	// TimeZone
-	if len(si.TimeZone) != 1 || si.TimeZone[0] != 0x08 {
-		t.Errorf("TimeZone: got %x, want [08]", si.TimeZone)
+	if !bytes.Equal(si.TimeZone, []byte{0x08, 0x00}) {
+		t.Errorf("TimeZone: got %x, want [08 00]", si.TimeZone)
 	}
 
 	// DaylightSavingTime
@@ -1030,8 +1030,8 @@ func TestATIResImsVoiceSupportRoundTrip(t *testing.T) {
 
 func TestATIResLastActivityRoundTrip(t *testing.T) {
 	ratType := UsedRatEUTRAN
-	// Time is an opaque octet string per 3GPP TS 23.032.
-	lastTime := HexBytes{0x31, 0x32, 0x31, 0x35, 0x31, 0x36, 0x32, 0x30, 0x34, 0x34, 0x35, 0x36, 0x5a}
+	// lastUE-ActivityTime is a Time, SIZE (4), TS 29.002 §17.7.8.
+	lastTime := HexBytes{0x31, 0x32, 0x31, 0x35}
 	res := &AnyTimeInterrogationRes{
 		SubscriberInfo: SubscriberInfo{
 			LastUEActivityTime: lastTime,
@@ -1073,7 +1073,7 @@ func TestATIResLocationInformation5GSRoundTrip(t *testing.T) {
 		CurrentLocationRetrieved: true,
 		AgeOfLocationInformation: &age,
 		VplmnID:                  HexBytes{0x62, 0xf2, 0x20},
-		LocalTimeZone:            HexBytes{0x08},
+		LocalTimeZone:            HexBytes{0x08, 0x00}, // TimeZone SIZE (2..3), TS 29.002 §17.7.1.
 		RatType:                  &rat,
 		NrTrackingAreaIdentity:   HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45},
 	}
@@ -1218,7 +1218,7 @@ func TestATIResFull5GSRoundTrip(t *testing.T) {
 				NumberPortabilityStatus: &nps,
 			},
 			ImsVoiceOverPSSessionsIndication: &imsVoice,
-			LastUEActivityTime:               HexBytes{0x31, 0x32, 0x31, 0x35, 0x31, 0x36},
+			LastUEActivityTime:               HexBytes{0x31, 0x32, 0x31, 0x35}, // Time, SIZE (4), TS 29.002 §17.7.8.
 			LastRATType:                      &rat,
 			LocationInformation5GS: &LocationInformation5GS{
 				NrCellGlobalIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45, 0x67, 0x89},
@@ -1345,7 +1345,7 @@ func TestSriSmFullStressRoundTrip(t *testing.T) {
 		SingleAttemptDelivery:   true,
 		T4TriggerIndicator:      true,
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0xAA, 0xBB},
+			HlrID:   HexBytes{0x21, 0x43, 0xf5}, // HLR-Id ::= IMSI, SIZE (3..8), TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -1512,7 +1512,7 @@ func TestMtFsmFullStressRoundTrip(t *testing.T) {
 		SmDeliveryStartTime:    HexBytes{0x01, 0x02, 0x03, 0x04},
 		SmsOverIPOnlyIndicator: true,
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0xAA, 0xBB},
+			HlrID:   HexBytes{0x21, 0x43, 0xf5}, // HLR-Id ::= IMSI, SIZE (3..8), TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -1951,7 +1951,7 @@ func TestMoFsmFullStressRoundTrip(t *testing.T) {
 
 		IMSI: "310260123456789",
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0xAA, 0xBB},
+			HlrID:   HexBytes{0x21, 0x43, 0xf5}, // HLR-Id ::= IMSI, SIZE (3..8), TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -2298,8 +2298,8 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 			SupportedRATTypesIndicator: &SupportedRATTypes{
 				UTRAN: true, GERAN: true, GAN: true, IHSPAEvolution: true, EUTRAN: true,
 			},
-			SupportedFeatures:                                  HexBytes{0xA0},
-			SupportedFeaturesBits:                              4,
+			SupportedFeatures:                                  HexBytes{0xA0, 0x00, 0x00, 0x00}, // SIZE (26..40) bits, TS 29.002 §17.7.1.
+			SupportedFeaturesBits:                              26,
 			TAdsDataRetrieval:                                  true,
 			HomogeneousSupportOfIMSVoiceOverPSSessions:         &truthy,
 			CancellationTypeInitialAttach:                      true,
@@ -2646,7 +2646,7 @@ func TestAlertServiceCentreFullStressRoundTrip(t *testing.T) {
 		ServiceCentreAddress: "31611111111",
 		IMSI:                 "204080012345678",
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0xAA, 0xBB},
+			HlrID:   HexBytes{0x21, 0x43, 0xf5}, // HLR-Id ::= IMSI, SIZE (3..8), TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -3650,18 +3650,15 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 }
 
 // TestCancelLocationDecodeRejectsEmptyIMSI builds wire CancelLocationArgs
-// whose Identity CHOICE carries an empty IMSI under each alternative,
-// marshals them via go-asn1 directly, and confirms ParseCancelLocation
-// rejects both — verifying decoder/encoder symmetry against crafted
-// peer input. The two alternatives use different sentinels: the top-level
-// imsi alternative is indistinguishable from "no alternative set" and
-// returns ErrCancelLocIdentityChoiceNoAlternative, while the nested
-// imsi-WithLMSI alternative returns ErrCancelLocIdentityMissingIMSI to
-// distinguish the mandatory-nested-field violation.
+// whose Identity CHOICE carries a filler-only IMSI under each alternative,
+// marshals them via go-asn1 directly, and checks ParseCancelLocation's
+// empty-digit sentinels. The top-level imsi alternative expects
+// ErrCancelLocIdentityChoiceNoAlternative; the nested imsi-WithLMSI
+// alternative expects ErrCancelLocIdentityMissingIMSI.
 func TestCancelLocationDecodeRejectsEmptyIMSI(t *testing.T) {
 	t.Run("ImsiAlternative", func(t *testing.T) {
 		arg := gsm_map.CancelLocationArg{
-			Identity: gsm_map.NewIdentityImsi(gsm_map.IMSI{}), // empty
+			Identity: gsm_map.NewIdentityImsi(gsm_map.IMSI{0xFF, 0xFF, 0xFF}), // IMSI SIZE (3..8), TS 29.002 §17.7.8.
 		}
 		data, err := arg.MarshalBER()
 		if err != nil {
@@ -3679,7 +3676,7 @@ func TestCancelLocationDecodeRejectsEmptyIMSI(t *testing.T) {
 	t.Run("ImsiWithLMSIAlternative", func(t *testing.T) {
 		arg := gsm_map.CancelLocationArg{
 			Identity: gsm_map.NewIdentityImsiWithLMSI(gsm_map.IMSIWithLMSI{
-				Imsi: gsm_map.IMSI{}, // empty — not allowed by spec
+				Imsi: gsm_map.IMSI{0xFF, 0xFF, 0xFF}, // IMSI SIZE (3..8), TS 29.002 §17.7.8.
 				Lmsi: gsm_map.LMSI{0x01, 0x02, 0x03, 0x04},
 			}),
 		}
