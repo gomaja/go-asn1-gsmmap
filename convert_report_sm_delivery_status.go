@@ -15,8 +15,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // SmDeliveryOutcome is a non-extensible ENUMERATED 0..2; validated on
@@ -123,7 +121,7 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 		if len(r.IMSI) < pslIMSIDigitsMin || len(r.IMSI) > pslIMSIDigitsMax {
 			return nil, fmt.Errorf("ReportSMDeliveryStatus.IMSI digits=%d: %w", len(r.IMSI), ErrReportSMDeliveryStatusIMSIInvalidSize)
 		}
-		imsiBytes, err := tbcd.Encode(r.IMSI)
+		imsiBytes, err := encodeIdentityDigits(r.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ReportSMDeliveryStatus.IMSI: %w", err)
 		}
@@ -202,7 +200,7 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 	out.SmsfNon3gppDeliveryOutcomeIndicator = nullPtrToBool(w.SmsfNon3gppDeliveryOutcomeIndicator)
 
 	if w.Imsi != nil {
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(*w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.IMSI: %w", err)
 		}

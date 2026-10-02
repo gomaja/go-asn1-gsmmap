@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -67,7 +66,7 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 	arg.IpSmGwGuidanceIndicator = boolToNullPtr(s.IpSmGwGuidanceIndicator)
 
 	if s.IMSI != "" {
-		imsiBytes, err := tbcd.Encode(s.IMSI)
+		imsiBytes, err := encodeIdentityDigits(s.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding IMSI: %w", err)
 		}
@@ -136,7 +135,7 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 	s.IpSmGwGuidanceIndicator = nullPtrToBool(arg.IpSmGwGuidanceIndicator)
 
 	if arg.Imsi != nil {
-		imsi, err := tbcd.Decode(*arg.Imsi)
+		imsi, err := decodeIdentityDigits(*arg.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding optional IMSI: %w", err)
 		}
@@ -162,7 +161,7 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 // --- SRI-SM Response ---
 
 func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
-	imsiBytes, err := tbcd.Encode(s.IMSI)
+	imsiBytes, err := encodeIdentityDigits(s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -279,7 +278,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 }
 
 func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error) {
-	imsi, err := tbcd.Decode(res.Imsi)
+	imsi, err := decodeIdentityDigits(res.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}

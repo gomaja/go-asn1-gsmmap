@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
@@ -46,7 +45,7 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 	}
 
 	if s.IMEI != "" {
-		imeiBytes, err := tbcd.Encode(s.IMEI)
+		imeiBytes, err := encodeIdentityDigits(s.IMEI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding IMEI: %w", err)
 		}
@@ -175,7 +174,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	// the wire it must be exactly 8 octets — empty/non-8-octet IMEI is
 	// a spec violation, not "absent".
 	if si.Imei != nil {
-		imei, err := tbcd.Decode(*si.Imei)
+		imei, err := decodeIdentityDigits(*si.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMEI: %w", err)
 		}
@@ -427,7 +426,7 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 	}
 
 	if m.IMSI != "" {
-		b, err := tbcd.Encode(m.IMSI)
+		b, err := encodeIdentityDigits(m.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
@@ -468,7 +467,7 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	}
 
 	if w.Imsi != nil && len(*w.Imsi) > 0 {
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(*w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMSI: %w", err)
 		}

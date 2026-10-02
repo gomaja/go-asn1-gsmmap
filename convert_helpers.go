@@ -32,6 +32,13 @@ func encodeAddressField(digits string, nature, plan uint8) ([]byte, error) {
 
 // decodeAddressField decodes an AddressString byte slice into a phone number string and address components.
 func decodeAddressField(encoded []byte) (digits string, nature, plan uint8, err error) {
+	// A zero-octet AddressString has no nature/plan octet and violates
+	// SIZE (1..9). address.Decode yields nil digits for it, which the TBCD
+	// decoder used to reject as a nil input; tbcd.Decode now treats nil as an
+	// empty string, so the check lives here.
+	if len(encoded) == 0 {
+		return "", 0, 0, ErrAddressStringEmpty
+	}
 	_, nat, pl, rawDigits := address.Decode(encoded)
 	digits, err = tbcd.Decode(rawDigits)
 	if err != nil {
@@ -119,6 +126,45 @@ func int64FromBigInt(v *big.Int, field string) (int64, error) {
 func validateAPN(b HexBytes, field string) error {
 	if len(b) < 2 || len(b) > 63 {
 		return fmt.Errorf("%s: %w (got %d)", field, ErrAPNInvalidSize, len(b))
+	}
+	return nil
+}
+
+// encodeIdentityDigits TBCD-encodes the digits of an IMSI, IMEI or IMEISV.
+// The TBCD-STRING alphabet of TS 29.002 V19.1.0 §17.7.8 also carries
+// * # a b c, but these identities are decimal digit strings (TS 23.003), so
+// anything else is rejected with ErrIdentityNotDigits.
+func encodeIdentityDigits(digits string) ([]byte, error) {
+	if err := checkIdentityDigits(digits); err != nil {
+		return nil, err
+	}
+	return tbcd.Encode(digits)
+}
+
+// decodeIdentityDigits is the inverse of encodeIdentityDigits.
+//
+// This is the single place that rejects an identity with no digits: nil,
+// empty, and anything that decodes to "" (for example all-filler octets,
+// which tbcd.Decode drops) return ErrIdentityEmpty.
+func decodeIdentityDigits(raw []byte) (string, error) {
+	digits, err := tbcd.Decode(raw)
+	if err != nil {
+		return "", err
+	}
+	if digits == "" {
+		return "", ErrIdentityEmpty
+	}
+	if err := checkIdentityDigits(digits); err != nil {
+		return "", err
+	}
+	return digits, nil
+}
+
+func checkIdentityDigits(digits string) error {
+	for i := 0; i < len(digits); i++ {
+		if digits[i] < '0' || digits[i] > '9' {
+			return fmt.Errorf("%w: %q at index %d", ErrIdentityNotDigits, digits[i], i)
+		}
 	}
 	return nil
 }

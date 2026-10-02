@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
@@ -18,7 +17,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if u.SGSNNumber == "" {
 		return nil, fmt.Errorf("UpdateGprsLocation: SGSNNumber is mandatory and must be non-empty")
 	}
-	imsiBytes, err := tbcd.Encode(u.IMSI)
+	imsiBytes, err := encodeIdentityDigits(u.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -165,7 +164,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 }
 
 func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*UpdateGprsLocation, error) {
-	imsi, err := tbcd.Decode(arg.Imsi)
+	imsi, err := decodeIdentityDigits(arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}

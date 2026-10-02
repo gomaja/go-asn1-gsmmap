@@ -11,17 +11,13 @@
 package gsmmap
 
 import (
+	"bytes"
 	"fmt"
-	"strings"
 
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
-
-// groupIdFiller is the six-TBCD-nibble placeholder GroupId must carry
-// whenever the LongGroupId field is populated, per TS 29.002.
-const groupIdFiller = "ffffff"
 
 // --- ODB-Data (MAP-MS-DataTypes.asn:1770) ---
 
@@ -99,12 +95,20 @@ func convertVoiceBroadcastDataToWire(v *VoiceBroadcastData) (*gsm_map.VoiceBroad
 }
 
 func convertWireToVoiceBroadcastData(w *gsm_map.VoiceBroadcastData) (*VoiceBroadcastData, error) {
+	gid, err := decodeGroupID(w.Groupid, w.LongGroupId != nil)
+	if err != nil {
+		return nil, fmt.Errorf("VoiceBroadcastData.GroupId: %w", err)
+	}
 	out := &VoiceBroadcastData{
-		GroupId:                  decodeGroupID(w.Groupid),
+		GroupId:                  gid,
 		BroadcastInitEntitlement: w.BroadcastInitEntitlement != nil,
 	}
 	if w.LongGroupId != nil {
-		out.LongGroupId = decodeLongGroupID(*w.LongGroupId)
+		lg, err := decodeLongGroupID(*w.LongGroupId)
+		if err != nil {
+			return nil, fmt.Errorf("VoiceBroadcastData.LongGroupId: %w", err)
+		}
+		out.LongGroupId = lg
 	}
 	return out, nil
 }
@@ -167,7 +171,11 @@ func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroup
 }
 
 func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroupCallData, error) {
-	out := &VoiceGroupCallData{GroupId: decodeGroupID(w.GroupId)}
+	gid, err := decodeGroupID(w.GroupId, w.LongGroupId != nil)
+	if err != nil {
+		return nil, fmt.Errorf("VoiceGroupCallData.GroupId: %w", err)
+	}
+	out := &VoiceGroupCallData{GroupId: gid}
 	if w.AdditionalSubscriptions != nil {
 		out.AdditionalSubscriptions = convertBitStringToAdditionalSubscriptions(*w.AdditionalSubscriptions)
 	}
@@ -190,7 +198,11 @@ func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroup
 		}
 	}
 	if w.LongGroupId != nil {
-		out.LongGroupId = decodeLongGroupID(*w.LongGroupId)
+		lg, err := decodeLongGroupID(*w.LongGroupId)
+		if err != nil {
+			return nil, fmt.Errorf("VoiceGroupCallData.LongGroupId: %w", err)
+		}
+		out.LongGroupId = lg
 	}
 	return out, nil
 }
@@ -223,64 +235,91 @@ func convertWireToVGCSDataList(w *gsm_map.VGCSDataList) (VGCSDataList, error) {
 	return out, nil
 }
 
-// encodeGroupID enforces the TBCD GroupId invariants per TS 29.002:
+// encodeGroupID enforces the TBCD GroupId invariants per TS 29.002 V19.1.0
+// (MAP-MS-DataTypes):
+//
+//	GroupId ::= TBCD-STRING (SIZE (3))
+//	-- When Group-Id is less than six characters in length, the TBCD filler (1111)
+//	-- is used to fill unused half octets.
+//
+// and, on VoiceGroupCallData / VoiceBroadcastData,
+// "groupId shall be filled with six TBCD fillers (1111) if the longGroupId
+// is present". gid is the digit string (TBCD alphabet, 1..6 characters):
 //   - GroupId is mandatory when no LongGroupId is present;
-//   - when LongGroupId IS present, GroupId must be the six TBCD fillers
-//     "ffffff" (case-insensitive);
-//   - the encoded value must be exactly 3 octets (6 hex nibbles).
+//   - when LongGroupId IS present, gid must be empty and the wire carries
+//     the six fillers (three 0xFF octets);
+//   - the digits are padded with fillers to the 3-octet field size.
 func encodeGroupID(gid string, hasLong bool) (gsm_map.GroupId, error) {
 	if hasLong {
-		if !strings.EqualFold(gid, groupIdFiller) {
+		if gid != "" {
 			return nil, ErrGroupIdFillerRequired
 		}
 	} else if gid == "" {
 		return nil, ErrGroupIdMissingWithoutLong
 	}
-	enc, err := tbcd.Encode(gid)
+	enc, err := encodeFixedTBCD(gid, groupIdOctets)
 	if err != nil {
 		return nil, err
 	}
-
 	return gsm_map.GroupId(enc), nil
 }
 
-// encodeLongGroupID enforces the 4-octet SIZE constraint on LongGroupId
-// per TS 29.002 MAP-MS-DataTypes.asn:2735.
+// encodeLongGroupID encodes a Long-Group-Id per TS 29.002 V19.1.0:
+//
+//	Long-GroupId ::= TBCD-STRING (SIZE (4))
+//	-- When Long-Group-Id is less than eight characters in length, the TBCD filler (1111)
+//	-- is used to fill unused half octets.
 func encodeLongGroupID(s string) (gsm_map.LongGroupId, error) {
-	enc, err := tbcd.Encode(s)
+	enc, err := encodeFixedTBCD(s, longGroupIdOctets)
 	if err != nil {
 		return nil, err
 	}
-
 	return gsm_map.LongGroupId(enc), nil
 }
 
-// decodeGroupID returns the raw nibble-swapped hex of a TBCD GroupId
-// without tbcd.Decode's trailing-'f' filler strip. Group IDs are
-// TBCD-encoded hex identifiers per TS 23.003 — not phone numbers — so
-// trailing 'f' nibbles can be legitimate data (or six-filler padding
-// when LongGroupId is present). Either way the caller sees the exact
-// nibble sequence the wire carried.
-func decodeGroupID(raw []byte) string {
-	return rawTBCDHex(raw)
-}
+// The fixed sizes of GroupId ::= TBCD-STRING (SIZE (3)) and
+// Long-GroupId ::= TBCD-STRING (SIZE (4)), 3GPP TS 29.002 V19.1.0 §17.7.1.
+const (
+	groupIdOctets     = 3
+	longGroupIdOctets = 4
+)
 
-// decodeLongGroupID mirrors decodeGroupID for the 4-octet LongGroupId
-// field; tbcd.Decode would otherwise strip legitimate trailing 'f'
-// nibbles in the identifier.
-func decodeLongGroupID(raw []byte) string {
-	return rawTBCDHex(raw)
-}
-
-// rawTBCDHex performs a pure nibble swap on TBCD bytes, returning a
-// lowercase hex string. No filler stripping — the caller sees exactly
-// what the wire carried.
-func rawTBCDHex(raw []byte) string {
-	out := make([]byte, len(raw)*2)
-	const hexDigits = "0123456789abcdef"
-	for i, b := range raw {
-		out[i*2] = hexDigits[b&0x0f]
-		out[i*2+1] = hexDigits[(b>>4)&0x0f]
+// encodeFixedTBCD encodes s as a TBCD-STRING (SIZE (octets)): the digits,
+// then TBCD filler (1111) in every unused half octet up to the field size.
+// Digits that need more octets are returned as they are, for the BER
+// codec's SIZE check to reject.
+func encodeFixedTBCD(s string, octets int) ([]byte, error) {
+	enc, err := tbcd.Encode(s)
+	if err != nil || len(enc) >= octets {
+		return enc, err
 	}
-	return string(out)
+	out := bytes.Repeat([]byte{0xFF}, octets)
+	copy(out, enc)
+	return out, nil
+}
+
+// decodeGroupID returns the digits of a TBCD GroupId. Filler padding is
+// dropped, so six fillers decode to "", valid only when a LongGroupId is
+// present (ErrGroupIdDecodedEmpty otherwise).
+func decodeGroupID(raw []byte, hasLong bool) (string, error) {
+	s, err := tbcd.Decode(raw)
+	if err != nil {
+		return "", err
+	}
+	if s == "" && !hasLong {
+		return "", ErrGroupIdDecodedEmpty
+	}
+	return s, nil
+}
+
+// decodeLongGroupID mirrors decodeGroupID for the 4-octet LongGroupId field.
+func decodeLongGroupID(raw []byte) (string, error) {
+	s, err := tbcd.Decode(raw)
+	if err != nil {
+		return "", err
+	}
+	if s == "" {
+		return "", ErrLongGroupIdDecodedEmpty
+	}
+	return s, nil
 }

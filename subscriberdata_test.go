@@ -7,9 +7,11 @@
 package gsmmap
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 
+	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/google/go-cmp/cmp"
@@ -133,15 +135,15 @@ func TestVoiceBroadcastDataRoundTrip(t *testing.T) {
 		{
 			name: "withEntitlement",
 			in: &VoiceBroadcastData{
-				GroupId:                  "abcdef",
+				GroupId:                  "abc*#1",
 				BroadcastInitEntitlement: true,
 			},
 		},
 		{
 			name: "withLongGroupId",
 			in: &VoiceBroadcastData{
-				GroupId:     "ffffff", // filler required when LongGroupId is present
-				LongGroupId: "1234abcd",
+				GroupId:     "", // six fillers on the wire when LongGroupId is present
+				LongGroupId: "1234abc#",
 			},
 		},
 	}
@@ -169,46 +171,88 @@ func TestVoiceBroadcastDataValidation(t *testing.T) {
 			t.Errorf("want ErrGroupIdMissingWithoutLong, got %v", err)
 		}
 	})
-	t.Run("missingFillerWithLongId", func(t *testing.T) {
-		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{LongGroupId: "1234abcd"}))
-		if !errors.Is(err, ErrGroupIdFillerRequired) {
-			t.Errorf("want ErrGroupIdFillerRequired, got %v", err)
+	t.Run("emptyGroupIdWithLongId", func(t *testing.T) {
+		// TS 29.002: groupId is filled with six TBCD fillers when the
+		// longGroupId is present, so an empty GroupId is the valid form.
+		w, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{LongGroupId: "1234abc#"})
+		if err != nil {
+			t.Fatalf("encode: %v", err)
+		}
+		if !bytes.Equal(w.Groupid, []byte{0xff, 0xff, 0xff}) {
+			t.Errorf("GroupId wire = %x, want ffffff", []byte(w.Groupid))
 		}
 	})
 	t.Run("nonFillerGroupIdWithLongId", func(t *testing.T) {
 		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
 			GroupId:     "123456",
-			LongGroupId: "1234abcd",
+			LongGroupId: "1234abc#",
 		}))
 		if !errors.Is(err, ErrGroupIdFillerRequired) {
 			t.Errorf("want ErrGroupIdFillerRequired, got %v", err)
 		}
 	})
 	t.Run("wrongLengthGroupId", func(t *testing.T) {
-		// 4 hex chars = 2 TBCD octets, but spec demands exactly 3.
-		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{GroupId: "1234"}))
+		// 7 digits = 4 TBCD octets, but GroupId is TBCD-STRING (SIZE (3)).
+		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{GroupId: "1234567"}))
 		if !isConstraint(err) {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("wrongLengthLongGroupId", func(t *testing.T) {
-		// 6 hex chars = 3 TBCD octets, but spec demands exactly 4.
+		// 9 digits = 5 TBCD octets, but Long-GroupId is TBCD-STRING (SIZE (4)).
 		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
-			GroupId:     "ffffff",
-			LongGroupId: "123456",
+			LongGroupId: "123456789",
 		}))
 		if !isConstraint(err) {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
-	t.Run("fillerGroupIdCaseInsensitive", func(t *testing.T) {
-		// Spec filler is six 'f' nibbles; accept uppercase too.
-		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
-			GroupId:     "FFFFFF",
-			LongGroupId: "1234abcd",
-		}))
-		if err != nil {
-			t.Errorf("FFFFFF filler should be accepted case-insensitively: %v", err)
+	t.Run("hexFillerRejected", func(t *testing.T) {
+		// 'f' is not a TBCD digit: the filler is a nibble, not a character.
+		for _, gid := range []string{"ffffff", "FFFFFF", "12345f", "abcdef"} {
+			_, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{GroupId: gid})
+			if !errors.Is(err, tbcd.ErrInvalidCharacter) {
+				t.Errorf("GroupId %q: want tbcd.ErrInvalidCharacter, got %v", gid, err)
+			}
+		}
+	})
+	t.Run("shortGroupIdFillerPadded", func(t *testing.T) {
+		// "When Group-Id is less than six characters in length, the TBCD
+		// filler (1111) is used to fill unused half octets."
+		for gid, want := range map[string][]byte{
+			"12345": {0x21, 0x43, 0xf5},
+			"1234":  {0x21, 0x43, 0xff},
+			"1":     {0xf1, 0xff, 0xff},
+		} {
+			w, err := convertVoiceBroadcastDataToWire(&VoiceBroadcastData{GroupId: gid})
+			if err != nil {
+				t.Fatalf("GroupId %q: %v", gid, err)
+			}
+			if !bytes.Equal(w.Groupid, want) {
+				t.Errorf("GroupId %q wire = %x, want %x", gid, []byte(w.Groupid), want)
+			}
+			got, err := convertWireToVoiceBroadcastData(w)
+			if err != nil || got.GroupId != gid {
+				t.Errorf("GroupId %q round trip = %q, %v", gid, got.GroupId, err)
+			}
+		}
+	})
+	t.Run("misplacedFillerOnWire", func(t *testing.T) {
+		w := &gsm_map.VoiceBroadcastData{Groupid: []byte{0x21, 0xff, 0x65}}
+		if _, err := convertWireToVoiceBroadcastData(w); !errors.Is(err, tbcd.ErrMisplacedFiller) {
+			t.Errorf("want tbcd.ErrMisplacedFiller, got %v", err)
+		}
+		lg := gsm_map.LongGroupId{0x21, 0xff, 0x65, 0x87}
+		w = &gsm_map.VoiceBroadcastData{Groupid: []byte{0x21, 0x43, 0x65}, LongGroupId: &lg}
+		if _, err := convertWireToVoiceBroadcastData(w); !errors.Is(err, tbcd.ErrMisplacedFiller) {
+			t.Errorf("LongGroupId: want tbcd.ErrMisplacedFiller, got %v", err)
+		}
+	})
+	t.Run("allFillerLongGroupIdOnWire", func(t *testing.T) {
+		lg := gsm_map.LongGroupId{0xff, 0xff, 0xff, 0xff}
+		w := &gsm_map.VoiceBroadcastData{Groupid: []byte{0xff, 0xff, 0xff}, LongGroupId: &lg}
+		if _, err := convertWireToVoiceBroadcastData(w); !errors.Is(err, ErrLongGroupIdDecodedEmpty) {
+			t.Errorf("want ErrLongGroupIdDecodedEmpty, got %v", err)
 		}
 	})
 }
@@ -222,8 +266,8 @@ func TestVoiceGroupCallDataValidation(t *testing.T) {
 	})
 	t.Run("nonFillerGroupIdWithLongId", func(t *testing.T) {
 		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
-			GroupId:     "abcdef",
-			LongGroupId: "1234abcd",
+			GroupId:     "abc*#1",
+			LongGroupId: "1234abc#",
 		}))
 		if !errors.Is(err, ErrGroupIdFillerRequired) {
 			t.Errorf("want ErrGroupIdFillerRequired, got %v", err)
@@ -252,8 +296,7 @@ func TestVoiceGroupCallDataValidation(t *testing.T) {
 	})
 	t.Run("wrongLengthLongGroupId", func(t *testing.T) {
 		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
-			GroupId:     "ffffff",
-			LongGroupId: "123456", // 3 octets, need 4
+			LongGroupId: "123456789", // 5 octets, at most 4
 		}))
 		if !isConstraint(err) {
 			t.Errorf("want BER constraint error, got %v", err)
@@ -283,32 +326,32 @@ func TestVoiceGroupCallDataAdditionalInfoSubByteDiscarded(t *testing.T) {
 	}
 }
 
-// LongGroupId's trailing 'f' nibble must survive the round-trip — the
-// raw nibble-swap decoder must not strip it (tbcd.Decode would).
-func TestLongGroupIdTrailingFRoundTrips(t *testing.T) {
-	// LongGroupId = "1234567f" ends with a legitimate 'f' nibble;
-	// tbcd.Decode would have silently turned this into "1234567".
-	in := &VoiceBroadcastData{
-		GroupId:     "ffffff",
-		LongGroupId: "1234567f",
-	}
-	wire, err := convertVoiceBroadcastDataToWire(in)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
-	}
-	got, err := convertWireToVoiceBroadcastData(wire)
-	if err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if got.LongGroupId != in.LongGroupId {
-		t.Errorf("LongGroupId round-trip: got %q, want %q", got.LongGroupId, in.LongGroupId)
+// A LongGroupId of fewer than eight characters is padded with TBCD filler
+// on the wire, and the padding is not part of the value on decode.
+func TestLongGroupIdFillerPaddingRoundTrips(t *testing.T) {
+	for _, lg := range []string{"1234567", "12345", "1", "*#abc012"} {
+		in := &VoiceBroadcastData{LongGroupId: lg}
+		wire, err := convertVoiceBroadcastDataToWire(in)
+		if err != nil {
+			t.Fatalf("%q encode: %v", lg, err)
+		}
+		if len(*wire.LongGroupId) != longGroupIdOctets {
+			t.Errorf("%q: wire length %d, want %d", lg, len(*wire.LongGroupId), longGroupIdOctets)
+		}
+		got, err := convertWireToVoiceBroadcastData(wire)
+		if err != nil {
+			t.Fatalf("%q decode: %v", lg, err)
+		}
+		if got.LongGroupId != lg || got.GroupId != "" {
+			t.Errorf("round-trip: got GroupId %q LongGroupId %q, want empty and %q", got.GroupId, got.LongGroupId, lg)
+		}
 	}
 }
 
 func TestVBSDataListRoundTrip(t *testing.T) {
 	in := VBSDataList{
 		{GroupId: "123456"},
-		{GroupId: "abcdef", BroadcastInitEntitlement: true},
+		{GroupId: "abc*#1", BroadcastInitEntitlement: true},
 	}
 	wire, err := convertVBSDataListToWire(in)
 	if err != nil {
@@ -354,7 +397,7 @@ func TestVoiceGroupCallDataRoundTrip(t *testing.T) {
 		{
 			name: "withAdditionalSubscriptions",
 			in: &VoiceGroupCallData{
-				GroupId: "abcdef",
+				GroupId: "abc*#1",
 				AdditionalSubscriptions: &AdditionalSubscriptions{
 					PrivilegedUplinkRequest: true,
 					EmergencyReset:          true,
@@ -371,8 +414,8 @@ func TestVoiceGroupCallDataRoundTrip(t *testing.T) {
 		{
 			name: "withLongGroupId",
 			in: &VoiceGroupCallData{
-				GroupId:     "ffffff", // filler
-				LongGroupId: "1234abcd",
+				GroupId:     "", // six fillers on the wire
+				LongGroupId: "1234abc#",
 			},
 		},
 	}
@@ -397,7 +440,7 @@ func TestVGCSDataListRoundTrip(t *testing.T) {
 	in := VGCSDataList{
 		{GroupId: "123456"},
 		{
-			GroupId:                 "abcdef",
+			GroupId:                 "abc*#1",
 			AdditionalSubscriptions: &AdditionalSubscriptions{EmergencyUplinkRequest: true},
 		},
 	}

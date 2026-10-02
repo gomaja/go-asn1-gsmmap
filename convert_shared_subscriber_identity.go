@@ -12,8 +12,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // convertSubscriberIdentityToWire encodes the SubscriberIdentity CHOICE.
@@ -29,7 +27,7 @@ func convertSubscriberIdentityToWire(s SubscriberIdentity) (gsm_map.SubscriberId
 	}
 
 	if imsiSet {
-		imsiBytes, err := tbcd.Encode(s.IMSI)
+		imsiBytes, err := encodeIdentityDigits(s.IMSI)
 		if err != nil {
 			return gsm_map.SubscriberIdentity{}, fmt.Errorf(errEncodingIMSI, err)
 		}
@@ -52,7 +50,7 @@ func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberId
 		if w.Imsi == nil {
 			return out, ErrSubscriberIdentityUnknownChoice
 		}
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(*w.Imsi)
 		if err != nil {
 			return out, fmt.Errorf("decoding SubscriberIdentity.IMSI: %w", err)
 		}
