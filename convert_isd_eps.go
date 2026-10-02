@@ -123,33 +123,33 @@ func convertWireToSpecificAPNInfo(w *gsm_map.SpecificAPNInfo) (*SpecificAPNInfo,
 	}, nil
 }
 
-func convertSpecificAPNInfoListToWire(list SpecificAPNInfoList) (gsm_map.SpecificAPNInfoList, error) {
+func convertSpecificAPNInfoListToWire(list SpecificAPNInfoList) (*gsm_map.SpecificAPNInfoList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfSpecificAPNInfos {
 		return nil, fmt.Errorf("%w (got %d)", ErrSpecificAPNInfoListSize, len(list))
 	}
-	out := make(gsm_map.SpecificAPNInfoList, len(list))
+	out := gsm_map.SpecificAPNInfoList{Values: make([]gsm_map.SpecificAPNInfo, len(list))}
 	for i, s := range list {
 		w, err := convertSpecificAPNInfoToWire(&s)
 		if err != nil {
 			return nil, fmt.Errorf("SpecificAPNInfoList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToSpecificAPNInfoList(w gsm_map.SpecificAPNInfoList) (SpecificAPNInfoList, error) {
+func convertWireToSpecificAPNInfoList(w *gsm_map.SpecificAPNInfoList) (SpecificAPNInfoList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfSpecificAPNInfos {
-		return nil, fmt.Errorf("%w (got %d)", ErrSpecificAPNInfoListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfSpecificAPNInfos {
+		return nil, fmt.Errorf("%w (got %d)", ErrSpecificAPNInfoListSize, len(w.Values))
 	}
-	out := make(SpecificAPNInfoList, len(w))
-	for i, s := range w {
+	out := make(SpecificAPNInfoList, len(w.Values))
+	for i, s := range w.Values {
 		v, err := convertWireToSpecificAPNInfo(&s)
 		if err != nil {
 			return nil, fmt.Errorf("SpecificAPNInfoList[%d]: %w", i, err)
@@ -519,33 +519,33 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 // — TS 29.002 MAP-MS-DataTypes.asn:1283-1325
 // ============================================================================
 
-func convertEPSDataListToWire(list EPSDataList) (gsm_map.EPSDataList, error) {
+func convertEPSDataListToWire(list EPSDataList) (*gsm_map.EPSDataList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfAPNConfigurations {
 		return nil, fmt.Errorf("%w (got %d)", ErrEPSDataListSize, len(list))
 	}
-	out := make(gsm_map.EPSDataList, len(list))
+	out := gsm_map.EPSDataList{Values: make([]gsm_map.APNConfiguration, len(list))}
 	for i, a := range list {
 		w, err := convertAPNConfigurationToWire(&a)
 		if err != nil {
 			return nil, fmt.Errorf("EPSDataList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToEPSDataList(w gsm_map.EPSDataList) (EPSDataList, error) {
+func convertWireToEPSDataList(w *gsm_map.EPSDataList) (EPSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfAPNConfigurations {
-		return nil, fmt.Errorf("%w (got %d)", ErrEPSDataListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfAPNConfigurations {
+		return nil, fmt.Errorf("%w (got %d)", ErrEPSDataListSize, len(w.Values))
 	}
-	out := make(EPSDataList, len(w))
-	for i, a := range w {
+	out := make(EPSDataList, len(w.Values))
+	for i, a := range w.Values {
 		v, err := convertWireToAPNConfiguration(&a)
 		if err != nil {
 			return nil, fmt.Errorf("EPSDataList[%d]: %w", i, err)

@@ -89,12 +89,12 @@ func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubsc
 		if len(c.LipaAllowedAPNList) < 1 || int64(len(c.LipaAllowedAPNList)) > gsm_map.MaxNumOfLIPAAllowedAPN {
 			return nil, fmt.Errorf("%w (got %d)", ErrLipaAllowedAPNListSize, len(c.LipaAllowedAPNList))
 		}
-		out.LipaAllowedAPNList = make(gsm_map.LIPAAllowedAPNList, len(c.LipaAllowedAPNList))
+		out.LipaAllowedAPNList = &gsm_map.LIPAAllowedAPNList{Values: make([]gsm_map.APN, len(c.LipaAllowedAPNList))}
 		for i, apn := range c.LipaAllowedAPNList {
 			if err := validateAPN(apn, fmt.Sprintf("CSGSubscriptionData.LipaAllowedAPNList[%d]", i)); err != nil {
 				return nil, err
 			}
-			out.LipaAllowedAPNList[i] = gsm_map.APN(apn)
+			out.LipaAllowedAPNList.Values[i] = gsm_map.APN(apn)
 		}
 	}
 	if c.PlmnId != nil {
@@ -119,11 +119,11 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubsc
 		out.ExpirationDate = HexBytes(*w.ExpirationDate)
 	}
 	if w.LipaAllowedAPNList != nil {
-		if len(w.LipaAllowedAPNList) < 1 || int64(len(w.LipaAllowedAPNList)) > gsm_map.MaxNumOfLIPAAllowedAPN {
-			return nil, fmt.Errorf("%w (got %d)", ErrLipaAllowedAPNListSize, len(w.LipaAllowedAPNList))
+		if len(w.LipaAllowedAPNList.Values) < 1 || int64(len(w.LipaAllowedAPNList.Values)) > gsm_map.MaxNumOfLIPAAllowedAPN {
+			return nil, fmt.Errorf("%w (got %d)", ErrLipaAllowedAPNListSize, len(w.LipaAllowedAPNList.Values))
 		}
-		out.LipaAllowedAPNList = make([]HexBytes, len(w.LipaAllowedAPNList))
-		for i, apn := range w.LipaAllowedAPNList {
+		out.LipaAllowedAPNList = make([]HexBytes, len(w.LipaAllowedAPNList.Values))
+		for i, apn := range w.LipaAllowedAPNList.Values {
 			if err := validateAPN(HexBytes(apn), fmt.Sprintf("CSGSubscriptionData.LipaAllowedAPNList[%d]", i)); err != nil {
 				return nil, err
 			}
@@ -139,33 +139,33 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubsc
 	return out, nil
 }
 
-func convertCSGSubscriptionDataListToWire(list CSGSubscriptionDataList) (gsm_map.CSGSubscriptionDataList, error) {
+func convertCSGSubscriptionDataListToWire(list CSGSubscriptionDataList) (*gsm_map.CSGSubscriptionDataList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if len(list) < 1 || len(list) > MaxNumOfCSGSubscriptions {
 		return nil, fmt.Errorf("%w (got %d)", ErrCSGSubscriptionDataListSize, len(list))
 	}
-	out := make(gsm_map.CSGSubscriptionDataList, len(list))
+	out := gsm_map.CSGSubscriptionDataList{Values: make([]gsm_map.CSGSubscriptionData, len(list))}
 	for i, csd := range list {
 		w, err := convertCSGSubscriptionDataToWire(&csd)
 		if err != nil {
 			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToCSGSubscriptionDataList(w gsm_map.CSGSubscriptionDataList) (CSGSubscriptionDataList, error) {
+func convertWireToCSGSubscriptionDataList(w *gsm_map.CSGSubscriptionDataList) (CSGSubscriptionDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfCSGSubscriptions {
-		return nil, fmt.Errorf("%w (got %d)", ErrCSGSubscriptionDataListSize, len(w))
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfCSGSubscriptions {
+		return nil, fmt.Errorf("%w (got %d)", ErrCSGSubscriptionDataListSize, len(w.Values))
 	}
-	out := make(CSGSubscriptionDataList, len(w))
-	for i, csd := range w {
+	out := make(CSGSubscriptionDataList, len(w.Values))
+	for i, csd := range w.Values {
 		c, err := convertWireToCSGSubscriptionData(&csd)
 		if err != nil {
 			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
@@ -175,17 +175,40 @@ func convertWireToCSGSubscriptionDataList(w gsm_map.CSGSubscriptionDataList) (CS
 	return out, nil
 }
 
-// VPLMN-CSG-SubscriptionDataList shares the wire shape with CSG-SubscriptionDataList.
-func convertVPLMNCSGSubscriptionDataListToWire(list VPLMNCSGSubscriptionDataList) (gsm_map.CSGSubscriptionDataList, error) {
-	return convertCSGSubscriptionDataListToWire(CSGSubscriptionDataList(list))
+func convertVPLMNCSGSubscriptionDataListToWire(list VPLMNCSGSubscriptionDataList) (*gsm_map.VPLMNCSGSubscriptionDataList, error) {
+	if list == nil {
+		return nil, nil
+	}
+	if len(list) < 1 || len(list) > MaxNumOfCSGSubscriptions {
+		return nil, fmt.Errorf("%w (got %d)", ErrCSGSubscriptionDataListSize, len(list))
+	}
+	out := &gsm_map.VPLMNCSGSubscriptionDataList{Values: make([]gsm_map.CSGSubscriptionData, len(list))}
+	for i, csd := range list {
+		w, err := convertCSGSubscriptionDataToWire(&csd)
+		if err != nil {
+			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
+		}
+		out.Values[i] = *w
+	}
+	return out, nil
 }
 
-func convertWireToVPLMNCSGSubscriptionDataList(w gsm_map.CSGSubscriptionDataList) (VPLMNCSGSubscriptionDataList, error) {
-	out, err := convertWireToCSGSubscriptionDataList(w)
-	if err != nil {
-		return nil, err
+func convertWireToVPLMNCSGSubscriptionDataList(w *gsm_map.VPLMNCSGSubscriptionDataList) (VPLMNCSGSubscriptionDataList, error) {
+	if w == nil {
+		return nil, nil
 	}
-	return VPLMNCSGSubscriptionDataList(out), nil
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfCSGSubscriptions {
+		return nil, fmt.Errorf("%w (got %d)", ErrCSGSubscriptionDataListSize, len(w.Values))
+	}
+	out := make(VPLMNCSGSubscriptionDataList, len(w.Values))
+	for i, csd := range w.Values {
+		c, err := convertWireToCSGSubscriptionData(&csd)
+		if err != nil {
+			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
+		}
+		out[i] = *c
+	}
+	return out, nil
 }
 
 // ============================================================================
@@ -228,33 +251,33 @@ func convertWireToAdjacentAccessRestrictionData(w *gsm_map.AdjacentAccessRestric
 	return out, nil
 }
 
-func convertAdjacentAccessRestrictionDataListToWire(list AdjacentAccessRestrictionDataList) (gsm_map.AdjacentAccessRestrictionDataList, error) {
+func convertAdjacentAccessRestrictionDataListToWire(list AdjacentAccessRestrictionDataList) (*gsm_map.AdjacentAccessRestrictionDataList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if len(list) < 1 || len(list) > MaxNumOfAdjacentPLMN {
 		return nil, fmt.Errorf("%w (got %d)", ErrAdjacentAccessRestrictionListSize, len(list))
 	}
-	out := make(gsm_map.AdjacentAccessRestrictionDataList, len(list))
+	out := gsm_map.AdjacentAccessRestrictionDataList{Values: make([]gsm_map.AdjacentAccessRestrictionData, len(list))}
 	for i, a := range list {
 		w, err := convertAdjacentAccessRestrictionDataToWire(&a)
 		if err != nil {
 			return nil, fmt.Errorf("AdjacentAccessRestrictionDataList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToAdjacentAccessRestrictionDataList(w gsm_map.AdjacentAccessRestrictionDataList) (AdjacentAccessRestrictionDataList, error) {
+func convertWireToAdjacentAccessRestrictionDataList(w *gsm_map.AdjacentAccessRestrictionDataList) (AdjacentAccessRestrictionDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfAdjacentPLMN {
-		return nil, fmt.Errorf("%w (got %d)", ErrAdjacentAccessRestrictionListSize, len(w))
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfAdjacentPLMN {
+		return nil, fmt.Errorf("%w (got %d)", ErrAdjacentAccessRestrictionListSize, len(w.Values))
 	}
-	out := make(AdjacentAccessRestrictionDataList, len(w))
-	for i, a := range w {
+	out := make(AdjacentAccessRestrictionDataList, len(w.Values))
+	for i, a := range w.Values {
 		v, err := convertWireToAdjacentAccessRestrictionData(&a)
 		if err != nil {
 			return nil, fmt.Errorf("AdjacentAccessRestrictionDataList[%d]: %w", i, err)
@@ -305,33 +328,33 @@ func convertWireToIMSIGroupId(w *gsm_map.IMSIGroupId) (*IMSIGroupId, error) {
 	}, nil
 }
 
-func convertIMSIGroupIdListToWire(list IMSIGroupIdList) (gsm_map.IMSIGroupIdList, error) {
+func convertIMSIGroupIdListToWire(list IMSIGroupIdList) (*gsm_map.IMSIGroupIdList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if len(list) < 1 || len(list) > MaxNumOfIMSIGroupId {
 		return nil, fmt.Errorf("%w (got %d)", ErrIMSIGroupIdListSize, len(list))
 	}
-	out := make(gsm_map.IMSIGroupIdList, len(list))
+	out := gsm_map.IMSIGroupIdList{Values: make([]gsm_map.IMSIGroupId, len(list))}
 	for i, g := range list {
 		w, err := convertIMSIGroupIdToWire(&g)
 		if err != nil {
 			return nil, fmt.Errorf("IMSIGroupIdList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToIMSIGroupIdList(w gsm_map.IMSIGroupIdList) (IMSIGroupIdList, error) {
+func convertWireToIMSIGroupIdList(w *gsm_map.IMSIGroupIdList) (IMSIGroupIdList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfIMSIGroupId {
-		return nil, fmt.Errorf("%w (got %d)", ErrIMSIGroupIdListSize, len(w))
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfIMSIGroupId {
+		return nil, fmt.Errorf("%w (got %d)", ErrIMSIGroupIdListSize, len(w.Values))
 	}
-	out := make(IMSIGroupIdList, len(w))
-	for i, g := range w {
+	out := make(IMSIGroupIdList, len(w.Values))
+	for i, g := range w.Values {
 		v, err := convertWireToIMSIGroupId(&g)
 		if err != nil {
 			return nil, fmt.Errorf("IMSIGroupIdList[%d]: %w", i, err)
@@ -374,33 +397,33 @@ func convertWireToEDRXCycleLength(w *gsm_map.EDRXCycleLength) (*EDRXCycleLength,
 	}, nil
 }
 
-func convertEDRXCycleLengthListToWire(list EDRXCycleLengthList) (gsm_map.EDRXCycleLengthList, error) {
+func convertEDRXCycleLengthListToWire(list EDRXCycleLengthList) (*gsm_map.EDRXCycleLengthList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if len(list) < 1 || len(list) > MaxNumOfEDRXCycleLength {
 		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthListSize, len(list))
 	}
-	out := make(gsm_map.EDRXCycleLengthList, len(list))
+	out := gsm_map.EDRXCycleLengthList{Values: make([]gsm_map.EDRXCycleLength, len(list))}
 	for i, e := range list {
 		w, err := convertEDRXCycleLengthToWire(&e)
 		if err != nil {
 			return nil, fmt.Errorf("EDRXCycleLengthList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToEDRXCycleLengthList(w gsm_map.EDRXCycleLengthList) (EDRXCycleLengthList, error) {
+func convertWireToEDRXCycleLengthList(w *gsm_map.EDRXCycleLengthList) (EDRXCycleLengthList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfEDRXCycleLength {
-		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthListSize, len(w))
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfEDRXCycleLength {
+		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthListSize, len(w.Values))
 	}
-	out := make(EDRXCycleLengthList, len(w))
-	for i, e := range w {
+	out := make(EDRXCycleLengthList, len(w.Values))
+	for i, e := range w.Values {
 		v, err := convertWireToEDRXCycleLength(&e)
 		if err != nil {
 			return nil, fmt.Errorf("EDRXCycleLengthList[%d]: %w", i, err)
@@ -415,32 +438,32 @@ func convertWireToEDRXCycleLengthList(w gsm_map.EDRXCycleLengthList) (EDRXCycleL
 // Reset-Id is a leaf OCTET STRING (SIZE 1..4); only the list needs validation.
 // ============================================================================
 
-func convertResetIdListToWire(list ResetIdList) (gsm_map.ResetIdList, error) {
+func convertResetIdListToWire(list ResetIdList) (*gsm_map.ResetIdList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if len(list) < 1 || len(list) > MaxNumOfResetId {
 		return nil, fmt.Errorf("%w (got %d)", ErrResetIdListSize, len(list))
 	}
-	out := make(gsm_map.ResetIdList, len(list))
+	out := gsm_map.ResetIdList{Values: make([]gsm_map.ResetId, len(list))}
 	for i, r := range list {
 		if len(r) < 1 || len(r) > MaxResetIdOctets {
 			return nil, fmt.Errorf("ResetIdList[%d]: %w (got %d)", i, ErrResetIdInvalidSize, len(r))
 		}
-		out[i] = gsm_map.ResetId(r)
+		out.Values[i] = gsm_map.ResetId(r)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToResetIdList(w gsm_map.ResetIdList) (ResetIdList, error) {
+func convertWireToResetIdList(w *gsm_map.ResetIdList) (ResetIdList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfResetId {
-		return nil, fmt.Errorf("%w (got %d)", ErrResetIdListSize, len(w))
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfResetId {
+		return nil, fmt.Errorf("%w (got %d)", ErrResetIdListSize, len(w.Values))
 	}
-	out := make(ResetIdList, len(w))
-	for i, r := range w {
+	out := make(ResetIdList, len(w.Values))
+	for i, r := range w.Values {
 		if len(r) < 1 || len(r) > MaxResetIdOctets {
 			return nil, fmt.Errorf("ResetIdList[%d]: %w (got %d)", i, ErrResetIdInvalidSize, len(r))
 		}

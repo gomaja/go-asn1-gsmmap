@@ -105,14 +105,14 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 
 	// [15] eplmn-List
 	if len(u.EplmnList) > 0 {
-		list := make(gsm_map.EPLMNList, len(u.EplmnList))
+		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
 			if len(raw) != 3 {
 				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
 			}
-			list[i] = gsm_map.PLMNId(raw)
+			list.Values[i] = gsm_map.PLMNId(raw)
 		}
-		arg.EplmnList = list
+		arg.EplmnList = &list
 	}
 
 	// [16] mme-Number-for-MT-SMS
@@ -149,14 +149,14 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 
 	// [23] adjacentPLMNList
 	if len(u.AdjacentPLMNList) > 0 {
-		list := make(gsm_map.AdjacentPLMNList, len(u.AdjacentPLMNList))
+		list := gsm_map.AdjacentPLMNList{Values: make([]gsm_map.PLMNId, len(u.AdjacentPLMNList))}
 		for i, raw := range u.AdjacentPLMNList {
 			if len(raw) != 3 {
 				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
 			}
-			list[i] = gsm_map.PLMNId(raw)
+			list.Values[i] = gsm_map.PLMNId(raw)
 		}
-		arg.AdjacentPLMNList = list
+		arg.AdjacentPLMNList = &list
 	}
 
 	return arg, nil
@@ -253,9 +253,9 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 		u.UeSrvccCapability = &v
 	}
 
-	if len(arg.EplmnList) > 0 {
-		list := make([]HexBytes, len(arg.EplmnList))
-		for i, plmn := range arg.EplmnList {
+	if arg.EplmnList != nil && len(arg.EplmnList.Values) > 0 {
+		list := make([]HexBytes, len(arg.EplmnList.Values))
+		for i, plmn := range arg.EplmnList.Values {
 			if len(plmn) != 3 {
 				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
 			}
@@ -293,9 +293,9 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.LgdSupportIndicator = nullPtrToBool(arg.LgdSupportIndicator)
 	u.RemovalofMMERegistrationforSMS = nullPtrToBool(arg.RemovalofMMERegistrationforSMS)
 
-	if len(arg.AdjacentPLMNList) > 0 {
-		list := make([]HexBytes, len(arg.AdjacentPLMNList))
-		for i, plmn := range arg.AdjacentPLMNList {
+	if arg.AdjacentPLMNList != nil && len(arg.AdjacentPLMNList.Values) > 0 {
+		list := make([]HexBytes, len(arg.AdjacentPLMNList.Values))
+		for i, plmn := range arg.AdjacentPLMNList.Values {
 			if len(plmn) != 3 {
 				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
 			}

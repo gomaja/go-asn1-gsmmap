@@ -409,33 +409,33 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 // GPRSDataList / GPRSSubscriptionData — TS 29.002 MAP-MS-DataTypes.asn:1517-1595
 // ============================================================================
 
-func convertGPRSDataListToWire(list GPRSDataList) (gsm_map.GPRSDataList, error) {
+func convertGPRSDataListToWire(list GPRSDataList) (*gsm_map.GPRSDataList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfPDPContexts {
 		return nil, fmt.Errorf("%w (got %d)", ErrGPRSDataListSize, len(list))
 	}
-	out := make(gsm_map.GPRSDataList, len(list))
+	out := gsm_map.GPRSDataList{Values: make([]gsm_map.PDPContext, len(list))}
 	for i, p := range list {
 		w, err := convertPDPContextToWire(&p)
 		if err != nil {
 			return nil, fmt.Errorf("GPRSDataList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToGPRSDataList(w gsm_map.GPRSDataList) (GPRSDataList, error) {
+func convertWireToGPRSDataList(w *gsm_map.GPRSDataList) (GPRSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfPDPContexts {
-		return nil, fmt.Errorf("%w (got %d)", ErrGPRSDataListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfPDPContexts {
+		return nil, fmt.Errorf("%w (got %d)", ErrGPRSDataListSize, len(w.Values))
 	}
-	out := make(GPRSDataList, len(w))
-	for i, p := range w {
+	out := make(GPRSDataList, len(w.Values))
+	for i, p := range w.Values {
 		v, err := convertWireToPDPContext(&p)
 		if err != nil {
 			return nil, fmt.Errorf("GPRSDataList[%d]: %w", i, err)
@@ -533,33 +533,33 @@ func convertWireToLSAData(w *gsm_map.LSAData) (*LSAData, error) {
 	}, nil
 }
 
-func convertLSADataListToWire(list LSADataList) (gsm_map.LSADataList, error) {
+func convertLSADataListToWire(list LSADataList) (*gsm_map.LSADataList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfLSAs {
 		return nil, fmt.Errorf("%w (got %d)", ErrLSADataListSize, len(list))
 	}
-	out := make(gsm_map.LSADataList, len(list))
+	out := gsm_map.LSADataList{Values: make([]gsm_map.LSAData, len(list))}
 	for i, l := range list {
 		w, err := convertLSADataToWire(&l)
 		if err != nil {
 			return nil, fmt.Errorf("LSADataList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToLSADataList(w gsm_map.LSADataList) (LSADataList, error) {
+func convertWireToLSADataList(w *gsm_map.LSADataList) (LSADataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfLSAs {
-		return nil, fmt.Errorf("%w (got %d)", ErrLSADataListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfLSAs {
+		return nil, fmt.Errorf("%w (got %d)", ErrLSADataListSize, len(w.Values))
 	}
-	out := make(LSADataList, len(w))
-	for i, l := range w {
+	out := make(LSADataList, len(w.Values))
+	for i, l := range w.Values {
 		v, err := convertWireToLSAData(&l)
 		if err != nil {
 			return nil, fmt.Errorf("LSADataList[%d]: %w", i, err)

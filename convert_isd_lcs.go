@@ -107,33 +107,33 @@ func convertWireToExternalClient(w *gsm_map.ExternalClient) (*ExternalClient, er
 	return out, nil
 }
 
-func convertExternalClientListToWire(list ExternalClientList) (gsm_map.ExternalClientList, error) {
+func convertExternalClientListToWire(list ExternalClientList) (*gsm_map.ExternalClientList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) > gsm_map.MaxNumOfExternalClient {
 		return nil, fmt.Errorf("%w (got %d)", ErrExternalClientListSize, len(list))
 	}
-	out := make(gsm_map.ExternalClientList, len(list))
+	out := gsm_map.ExternalClientList{Values: make([]gsm_map.ExternalClient, len(list))}
 	for i, c := range list {
 		w, err := convertExternalClientToWire(&c)
 		if err != nil {
 			return nil, fmt.Errorf("ExternalClientList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToExternalClientList(w gsm_map.ExternalClientList) (ExternalClientList, error) {
+func convertWireToExternalClientList(w *gsm_map.ExternalClientList) (ExternalClientList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) > gsm_map.MaxNumOfExternalClient {
-		return nil, fmt.Errorf("%w (got %d)", ErrExternalClientListSize, len(w))
+	if int64(len(w.Values)) > gsm_map.MaxNumOfExternalClient {
+		return nil, fmt.Errorf("%w (got %d)", ErrExternalClientListSize, len(w.Values))
 	}
-	out := make(ExternalClientList, len(w))
-	for i, c := range w {
+	out := make(ExternalClientList, len(w.Values))
+	for i, c := range w.Values {
 		v, err := convertWireToExternalClient(&c)
 		if err != nil {
 			return nil, fmt.Errorf("ExternalClientList[%d]: %w", i, err)
@@ -143,33 +143,33 @@ func convertWireToExternalClientList(w gsm_map.ExternalClientList) (ExternalClie
 	return out, nil
 }
 
-func convertExtExternalClientListToWire(list ExtExternalClientList) (gsm_map.ExtExternalClientList, error) {
+func convertExtExternalClientListToWire(list ExtExternalClientList) (*gsm_map.ExtExternalClientList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfExtExternalClient {
 		return nil, fmt.Errorf("%w (got %d)", ErrExtExternalClientListSize, len(list))
 	}
-	out := make(gsm_map.ExtExternalClientList, len(list))
+	out := gsm_map.ExtExternalClientList{Values: make([]gsm_map.ExternalClient, len(list))}
 	for i, c := range list {
 		w, err := convertExternalClientToWire(&c)
 		if err != nil {
 			return nil, fmt.Errorf("ExtExternalClientList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToExtExternalClientList(w gsm_map.ExtExternalClientList) (ExtExternalClientList, error) {
+func convertWireToExtExternalClientList(w *gsm_map.ExtExternalClientList) (ExtExternalClientList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfExtExternalClient {
-		return nil, fmt.Errorf("%w (got %d)", ErrExtExternalClientListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfExtExternalClient {
+		return nil, fmt.Errorf("%w (got %d)", ErrExtExternalClientListSize, len(w.Values))
 	}
-	out := make(ExtExternalClientList, len(w))
-	for i, c := range w {
+	out := make(ExtExternalClientList, len(w.Values))
+	for i, c := range w.Values {
 		v, err := convertWireToExternalClient(&c)
 		if err != nil {
 			return nil, fmt.Errorf("ExtExternalClientList[%d]: %w", i, err)
@@ -183,32 +183,32 @@ func convertWireToExtExternalClientList(w gsm_map.ExtExternalClientList) (ExtExt
 // PLMNClientList — TS 29.002 MAP-MS-DataTypes.asn:2008
 // ============================================================================
 
-func convertPLMNClientListToWire(list PLMNClientList) (gsm_map.PLMNClientList, error) {
+func convertPLMNClientListToWire(list PLMNClientList) (*gsm_map.PLMNClientList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfPLMNClient {
 		return nil, fmt.Errorf("%w (got %d)", ErrPLMNClientListSize, len(list))
 	}
-	out := make(gsm_map.PLMNClientList, len(list))
+	out := gsm_map.PLMNClientList{Values: make([]gsm_map.LCSClientInternalID, len(list))}
 	for i, v := range list {
 		if v < LCSClientBroadcastService || v > LCSClientTargetMSsubscribedService {
 			return nil, fmt.Errorf("PLMNClientList[%d]: %w (got %d)", i, ErrLCSClientInternalIDInvalid, v)
 		}
-		out[i] = gsm_map.LCSClientInternalID(v)
+		out.Values[i] = gsm_map.LCSClientInternalID(v)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToPLMNClientList(w gsm_map.PLMNClientList) (PLMNClientList, error) {
+func convertWireToPLMNClientList(w *gsm_map.PLMNClientList) (PLMNClientList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfPLMNClient {
-		return nil, fmt.Errorf("%w (got %d)", ErrPLMNClientListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfPLMNClient {
+		return nil, fmt.Errorf("%w (got %d)", ErrPLMNClientListSize, len(w.Values))
 	}
-	out := make(PLMNClientList, len(w))
-	for i, v := range w {
+	out := make(PLMNClientList, len(w.Values))
+	for i, v := range w.Values {
 		lv := LCSClientInternalID(v)
 		if lv < LCSClientBroadcastService || lv > LCSClientTargetMSsubscribedService {
 			return nil, fmt.Errorf("PLMNClientList[%d]: %w (got %d)", i, ErrLCSClientInternalIDInvalid, lv)
@@ -276,33 +276,33 @@ func convertWireToServiceType(w *gsm_map.ServiceType) (*ServiceType, error) {
 	return out, nil
 }
 
-func convertServiceTypeListToWire(list ServiceTypeList) (gsm_map.ServiceTypeList, error) {
+func convertServiceTypeListToWire(list ServiceTypeList) (*gsm_map.ServiceTypeList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfServiceType {
 		return nil, fmt.Errorf("%w (got %d)", ErrServiceTypeListSize, len(list))
 	}
-	out := make(gsm_map.ServiceTypeList, len(list))
+	out := gsm_map.ServiceTypeList{Values: make([]gsm_map.ServiceType, len(list))}
 	for i, s := range list {
 		w, err := convertServiceTypeToWire(&s)
 		if err != nil {
 			return nil, fmt.Errorf("ServiceTypeList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToServiceTypeList(w gsm_map.ServiceTypeList) (ServiceTypeList, error) {
+func convertWireToServiceTypeList(w *gsm_map.ServiceTypeList) (ServiceTypeList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfServiceType {
-		return nil, fmt.Errorf("%w (got %d)", ErrServiceTypeListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfServiceType {
+		return nil, fmt.Errorf("%w (got %d)", ErrServiceTypeListSize, len(w.Values))
 	}
-	out := make(ServiceTypeList, len(w))
-	for i, s := range w {
+	out := make(ServiceTypeList, len(w.Values))
+	for i, s := range w.Values {
 		v, err := convertWireToServiceType(&s)
 		if err != nil {
 			return nil, fmt.Errorf("ServiceTypeList[%d]: %w", i, err)
@@ -420,33 +420,33 @@ func convertWireToLCSPrivacyClass(w *gsm_map.LCSPrivacyClass) (*LCSPrivacyClass,
 	return out, nil
 }
 
-func convertLCSPrivacyExceptionListToWire(list LCSPrivacyExceptionList) (gsm_map.LCSPrivacyExceptionList, error) {
+func convertLCSPrivacyExceptionListToWire(list LCSPrivacyExceptionList) (*gsm_map.LCSPrivacyExceptionList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfPrivacyClass {
 		return nil, fmt.Errorf("%w (got %d)", ErrLCSPrivacyExceptionListSize, len(list))
 	}
-	out := make(gsm_map.LCSPrivacyExceptionList, len(list))
+	out := gsm_map.LCSPrivacyExceptionList{Values: make([]gsm_map.LCSPrivacyClass, len(list))}
 	for i, c := range list {
 		w, err := convertLCSPrivacyClassToWire(&c)
 		if err != nil {
 			return nil, fmt.Errorf("LCSPrivacyExceptionList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToLCSPrivacyExceptionList(w gsm_map.LCSPrivacyExceptionList) (LCSPrivacyExceptionList, error) {
+func convertWireToLCSPrivacyExceptionList(w *gsm_map.LCSPrivacyExceptionList) (LCSPrivacyExceptionList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfPrivacyClass {
-		return nil, fmt.Errorf("%w (got %d)", ErrLCSPrivacyExceptionListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfPrivacyClass {
+		return nil, fmt.Errorf("%w (got %d)", ErrLCSPrivacyExceptionListSize, len(w.Values))
 	}
-	out := make(LCSPrivacyExceptionList, len(w))
-	for i, c := range w {
+	out := make(LCSPrivacyExceptionList, len(w.Values))
+	for i, c := range w.Values {
 		v, err := convertWireToLCSPrivacyClass(&c)
 		if err != nil {
 			return nil, fmt.Errorf("LCSPrivacyExceptionList[%d]: %w", i, err)
@@ -489,33 +489,33 @@ func convertWireToMOLRClass(w *gsm_map.MOLRClass) (*MOLRClass, error) {
 	}, nil
 }
 
-func convertMOLRListToWire(list MOLRList) (gsm_map.MOLRList, error) {
+func convertMOLRListToWire(list MOLRList) (*gsm_map.MOLRList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfMOLRClass {
 		return nil, fmt.Errorf("%w (got %d)", ErrMOLRListSize, len(list))
 	}
-	out := make(gsm_map.MOLRList, len(list))
+	out := gsm_map.MOLRList{Values: make([]gsm_map.MOLRClass, len(list))}
 	for i, c := range list {
 		w, err := convertMOLRClassToWire(&c)
 		if err != nil {
 			return nil, fmt.Errorf("MOLRList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToMOLRList(w gsm_map.MOLRList) (MOLRList, error) {
+func convertWireToMOLRList(w *gsm_map.MOLRList) (MOLRList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfMOLRClass {
-		return nil, fmt.Errorf("%w (got %d)", ErrMOLRListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfMOLRClass {
+		return nil, fmt.Errorf("%w (got %d)", ErrMOLRListSize, len(w.Values))
 	}
-	out := make(MOLRList, len(w))
-	for i, c := range w {
+	out := make(MOLRList, len(w.Values))
+	for i, c := range w.Values {
 		v, err := convertWireToMOLRClass(&c)
 		if err != nil {
 			return nil, fmt.Errorf("MOLRList[%d]: %w", i, err)
@@ -529,14 +529,14 @@ func convertWireToMOLRList(w gsm_map.MOLRList) (MOLRList, error) {
 // GMLCList — TS 29.002 MAP-MS-DataTypes.asn:1503
 // ============================================================================
 
-func convertGMLCListToWire(list GMLCList) (gsm_map.GMLCList, error) {
+func convertGMLCListToWire(list GMLCList) (*gsm_map.GMLCList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfGMLC {
 		return nil, fmt.Errorf("%w (got %d)", ErrGMLCListSize, len(list))
 	}
-	out := make(gsm_map.GMLCList, len(list))
+	out := gsm_map.GMLCList{Values: make([]gsm_map.ISDNAddressString, len(list))}
 	for i, a := range list {
 		if a.Address == "" {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCAddressEmpty)
@@ -545,20 +545,20 @@ func convertGMLCListToWire(list GMLCList) (gsm_map.GMLCList, error) {
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
 		}
-		out[i] = gsm_map.ISDNAddressString(isdn)
+		out.Values[i] = gsm_map.ISDNAddressString(isdn)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToGMLCList(w gsm_map.GMLCList) (GMLCList, error) {
+func convertWireToGMLCList(w *gsm_map.GMLCList) (GMLCList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfGMLC {
-		return nil, fmt.Errorf("%w (got %d)", ErrGMLCListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfGMLC {
+		return nil, fmt.Errorf("%w (got %d)", ErrGMLCListSize, len(w.Values))
 	}
-	out := make(GMLCList, len(w))
-	for i, a := range w {
+	out := make(GMLCList, len(w.Values))
+	for i, a := range w.Values {
 		s, nature, plan, err := decodeAddressField([]byte(a))
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)

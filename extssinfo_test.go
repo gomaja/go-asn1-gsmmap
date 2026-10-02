@@ -286,7 +286,7 @@ func TestExtForwFeatureLenientNoRepCondTime(t *testing.T) {
 				t.Fatalf("encode: %v", err)
 			}
 			v := gsm_map.ExtNoRepCondTime(tc.wire)
-			wire.ForwardingFeatureList[0].NoReplyConditionTime = &v
+			wire.ForwardingFeatureList.Values[0].NoReplyConditionTime = &v
 			got, err := convertWireToExtForwInfo(wire)
 			if tc.want < 0 {
 				if !errors.Is(err, ErrExtNoRepCondTimeOutOfRange) {

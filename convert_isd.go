@@ -11,33 +11,33 @@ import (
 // the spec but the package convention is to validate the underlying
 // per-entry constraints.
 
-func convertExtSSInfoListToWire(list []ExtSSInfo) (gsm_map.ExtSSInfoList, error) {
+func convertExtSSInfoListToWire(list []ExtSSInfo) (*gsm_map.ExtSSInfoList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfSS {
 		return nil, fmt.Errorf("%w (got %d)", ErrIsdProvisionedSSListSize, len(list))
 	}
-	out := make(gsm_map.ExtSSInfoList, len(list))
+	out := gsm_map.ExtSSInfoList{Values: make([]gsm_map.ExtSSInfo, len(list))}
 	for i, e := range list {
 		w, err := convertExtSSInfoToWire(&e)
 		if err != nil {
 			return nil, fmt.Errorf("ProvisionedSS[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToExtSSInfoList(w gsm_map.ExtSSInfoList) ([]ExtSSInfo, error) {
+func convertWireToExtSSInfoList(w *gsm_map.ExtSSInfoList) ([]ExtSSInfo, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfSS {
-		return nil, fmt.Errorf("%w (got %d)", ErrIsdProvisionedSSListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfSS {
+		return nil, fmt.Errorf("%w (got %d)", ErrIsdProvisionedSSListSize, len(w.Values))
 	}
-	out := make([]ExtSSInfo, len(w))
-	for i, e := range w {
+	out := make([]ExtSSInfo, len(w.Values))
+	for i, e := range w.Values {
 		v, err := convertWireToExtSSInfo(&e)
 		if err != nil {
 			return nil, fmt.Errorf("ProvisionedSS[%d]: %w", i, err)
@@ -99,24 +99,24 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		if int64(len(a.BearerServiceList)) < 1 || int64(len(a.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
 			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(a.BearerServiceList))
 		}
-		out.BearerServiceList = make(gsm_map.BearerServiceList, len(a.BearerServiceList))
+		out.BearerServiceList = &gsm_map.BearerServiceList{Values: make([]gsm_map.ExtBearerServiceCode, len(a.BearerServiceList))}
 		for i, b := range a.BearerServiceList {
 			if len(b) < 1 || len(b) > 5 {
 				return nil, fmt.Errorf("BearerServiceList[%d]: %w (got %d)", i, ErrIsdBearerServiceCodeSize, len(b))
 			}
-			out.BearerServiceList[i] = gsm_map.ExtBearerServiceCode(b)
+			out.BearerServiceList.Values[i] = gsm_map.ExtBearerServiceCode(b)
 		}
 	}
 	if a.TeleserviceList != nil {
 		if int64(len(a.TeleserviceList)) < 1 || int64(len(a.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
 			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(a.TeleserviceList))
 		}
-		out.TeleserviceList = make(gsm_map.TeleserviceList, len(a.TeleserviceList))
+		out.TeleserviceList = &gsm_map.TeleserviceList{Values: make([]gsm_map.ExtTeleserviceCode, len(a.TeleserviceList))}
 		for i, t := range a.TeleserviceList {
 			if len(t) < 1 || len(t) > 5 {
 				return nil, fmt.Errorf("TeleserviceList[%d]: %w (got %d)", i, ErrIsdTeleserviceCodeSize, len(t))
 			}
-			out.TeleserviceList[i] = gsm_map.ExtTeleserviceCode(t)
+			out.TeleserviceList.Values[i] = gsm_map.ExtTeleserviceCode(t)
 		}
 	}
 	if a.ProvisionedSS != nil {
@@ -382,11 +382,11 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.SubscriberStatus = &v
 	}
 	if w.BearerServiceList != nil {
-		if int64(len(w.BearerServiceList)) < 1 || int64(len(w.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(w.BearerServiceList))
+		if int64(len(w.BearerServiceList.Values)) < 1 || int64(len(w.BearerServiceList.Values)) > gsm_map.MaxNumOfBearerServices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(w.BearerServiceList.Values))
 		}
-		out.BearerServiceList = make([]HexBytes, len(w.BearerServiceList))
-		for i, b := range w.BearerServiceList {
+		out.BearerServiceList = make([]HexBytes, len(w.BearerServiceList.Values))
+		for i, b := range w.BearerServiceList.Values {
 			if len(b) < 1 || len(b) > 5 {
 				return nil, fmt.Errorf("BearerServiceList[%d]: %w (got %d)", i, ErrIsdBearerServiceCodeSize, len(b))
 			}
@@ -394,11 +394,11 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		}
 	}
 	if w.TeleserviceList != nil {
-		if int64(len(w.TeleserviceList)) < 1 || int64(len(w.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(w.TeleserviceList))
+		if int64(len(w.TeleserviceList.Values)) < 1 || int64(len(w.TeleserviceList.Values)) > gsm_map.MaxNumOfTeleservices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(w.TeleserviceList.Values))
 		}
-		out.TeleserviceList = make([]HexBytes, len(w.TeleserviceList))
-		for i, t := range w.TeleserviceList {
+		out.TeleserviceList = make([]HexBytes, len(w.TeleserviceList.Values))
+		for i, t := range w.TeleserviceList.Values {
 			if len(t) < 1 || len(t) > 5 {
 				return nil, fmt.Errorf("TeleserviceList[%d]: %w (got %d)", i, ErrIsdTeleserviceCodeSize, len(t))
 			}
@@ -631,30 +631,30 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 		if int64(len(r.TeleserviceList)) < 1 || int64(len(r.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
 			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(r.TeleserviceList))
 		}
-		out.TeleserviceList = make(gsm_map.TeleserviceList, len(r.TeleserviceList))
+		out.TeleserviceList = &gsm_map.TeleserviceList{Values: make([]gsm_map.ExtTeleserviceCode, len(r.TeleserviceList))}
 		for i, t := range r.TeleserviceList {
 			if len(t) < 1 || len(t) > 5 {
 				return nil, fmt.Errorf("Res.TeleserviceList[%d]: %w (got %d)", i, ErrIsdTeleserviceCodeSize, len(t))
 			}
-			out.TeleserviceList[i] = gsm_map.ExtTeleserviceCode(t)
+			out.TeleserviceList.Values[i] = gsm_map.ExtTeleserviceCode(t)
 		}
 	}
 	if r.BearerServiceList != nil {
 		if int64(len(r.BearerServiceList)) < 1 || int64(len(r.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
 			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(r.BearerServiceList))
 		}
-		out.BearerServiceList = make(gsm_map.BearerServiceList, len(r.BearerServiceList))
+		out.BearerServiceList = &gsm_map.BearerServiceList{Values: make([]gsm_map.ExtBearerServiceCode, len(r.BearerServiceList))}
 		for i, b := range r.BearerServiceList {
 			if len(b) < 1 || len(b) > 5 {
 				return nil, fmt.Errorf("Res.BearerServiceList[%d]: %w (got %d)", i, ErrIsdBearerServiceCodeSize, len(b))
 			}
-			out.BearerServiceList[i] = gsm_map.ExtBearerServiceCode(b)
+			out.BearerServiceList.Values[i] = gsm_map.ExtBearerServiceCode(b)
 		}
 	}
 	if r.SsList != nil {
-		out.SsList = make(gsm_map.SSList, len(r.SsList))
+		out.SsList = &gsm_map.SSList{Values: make([]gsm_map.SSCode, len(r.SsList))}
 		for i, c := range r.SsList {
-			out.SsList[i] = gsm_map.SSCode{byte(c)}
+			out.SsList.Values[i] = gsm_map.SSCode{byte(c)}
 		}
 	}
 	if r.OdbGeneralData != nil {
@@ -690,11 +690,11 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 	}
 	out := &InsertSubscriberDataRes{}
 	if w.TeleserviceList != nil {
-		if int64(len(w.TeleserviceList)) < 1 || int64(len(w.TeleserviceList)) > gsm_map.MaxNumOfTeleservices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(w.TeleserviceList))
+		if int64(len(w.TeleserviceList.Values)) < 1 || int64(len(w.TeleserviceList.Values)) > gsm_map.MaxNumOfTeleservices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdTeleserviceListSize, len(w.TeleserviceList.Values))
 		}
-		out.TeleserviceList = make([]HexBytes, len(w.TeleserviceList))
-		for i, t := range w.TeleserviceList {
+		out.TeleserviceList = make([]HexBytes, len(w.TeleserviceList.Values))
+		for i, t := range w.TeleserviceList.Values {
 			if len(t) < 1 || len(t) > 5 {
 				return nil, fmt.Errorf("Res.TeleserviceList[%d]: %w (got %d)", i, ErrIsdTeleserviceCodeSize, len(t))
 			}
@@ -702,11 +702,11 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 		}
 	}
 	if w.BearerServiceList != nil {
-		if int64(len(w.BearerServiceList)) < 1 || int64(len(w.BearerServiceList)) > gsm_map.MaxNumOfBearerServices {
-			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(w.BearerServiceList))
+		if int64(len(w.BearerServiceList.Values)) < 1 || int64(len(w.BearerServiceList.Values)) > gsm_map.MaxNumOfBearerServices {
+			return nil, fmt.Errorf("%w (got %d)", ErrIsdBearerServiceListSize, len(w.BearerServiceList.Values))
 		}
-		out.BearerServiceList = make([]HexBytes, len(w.BearerServiceList))
-		for i, b := range w.BearerServiceList {
+		out.BearerServiceList = make([]HexBytes, len(w.BearerServiceList.Values))
+		for i, b := range w.BearerServiceList.Values {
 			if len(b) < 1 || len(b) > 5 {
 				return nil, fmt.Errorf("Res.BearerServiceList[%d]: %w (got %d)", i, ErrIsdBearerServiceCodeSize, len(b))
 			}
@@ -714,8 +714,8 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 		}
 	}
 	if w.SsList != nil {
-		out.SsList = make([]SsCode, len(w.SsList))
-		for i, c := range w.SsList {
+		out.SsList = make([]SsCode, len(w.SsList.Values))
+		for i, c := range w.SsList.Values {
 			if len(c) != 1 {
 				return nil, fmt.Errorf("Res.SsList[%d]: %w (got %d)", i, ErrIsdResSsListSize, len(c))
 			}

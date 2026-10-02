@@ -137,26 +137,26 @@ func convertAuthenticationSetListToWire(a *AuthenticationSetList) (*gsm_map.Auth
 		return nil, ErrSaiAuthSetListChoiceNoAlternative
 	}
 	if hasTriplets {
-		list := make(gsm_map.TripletList, len(a.Triplets))
+		list := gsm_map.TripletList{Values: make([]gsm_map.AuthenticationTriplet, len(a.Triplets))}
 		for i := range a.Triplets {
 			if err := validateTriplet(&a.Triplets[i], i); err != nil {
 				return nil, err
 			}
-			list[i] = gsm_map.AuthenticationTriplet{
+			list.Values[i] = gsm_map.AuthenticationTriplet{
 				Rand: gsm_map.RAND(a.Triplets[i].RAND),
 				Sres: gsm_map.SRES(a.Triplets[i].SRES),
 				Kc:   gsm_map.Kc(a.Triplets[i].Kc),
 			}
 		}
-		v := gsm_map.NewAuthenticationSetListTripletList(list)
+		v := gsm_map.NewAuthenticationSetListTripletList(&list)
 		return &v, nil
 	}
-	list := make(gsm_map.QuintupletList, len(a.Quintuplets))
+	list := gsm_map.QuintupletList{Values: make([]gsm_map.AuthenticationQuintuplet, len(a.Quintuplets))}
 	for i := range a.Quintuplets {
 		if err := validateQuintuplet(&a.Quintuplets[i], i); err != nil {
 			return nil, err
 		}
-		list[i] = gsm_map.AuthenticationQuintuplet{
+		list.Values[i] = gsm_map.AuthenticationQuintuplet{
 			Rand: gsm_map.RAND(a.Quintuplets[i].RAND),
 			Xres: gsm_map.XRES(a.Quintuplets[i].XRES),
 			Ck:   gsm_map.CK(a.Quintuplets[i].CK),
@@ -164,7 +164,7 @@ func convertAuthenticationSetListToWire(a *AuthenticationSetList) (*gsm_map.Auth
 			Autn: gsm_map.AUTN(a.Quintuplets[i].AUTN),
 		}
 	}
-	v := gsm_map.NewAuthenticationSetListQuintupletList(list)
+	v := gsm_map.NewAuthenticationSetListQuintupletList(&list)
 	return &v, nil
 }
 
@@ -176,8 +176,12 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 	}
 	switch w.Choice {
 	case gsm_map.AuthenticationSetListChoiceTripletList:
-		out := make([]AuthenticationTriplet, len(w.TripletList))
-		for i, t := range w.TripletList {
+		triplets := w.TripletList
+		if triplets == nil {
+			triplets = &gsm_map.TripletList{}
+		}
+		out := make([]AuthenticationTriplet, len(triplets.Values))
+		for i, t := range triplets.Values {
 			out[i] = AuthenticationTriplet{
 				RAND: HexBytes(t.Rand),
 				SRES: HexBytes(t.Sres),
@@ -189,8 +193,12 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 		}
 		return &AuthenticationSetList{Triplets: out}, nil
 	case gsm_map.AuthenticationSetListChoiceQuintupletList:
-		out := make([]AuthenticationQuintuplet, len(w.QuintupletList))
-		for i, q := range w.QuintupletList {
+		quintuplets := w.QuintupletList
+		if quintuplets == nil {
+			quintuplets = &gsm_map.QuintupletList{}
+		}
+		out := make([]AuthenticationQuintuplet, len(quintuplets.Values))
+		for i, q := range quintuplets.Values {
 			out[i] = AuthenticationQuintuplet{
 				RAND: HexBytes(q.Rand),
 				XRES: HexBytes(q.Xres),
@@ -386,15 +394,15 @@ func convertSendAuthenticationInfoResToRes(s *SendAuthenticationInfoRes) (*gsm_m
 		if len(s.EpsAuthenticationSetList) > 5 {
 			return nil, ErrSaiInvalidEpsAuthSetListSize
 		}
-		list := make(gsm_map.EPSAuthenticationSetList, len(s.EpsAuthenticationSetList))
+		list := gsm_map.EPSAuthenticationSetList{Values: make([]gsm_map.EPCAV, len(s.EpsAuthenticationSetList))}
 		for i := range s.EpsAuthenticationSetList {
 			av, err := convertEpcAVToWire(&s.EpsAuthenticationSetList[i], i)
 			if err != nil {
 				return nil, err
 			}
-			list[i] = av
+			list.Values[i] = av
 		}
-		res.EpsAuthenticationSetList = list
+		res.EpsAuthenticationSetList = &list
 	}
 
 	if len(s.UeUsageType) > 0 {
@@ -418,13 +426,13 @@ func convertResToSendAuthenticationInfoRes(res *gsm_map.SendAuthenticationInfoRe
 		out.AuthenticationSetList = asl
 	}
 
-	if len(res.EpsAuthenticationSetList) > 0 {
-		if len(res.EpsAuthenticationSetList) > 5 {
+	if res.EpsAuthenticationSetList != nil && len(res.EpsAuthenticationSetList.Values) > 0 {
+		if len(res.EpsAuthenticationSetList.Values) > 5 {
 			return nil, ErrSaiInvalidEpsAuthSetListSize
 		}
-		list := make([]EpcAV, len(res.EpsAuthenticationSetList))
-		for i := range res.EpsAuthenticationSetList {
-			av, err := convertWireToEpcAV(&res.EpsAuthenticationSetList[i], i)
+		list := make([]EpcAV, len(res.EpsAuthenticationSetList.Values))
+		for i := range res.EpsAuthenticationSetList.Values {
+			av, err := convertWireToEpcAV(&res.EpsAuthenticationSetList.Values[i], i)
 			if err != nil {
 				return nil, err
 			}

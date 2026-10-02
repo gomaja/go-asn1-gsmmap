@@ -79,33 +79,33 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 	}, nil
 }
 
-func convertGPRSCamelTDPDataListToWire(list GPRSCamelTDPDataList) (gsm_map.GPRSCamelTDPDataList, error) {
+func convertGPRSCamelTDPDataListToWire(list GPRSCamelTDPDataList) (*gsm_map.GPRSCamelTDPDataList, error) {
 	if list == nil {
 		return nil, nil
 	}
 	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfCamelTDPData {
 		return nil, fmt.Errorf("%w (got %d)", ErrGPRSCamelTDPDataListSize, len(list))
 	}
-	out := make(gsm_map.GPRSCamelTDPDataList, len(list))
+	out := gsm_map.GPRSCamelTDPDataList{Values: make([]gsm_map.GPRSCamelTDPData, len(list))}
 	for i, d := range list {
 		w, err := convertGPRSCamelTDPDataToWire(&d)
 		if err != nil {
 			return nil, fmt.Errorf("GPRSCamelTDPDataList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToGPRSCamelTDPDataList(w gsm_map.GPRSCamelTDPDataList) (GPRSCamelTDPDataList, error) {
+func convertWireToGPRSCamelTDPDataList(w *gsm_map.GPRSCamelTDPDataList) (GPRSCamelTDPDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfCamelTDPData {
-		return nil, fmt.Errorf("%w (got %d)", ErrGPRSCamelTDPDataListSize, len(w))
+	if int64(len(w.Values)) < 1 || int64(len(w.Values)) > gsm_map.MaxNumOfCamelTDPData {
+		return nil, fmt.Errorf("%w (got %d)", ErrGPRSCamelTDPDataListSize, len(w.Values))
 	}
-	out := make(GPRSCamelTDPDataList, len(w))
-	for i, d := range w {
+	out := make(GPRSCamelTDPDataList, len(w.Values))
+	for i, d := range w.Values {
 		v, err := convertWireToGPRSCamelTDPData(&d)
 		if err != nil {
 			return nil, fmt.Errorf("GPRSCamelTDPDataList[%d]: %w", i, err)
@@ -191,12 +191,12 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 	if int64(len(m.MobilityTriggers)) < 1 || int64(len(m.MobilityTriggers)) > gsm_map.MaxNumOfMobilityTriggers {
 		return nil, fmt.Errorf("%w (got %d)", ErrMobilityTriggersSize, len(m.MobilityTriggers))
 	}
-	mt := make(gsm_map.MobilityTriggers, len(m.MobilityTriggers))
+	mt := gsm_map.MobilityTriggers{Values: make([]gsm_map.MMCode, len(m.MobilityTriggers))}
 	for i, c := range m.MobilityTriggers {
 		if len(c) != 1 {
 			return nil, fmt.Errorf("MobilityTriggers[%d]: %w (got %d)", i, ErrMMCodeInvalidSize, len(c))
 		}
-		mt[i] = gsm_map.MMCode(c)
+		mt.Values[i] = gsm_map.MMCode(c)
 	}
 	if m.GsmSCFAddress == "" {
 		return nil, fmt.Errorf("MGCSI.GsmSCFAddress: mandatory field must not be empty on encode")
@@ -209,7 +209,7 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 		return nil, fmt.Errorf("encoding MGCSI.GsmSCFAddress: %w", err)
 	}
 	return &gsm_map.MGCSI{
-		MobilityTriggers:  mt,
+		MobilityTriggers:  &mt,
 		ServiceKey:        gsm_map.ServiceKey(m.ServiceKey),
 		GsmSCFAddress:     gsm_map.ISDNAddressString(addr),
 		NotificationToCSE: boolToNullPtr(m.NotificationToCSE),
@@ -221,11 +221,15 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w.MobilityTriggers)) < 1 || int64(len(w.MobilityTriggers)) > gsm_map.MaxNumOfMobilityTriggers {
-		return nil, fmt.Errorf("%w (got %d)", ErrMobilityTriggersSize, len(w.MobilityTriggers))
+	triggers := w.MobilityTriggers
+	if triggers == nil {
+		triggers = &gsm_map.MobilityTriggers{}
 	}
-	mt := make([]HexBytes, len(w.MobilityTriggers))
-	for i, c := range w.MobilityTriggers {
+	if int64(len(triggers.Values)) < 1 || int64(len(triggers.Values)) > gsm_map.MaxNumOfMobilityTriggers {
+		return nil, fmt.Errorf("%w (got %d)", ErrMobilityTriggersSize, len(triggers.Values))
+	}
+	mt := make([]HexBytes, len(triggers.Values))
+	for i, c := range triggers.Values {
 		if len(c) != 1 {
 			return nil, fmt.Errorf("MobilityTriggers[%d]: %w (got %d)", i, ErrMMCodeInvalidSize, len(c))
 		}
@@ -295,15 +299,15 @@ func convertSGSNCAMELSubscriptionInfoToWire(s *SGSNCAMELSubscriptionInfo) (*gsm_
 		if int64(len(s.MtSmsCAMELTDPCriteriaList)) < 1 || int64(len(s.MtSmsCAMELTDPCriteriaList)) > gsm_map.MaxNumOfCamelTDPData {
 			return nil, fmt.Errorf("%w (got %d)", ErrSGSNMtSmsCAMELTDPCriteriaListSize, len(s.MtSmsCAMELTDPCriteriaList))
 		}
-		list := make(gsm_map.MTSmsCAMELTDPCriteriaList, len(s.MtSmsCAMELTDPCriteriaList))
+		list := gsm_map.MTSmsCAMELTDPCriteriaList{Values: make([]gsm_map.MTSmsCAMELTDPCriteria, len(s.MtSmsCAMELTDPCriteriaList))}
 		for i, c := range s.MtSmsCAMELTDPCriteriaList {
 			w, err := convertMTSmsCAMELTDPCriteriaToWire(&c)
 			if err != nil {
 				return nil, fmt.Errorf("SGSNCAMELSubscriptionInfo.MtSmsCAMELTDPCriteriaList[%d]: %w", i, err)
 			}
-			list[i] = w
+			list.Values[i] = w
 		}
-		out.MtSmsCAMELTDPCriteriaList = list
+		out.MtSmsCAMELTDPCriteriaList = &list
 	}
 	if s.MgCsi != nil {
 		v, err := convertMGCSIToWire(s.MgCsi)
@@ -342,11 +346,11 @@ func convertWireToSGSNCAMELSubscriptionInfo(w *gsm_map.SGSNCAMELSubscriptionInfo
 		out.MtSmsCSI = v
 	}
 	if w.MtSmsCAMELTDPCriteriaList != nil {
-		if int64(len(w.MtSmsCAMELTDPCriteriaList)) < 1 || int64(len(w.MtSmsCAMELTDPCriteriaList)) > gsm_map.MaxNumOfCamelTDPData {
-			return nil, fmt.Errorf("%w (got %d)", ErrSGSNMtSmsCAMELTDPCriteriaListSize, len(w.MtSmsCAMELTDPCriteriaList))
+		if int64(len(w.MtSmsCAMELTDPCriteriaList.Values)) < 1 || int64(len(w.MtSmsCAMELTDPCriteriaList.Values)) > gsm_map.MaxNumOfCamelTDPData {
+			return nil, fmt.Errorf("%w (got %d)", ErrSGSNMtSmsCAMELTDPCriteriaListSize, len(w.MtSmsCAMELTDPCriteriaList.Values))
 		}
-		list := make([]MTSmsCAMELTDPCriteria, len(w.MtSmsCAMELTDPCriteriaList))
-		for i, c := range w.MtSmsCAMELTDPCriteriaList {
+		list := make([]MTSmsCAMELTDPCriteria, len(w.MtSmsCAMELTDPCriteriaList.Values))
+		for i, c := range w.MtSmsCAMELTDPCriteriaList.Values {
 			v, err := convertWireToMTSmsCAMELTDPCriteria(&c)
 			if err != nil {
 				return nil, fmt.Errorf("SGSNCAMELSubscriptionInfo.MtSmsCAMELTDPCriteriaList[%d]: %w", i, err)

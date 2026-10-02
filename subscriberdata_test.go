@@ -17,8 +17,8 @@ import (
 
 // gsmMapEmptyZoneCodeList returns a non-nil, zero-length wire ZoneCodeList
 // to exercise the decoder's SIZE(1..10) lower-bound check.
-func gsmMapEmptyZoneCodeList() gsm_map.ZoneCodeList {
-	return gsm_map.ZoneCodeList{}
+func gsmMapEmptyZoneCodeList() *gsm_map.ZoneCodeList {
+	return &gsm_map.ZoneCodeList{Values: []gsm_map.ZoneCode{}}
 }
 
 // --- ODBData ---

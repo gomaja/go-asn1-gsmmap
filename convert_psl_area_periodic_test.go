@@ -446,9 +446,9 @@ func TestPSLAreaPeriodicDecoderLenientForExtensibleEnums(t *testing.T) {
 	occ := gsm_map.OccurrenceInfo(99)
 	wAEI := &gsm_map.AreaEventInfo{
 		AreaDefinition: gsm_map.AreaDefinition{
-			AreaList: gsm_map.AreaList{
+			AreaList: &gsm_map.AreaList{Values: []gsm_map.Area{
 				{AreaType: gsm_map.AreaTypeCountryCode, AreaIdentification: gsm_map.AreaIdentification{0x01, 0x02}},
-			},
+			}},
 		},
 		OccurrenceInfo: &occ,
 	}

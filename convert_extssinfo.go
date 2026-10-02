@@ -104,34 +104,34 @@ func isValidOverrideCategory(v OverrideCategory) bool {
 
 // --- Ext-BasicServiceGroupList (SIZE 1..32) ---
 
-func convertExtBasicServiceGroupListToWire(in []ExtBasicServiceCode) (gsm_map.ExtBasicServiceGroupList, error) {
+func convertExtBasicServiceGroupListToWire(in []ExtBasicServiceCode) (*gsm_map.ExtBasicServiceGroupList, error) {
 	if in == nil {
 		return nil, nil
 	}
 	if len(in) < 1 || len(in) > MaxNumOfExtBasicServiceGroups {
 		return nil, ErrExtBasicServiceGroupListInvalidSize
 	}
-	out := make(gsm_map.ExtBasicServiceGroupList, len(in))
+	out := gsm_map.ExtBasicServiceGroupList{Values: make([]gsm_map.ExtBasicServiceCode, len(in))}
 	for i := range in {
 		w, err := convertExtBasicServiceCodeToWire(&in[i])
 		if err != nil {
 			return nil, fmt.Errorf("BasicServiceGroupList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToExtBasicServiceGroupList(w gsm_map.ExtBasicServiceGroupList) ([]ExtBasicServiceCode, error) {
+func convertWireToExtBasicServiceGroupList(w *gsm_map.ExtBasicServiceGroupList) ([]ExtBasicServiceCode, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfExtBasicServiceGroups {
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfExtBasicServiceGroups {
 		return nil, ErrExtBasicServiceGroupListInvalidSize
 	}
-	out := make([]ExtBasicServiceCode, len(w))
-	for i := range w {
-		d, err := convertWireToExtBasicServiceCode(&w[i])
+	out := make([]ExtBasicServiceCode, len(w.Values))
+	for i := range w.Values {
+		d, err := convertWireToExtBasicServiceCode(&w.Values[i])
 		if err != nil {
 			return nil, fmt.Errorf("BasicServiceGroupList[%d]: %w", i, err)
 		}
@@ -275,17 +275,17 @@ func convertExtForwInfoToWire(f *ExtForwInfo) (*gsm_map.ExtForwInfo, error) {
 	if len(f.ForwardingFeatureList) < 1 || len(f.ForwardingFeatureList) > MaxNumOfExtBasicServiceGroups {
 		return nil, ErrExtForwFeatureListInvalidSize
 	}
-	list := make(gsm_map.ExtForwFeatureList, len(f.ForwardingFeatureList))
+	list := gsm_map.ExtForwFeatureList{Values: make([]gsm_map.ExtForwFeature, len(f.ForwardingFeatureList))}
 	for i := range f.ForwardingFeatureList {
 		w, err := convertExtForwFeatureToWire(&f.ForwardingFeatureList[i])
 		if err != nil {
 			return nil, fmt.Errorf("ForwardingFeatureList[%d]: %w", i, err)
 		}
-		list[i] = w
+		list.Values[i] = w
 	}
 	return &gsm_map.ExtForwInfo{
 		SsCode:                gsm_map.SSCode{byte(f.SsCode)},
-		ForwardingFeatureList: list,
+		ForwardingFeatureList: &list,
 	}, nil
 }
 
@@ -293,15 +293,15 @@ func convertWireToExtForwInfo(w *gsm_map.ExtForwInfo) (*ExtForwInfo, error) {
 	if len(w.SsCode) != 1 {
 		return nil, fmt.Errorf("Ext-ForwInfo.SsCode: must be 1 octet, got %d", len(w.SsCode))
 	}
-	if len(w.ForwardingFeatureList) < 1 || len(w.ForwardingFeatureList) > MaxNumOfExtBasicServiceGroups {
+	if w.ForwardingFeatureList == nil || len(w.ForwardingFeatureList.Values) < 1 || len(w.ForwardingFeatureList.Values) > MaxNumOfExtBasicServiceGroups {
 		return nil, ErrExtForwFeatureListInvalidSize
 	}
 	out := &ExtForwInfo{
 		SsCode:                SsCode(w.SsCode[0]),
-		ForwardingFeatureList: make([]ExtForwFeature, len(w.ForwardingFeatureList)),
+		ForwardingFeatureList: make([]ExtForwFeature, len(w.ForwardingFeatureList.Values)),
 	}
-	for i := range w.ForwardingFeatureList {
-		d, err := convertWireToExtForwFeature(&w.ForwardingFeatureList[i])
+	for i := range w.ForwardingFeatureList.Values {
+		d, err := convertWireToExtForwFeature(&w.ForwardingFeatureList.Values[i])
 		if err != nil {
 			return nil, fmt.Errorf("ForwardingFeatureList[%d]: %w", i, err)
 		}
@@ -346,17 +346,17 @@ func convertExtCallBarInfoToWire(c *ExtCallBarInfo) (*gsm_map.ExtCallBarInfo, er
 	if len(c.CallBarringFeatureList) < 1 || len(c.CallBarringFeatureList) > MaxNumOfExtBasicServiceGroups {
 		return nil, ErrExtCallBarFeatureListInvalidSize
 	}
-	list := make(gsm_map.ExtCallBarFeatureList, len(c.CallBarringFeatureList))
+	list := gsm_map.ExtCallBarFeatureList{Values: make([]gsm_map.ExtCallBarringFeature, len(c.CallBarringFeatureList))}
 	for i := range c.CallBarringFeatureList {
 		w, err := convertExtCallBarringFeatureToWire(&c.CallBarringFeatureList[i])
 		if err != nil {
 			return nil, fmt.Errorf("CallBarringFeatureList[%d]: %w", i, err)
 		}
-		list[i] = w
+		list.Values[i] = w
 	}
 	return &gsm_map.ExtCallBarInfo{
 		SsCode:                 gsm_map.SSCode{byte(c.SsCode)},
-		CallBarringFeatureList: list,
+		CallBarringFeatureList: &list,
 	}, nil
 }
 
@@ -364,15 +364,15 @@ func convertWireToExtCallBarInfo(w *gsm_map.ExtCallBarInfo) (*ExtCallBarInfo, er
 	if len(w.SsCode) != 1 {
 		return nil, fmt.Errorf("Ext-CallBarInfo.SsCode: must be 1 octet, got %d", len(w.SsCode))
 	}
-	if len(w.CallBarringFeatureList) < 1 || len(w.CallBarringFeatureList) > MaxNumOfExtBasicServiceGroups {
+	if w.CallBarringFeatureList == nil || len(w.CallBarringFeatureList.Values) < 1 || len(w.CallBarringFeatureList.Values) > MaxNumOfExtBasicServiceGroups {
 		return nil, ErrExtCallBarFeatureListInvalidSize
 	}
 	out := &ExtCallBarInfo{
 		SsCode:                 SsCode(w.SsCode[0]),
-		CallBarringFeatureList: make([]ExtCallBarringFeature, len(w.CallBarringFeatureList)),
+		CallBarringFeatureList: make([]ExtCallBarringFeature, len(w.CallBarringFeatureList.Values)),
 	}
-	for i := range w.CallBarringFeatureList {
-		d, err := convertWireToExtCallBarringFeature(&w.CallBarringFeatureList[i])
+	for i := range w.CallBarringFeatureList.Values {
+		d, err := convertWireToExtCallBarringFeature(&w.CallBarringFeatureList.Values[i])
 		if err != nil {
 			return nil, fmt.Errorf("CallBarringFeatureList[%d]: %w", i, err)
 		}
@@ -504,42 +504,42 @@ func convertCUGInfoToWire(c *CUGInfo) (*gsm_map.CUGInfo, error) {
 	}
 	out := &gsm_map.CUGInfo{}
 	if c.CugSubscriptionList != nil {
-		subs := make(gsm_map.CUGSubscriptionList, len(c.CugSubscriptionList))
+		subs := gsm_map.CUGSubscriptionList{Values: make([]gsm_map.CUGSubscription, len(c.CugSubscriptionList))}
 		for i := range c.CugSubscriptionList {
 			w, err := convertCUGSubscriptionToWire(&c.CugSubscriptionList[i])
 			if err != nil {
 				return nil, fmt.Errorf("CugSubscriptionList[%d]: %w", i, err)
 			}
-			subs[i] = w
+			subs.Values[i] = w
 		}
-		out.CugSubscriptionList = subs
+		out.CugSubscriptionList = &subs
 	}
 	if c.CugFeatureList != nil {
 		if len(c.CugFeatureList) < 1 || len(c.CugFeatureList) > MaxNumOfExtBasicServiceGroups {
 			return nil, ErrCUGFeatureListInvalidSize
 		}
-		feats := make(gsm_map.CUGFeatureList, len(c.CugFeatureList))
+		feats := gsm_map.CUGFeatureList{Values: make([]gsm_map.CUGFeature, len(c.CugFeatureList))}
 		for i := range c.CugFeatureList {
 			w, err := convertCUGFeatureToWire(&c.CugFeatureList[i])
 			if err != nil {
 				return nil, fmt.Errorf("CugFeatureList[%d]: %w", i, err)
 			}
-			feats[i] = w
+			feats.Values[i] = w
 		}
-		out.CugFeatureList = feats
+		out.CugFeatureList = &feats
 	}
 	return out, nil
 }
 
 func convertWireToCUGInfo(w *gsm_map.CUGInfo) (*CUGInfo, error) {
-	if len(w.CugSubscriptionList) > MaxNumOfCUG {
+	if w.CugSubscriptionList != nil && len(w.CugSubscriptionList.Values) > MaxNumOfCUG {
 		return nil, ErrCUGSubscriptionListInvalidSize
 	}
 	out := &CUGInfo{}
 	if w.CugSubscriptionList != nil {
-		out.CugSubscriptionList = make([]CUGSubscription, len(w.CugSubscriptionList))
-		for i := range w.CugSubscriptionList {
-			d, err := convertWireToCUGSubscription(&w.CugSubscriptionList[i])
+		out.CugSubscriptionList = make([]CUGSubscription, len(w.CugSubscriptionList.Values))
+		for i := range w.CugSubscriptionList.Values {
+			d, err := convertWireToCUGSubscription(&w.CugSubscriptionList.Values[i])
 			if err != nil {
 				return nil, fmt.Errorf("CugSubscriptionList[%d]: %w", i, err)
 			}
@@ -547,12 +547,12 @@ func convertWireToCUGInfo(w *gsm_map.CUGInfo) (*CUGInfo, error) {
 		}
 	}
 	if w.CugFeatureList != nil {
-		if len(w.CugFeatureList) < 1 || len(w.CugFeatureList) > MaxNumOfExtBasicServiceGroups {
+		if len(w.CugFeatureList.Values) < 1 || len(w.CugFeatureList.Values) > MaxNumOfExtBasicServiceGroups {
 			return nil, ErrCUGFeatureListInvalidSize
 		}
-		out.CugFeatureList = make([]CUGFeature, len(w.CugFeatureList))
-		for i := range w.CugFeatureList {
-			d, err := convertWireToCUGFeature(&w.CugFeatureList[i])
+		out.CugFeatureList = make([]CUGFeature, len(w.CugFeatureList.Values))
+		for i := range w.CugFeatureList.Values {
+			d, err := convertWireToCUGFeature(&w.CugFeatureList.Values[i])
 			if err != nil {
 				return nil, fmt.Errorf("CugFeatureList[%d]: %w", i, err)
 			}

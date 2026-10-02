@@ -126,30 +126,30 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	}
 
 	if len(u.PagingArea) > 0 {
-		pa := make(gsm_map.PagingArea, len(u.PagingArea))
+		pa := gsm_map.PagingArea{Values: make([]gsm_map.LocationArea, len(u.PagingArea))}
 		for i, raw := range u.PagingArea {
 			// Each raw HexBytes is BER-encoded LocationArea CHOICE.
 			var la gsm_map.LocationArea
 			if err := la.UnmarshalBER(raw); err != nil {
 				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
 			}
-			pa[i] = la
+			pa.Values[i] = la
 		}
-		arg.PagingArea = pa
+		arg.PagingArea = &pa
 	}
 
 	arg.SkipSubscriberDataUpdate = boolToNullPtr(u.SkipSubscriberDataUpdate)
 	arg.RestorationIndicator = boolToNullPtr(u.RestorationIndicator)
 
 	if len(u.EplmnList) > 0 {
-		list := make(gsm_map.EPLMNList, len(u.EplmnList))
+		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
 			if len(raw) != 3 {
 				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
 			}
-			list[i] = gsm_map.PLMNId(raw)
+			list.Values[i] = gsm_map.PLMNId(raw)
 		}
-		arg.EplmnList = list
+		arg.EplmnList = &list
 	}
 
 	if u.MmeDiameterAddress != nil {
@@ -271,9 +271,9 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		u.AddInfo = ai
 	}
 
-	if len(arg.PagingArea) > 0 {
-		pa := make([]HexBytes, len(arg.PagingArea))
-		for i, la := range arg.PagingArea {
+	if arg.PagingArea != nil && len(arg.PagingArea.Values) > 0 {
+		pa := make([]HexBytes, len(arg.PagingArea.Values))
+		for i, la := range arg.PagingArea.Values {
 			encoded, err := la.MarshalDER()
 			if err != nil {
 				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
@@ -286,9 +286,9 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 	u.SkipSubscriberDataUpdate = nullPtrToBool(arg.SkipSubscriberDataUpdate)
 	u.RestorationIndicator = nullPtrToBool(arg.RestorationIndicator)
 
-	if len(arg.EplmnList) > 0 {
-		list := make([]HexBytes, len(arg.EplmnList))
-		for i, plmn := range arg.EplmnList {
+	if arg.EplmnList != nil && len(arg.EplmnList.Values) > 0 {
+		list := make([]HexBytes, len(arg.EplmnList.Values))
+		for i, plmn := range arg.EplmnList.Values {
 			if len(plmn) != 3 {
 				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
 			}

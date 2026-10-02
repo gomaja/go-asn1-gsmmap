@@ -381,13 +381,16 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 // Enforces PDP-ContextInfoList SIZE(1..50) strictly — callers only invoke
 // this when the list CHOICE alternative is selected, so an empty list is
 // a spec violation, not "absent".
-func encodePDPContextInfoList(list gsm_map.PDPContextInfoList) ([]HexBytes, error) {
-	if len(list) < 1 || len(list) > 50 {
-		return nil, fmt.Errorf("PDPContextInfoList: must contain 1..50 entries when present, got %d", len(list))
+func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, error) {
+	if list == nil {
+		list = &gsm_map.PDPContextInfoList{}
 	}
-	out := make([]HexBytes, len(list))
-	for i := range list {
-		ctx := list[i]
+	if len(list.Values) < 1 || len(list.Values) > 50 {
+		return nil, fmt.Errorf("PDPContextInfoList: must contain 1..50 entries when present, got %d", len(list.Values))
+	}
+	out := make([]HexBytes, len(list.Values))
+	for i := range list.Values {
+		ctx := list.Values[i]
 		enc, err := ctx.MarshalBER()
 		if err != nil {
 			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
@@ -400,19 +403,19 @@ func encodePDPContextInfoList(list gsm_map.PDPContextInfoList) ([]HexBytes, erro
 // decodePDPContextInfoList deserializes each opaque PDPContextInfo entry
 // back into its gsm_map.PDPContextInfo struct. Enforces SIZE(1..50) strictly
 // (callers only invoke this when the list CHOICE alternative is selected).
-func decodePDPContextInfoList(list []HexBytes) (gsm_map.PDPContextInfoList, error) {
+func decodePDPContextInfoList(list []HexBytes) (*gsm_map.PDPContextInfoList, error) {
 	if len(list) < 1 || len(list) > 50 {
 		return nil, fmt.Errorf("PDPContextInfoList: must contain 1..50 entries when present, got %d", len(list))
 	}
-	out := make(gsm_map.PDPContextInfoList, len(list))
+	out := gsm_map.PDPContextInfoList{Values: make([]gsm_map.PDPContextInfo, len(list))}
 	for i, b := range list {
 		var ctx gsm_map.PDPContextInfo
 		if err := ctx.UnmarshalBER(b); err != nil {
 			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
 		}
-		out[i] = ctx
+		out.Values[i] = ctx
 	}
-	return out, nil
+	return &out, nil
 }
 
 // --- MNPInfoRes (opCode 71) ---

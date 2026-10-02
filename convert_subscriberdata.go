@@ -51,29 +51,29 @@ func convertWireToODBData(w *gsm_map.ODBData) *ODBData {
 
 // --- ZoneCode / ZoneCodeList (MAP-MS-DataTypes.asn:2070) ---
 
-func convertZoneCodeListToWire(z ZoneCodeList) (gsm_map.ZoneCodeList, error) {
+func convertZoneCodeListToWire(z ZoneCodeList) (*gsm_map.ZoneCodeList, error) {
 	if len(z) < 1 || len(z) > MaxNumOfZoneCodes {
 		return nil, ErrZoneCodeListInvalidSize
 	}
-	out := make(gsm_map.ZoneCodeList, 0, len(z))
+	out := gsm_map.ZoneCodeList{Values: make([]gsm_map.ZoneCode, 0, len(z))}
 	for i, zc := range z {
 		if len(zc) != 2 {
 			return nil, fmt.Errorf("ZoneCodeList[%d]: %w", i, ErrZoneCodeInvalidSize)
 		}
-		out = append(out, gsm_map.ZoneCode(zc))
+		out.Values = append(out.Values, gsm_map.ZoneCode(zc))
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToZoneCodeList(w gsm_map.ZoneCodeList) (ZoneCodeList, error) {
+func convertWireToZoneCodeList(w *gsm_map.ZoneCodeList) (ZoneCodeList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfZoneCodes {
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfZoneCodes {
 		return nil, ErrZoneCodeListInvalidSize
 	}
-	out := make(ZoneCodeList, 0, len(w))
-	for i, zc := range w {
+	out := make(ZoneCodeList, 0, len(w.Values))
+	for i, zc := range w.Values {
 		if len(zc) != 2 {
 			return nil, fmt.Errorf("ZoneCodeList[%d]: %w", i, ErrZoneCodeInvalidSize)
 		}
@@ -114,31 +114,31 @@ func convertWireToVoiceBroadcastData(w *gsm_map.VoiceBroadcastData) (*VoiceBroad
 	return out, nil
 }
 
-func convertVBSDataListToWire(list VBSDataList) (gsm_map.VBSDataList, error) {
+func convertVBSDataListToWire(list VBSDataList) (*gsm_map.VBSDataList, error) {
 	if len(list) < 1 || len(list) > MaxNumOfVBSGroupIds {
 		return nil, ErrVBSDataListInvalidSize
 	}
-	out := make(gsm_map.VBSDataList, 0, len(list))
+	out := gsm_map.VBSDataList{Values: make([]gsm_map.VoiceBroadcastData, 0, len(list))}
 	for i := range list {
 		w, err := convertVoiceBroadcastDataToWire(&list[i])
 		if err != nil {
 			return nil, fmt.Errorf("VBSDataList[%d]: %w", i, err)
 		}
-		out = append(out, *w)
+		out.Values = append(out.Values, *w)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToVBSDataList(w gsm_map.VBSDataList) (VBSDataList, error) {
+func convertWireToVBSDataList(w *gsm_map.VBSDataList) (VBSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfVBSGroupIds {
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfVBSGroupIds {
 		return nil, ErrVBSDataListInvalidSize
 	}
-	out := make(VBSDataList, 0, len(w))
-	for i := range w {
-		v, err := convertWireToVoiceBroadcastData(&w[i])
+	out := make(VBSDataList, 0, len(w.Values))
+	for i := range w.Values {
+		v, err := convertWireToVoiceBroadcastData(&w.Values[i])
 		if err != nil {
 			return nil, fmt.Errorf("VBSDataList[%d]: %w", i, err)
 		}
@@ -210,31 +210,31 @@ func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroup
 	return out, nil
 }
 
-func convertVGCSDataListToWire(list VGCSDataList) (gsm_map.VGCSDataList, error) {
+func convertVGCSDataListToWire(list VGCSDataList) (*gsm_map.VGCSDataList, error) {
 	if len(list) < 1 || len(list) > MaxNumOfVGCSGroupIds {
 		return nil, ErrVGCSDataListInvalidSize
 	}
-	out := make(gsm_map.VGCSDataList, 0, len(list))
+	out := gsm_map.VGCSDataList{Values: make([]gsm_map.VoiceGroupCallData, 0, len(list))}
 	for i := range list {
 		w, err := convertVoiceGroupCallDataToWire(&list[i])
 		if err != nil {
 			return nil, fmt.Errorf("VGCSDataList[%d]: %w", i, err)
 		}
-		out = append(out, *w)
+		out.Values = append(out.Values, *w)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToVGCSDataList(w gsm_map.VGCSDataList) (VGCSDataList, error) {
+func convertWireToVGCSDataList(w *gsm_map.VGCSDataList) (VGCSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfVGCSGroupIds {
+	if len(w.Values) < 1 || len(w.Values) > MaxNumOfVGCSGroupIds {
 		return nil, ErrVGCSDataListInvalidSize
 	}
-	out := make(VGCSDataList, 0, len(w))
-	for i := range w {
-		v, err := convertWireToVoiceGroupCallData(&w[i])
+	out := make(VGCSDataList, 0, len(w.Values))
+	for i := range w.Values {
+		v, err := convertWireToVoiceGroupCallData(&w.Values[i])
 		if err != nil {
 			return nil, fmt.Errorf("VGCSDataList[%d]: %w", i, err)
 		}

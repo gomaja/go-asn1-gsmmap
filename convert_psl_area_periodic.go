@@ -56,28 +56,31 @@ func convertWireToArea(w *gsm_map.Area) (*Area, error) {
 // AreaList — TS 29.002 MAP-LCS-DataTypes.asn:328 (SIZE 1..maxNumOfAreas=10)
 // ============================================================================
 
-func convertAreaListToWire(list AreaList) (gsm_map.AreaList, error) {
+func convertAreaListToWire(list AreaList) (*gsm_map.AreaList, error) {
 	if len(list) < AreaListMinEntries || len(list) > AreaListMaxEntries {
 		return nil, fmt.Errorf("AreaList len=%d: %w", len(list), ErrAreaListSize)
 	}
-	out := make(gsm_map.AreaList, 0, len(list))
+	out := gsm_map.AreaList{Values: make([]gsm_map.Area, 0, len(list))}
 	for i := range list {
 		w, err := convertAreaToWire(&list[i])
 		if err != nil {
 			return nil, fmt.Errorf("AreaList[%d]: %w", i, err)
 		}
-		out = append(out, *w)
+		out.Values = append(out.Values, *w)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToAreaList(w gsm_map.AreaList) (AreaList, error) {
-	if len(w) < AreaListMinEntries || len(w) > AreaListMaxEntries {
-		return nil, fmt.Errorf("AreaList len=%d: %w", len(w), ErrAreaListSize)
+func convertWireToAreaList(w *gsm_map.AreaList) (AreaList, error) {
+	if w == nil {
+		w = &gsm_map.AreaList{}
 	}
-	out := make(AreaList, 0, len(w))
-	for i := range w {
-		area, err := convertWireToArea(&w[i])
+	if len(w.Values) < AreaListMinEntries || len(w.Values) > AreaListMaxEntries {
+		return nil, fmt.Errorf("AreaList len=%d: %w", len(w.Values), ErrAreaListSize)
+	}
+	out := make(AreaList, 0, len(w.Values))
+	for i := range w.Values {
+		area, err := convertWireToArea(&w.Values[i])
 		if err != nil {
 			return nil, fmt.Errorf("AreaList[%d]: %w", i, err)
 		}
@@ -264,28 +267,31 @@ func convertWireToReportingPLMN(w *gsm_map.ReportingPLMN) (*ReportingPLMN, error
 // PLMNList — TS 29.002 MAP-LCS-DataTypes.asn:409 (SIZE 1..maxNumOfReportingPLMN=20)
 // ============================================================================
 
-func convertPLMNListToWire(list PLMNList) (gsm_map.PLMNList, error) {
+func convertPLMNListToWire(list PLMNList) (*gsm_map.PLMNList, error) {
 	if len(list) < PLMNListMinEntries || len(list) > PLMNListMaxEntries {
 		return nil, fmt.Errorf("PLMNList len=%d: %w", len(list), ErrPLMNListSize)
 	}
-	out := make(gsm_map.PLMNList, 0, len(list))
+	out := gsm_map.PLMNList{Values: make([]gsm_map.ReportingPLMN, 0, len(list))}
 	for i := range list {
 		w, err := convertReportingPLMNToWire(&list[i])
 		if err != nil {
 			return nil, fmt.Errorf("PLMNList[%d]: %w", i, err)
 		}
-		out = append(out, *w)
+		out.Values = append(out.Values, *w)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToPLMNList(w gsm_map.PLMNList) (PLMNList, error) {
-	if len(w) < PLMNListMinEntries || len(w) > PLMNListMaxEntries {
-		return nil, fmt.Errorf("PLMNList len=%d: %w", len(w), ErrPLMNListSize)
+func convertWireToPLMNList(w *gsm_map.PLMNList) (PLMNList, error) {
+	if w == nil {
+		w = &gsm_map.PLMNList{}
 	}
-	out := make(PLMNList, 0, len(w))
-	for i := range w {
-		plmn, err := convertWireToReportingPLMN(&w[i])
+	if len(w.Values) < PLMNListMinEntries || len(w.Values) > PLMNListMaxEntries {
+		return nil, fmt.Errorf("PLMNList len=%d: %w", len(w.Values), ErrPLMNListSize)
+	}
+	out := make(PLMNList, 0, len(w.Values))
+	for i := range w.Values {
+		plmn, err := convertWireToReportingPLMN(&w.Values[i])
 		if err != nil {
 			return nil, fmt.Errorf("PLMNList[%d]: %w", i, err)
 		}

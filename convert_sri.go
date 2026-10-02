@@ -437,9 +437,9 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// SsList
 	if len(s.SsList) > 0 {
-		out.SsList = make(gsm_map.SSList, len(s.SsList))
+		out.SsList = &gsm_map.SSList{Values: make([]gsm_map.SSCode, len(s.SsList))}
 		for i, c := range s.SsList {
-			out.SsList[i] = gsm_map.SSCode{byte(c)}
+			out.SsList.Values[i] = gsm_map.SSCode{byte(c)}
 		}
 	}
 
@@ -523,9 +523,9 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// SsList2
 	if len(s.SsList2) > 0 {
-		out.SsList2 = make(gsm_map.SSList, len(s.SsList2))
+		out.SsList2 = &gsm_map.SSList{Values: make([]gsm_map.SSCode, len(s.SsList2))}
 		for i, c := range s.SsList2 {
-			out.SsList2[i] = gsm_map.SSCode{byte(c)}
+			out.SsList2.Values[i] = gsm_map.SSCode{byte(c)}
 		}
 	}
 
@@ -603,9 +603,9 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	}
 
 	// SsList — each SS-Code is OCTET STRING (SIZE(1)) per 3GPP TS 29.002.
-	if len(res.SsList) > 0 {
-		out.SsList = make([]SsCode, len(res.SsList))
-		for i, c := range res.SsList {
+	if res.SsList != nil && len(res.SsList.Values) > 0 {
+		out.SsList = make([]SsCode, len(res.SsList.Values))
+		for i, c := range res.SsList.Values {
 			if len(c) != 1 {
 				return nil, fmt.Errorf("SsList[%d]: SS-Code must be exactly 1 octet, got %d", i, len(c))
 			}
@@ -701,9 +701,9 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	}
 
 	// SsList2
-	if len(res.SsList2) > 0 {
-		out.SsList2 = make([]SsCode, len(res.SsList2))
-		for i, c := range res.SsList2 {
+	if res.SsList2 != nil && len(res.SsList2.Values) > 0 {
+		out.SsList2 = make([]SsCode, len(res.SsList2.Values))
+		for i, c := range res.SsList2.Values {
 			if len(c) != 1 {
 				return nil, fmt.Errorf("SsList2[%d]: SS-Code must be exactly 1 octet, got %d", i, len(c))
 			}
