@@ -323,13 +323,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		}
 		out.LcsCodeword = v
 	}
-	if w.LcsPrivacyCheck != nil {
-		v, err := convertWireToLCSPrivacyCheck(w.LcsPrivacyCheck)
-		if err != nil {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsPrivacyCheck: %w", err)
-		}
-		out.LcsPrivacyCheck = v
-	}
+	out.LcsPrivacyCheck = convertWireToLCSPrivacyCheck(w.LcsPrivacyCheck)
 	if w.AreaEventInfo != nil {
 		v, err := convertWireToAreaEventInfo(w.AreaEventInfo)
 		if err != nil {

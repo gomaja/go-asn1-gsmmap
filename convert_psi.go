@@ -35,9 +35,14 @@ func convertProvideSubscriberInfoToArg(p *ProvideSubscriberInfo) (*gsm_map.Provi
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
 
+	reqInfo, err := buildRequestedInfo(&p.RequestedInfo)
+	if err != nil {
+		return nil, fmt.Errorf("ProvideSubscriberInfo.RequestedInfo: %w", err)
+	}
+
 	arg := &gsm_map.ProvideSubscriberInfoArg{
 		Imsi:          gsm_map.IMSI(imsiBytes),
-		RequestedInfo: buildRequestedInfo(&p.RequestedInfo),
+		RequestedInfo: reqInfo,
 	}
 
 	// LMSI (optional, 4 octets).

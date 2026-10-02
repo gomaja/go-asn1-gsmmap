@@ -87,7 +87,7 @@ type SriSm struct {
 
 	// Optional fields (post-extension marker).
 	GprsSupportIndicator    bool                   // [7] NULL — SMS-GMSC supports receiving two numbers from HLR
-	SmRpMti                 *int                   // [8] SM-RP-MTI: 0=SMS Deliver, 1=SMS Status Report (0..10)
+	SmRpMti                 *int                   // [8] SM-RP-MTI: 0=SMS Deliver, 1=SMS Status Report; reserved 2..10 are discarded on decode
 	SmRpSmea                HexBytes               // [9] SM-RP-SMEA: 1..12 octets (address per 3GPP TS 23.040)
 	SmDeliveryNotIntended   *SmDeliveryNotIntended // [10] ENUMERATED
 	IpSmGwGuidanceIndicator bool                   // [11] NULL
@@ -429,7 +429,9 @@ type UpdateGprsLocationRes struct {
 	MmeRegisteredforSMS        bool // [1] NULL
 }
 
-// DomainType represents the requested domain.
+// DomainType represents the requested domain. The encoder accepts only
+// CsDomain and PsDomain; the decoder maps values above PsDomain to CsDomain
+// (3GPP TS 29.002 V19.1.0 §17.7.1).
 type DomainType = gsm_map.DomainType
 
 const (
@@ -779,6 +781,9 @@ type CamelRoutingInfo struct {
 
 // OBcsmTriggerDetectionPoint per 3GPP TS 29.002. Subset of values used in
 // the MAP CAMEL subscription info; additional TDPs exist in CAP itself.
+// The encoder accepts only the listed values; the decoder ignores an
+// O-BcsmCamelTDPData or O-BcsmCamelTDP-Criteria carrying any other value
+// (3GPP TS 29.002 V19.1.0 §17.7.1).
 type OBcsmTriggerDetectionPoint = gsm_map.OBcsmTriggerDetectionPoint
 
 const (
@@ -786,7 +791,9 @@ const (
 	OBcsmTriggerRouteSelectFailure = gsm_map.OBcsmTriggerDetectionPointRouteSelectFailure
 )
 
-// TBcsmTriggerDetectionPoint per 3GPP TS 29.002.
+// TBcsmTriggerDetectionPoint per 3GPP TS 29.002. The encoder accepts only
+// the listed values; the decoder ignores a T-BcsmCamelTDPData carrying any
+// other value (3GPP TS 29.002 V19.1.0 §17.7.1).
 type TBcsmTriggerDetectionPoint = gsm_map.TBcsmTriggerDetectionPoint
 
 const (
@@ -796,6 +803,10 @@ const (
 )
 
 // DefaultCallHandling per 3GPP TS 29.002.
+// ENUMERATED { continueCall(0), releaseCall(1), ... }. Per 3GPP TS 29.002
+// V19.1.0 §17.7.1 exception handling, values 2..31 are treated as
+// continueCall and values > 31 as releaseCall on decode — the decoder maps
+// them accordingly and the encoder rejects anything outside 0..1.
 type DefaultCallHandling = gsm_map.DefaultCallHandling
 
 const (
@@ -849,6 +860,9 @@ type OBcsmCamelTDPData struct {
 }
 
 // OCSI (O-CSI) per 3GPP TS 29.002. Originating CAMEL Subscription Info.
+// A received O-CSI whose every OBcsmCamelTDPData is ignored decodes as
+// absent. A received CamelCapabilityHandling above 4 decodes as 4
+// (3GPP TS 29.002 V19.1.0 §17.7.1); the same holds for every CSI below.
 type OCSI struct {
 	OBcsmCamelTDPDataList   []OBcsmCamelTDPData // mandatory, 1..10 entries
 	CamelCapabilityHandling *int                // [0] phase (1..4); nil if absent
@@ -877,6 +891,8 @@ type TBcsmCamelTDPData struct {
 }
 
 // TCSI (T-CSI) per 3GPP TS 29.002. Terminating CAMEL Subscription Info.
+// A received T-CSI whose every TBcsmCamelTDPData is ignored decodes as
+// absent.
 type TCSI struct {
 	TBcsmCamelTDPDataList   []TBcsmCamelTDPData // mandatory, 1..10 entries
 	CamelCapabilityHandling *int                // [0] phase (1..4); nil if absent
@@ -967,6 +983,10 @@ const (
 
 // SMSTriggerDetectionPoint per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2487.
 // ENUMERATED { sms-CollectedInfo(1), sms-DeliveryRequest(2), ... }.
+// MO-SMS-CSI entries carry sms-CollectedInfo; MT-SMS-CSI entries and
+// MT-smsCAMELTDP-Criteria carry sms-DeliveryRequest. The encoder rejects any
+// other value, and the decoder ignores the entry carrying it (3GPP TS
+// 29.002 V19.1.0 §17.7.1).
 type SMSTriggerDetectionPoint = gsm_map.SMSTriggerDetectionPoint
 
 const (
@@ -990,7 +1010,8 @@ type SMSCAMELTDPData struct {
 //
 // Per spec, SmsCAMELTDPDataList and CamelCapabilityHandling SHALL be
 // present in an SMS-CSI sequence (spec clause 8.8.1). The encoder
-// enforces that invariant.
+// enforces that invariant. A received SMS-CSI whose every entry is
+// ignored (see SMSTriggerDetectionPoint) decodes as absent.
 type SMSCSI struct {
 	SmsCAMELTDPDataList     []SMSCAMELTDPData // [0] mandatory 1..10 entries
 	CamelCapabilityHandling *int              // [1] mandatory phase (1..4)
@@ -1000,6 +1021,9 @@ type SMSCSI struct {
 
 // MTSMSTPDUType per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2213.
 // ENUMERATED { sms-DELIVER(0), sms-SUBMIT-REPORT(1), sms-STATUS-REPORT(2), ... }.
+// The encoder accepts only the listed values; the decoder ignores a
+// TpduTypeCriterion holding any other value, leaving it absent (3GPP TS
+// 29.002 V19.1.0 §17.7.1).
 type MTSMSTPDUType = gsm_map.MTSMSTPDUType
 
 const (
@@ -1223,7 +1247,7 @@ type Sri struct {
 	SuppressionOfAnnouncement       bool
 	AlertingPattern                 HexBytes
 	CcbsCall                        bool
-	SupportedCCBSPhase              *int
+	SupportedCCBSPhase              *int // only 1 is used; reserved 2..127 decode as 1
 	AdditionalSignalInfo            *ExtExternalSignalInfo
 	IstSupportIndicator             *int
 	PrePagingSupported              bool
@@ -2187,7 +2211,9 @@ const MaxRFSPID = 256
 // ============================================================================
 
 // GMLCRestriction (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:2027.
-// Aliased from go-asn1.
+// Aliased from go-asn1. The encoder accepts only the listed values; the
+// decoder ignores any other value, leaving the parameter absent (3GPP TS
+// 29.002 V19.1.0 §17.7.1).
 type GMLCRestriction = gsm_map.GMLCRestriction
 
 const (
@@ -2196,7 +2222,9 @@ const (
 )
 
 // NotificationToMSUser (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:2035.
-// Aliased from go-asn1.
+// Aliased from go-asn1. The encoder accepts only the listed values; the
+// decoder ignores any other value, leaving the parameter absent (3GPP TS
+// 29.002 V19.1.0 §17.7.1).
 type NotificationToMSUser = gsm_map.NotificationToMSUser
 
 const (
@@ -2450,7 +2478,10 @@ type LCSQoS struct {
 }
 
 // PrivacyCheckRelatedAction (ENUMERATED) per TS 29.002
-// MAP-LCS-DataTypes.asn:307. Aliased from go-asn1.
+// MAP-LCS-DataTypes.asn:307. Aliased from go-asn1. Extensible: the encoder
+// accepts only the listed values, and the decoder preserves any other value
+// so the application can reject the ProvideSubscriberLocation-Arg with
+// unexpected data value (3GPP TS 29.002 V19.1.0 §17.7.13).
 type PrivacyCheckRelatedAction = gsm_map.PrivacyCheckRelatedAction
 
 const (
@@ -2736,7 +2767,9 @@ type ReportingPLMNList struct {
 }
 
 // TerminationCause (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:696.
-// Extensible enum. Aliased from go-asn1.
+// Extensible enum. Aliased from go-asn1. The encoder accepts only the listed
+// values; the decoder treats any other value as TerminationErrorundefined
+// (3GPP TS 29.002 V19.1.0 §17.7.13).
 type TerminationCause = gsm_map.TerminationCause
 
 const (
@@ -3567,6 +3600,7 @@ var (
 	ErrSriInvalidCallReferenceNumber = errors.New("sri: CallReferenceNumber, if set, must be 1..8 octets")
 	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
 	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
+	ErrSriInvalidSupportedCCBSPhase  = errors.New("sri: SupportedCCBSPhase must be 1; 3GPP TS 29.002 V19.1.0 §17.7.3 reserves 2..127, which a receiver maps to 1")
 
 	ErrSriSmMissingSipUriB            = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
 	ErrSriSmInvalidDeliveryTimerValue = errors.New("sriSm: SM-DeliveryTimerValue must be 30..600")
@@ -3623,6 +3657,7 @@ var (
 
 	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
 	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
+	ErrSriSmInvalidSmRpMti              = errors.New("sriSm: SmRpMti must be 0 (SMS Deliver) or 1 (SMS Status Report); 3GPP TS 29.002 V19.1.0 §17.7.6 reserves 2..10, which a receiver discards")
 
 	ErrSaiMissingIMSI                               = errors.New("sai: IMSI is empty")
 	ErrSaiInvalidNumberOfRequestedVectors           = errors.New("sai: NumberOfRequestedVectors must be 1..5")
@@ -3656,7 +3691,6 @@ var (
 	ErrCamelInvalidServiceKey                = errors.New("camel: ServiceKey must be 0..2147483647")
 	ErrCamelMissingGsmSCFAddress             = errors.New("camel: GsmSCFAddress is mandatory and must be non-empty")
 	ErrCamelMissingDialledNumber             = errors.New("camel: DialledNumber is mandatory on DPAnalysedInfoCriterium")
-	ErrCamelInvalidCamelCapabilityHandling   = errors.New("camel: CamelCapabilityHandling must be 1..4 when set")
 	ErrCamelInvalidTDPDataListSize           = errors.New("camel: TDP data list must contain 1..10 entries")
 	ErrCamelInvalidDPAnalysedInfoListSize    = errors.New("camel: DPAnalysedInfoCriteriaList must contain 1..10 entries when present")
 	ErrCamelInvalidCauseValue                = errors.New("camel: CauseValue must be 0..127")
@@ -3672,7 +3706,7 @@ var (
 	ErrCamelInvalidSMSTDPDataListSize        = errors.New("camel: SmsCAMELTDPDataList must contain 1..10 entries")
 	ErrCamelSMSCSIMissingTDPData             = errors.New("camel: SMS-CSI must include SmsCAMELTDPDataList per TS 29.002 clause 8.8.1")
 	ErrCamelSMSCSIMissingCapabilityHandling  = errors.New("camel: SMS-CSI must include CamelCapabilityHandling per TS 29.002 clause 8.8.1")
-	ErrCamelInvalidSMSTriggerDetectionPoint  = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) or sms-DeliveryRequest(2)")
+	ErrCamelInvalidSMSTriggerDetectionPoint  = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) in an MO-SMS-CSI and sms-DeliveryRequest(2) in an MT-SMS-CSI or MT-smsCAMELTDP-Criteria; a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidDefaultSMSHandling        = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
 	ErrCamelInvalidMTSmsCAMELCriteriaSize    = errors.New("camel: MtSmsCAMELTDPCriteriaList must contain 1..5 entries when present")
 	ErrCamelInvalidTPDUTypeCriterionSize     = errors.New("camel: TpduTypeCriterion must contain 1..5 entries when present")
@@ -3804,7 +3838,7 @@ var (
 
 	ErrGPRSCamelTDPDataListSize          = errors.New("gprsCamelTDPDataList: must contain 1..10 entries (maxNumOfCamelTDPData) per TS 29.002")
 	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
-	ErrCamelCapabilityHandlingOutOfRange = errors.New("gprsCSI/mgCSI: CamelCapabilityHandling must be 1..4 per TS 29.078")
+	ErrCamelCapabilityHandlingOutOfRange = errors.New("camel: CamelCapabilityHandling must be 1..4 (CAMEL phases 1 to 4) when set; the decoder treats received values above 4 as phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrGPRSCSIRequiresTDPListAndPhase    = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")
 	ErrMobilityTriggersSize              = errors.New("mgCSI: MobilityTriggers must contain 1..10 entries (maxNumOfMobilityTriggers) per TS 29.002")
 	ErrMMCodeInvalidSize                 = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
@@ -3812,7 +3846,7 @@ var (
 	ErrLocationEstimateTypeInvalid        = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (extensible enum: unknown values preserved on decode)")
 	ErrLCSClientTypeInvalid               = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (extensible enum: unknown values preserved on decode)")
 	ErrLCSFormatIndicatorInvalid          = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
-	ErrPrivacyCheckRelatedActionInvalid   = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:307")
+	ErrPrivacyCheckRelatedActionInvalid   = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
 	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:457 (extensible enum: unknown values preserved on decode)")
 	ErrResponseTimeCategoryInvalid        = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
 	ErrLCSPriorityInvalidSize             = errors.New("psl: LCSPriority must be exactly 1 octet per TS 29.002 MAP-LCS-DataTypes.asn:232")
@@ -3849,7 +3883,7 @@ var (
 	ErrPeriodicLDRProductExceeded               = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
 	ErrRANTechnologyInvalid                     = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
 	ErrPLMNListSize                             = errors.New("reportingPLMNList: PlmnList must contain 1..20 entries (maxNumOfReportingPLMN) per TS 29.002 MAP-LCS-DataTypes.asn:409-412")
-	ErrTerminationCauseInvalid                  = errors.New("deferredmt-lrData: TerminationCause must be 0..9 per TS 29.002 MAP-LCS-DataTypes.asn:696 (extensible enum: unknown values preserved on decode)")
+	ErrTerminationCauseInvalid                  = errors.New("deferredmt-lrData: TerminationCause must be 0..9; the decoder treats unrecognized values as errorundefined(1) per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrServingNodeAddressMultipleAlts           = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
 	ErrServingNodeAddressNoAlt                  = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
 	ErrServingNodeAddressMmeNumberSize          = errors.New("servingNodeAddress: MmeNumber must be 9..255 octets (DiameterIdentity per RFC 6733) per TS 29.002 MAP-MS-DataTypes.asn:1434")
@@ -3916,6 +3950,9 @@ var (
 
 	// AnyTimeInterrogation top-level (TS 29.002 MAP-CH-DataTypes.asn).
 	ErrAnyTimeInterrogationNil = errors.New("anyTimeInterrogation: nil argument is not permitted")
+
+	// RequestedInfo, shared by AnyTimeInterrogation and ProvideSubscriberInfo.
+	ErrRequestedDomainInvalid = errors.New("requestedInfo: RequestedDomain must be cs-Domain(0) or ps-Domain(1); a receiver maps values above 1 to cs-Domain per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// ReportSMDeliveryStatus top-level (TS 29.002 MAP-SM-DataTypes.asn).
 	ErrReportSMDeliveryStatusNil                  = errors.New("reportSMDeliveryStatus: nil argument is not permitted")

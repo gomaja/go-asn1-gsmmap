@@ -147,35 +147,37 @@ func TestMCSIValidation(t *testing.T) {
 
 func TestSMSCSIRoundTrip(t *testing.T) {
 	cch := 3
-	in := &SMSCSI{
-		SmsCAMELTDPDataList: []SMSCAMELTDPData{
-			{
-				SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsCollectedInfo,
-				ServiceKey:               100,
-				GsmSCFAddress:            "31644444444",
-				GsmSCFNature:             16, GsmSCFPlan: 1,
-				DefaultSMSHandling: DefaultSMSHandlingContinueTransaction,
+	for _, tdp := range []SMSTriggerDetectionPoint{moSMSTriggerDetectionPoint, mtSMSTriggerDetectionPoint} {
+		in := &SMSCSI{
+			SmsCAMELTDPDataList: []SMSCAMELTDPData{
+				{
+					SmsTriggerDetectionPoint: tdp,
+					ServiceKey:               100,
+					GsmSCFAddress:            "31644444444",
+					GsmSCFNature:             16, GsmSCFPlan: 1,
+					DefaultSMSHandling: DefaultSMSHandlingContinueTransaction,
+				},
+				{
+					SmsTriggerDetectionPoint: tdp,
+					ServiceKey:               200,
+					GsmSCFAddress:            "31655555555",
+					GsmSCFNature:             16, GsmSCFPlan: 1,
+					DefaultSMSHandling: DefaultSMSHandlingReleaseTransaction,
+				},
 			},
-			{
-				SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest,
-				ServiceKey:               200,
-				GsmSCFAddress:            "31655555555",
-				GsmSCFNature:             16, GsmSCFPlan: 1,
-				DefaultSMSHandling: DefaultSMSHandlingReleaseTransaction,
-			},
-		},
-		CamelCapabilityHandling: &cch,
-	}
-	wire, err := convertSMSCSIToWire(in)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
-	}
-	got, err := convertWireToSMSCSI(wire)
-	if err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if diff := cmp.Diff(in, got); diff != "" {
-		t.Errorf("round-trip mismatch (-want +got):\n%s", diff)
+			CamelCapabilityHandling: &cch,
+		}
+		wire, err := convertSMSCSIToWire(in, tdp)
+		if err != nil {
+			t.Fatalf("tdp %d: encode: %v", tdp, err)
+		}
+		got, err := convertWireToSMSCSI(wire, tdp)
+		if err != nil {
+			t.Fatalf("tdp %d: decode: %v", tdp, err)
+		}
+		if diff := cmp.Diff(in, got); diff != "" {
+			t.Errorf("tdp %d: round-trip mismatch (-want +got):\n%s", tdp, diff)
+		}
 	}
 }
 
@@ -184,7 +186,7 @@ func TestSMSCSIValidation(t *testing.T) {
 	t.Run("missingTDPList", func(t *testing.T) {
 		// Empty TDP list: per spec §8.8.1 the field is required, so the
 		// "missing" sentinel applies (not the size sentinel).
-		_, err := convertSMSCSIToWire(&SMSCSI{CamelCapabilityHandling: &cch})
+		_, err := convertSMSCSIToWire(&SMSCSI{CamelCapabilityHandling: &cch}, moSMSTriggerDetectionPoint)
 		if !errors.Is(err, ErrCamelSMSCSIMissingTDPData) {
 			t.Errorf("want ErrCamelSMSCSIMissingTDPData, got %v", err)
 		}
@@ -202,7 +204,7 @@ func TestSMSCSIValidation(t *testing.T) {
 		_, err := convertSMSCSIToWire(&SMSCSI{
 			SmsCAMELTDPDataList:     big,
 			CamelCapabilityHandling: &cch,
-		})
+		}, moSMSTriggerDetectionPoint)
 		if !errors.Is(err, ErrCamelInvalidSMSTDPDataListSize) {
 			t.Errorf("want ErrCamelInvalidSMSTDPDataListSize, got %v", err)
 		}
@@ -214,7 +216,7 @@ func TestSMSCSIValidation(t *testing.T) {
 				GsmSCFAddress:            "1",
 				DefaultSMSHandling:       DefaultSMSHandlingContinueTransaction,
 			}},
-		})
+		}, moSMSTriggerDetectionPoint)
 		if !errors.Is(err, ErrCamelSMSCSIMissingCapabilityHandling) {
 			t.Errorf("want ErrCamelSMSCSIMissingCapabilityHandling, got %v", err)
 		}
@@ -224,7 +226,7 @@ func TestSMSCSIValidation(t *testing.T) {
 			SmsTriggerDetectionPoint: SMSTriggerDetectionPoint(99),
 			GsmSCFAddress:            "1",
 			DefaultSMSHandling:       DefaultSMSHandlingContinueTransaction,
-		})
+		}, moSMSTriggerDetectionPoint)
 		if !errors.Is(err, ErrCamelInvalidSMSTriggerDetectionPoint) {
 			t.Errorf("want ErrCamelInvalidSMSTriggerDetectionPoint, got %v", err)
 		}
@@ -234,7 +236,7 @@ func TestSMSCSIValidation(t *testing.T) {
 			SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsCollectedInfo,
 			GsmSCFAddress:            "1",
 			DefaultSMSHandling:       DefaultSMSHandling(-1),
-		})
+		}, moSMSTriggerDetectionPoint)
 		if !errors.Is(err, ErrCamelInvalidDefaultSMSHandling) {
 			t.Errorf("want ErrCamelInvalidDefaultSMSHandling, got %v", err)
 		}
@@ -339,13 +341,13 @@ func TestSMSCAMELTDPDataLenientDefaultSMSHandling(t *testing.T) {
 				GsmSCFAddress:            "1",
 				DefaultSMSHandling:       DefaultSMSHandlingContinueTransaction,
 			}
-			w, err := convertSMSCAMELTDPDataToWire(in)
+			w, err := convertSMSCAMELTDPDataToWire(in, moSMSTriggerDetectionPoint)
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
 			// Force wire value
 			w.DefaultSMSHandling = gsmMapDefaultSMSHandling(tc.wire)
-			got, err := convertWireToSMSCAMELTDPData(&w)
+			got, err := convertWireToSMSCAMELTDPData(&w, moSMSTriggerDetectionPoint)
 			if err != nil {
 				t.Fatalf("decode: %v", err)
 			}

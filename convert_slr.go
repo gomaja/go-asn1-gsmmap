@@ -183,6 +183,14 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 // the codec preserves whatever is set, since intermediaries may relay
 // data they don't fully validate.
 
+// isRecognizedTerminationCause reports whether v is one of the
+// TerminationCause values 3GPP TS 29.002 V19.1.0 §17.7.13 lists, normal(0)
+// to networkTermination(9). The encoder sends only these; the decoder treats
+// any other value as errorundefined(1).
+func isRecognizedTerminationCause(v TerminationCause) bool {
+	return v >= TerminationNormal && v <= TerminationNetworkTermination
+}
+
 func convertDeferredmtLrDataToWire(d *DeferredmtLrData) (*gsm_map.DeferredmtLrData, error) {
 	if d == nil {
 		return nil, nil
@@ -193,9 +201,7 @@ func convertDeferredmtLrDataToWire(d *DeferredmtLrData) (*gsm_map.DeferredmtLrDa
 	}
 	if d.TerminationCause != nil {
 		v := *d.TerminationCause
-		// TerminationCause is extensible (TS 29.002:696); encoder
-		// strict (0..9), decoder lenient.
-		if int64(v) < 0 || int64(v) > 9 {
+		if !isRecognizedTerminationCause(v) {
 			return nil, fmt.Errorf("DeferredmtLrData.TerminationCause=%d: %w", v, ErrTerminationCauseInvalid)
 		}
 		out.TerminationCause = &v
@@ -222,7 +228,13 @@ func convertWireToDeferredmtLrData(w *gsm_map.DeferredmtLrData) (*DeferredmtLrDa
 		DeferredLocationEventType: *det,
 	}
 	if w.TerminationCause != nil {
+		// 3GPP TS 29.002 V19.1.0 §17.7.13 TerminationCause: "an
+		// unrecognized value shall be treated the same as value 1
+		// (errorundefined)".
 		v := *w.TerminationCause
+		if !isRecognizedTerminationCause(v) {
+			v = TerminationErrorundefined
+		}
 		out.TerminationCause = &v
 	}
 	if w.LcsLocationInfo != nil {

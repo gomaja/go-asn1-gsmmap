@@ -36,11 +36,10 @@ func validateSri(s *Sri) error {
 	if s.ForwardingReason != nil && (*s.ForwardingReason < 0 || *s.ForwardingReason > 2) {
 		return fmt.Errorf("ForwardingReason out of range 0..2: %d", *s.ForwardingReason)
 	}
-	// SupportedCCBSPhase — INTEGER (1..127) per TS 29.002 MAP-CH-DataTypes.
-	// "Only value 1 is used; values 2-127 are reserved for future use" —
-	// syntactic constraint is 1..127, semantic guidance is 1.
-	if s.SupportedCCBSPhase != nil && (*s.SupportedCCBSPhase < 1 || *s.SupportedCCBSPhase > 127) {
-		return fmt.Errorf("SupportedCCBSPhase out of range 1..127: %d", *s.SupportedCCBSPhase)
+	// SupportedCCBS-Phase, 3GPP TS 29.002 V19.1.0 §17.7.3: "Only value 1 is
+	// used. Values in the ranges 2-127 are reserved for future use."
+	if s.SupportedCCBSPhase != nil && *s.SupportedCCBSPhase != 1 {
+		return fmt.Errorf("%w (got %d)", ErrSriInvalidSupportedCCBSPhase, *s.SupportedCCBSPhase)
 	}
 	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
 	if s.CallPriority != nil && (*s.CallPriority < 0 || *s.CallPriority > 15) {
@@ -323,15 +322,11 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	// CcbsCall
 	s.CcbsCall = nullPtrToBool(arg.CcbsCall)
 
-	// SupportedCCBSPhase — INTEGER (1..127) per TS 29.002 MAP-CH-DataTypes.
-	// Exception handling: "If received values 2-127 shall be mapped on to
-	// value 1." We surface the received value as-is to the caller; mapping
-	// is a semantic/application-layer concern, not a protocol-decode one.
+	// SupportedCCBS-Phase, 3GPP TS 29.002 V19.1.0 §17.7.3: "If received
+	// values 2-127 shall be mapped on to value 1." The codec has already
+	// enforced INTEGER (1..127).
 	if arg.SupportedCCBSPhase != nil {
-		v, err := narrowInt64Range(*arg.SupportedCCBSPhase, 1, 127, "SupportedCCBSPhase")
-		if err != nil {
-			return nil, err
-		}
+		v := int(min(*arg.SupportedCCBSPhase, 1))
 		s.SupportedCCBSPhase = &v
 	}
 

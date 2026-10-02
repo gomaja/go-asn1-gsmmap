@@ -309,10 +309,7 @@ func TestLCSPrivacyCheckRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToLCSPrivacyCheck(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToLCSPrivacyCheck(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch: in=%+v out=%+v", tc.in, out)
 			}
@@ -335,27 +332,6 @@ func TestLCSPrivacyCheckOutOfRangeRejected(t *testing.T) {
 	})
 	if !errors.Is(err, ErrPrivacyCheckRelatedActionInvalid) {
 		t.Errorf("want ErrPrivacyCheckRelatedActionInvalid for related, got %v", err)
-	}
-}
-
-// Decoder must reject out-of-range values too — PrivacyCheckRelatedAction
-// is NOT extensible (TS 29.002 MAP-LCS-DataTypes.asn:307), so symmetric
-// validation applies.
-func TestLCSPrivacyCheckWireOutOfRangeRejected(t *testing.T) {
-	_, err := convertWireToLCSPrivacyCheck(&gsm_map.LCSPrivacyCheck{
-		CallSessionUnrelated: 99,
-	})
-	if !errors.Is(err, ErrPrivacyCheckRelatedActionInvalid) {
-		t.Errorf("want ErrPrivacyCheckRelatedActionInvalid on decode (unrelated), got %v", err)
-	}
-
-	related := gsm_map.PrivacyCheckRelatedAction(7)
-	_, err = convertWireToLCSPrivacyCheck(&gsm_map.LCSPrivacyCheck{
-		CallSessionUnrelated: gsm_map.PrivacyCheckRelatedActionAllowedWithoutNotification,
-		CallSessionRelated:   &related,
-	})
-	if !errors.Is(err, ErrPrivacyCheckRelatedActionInvalid) {
-		t.Errorf("want ErrPrivacyCheckRelatedActionInvalid on decode (related), got %v", err)
 	}
 }
 

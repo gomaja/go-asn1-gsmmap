@@ -129,10 +129,8 @@ func convertGPRSCSIToWire(g *GPRSCSI) (*gsm_map.GPRSCSI, error) {
 	if g.GprsCamelTDPDataList == nil || g.CamelCapabilityHandling == nil {
 		return nil, ErrGPRSCSIRequiresTDPListAndPhase
 	}
-	if g.CamelCapabilityHandling != nil {
-		if v := *g.CamelCapabilityHandling; v < 1 || v > 4 {
-			return nil, fmt.Errorf("%w (got %d)", ErrCamelCapabilityHandlingOutOfRange, v)
-		}
+	if err := validateCamelCapabilityHandling(g.CamelCapabilityHandling); err != nil {
+		return nil, err
 	}
 	out := &gsm_map.GPRSCSI{
 		NotificationToCSE: boolToNullPtr(g.NotificationToCSE),
@@ -171,11 +169,7 @@ func convertWireToGPRSCSI(w *gsm_map.GPRSCSI) (*GPRSCSI, error) {
 		out.GprsCamelTDPDataList = dl
 	}
 	if w.CamelCapabilityHandling != nil {
-		v, err := narrowInt64Range(int64(*w.CamelCapabilityHandling), 1, 4, "GPRSCSI.CamelCapabilityHandling")
-		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrCamelCapabilityHandlingOutOfRange, err)
-		}
-		out.CamelCapabilityHandling = &v
+		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
 	}
 	return out, nil
 }
@@ -280,14 +274,14 @@ func convertSGSNCAMELSubscriptionInfoToWire(s *SGSNCAMELSubscriptionInfo) (*gsm_
 		out.GprsCSI = v
 	}
 	if s.MoSmsCSI != nil {
-		v, err := convertSMSCSIToWire(s.MoSmsCSI)
+		v, err := convertSMSCSIToWire(s.MoSmsCSI, moSMSTriggerDetectionPoint)
 		if err != nil {
 			return nil, fmt.Errorf("SGSNCAMELSubscriptionInfo.MoSmsCSI: %w", err)
 		}
 		out.MoSmsCSI = v
 	}
 	if s.MtSmsCSI != nil {
-		v, err := convertSMSCSIToWire(s.MtSmsCSI)
+		v, err := convertSMSCSIToWire(s.MtSmsCSI, mtSMSTriggerDetectionPoint)
 		if err != nil {
 			return nil, fmt.Errorf("SGSNCAMELSubscriptionInfo.MtSmsCSI: %w", err)
 		}
@@ -332,14 +326,14 @@ func convertWireToSGSNCAMELSubscriptionInfo(w *gsm_map.SGSNCAMELSubscriptionInfo
 		out.GprsCSI = v
 	}
 	if w.MoSmsCSI != nil {
-		v, err := convertWireToSMSCSI(w.MoSmsCSI)
+		v, err := convertWireToSMSCSI(w.MoSmsCSI, moSMSTriggerDetectionPoint)
 		if err != nil {
 			return nil, fmt.Errorf("SGSNCAMELSubscriptionInfo.MoSmsCSI: %w", err)
 		}
 		out.MoSmsCSI = v
 	}
 	if w.MtSmsCSI != nil {
-		v, err := convertWireToSMSCSI(w.MtSmsCSI)
+		v, err := convertWireToSMSCSI(w.MtSmsCSI, mtSMSTriggerDetectionPoint)
 		if err != nil {
 			return nil, fmt.Errorf("SGSNCAMELSubscriptionInfo.MtSmsCSI: %w", err)
 		}
@@ -349,13 +343,10 @@ func convertWireToSGSNCAMELSubscriptionInfo(w *gsm_map.SGSNCAMELSubscriptionInfo
 		if int64(len(w.MtSmsCAMELTDPCriteriaList.Values)) < 1 || int64(len(w.MtSmsCAMELTDPCriteriaList.Values)) > gsm_map.MaxNumOfCamelTDPData {
 			return nil, fmt.Errorf("%w (got %d)", ErrSGSNMtSmsCAMELTDPCriteriaListSize, len(w.MtSmsCAMELTDPCriteriaList.Values))
 		}
-		list := make([]MTSmsCAMELTDPCriteria, len(w.MtSmsCAMELTDPCriteriaList.Values))
-		for i, c := range w.MtSmsCAMELTDPCriteriaList.Values {
-			v, err := convertWireToMTSmsCAMELTDPCriteria(&c)
-			if err != nil {
-				return nil, fmt.Errorf("SGSNCAMELSubscriptionInfo.MtSmsCAMELTDPCriteriaList[%d]: %w", i, err)
-			}
-			list[i] = *v
+		// Absent when the receiver ignores every entry.
+		list, err := convertIgnorableWireList("SGSNCAMELSubscriptionInfo.MtSmsCAMELTDPCriteriaList", w.MtSmsCAMELTDPCriteriaList.Values, convertWireToMTSmsCAMELTDPCriteria)
+		if err != nil {
+			return nil, err
 		}
 		out.MtSmsCAMELTDPCriteriaList = list
 	}

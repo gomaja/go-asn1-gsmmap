@@ -17,7 +17,10 @@ func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationAr
 		return nil, fmt.Errorf("AnyTimeInterrogation.SubscriberIdentity: %w", err)
 	}
 
-	reqInfo := buildRequestedInfo(&ati.RequestedInfo)
+	reqInfo, err := buildRequestedInfo(&ati.RequestedInfo)
+	if err != nil {
+		return nil, fmt.Errorf("AnyTimeInterrogation.RequestedInfo: %w", err)
+	}
 
 	scfAddr, err := encodeAddressField(ati.GsmSCFAddress, ati.GsmSCFNature, ati.GsmSCFPlan)
 	if err != nil {
@@ -33,7 +36,7 @@ func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationAr
 
 // buildRequestedInfo converts the public RequestedInfo to gsm_map.RequestedInfo.
 // Shared between ATI (opCode 71) and PSI (opCode 70).
-func buildRequestedInfo(ri *RequestedInfo) gsm_map.RequestedInfo {
+func buildRequestedInfo(ri *RequestedInfo) (gsm_map.RequestedInfo, error) {
 	var wire gsm_map.RequestedInfo
 
 	nullMarker := &struct{}{}
@@ -48,7 +51,12 @@ func buildRequestedInfo(ri *RequestedInfo) gsm_map.RequestedInfo {
 		wire.CurrentLocation = nullMarker
 	}
 	if ri.RequestedDomain != nil {
+		// A sender uses only the listed domains; a receiver maps any value
+		// above ps-Domain to cs-Domain (buildRequestedInfoFromWire).
 		dt := *ri.RequestedDomain
+		if dt != CsDomain && dt != PsDomain {
+			return gsm_map.RequestedInfo{}, fmt.Errorf("%w (got %d)", ErrRequestedDomainInvalid, dt)
+		}
 		wire.RequestedDomain = &dt
 	}
 	if ri.MsClassmark {
@@ -77,7 +85,7 @@ func buildRequestedInfo(ri *RequestedInfo) gsm_map.RequestedInfo {
 		wire.LocalTimeZoneRequest = nullMarker
 	}
 
-	return wire
+	return wire, nil
 }
 
 func convertArgToATI(arg *gsm_map.AnyTimeInterrogationArg) (*AnyTimeInterrogation, error) {
@@ -139,7 +147,8 @@ func buildRequestedInfoFromWire(ri *gsm_map.RequestedInfo) RequestedInfo {
 
 	if ri.RequestedDomain != nil {
 		domain := *ri.RequestedDomain
-		// Per spec: values > 1 shall be mapped to cs-Domain
+		// 3GPP TS 29.002 V19.1.0 §17.7.1 DomainType: "reception of values
+		// > 1 shall be mapped to 'cs-Domain'".
 		if domain > PsDomain {
 			domain = CsDomain
 		}

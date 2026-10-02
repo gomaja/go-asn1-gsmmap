@@ -235,26 +235,26 @@ func convertLCSPrivacyCheckToWire(p *LCSPrivacyCheck) (*gsm_map.LCSPrivacyCheck,
 	return out, nil
 }
 
-func convertWireToLCSPrivacyCheck(w *gsm_map.LCSPrivacyCheck) (*LCSPrivacyCheck, error) {
+// convertWireToLCSPrivacyCheck preserves every PrivacyCheckRelatedAction.
+// The type is extensible, and 3GPP TS 29.002 V19.1.0 §17.7.13 makes an
+// unrecognized value an application-level error: "a
+// ProvideSubscriberLocation-Arg containing an unrecognized
+// PrivacyCheckRelatedAction shall be rejected by the receiver with a return
+// error cause of unexpected data value". Only the application can send that
+// return error, so the decoder hands it the value, like the other LCS enums
+// whose unrecognized values call for that error.
+func convertWireToLCSPrivacyCheck(w *gsm_map.LCSPrivacyCheck) *LCSPrivacyCheck {
 	if w == nil {
-		return nil, nil
-	}
-	// PrivacyCheckRelatedAction is NOT extensible (TS 29.002 MAP-LCS-DataTypes.asn:307);
-	// validate symmetrically with the encoder.
-	if int64(w.CallSessionUnrelated) < 0 || int64(w.CallSessionUnrelated) > 4 {
-		return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionUnrelated=%d: %w", w.CallSessionUnrelated, ErrPrivacyCheckRelatedActionInvalid)
+		return nil
 	}
 	out := &LCSPrivacyCheck{
 		CallSessionUnrelated: w.CallSessionUnrelated,
 	}
 	if w.CallSessionRelated != nil {
 		v := *w.CallSessionRelated
-		if int64(v) < 0 || int64(v) > 4 {
-			return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionRelated=%d: %w", v, ErrPrivacyCheckRelatedActionInvalid)
-		}
 		out.CallSessionRelated = &v
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
