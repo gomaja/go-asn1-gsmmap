@@ -182,17 +182,16 @@ func encodeIdentityDigits(digits string) ([]byte, error) {
 
 // decodeIdentityDigits is the inverse of encodeIdentityDigits.
 //
-// A nil slice is rejected with ErrIdentityMissing: it is how a mandatory
-// IMSI/IMEI that never arrived reaches the converters, and tbcd.Decode (which
-// accepts nil as an empty string) can no longer reject it. A non-nil empty
-// slice decodes to "" and is left to the callers' DecodedEmpty checks.
+// This is the single place that rejects an identity with no digits: nil,
+// empty, and anything that decodes to "" (for example all-filler octets,
+// which tbcd.Decode drops) return ErrIdentityEmpty.
 func decodeIdentityDigits(raw []byte) (string, error) {
-	if raw == nil {
-		return "", ErrIdentityMissing
-	}
 	digits, err := tbcd.Decode(raw)
 	if err != nil {
 		return "", err
+	}
+	if digits == "" {
+		return "", ErrIdentityEmpty
 	}
 	if err := checkIdentityDigits(digits); err != nil {
 		return "", err

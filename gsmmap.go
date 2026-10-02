@@ -3617,9 +3617,9 @@ var (
 	// TS 23.003 defines these identities as decimal digit strings.
 	ErrIdentityNotDigits = errors.New("identity: IMSI, IMEI and IMEISV must consist of digits 0-9 only (TS 23.003)")
 
-	// ErrIdentityMissing is returned when an IMSI, IMEI or IMEISV octet
-	// string is nil, i.e. the field was absent.
-	ErrIdentityMissing = errors.New("identity: IMSI, IMEI or IMEISV octet string is absent")
+	// ErrIdentityEmpty is returned when an IMSI, IMEI or IMEISV is absent,
+	// empty or decodes to no digits (e.g. all TBCD filler).
+	ErrIdentityEmpty = errors.New("identity: IMSI, IMEI or IMEISV holds no digits")
 
 	// ErrAddressStringEmpty is returned when an AddressString has no octets
 	// at all, not even the nature/plan octet.
@@ -3727,6 +3727,7 @@ var (
 	ErrGroupIdFillerRequired           = errors.New("voiceGroupCallData/voiceBroadcastData: when LongGroupId is present, GroupId must be empty (sent as six TBCD fillers) per TS 29.002")
 	ErrGroupIdInvalidEncodedLength     = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId must fit the 3 TBCD octets of GroupId ::= TBCD-STRING (SIZE (3))")
 	ErrLongGroupIdInvalidEncodedLength = errors.New("voiceGroupCallData/voiceBroadcastData: LongGroupId must fit the 4 TBCD octets of Long-GroupId ::= TBCD-STRING (SIZE (4))")
+	ErrGroupIdDecodedEmpty             = errors.New("voiceGroupCallData/voiceBroadcastData: wire GroupId holds no digits and no LongGroupId is present")
 	ErrLongGroupIdDecodedEmpty         = errors.New("voiceGroupCallData/voiceBroadcastData: present wire LongGroupId holds no digits; presence cannot round-trip through the string-based API")
 	ErrAdditionalInfoTooLong           = errors.New("voiceGroupCallData: AdditionalInfo exceeds the TS 43.068 maximum of 17 octets / 136 bits")
 

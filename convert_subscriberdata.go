@@ -100,7 +100,7 @@ func convertVoiceBroadcastDataToWire(v *VoiceBroadcastData) (*gsm_map.VoiceBroad
 }
 
 func convertWireToVoiceBroadcastData(w *gsm_map.VoiceBroadcastData) (*VoiceBroadcastData, error) {
-	gid, err := decodeGroupID(w.Groupid)
+	gid, err := decodeGroupID(w.Groupid, w.LongGroupId != nil)
 	if err != nil {
 		return nil, fmt.Errorf("VoiceBroadcastData.GroupId: %w", err)
 	}
@@ -184,7 +184,7 @@ func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroup
 }
 
 func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroupCallData, error) {
-	gid, err := decodeGroupID(w.GroupId)
+	gid, err := decodeGroupID(w.GroupId, w.LongGroupId != nil)
 	if err != nil {
 		return nil, fmt.Errorf("VoiceGroupCallData.GroupId: %w", err)
 	}
@@ -325,9 +325,17 @@ func encodeFixedTBCD(s string, octets int) ([]byte, error) {
 }
 
 // decodeGroupID returns the digits of a TBCD GroupId. Filler padding is
-// dropped, so six fillers (LongGroupId present) decode to "".
-func decodeGroupID(raw []byte) (string, error) {
-	return tbcd.Decode(raw)
+// dropped, so six fillers decode to "", valid only when a LongGroupId is
+// present (ErrGroupIdDecodedEmpty otherwise).
+func decodeGroupID(raw []byte, hasLong bool) (string, error) {
+	s, err := tbcd.Decode(raw)
+	if err != nil {
+		return "", err
+	}
+	if s == "" && !hasLong {
+		return "", ErrGroupIdDecodedEmpty
+	}
+	return s, nil
 }
 
 // decodeLongGroupID mirrors decodeGroupID for the 4-octet LongGroupId field.
