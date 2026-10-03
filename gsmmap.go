@@ -1119,7 +1119,7 @@ type CUGFeature struct {
 
 // CUGInfo per TS 29.002 MAP-MS-DataTypes.asn:1907.
 type CUGInfo struct {
-	CugSubscriptionList []CUGSubscription // mandatory but spec allows SIZE(0..10) on the wire
+	CugSubscriptionList []CUGSubscription // mandatory, 0..10 entries; nil is the empty list
 	CugFeatureList      []CUGFeature      // optional, 1..32 entries when present
 }
 

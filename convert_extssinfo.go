@@ -426,20 +426,18 @@ func convertWireToCUGFeature(w *gsm_map.CUGFeature) (CUGFeature, error) {
 }
 
 func convertCUGInfoToWire(c *CUGInfo) (*gsm_map.CUGInfo, error) {
-	// Per spec the SubscriptionList SIZE is 0..10 (lower bound is 0).
-
-	out := &gsm_map.CUGInfo{}
-	if c.CugSubscriptionList != nil {
-		subs := gsm_map.CUGSubscriptionList{Values: make([]gsm_map.CUGSubscription, len(c.CugSubscriptionList))}
-		for i := range c.CugSubscriptionList {
-			w, err := convertCUGSubscriptionToWire(&c.CugSubscriptionList[i])
-			if err != nil {
-				return nil, fmt.Errorf("CugSubscriptionList[%d]: %w", i, err)
-			}
-			subs.Values[i] = w
+	// cug-SubscriptionList is mandatory and CUG-SubscriptionList ::=
+	// SEQUENCE SIZE (0..maxNumOfCUG) (3GPP TS 29.002 V19.1.0 §17.7.1), so
+	// a nil list is the empty list and is always encoded.
+	subs := gsm_map.CUGSubscriptionList{Values: make([]gsm_map.CUGSubscription, len(c.CugSubscriptionList))}
+	for i := range c.CugSubscriptionList {
+		w, err := convertCUGSubscriptionToWire(&c.CugSubscriptionList[i])
+		if err != nil {
+			return nil, fmt.Errorf("CugSubscriptionList[%d]: %w", i, err)
 		}
-		out.CugSubscriptionList = &subs
+		subs.Values[i] = w
 	}
+	out := &gsm_map.CUGInfo{CugSubscriptionList: &subs}
 	if c.CugFeatureList != nil {
 		feats := gsm_map.CUGFeatureList{Values: make([]gsm_map.CUGFeature, len(c.CugFeatureList))}
 		for i := range c.CugFeatureList {
@@ -456,7 +454,8 @@ func convertCUGInfoToWire(c *CUGInfo) (*gsm_map.CUGInfo, error) {
 
 func convertWireToCUGInfo(w *gsm_map.CUGInfo) (*CUGInfo, error) {
 	out := &CUGInfo{}
-	if w.CugSubscriptionList != nil {
+	// An empty list decodes to nil, the zero value that encodes it.
+	if w.CugSubscriptionList != nil && len(w.CugSubscriptionList.Values) > 0 {
 		out.CugSubscriptionList = make([]CUGSubscription, len(w.CugSubscriptionList.Values))
 		for i := range w.CugSubscriptionList.Values {
 			d, err := convertWireToCUGSubscription(&w.CugSubscriptionList.Values[i])
