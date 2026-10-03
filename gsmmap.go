@@ -2340,6 +2340,14 @@ const (
 // MAP-LCS-DataTypes.asn:165. 5 named bits (msAvailable through periodicLDR).
 // Surfaced as a bools-only struct to match the package's BIT STRING surrogate
 // pattern (e.g., SupportedCamelPhases). Codec lives with PSL converters.
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.13: "a ProvideSubscriberLocation-Arg
+// containing other values than listed above in DeferredLocationEventType
+// shall be rejected by the receiver with a return error cause of unexpected
+// data value", so ParseProvideSubscriberLocation rejects any other set bit
+// with ErrDeferredLocationEventTypeUnrecognized. The clause names that
+// argument only: the deferredmt-lrData of a SubscriberLocationReport-Arg
+// ignores the other bits.
 type DeferredLocationEventType struct {
 	MsAvailable      bool // bit 0
 	EnteringIntoArea bool // bit 1
@@ -3806,6 +3814,13 @@ var (
 	// be rejected by the receiver with a return error cause of unexpected
 	// data value".
 	ErrLocationEstimateTypeUnrecognized = errors.New("locationType: unrecognized LocationEstimateType; the ProvideSubscriberLocation-Arg is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	// ErrDeferredLocationEventTypeUnrecognized is returned by Parse for a
+	// ProvideSubscriberLocation-Arg whose DeferredLocationEventType sets a
+	// bit other than msAvailable(0) to periodicLDR(4). 3GPP TS 29.002
+	// V19.1.0 §17.7.13: "a ProvideSubscriberLocation-Arg containing other
+	// values than listed above in DeferredLocationEventType shall be rejected
+	// by the receiver with a return error cause of unexpected data value".
+	ErrDeferredLocationEventTypeUnrecognized = errors.New("locationType: DeferredLocationEventType sets a bit other than msAvailable(0) to periodicLDR(4); the ProvideSubscriberLocation-Arg is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 gives conditional receiver handling of unknown values.
 	ErrLCSClientTypeInvalid = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (a receiver keeps an unknown value only under privacyOverride: ErrLCSClientTypeUnrecognized)")
 	// ErrLCSClientTypeUnrecognized is returned by Parse for an LCS-ClientID

@@ -58,8 +58,9 @@ func convertDeferredLocationEventTypeToBitString(d *DeferredLocationEventType) r
 	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
 }
 
-// convertBitStringToDeferredLocationEventType decodes the 5 named bits.
-// Bits past them are tolerated and ignored on decode.
+// convertBitStringToDeferredLocationEventType decodes the 5 named bits and
+// ignores the others. A ProvideSubscriberLocation-Arg setting another bit is
+// rejected first (hasUnlistedDeferredLocationEvent).
 func convertBitStringToDeferredLocationEventType(bs runtime.BitString) *DeferredLocationEventType {
 	return &DeferredLocationEventType{
 		MsAvailable:      bs.Has(0),
@@ -68,6 +69,18 @@ func convertBitStringToDeferredLocationEventType(bs runtime.BitString) *Deferred
 		BeingInsideArea:  bs.Has(3),
 		PeriodicLDR:      bs.Has(4),
 	}
+}
+
+// hasUnlistedDeferredLocationEvent reports whether bs sets a bit past
+// periodicLDR(4), the last value 3GPP TS 29.002 V19.1.0 §17.7.13
+// DeferredLocationEventType lists.
+func hasUnlistedDeferredLocationEvent(bs runtime.BitString) bool {
+	for bit := 5; bit < bs.BitLength; bit++ {
+		if bs.Has(bit) {
+			return true
+		}
+	}
+	return false
 }
 
 // SupportedGADShapes (BIT STRING SIZE 7..16, 7 named bits) per TS 29.002
