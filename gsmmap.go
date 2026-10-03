@@ -3038,13 +3038,15 @@ type ExtensibleSystemFailureParam struct {
 }
 
 // RoamingNotAllowedParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
-// Returned with errorCode 8 (roamingNotAllowed). Mandatory cause +
-// optional additional cause distinguish PLMN-roaming-not-allowed from
-// operator-determined-barring. With AdditionalRoamingNotAllowedCause present
-// the receiver discards RoamingNotAllowedCause (3GPP TS 29.002 V19.1.0
-// §17.7.7), so Parse does not check it then and passes it through.
+// Returned with errorCode 8 (roamingNotAllowed). The cause distinguishes
+// PLMN-roaming-not-allowed from operator-determined-barring.
+// RoamingNotAllowedCause is mandatory on the wire but nil when
+// AdditionalRoamingNotAllowedCause is present: "if the
+// additionalRoamingNotallowedCause is received by the MSC/VLR or SGSN then
+// the roamingNotAllowedCause shall be discarded" (3GPP TS 29.002 V19.1.0
+// §17.7.7).
 type RoamingNotAllowedParam struct {
-	RoamingNotAllowedCause           gsm_map.RoamingNotAllowedCause            // untagged, mandatory
+	RoamingNotAllowedCause           *gsm_map.RoamingNotAllowedCause           // untagged; nil when discarded
 	AdditionalRoamingNotAllowedCause *gsm_map.AdditionalRoamingNotAllowedCause // [0]
 }
 

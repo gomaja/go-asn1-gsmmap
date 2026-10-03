@@ -223,8 +223,9 @@ func TestParseRoamingNotAllowedParamRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if got.RoamingNotAllowedCause != gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed {
-		t.Errorf("RoamingNotAllowedCause: want plmnRoamingNotAllowed, got %v", got.RoamingNotAllowedCause)
+	// Discarded next to the additional cause (3GPP TS 29.002 V19.1.0 §17.7.7).
+	if got.RoamingNotAllowedCause != nil {
+		t.Errorf("RoamingNotAllowedCause: want nil, got %v", *got.RoamingNotAllowedCause)
 	}
 	if got.AdditionalRoamingNotAllowedCause == nil ||
 		*got.AdditionalRoamingNotAllowedCause != gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed {

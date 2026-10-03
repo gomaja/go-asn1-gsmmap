@@ -108,7 +108,8 @@ What that means for a consumer:
   phase 4, DefaultCallHandling 2-31 is continueCall), and elements the
   specification says to ignore are dropped instead of failing the message.
   An unknown value of an extensible ENUMERATED is kept (§17.1.4) unless the
-  specification says to reject it.
+  specification says to reject it. `RoamingNotAllowedParam.RoamingNotAllowedCause`
+  is a pointer, nil when the additional cause is present (§17.7.7).
 - The encoders accept only the values a sender may send, for example
   NoReplyConditionTime 5 to 30, and one CAMEL TDP data entry per trigger
   detection point in an O-CSI, T-CSI, SMS-CSI or GPRS-CSI.

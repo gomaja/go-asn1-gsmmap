@@ -194,30 +194,27 @@ func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) (*Ro
 	if w == nil {
 		return nil, nil
 	}
+	out := &RoamingNotAllowedParam{}
+	if w.AdditionalRoamingNotAllowedCause != nil {
+		// 3GPP TS 29.002 V19.1.0 §17.7.7: "if the
+		// additionalRoamingNotallowedCause is received by the MSC/VLR or SGSN
+		// then the roamingNotAllowedCause shall be discarded."
+		v := *w.AdditionalRoamingNotAllowedCause
+		out.AdditionalRoamingNotAllowedCause = &v
+		return out, nil
+	}
 	// RoamingNotAllowedCause is non-extensible per TS 29.002
 	// MAP-ER-DataTypes.asn with non-contiguous values: 0
 	// (plmnRoamingNotAllowed) and 3 (operatorDeterminedBarring).
 	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	// 3GPP TS 29.002 V19.1.0 §17.7.7: "if the additionalRoamingNotallowedCause
-	// is received by the MSC/VLR or SGSN then the roamingNotAllowedCause
-	// shall be discarded." With the additional cause present the cause is
-	// not checked and is passed through for the receiver to discard.
-	if w.AdditionalRoamingNotAllowedCause == nil {
-		switch w.RoamingNotAllowedCause {
-		case gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
-			gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring:
-			// valid
-		default:
-			return nil, fmt.Errorf("RoamingNotAllowedParam.RoamingNotAllowedCause=%d: must be 0 (plmnRoamingNotAllowed) or 3 (operatorDeterminedBarring) per TS 29.002 MAP-ER-DataTypes.asn", w.RoamingNotAllowedCause)
-		}
+	switch w.RoamingNotAllowedCause {
+	case gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
+		gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring:
+	default:
+		return nil, fmt.Errorf("RoamingNotAllowedParam.RoamingNotAllowedCause=%d: must be 0 (plmnRoamingNotAllowed) or 3 (operatorDeterminedBarring) per TS 29.002 MAP-ER-DataTypes.asn", w.RoamingNotAllowedCause)
 	}
-	out := &RoamingNotAllowedParam{
-		RoamingNotAllowedCause: w.RoamingNotAllowedCause,
-	}
-	if w.AdditionalRoamingNotAllowedCause != nil {
-		v := *w.AdditionalRoamingNotAllowedCause
-		out.AdditionalRoamingNotAllowedCause = &v
-	}
+	c := w.RoamingNotAllowedCause
+	out.RoamingNotAllowedCause = &c
 	return out, nil
 }
 
