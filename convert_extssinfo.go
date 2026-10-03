@@ -139,7 +139,7 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 		out.BasicService = bs
 	}
 	if f.ForwardedToNumber != "" {
-		enc, err := encodeAddressField(f.ForwardedToNumber, f.ForwardedToNature, f.ForwardedToPlan)
+		enc, err := encodeAddressField(f.ForwardedToNumber, f.ForwardedToNumberNature, f.ForwardedToNumberPlan)
 		if err != nil {
 			return gsm_map.ExtForwFeature{}, fmt.Errorf("ForwardedToNumber: %w", err)
 		}
@@ -167,7 +167,7 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 		out.NoReplyConditionTime = &v
 	}
 	if f.LongForwardedToNumber != "" {
-		enc, err := encodeAddressField(f.LongForwardedToNumber, f.ForwardedToNature, f.ForwardedToPlan)
+		enc, err := encodeAddressField(f.LongForwardedToNumber, f.LongForwardedToNumberNature, f.LongForwardedToNumberPlan)
 		if err != nil {
 			return gsm_map.ExtForwFeature{}, fmt.Errorf("LongForwardedToNumber: %w", err)
 		}
@@ -192,8 +192,8 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 			return ExtForwFeature{}, fmt.Errorf("ForwardedToNumber: %w", err)
 		}
 		out.ForwardedToNumber = digits
-		out.ForwardedToNature = nat
-		out.ForwardedToPlan = plan
+		out.ForwardedToNumberNature = nat
+		out.ForwardedToNumberPlan = plan
 	}
 	if w.ForwardedToSubaddress != nil {
 		out.ForwardedToSubaddress = HexBytes(*w.ForwardedToSubaddress)
@@ -217,23 +217,15 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		out.NoReplyConditionTime = &v
 	}
 	if w.LongForwardedToNumber != nil {
-		// FTN-AddressString carries its own ext+ton+npi octet (TS 29.002).
-		// The public type shares ForwardedToNature / ForwardedToPlan
-		// between the short and long numbers, so the encoder reuses
-		// whichever pair is populated. To preserve round-trip fidelity
-		// when only LongForwardedToNumber is present, capture its
-		// decoded nat/plan into the shared fields. When ForwardedToNumber
-		// is also present, its values were already written above and
-		// take precedence (consistent with the encoder's behavior).
+		// FTN-AddressString carries its own nature/plan octet
+		// (3GPP TS 29.002 V19.1.0 §17.7.8).
 		digits, nat, plan, err := decodeAddressWithDigits(*w.LongForwardedToNumber, ErrExtForwFeatureLongForwardedToNumberDecodedEmpty)
 		if err != nil {
 			return ExtForwFeature{}, fmt.Errorf("LongForwardedToNumber: %w", err)
 		}
 		out.LongForwardedToNumber = digits
-		if w.ForwardedToNumber == nil {
-			out.ForwardedToNature = nat
-			out.ForwardedToPlan = plan
-		}
+		out.LongForwardedToNumberNature = nat
+		out.LongForwardedToNumberPlan = plan
 	}
 	return out, nil
 }

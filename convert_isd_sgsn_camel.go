@@ -33,7 +33,7 @@ func convertGPRSCamelTDPDataToWire(d *GPRSCamelTDPData) (*gsm_map.GPRSCamelTDPDa
 		return nil, fmt.Errorf("%w (got %d)", ErrGPRSTriggerDetectionPointInvalid, d.GprsTriggerDetectionPoint)
 	}
 	if d.GsmSCFAddress == "" {
-		return nil, fmt.Errorf("GPRSCamelTDPData.GsmSCFAddress: mandatory field must not be empty on encode")
+		return nil, ErrCamelMissingGsmSCFAddress
 	}
 
 	addr, err := encodeAddressField(d.GsmSCFAddress, d.GsmSCFAddressNature, d.GsmSCFAddressPlan)
@@ -69,7 +69,7 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 		return nil, fmt.Errorf("decoding GPRSCamelTDPData.GsmSCFAddress: %w", err)
 	}
 	if addr == "" {
-		return nil, fmt.Errorf("decoding GPRSCamelTDPData.GsmSCFAddress: empty digits in mandatory ISDN-AddressString")
+		return nil, ErrCamelMissingGsmSCFAddress
 	}
 
 	sk := w.ServiceKey
@@ -198,7 +198,7 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 		mt.Values[i] = gsm_map.MMCode(c)
 	}
 	if m.GsmSCFAddress == "" {
-		return nil, fmt.Errorf("MGCSI.GsmSCFAddress: mandatory field must not be empty on encode")
+		return nil, ErrCamelMissingGsmSCFAddress
 	}
 
 	addr, err := encodeAddressField(m.GsmSCFAddress, m.GsmSCFAddressNature, m.GsmSCFAddressPlan)
@@ -236,7 +236,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 		return nil, fmt.Errorf("decoding MGCSI.GsmSCFAddress: %w", err)
 	}
 	if addr == "" {
-		return nil, fmt.Errorf("decoding MGCSI.GsmSCFAddress: empty digits in mandatory ISDN-AddressString")
+		return nil, ErrCamelMissingGsmSCFAddress
 	}
 
 	sk := w.ServiceKey

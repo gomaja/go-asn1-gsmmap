@@ -224,7 +224,7 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 		{
 			name: "ExtSupportedFeatures/bitSet",
 			encode: func() (runtime.BitString, any) {
-				in := &ExtSupportedFeatures{true}
+				in := &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true}
 				return convertExtSupportedFeaturesToBitString(in), in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToExtSupportedFeatures(bs) },

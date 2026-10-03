@@ -71,6 +71,34 @@ What that means for a consumer:
 
 ### Migrating from v1.0.x
 
+- `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`; `CSGIdBitLength` and `ErrCSGIdInvalidSize` are removed.
+- `ForwardingData.LongForwardedToNumber` changes from `HexBytes` to digits plus `LongForwardedToNumberNature/Plan`.
+- `ExtForwFeature.ForwardedToNature/Plan` → `ForwardedToNumberNature/Plan`; its long FTN gains its own `LongForwardedToNumberNature/Plan`.
+- `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` change from raw octets plus bit length fields to pointers to the named feature structs.
+- `SupportedFeatures` gains `BitLength` to preserve valid trailing zero bits beyond the shortest encoding.
+- `ExtSupportedFeatures` gains `UnknownBits` and `BitLength` to preserve unnamed bits and trailing zero bits through Parse/Marshal.
+- `ProvideSubscriberLocationRes.AgeOfLocationEstimate` changes from `*int64` to `*int`.
+- `SubscriberLocationReportArg.AgeOfLocationEstimate` changes from `*int64` to `*int`.
+- `InsertSubscriberDataArg.IstAlertTimer` changes from `*int64` to `*int`.
+- `AnyTimeInterrogation.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
+- `OBcsmCamelTDPData.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
+- `TBcsmCamelTDPData.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
+- `DPAnalysedInfoCriterium.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
+- `SSCSI.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
+- `MCSI.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
+- `SMSCAMELTDPData.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
+- `SriSm.SCANature/Plan` → `ServiceCentreAddressNature/Plan`.
+- `SmRpDa.SCADANature/Plan` → `ServiceCentreAddressDANature/Plan`.
+- `SmRpOa.SCAOANature/Plan` → `ServiceCentreAddressOANature/Plan`.
+- `UpdateLocation.MSCNumber/VLRNumber` → `MscNumber/VlrNumber`; `MSCNature/Plan` and `VLRNature/Plan` → matching `MscNumberNature/Plan` and `VlrNumberNature/Plan`.
+- `UpdateGprsLocation.SGSNNumber` → `SgsnNumber`; `SGSNNature/Plan` → `SgsnNumberNature/Plan`.
+- `Sri.GmscNature/Plan` → `GmscOrGsmSCFAddressNature/Plan`.
+- `SriResp.VmscNature/Plan` → `VmscAddressNature/Plan`.
+- `AlertServiceCentre.SCANature/Plan` → `ServiceCentreAddressNature/Plan`.
+- `ReportSMDeliveryStatus.SCANature/Plan` → `ServiceCentreAddressNature/Plan`.
+- `PurgeMS.VLRNumber/SGSNNumber` → `VlrNumber/SgsnNumber`; the corresponding nature/plan fields follow those names.
+- Mandatory digitless addresses now return the same sentinel on `Marshal` and `Parse`; SAI uses `ErrIdentityEmpty`, and GroupId uses `ErrGroupIdMissingWithoutLong`.
+- `MaxResetIdOctets` is removed; Reset-Id remains constrained to 1..4 octets.
 - `MtFsm` and `MoFsm` carry the SM-RP-DA and SM-RP-OA CHOICEs only, as
   `SmRpDa SmRpDa` and `SmRpOa SmRpOa`. The shorthand fields (`MtFsm.IMSI`,
   `MtFsm.ServiceCentreAddressOA`, `MoFsm.ServiceCentreAddressDA`,

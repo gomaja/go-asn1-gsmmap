@@ -180,8 +180,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.LcsInformation = w
 	}
 	if a.IstAlertTimer != nil {
-		v := *a.IstAlertTimer
-		out.IstAlertTimer = &v
+		out.IstAlertTimer = intPtrTo64(a.IstAlertTimer)
 	}
 	if len(a.SuperChargerSupportedInHLR) > 0 {
 		v := gsm_map.AgeIndicator(a.SuperChargerSupportedInHLR)
@@ -444,8 +443,11 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.LcsInformation = v
 	}
 	if w.IstAlertTimer != nil {
-		v := *w.IstAlertTimer
-		out.IstAlertTimer = &v
+		v, err := int64PtrTo(w.IstAlertTimer)
+		if err != nil {
+			return nil, fmt.Errorf("IstAlertTimer: %w", err)
+		}
+		out.IstAlertTimer = v
 	}
 	if w.SuperChargerSupportedInHLR != nil {
 		out.SuperChargerSupportedInHLR = HexBytes(*w.SuperChargerSupportedInHLR)

@@ -38,8 +38,8 @@ func semSMSTDPData(tdp SMSTriggerDetectionPoint) SMSCAMELTDPData {
 		SmsTriggerDetectionPoint: tdp,
 		ServiceKey:               1,
 		GsmSCFAddress:            "31611111111",
-		GsmSCFNature:             address.NatureInternational,
-		GsmSCFPlan:               address.PlanISDN,
+		GsmSCFAddressNature:      address.NatureInternational,
+		GsmSCFAddressPlan:        address.PlanISDN,
 		DefaultSMSHandling:       DefaultSMSHandlingContinueTransaction,
 	}
 }

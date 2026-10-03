@@ -95,8 +95,8 @@ func smsTDPData(tdp SMSTriggerDetectionPoint, serviceKey int64) SMSCAMELTDPData 
 		SmsTriggerDetectionPoint: tdp,
 		ServiceKey:               serviceKey,
 		GsmSCFAddress:            testGsmSCF,
-		GsmSCFNature:             address.NatureInternational,
-		GsmSCFPlan:               address.PlanISDN,
+		GsmSCFAddressNature:      address.NatureInternational,
+		GsmSCFAddressPlan:        address.PlanISDN,
 		DefaultSMSHandling:       DefaultSMSHandlingContinueTransaction,
 	}
 }

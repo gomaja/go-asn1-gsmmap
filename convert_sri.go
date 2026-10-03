@@ -41,7 +41,7 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding MSISDN: %w", err)
 	}
-	gmsc, err := encodeAddressField(s.GmscOrGsmSCFAddress, s.GmscNature, s.GmscPlan)
+	gmsc, err := encodeAddressField(s.GmscOrGsmSCFAddress, s.GmscOrGsmSCFAddressNature, s.GmscOrGsmSCFAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding GmscOrGsmSCFAddress: %w", err)
 	}
@@ -214,13 +214,13 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	}
 
 	s := &Sri{
-		MSISDN:              msisdn,
-		MSISDNNature:        msisdnNature,
-		MSISDNPlan:          msisdnPlan,
-		InterrogationType:   InterrogationType(it),
-		GmscOrGsmSCFAddress: gmsc,
-		GmscNature:          gmscNature,
-		GmscPlan:            gmscPlan,
+		MSISDN:                    msisdn,
+		MSISDNNature:              msisdnNature,
+		MSISDNPlan:                msisdnPlan,
+		InterrogationType:         InterrogationType(it),
+		GmscOrGsmSCFAddress:       gmsc,
+		GmscOrGsmSCFAddressNature: gmscNature,
+		GmscOrGsmSCFAddressPlan:   gmscPlan,
 	}
 
 	// CugCheckInfo
@@ -431,7 +431,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// VmscAddress
 	if s.VmscAddress != "" {
-		enc, err := encodeAddressField(s.VmscAddress, s.VmscNature, s.VmscPlan)
+		enc, err := encodeAddressField(s.VmscAddress, s.VmscAddressNature, s.VmscAddressPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding VmscAddress: %w", err)
 		}
@@ -609,8 +609,8 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 			return nil, fmt.Errorf("decoding VmscAddress: %w", err)
 		}
 		out.VmscAddress = digits
-		out.VmscNature = nat
-		out.VmscPlan = pl
+		out.VmscAddressNature = nat
+		out.VmscAddressPlan = pl
 	}
 
 	// NaeaPreferredCI

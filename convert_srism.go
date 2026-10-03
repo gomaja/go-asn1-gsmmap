@@ -31,7 +31,7 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 		return nil, fmt.Errorf("encoding MSISDN: %w", err)
 	}
 
-	sca, err := encodeAddressField(s.ServiceCentreAddress, s.SCANature, s.SCAPlan)
+	sca, err := encodeAddressField(s.ServiceCentreAddress, s.ServiceCentreAddressNature, s.ServiceCentreAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding ServiceCentreAddress: %w", err)
 	}
@@ -102,13 +102,13 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 	}
 
 	s := &SriSm{
-		MSISDN:               msisdn,
-		MSISDNNature:         msisdnNature,
-		MSISDNPlan:           msisdnPlan,
-		SmRpPri:              arg.SmRPPRI,
-		ServiceCentreAddress: sca,
-		SCANature:            scaNature,
-		SCAPlan:              scaPlan,
+		MSISDN:                     msisdn,
+		MSISDNNature:               msisdnNature,
+		MSISDNPlan:                 msisdnPlan,
+		SmRpPri:                    arg.SmRPPRI,
+		ServiceCentreAddress:       sca,
+		ServiceCentreAddressNature: scaNature,
+		ServiceCentreAddressPlan:   scaPlan,
 	}
 
 	// Optional fields (post-extension marker).

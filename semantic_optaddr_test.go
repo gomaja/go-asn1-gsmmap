@@ -76,7 +76,7 @@ func semOptionalAddressCases() []semAddressCase {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{MnpInfoRes: &gsm_map.MNPInfoRes{Msisdn: ptr(a)}}}
 		}, semParse(ParseAnyTimeInterrogationRes), ErrMnpInfoResMSISDNDecodedEmpty},
 		{"UpdateGprsLocation mmeNumberforMTSMS", func(t *testing.T, a []byte) semWire {
-			w, err := convertUpdateGprsLocationToArg(&UpdateGprsLocation{IMSI: "001010123456789", SGSNNumber: "31612345678", SGSNAddress: "192.168.31.1"})
+			w, err := convertUpdateGprsLocationToArg(&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "31612345678", SGSNAddress: "192.168.31.1"})
 			if err != nil {
 				t.Fatalf("convertUpdateGprsLocationToArg: %v", err)
 			}
@@ -111,6 +111,11 @@ func semOptionalAddressCases() []semAddressCase {
 			w.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].LongForwardedToNumber = &v
 			return w
 		}, semParse(ParseInsertSubscriberData), ErrExtForwFeatureLongForwardedToNumberDecodedEmpty},
+		{"SendRoutingInfoRes forwardingData longForwardedToNumber", func(_ *testing.T, a []byte) semWire {
+			v := a
+			eri := gsm_map.NewExtendedRoutingInfoRoutingInfo(gsm_map.NewRoutingInfoForwardingData(gsm_map.ForwardingData{LongForwardedToNumber: &v}))
+			return &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &eri}
+		}, semParse(ParseSriResp), ErrForwardingDataLongForwardedToNumberDecodedEmpty},
 		{"ProvideSubscriberLocation lcsClientExternalID externalAddress", func(t *testing.T, a []byte) semWire {
 			arg := semPSLArg()
 			arg.LcsClientID = &LCSClientID{LcsClientType: LCSClientTypeEmergencyServices, LcsClientExternalID: &LCSClientExternalID{}}

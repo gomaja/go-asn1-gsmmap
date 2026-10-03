@@ -13,17 +13,17 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if u.IMSI == "" {
 		return nil, fmt.Errorf("UpdateGprsLocation: IMSI is mandatory and must be non-empty")
 	}
-	if u.SGSNNumber == "" {
-		return nil, fmt.Errorf("UpdateGprsLocation: SGSNNumber is mandatory and must be non-empty")
+	if u.SgsnNumber == "" {
+		return nil, ErrUpdateGprsLocationMissingSGSNNumber
 	}
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, u.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
 
-	sgsnNumber, err := encodeAddressField(u.SGSNNumber, u.SGSNNature, u.SGSNPlan)
+	sgsnNumber, err := encodeAddressField(u.SgsnNumber, u.SgsnNumberNature, u.SgsnNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding SGSNNumber: %w", err)
+		return nil, fmt.Errorf("encoding SgsnNumber: %w", err)
 	}
 
 	sgsnAddr, err := gsn.Build(u.SGSNAddress)
@@ -171,10 +171,10 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 
 	sgsnNum, sgsnNature, sgsnPlan, err := decodeAddressField(arg.SgsnNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding SGSNNumber: %w", err)
+		return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 	}
 	if sgsnNum == "" {
-		return nil, fmt.Errorf("UpdateGprsLocation: SGSNNumber decoded to empty string")
+		return nil, ErrUpdateGprsLocationMissingSGSNNumber
 	}
 
 	sgsnAddr, err := gsn.Parse(arg.SgsnAddress)
@@ -183,11 +183,11 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	}
 
 	u := &UpdateGprsLocation{
-		IMSI:        imsi,
-		SGSNNumber:  sgsnNum,
-		SGSNNature:  sgsnNature,
-		SGSNPlan:    sgsnPlan,
-		SGSNAddress: sgsnAddr,
+		IMSI:             imsi,
+		SgsnNumber:       sgsnNum,
+		SgsnNumberNature: sgsnNature,
+		SgsnNumberPlan:   sgsnPlan,
+		SGSNAddress:      sgsnAddr,
 	}
 
 	if arg.SgsnCapability != nil {
@@ -343,11 +343,8 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 		out.SupportedRATTypesIndicator = &bs
 	}
 
-	if s.SupportedFeaturesBits != 0 || len(s.SupportedFeatures) > 0 {
-		bs, err := bitStringToWire("SGSNCapability.SupportedFeatures", s.SupportedFeatures, s.SupportedFeaturesBits)
-		if err != nil {
-			return nil, err
-		}
+	if s.SupportedFeatures != nil {
+		bs := convertSupportedFeaturesToBitString(s.SupportedFeatures)
 		out.SupportedFeatures = &bs
 	}
 
@@ -363,11 +360,8 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	out.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions = boolToNullPtr(s.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions)
 	out.ResetIdsSupported = boolToNullPtr(s.ResetIdsSupported)
 
-	if s.ExtSupportedFeaturesBits != 0 || len(s.ExtSupportedFeatures) > 0 {
-		bs, err := bitStringToWire("SGSNCapability.ExtSupportedFeatures", s.ExtSupportedFeatures, s.ExtSupportedFeaturesBits)
-		if err != nil {
-			return nil, err
-		}
+	if s.ExtSupportedFeatures != nil {
+		bs := convertExtSupportedFeaturesToBitString(s.ExtSupportedFeatures)
 		out.ExtSupportedFeatures = &bs
 	}
 
@@ -408,8 +402,7 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 	}
 
 	if w.SupportedFeatures != nil {
-		out.SupportedFeatures = HexBytes(append([]byte(nil), w.SupportedFeatures.Bytes...))
-		out.SupportedFeaturesBits = w.SupportedFeatures.BitLength
+		out.SupportedFeatures = convertBitStringToSupportedFeatures(*w.SupportedFeatures)
 	}
 
 	out.TAdsDataRetrieval = nullPtrToBool(w.TAdsDataRetrieval)
@@ -425,8 +418,7 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 	out.ResetIdsSupported = nullPtrToBool(w.ResetIdsSupported)
 
 	if w.ExtSupportedFeatures != nil {
-		out.ExtSupportedFeatures = HexBytes(append([]byte(nil), w.ExtSupportedFeatures.Bytes...))
-		out.ExtSupportedFeaturesBits = w.ExtSupportedFeatures.BitLength
+		out.ExtSupportedFeatures = convertBitStringToExtSupportedFeatures(*w.ExtSupportedFeatures)
 	}
 
 	return out, nil
@@ -584,7 +576,7 @@ func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error
 
 func convertUpdateGprsLocationResToRes(u *UpdateGprsLocationRes) (*gsm_map.UpdateGprsLocationRes, error) {
 	if u.HLRNumber == "" {
-		return nil, fmt.Errorf("UpdateGprsLocationRes: HLRNumber is mandatory and must be non-empty")
+		return nil, ErrUpdateGprsLocationResMissingHLRNumber
 	}
 	hlr, err := encodeAddressField(u.HLRNumber, u.HLRNumberNature, u.HLRNumberPlan)
 	if err != nil {
@@ -605,7 +597,7 @@ func convertResToUpdateGprsLocationRes(res *gsm_map.UpdateGprsLocationRes) (*Upd
 		return nil, fmt.Errorf("decoding HLRNumber: %w", err)
 	}
 	if hlr == "" {
-		return nil, fmt.Errorf("UpdateGprsLocationRes: HLRNumber is mandatory and must be non-empty")
+		return nil, ErrUpdateGprsLocationResMissingHLRNumber
 	}
 
 	return &UpdateGprsLocationRes{

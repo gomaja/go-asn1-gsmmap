@@ -73,6 +73,68 @@ func semAddressCases() []semAddressCase {
 		return w
 	}
 	return []semAddressCase{
+		{"ReportSMDeliveryStatus msisdn", func(t *testing.T, a []byte) semWire {
+			w, err := convertReportSMDeliveryStatusToArg(minimalReportSMDeliveryStatus())
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.Msisdn = a
+			return w
+		}, semParse(ParseReportSMDeliveryStatus), ErrReportSMDeliveryStatusMSISDNEmpty},
+		{"ReportSMDeliveryStatus serviceCentreAddress", func(t *testing.T, a []byte) semWire {
+			w, err := convertReportSMDeliveryStatusToArg(minimalReportSMDeliveryStatus())
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.ServiceCentreAddress = a
+			return w
+		}, semParse(ParseReportSMDeliveryStatus), ErrReportSMDeliveryStatusSCAEmpty},
+		{"ProvideSubscriberLocation mlc-Number", func(t *testing.T, a []byte) semWire {
+			w, err := convertProvideSubscriberLocationArgToWire(semPSLArg())
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.MlcNumber = a
+			return w
+		}, semParse(ParseProvideSubscriberLocation), ErrPSLArgMlcNumberEmpty},
+		{"SendRoutingInfoForLCS mlc-Number", func(_ *testing.T, a []byte) semWire {
+			return &gsm_map.RoutingInfoForLCSArg{MlcNumber: a, TargetMS: gsm_map.NewSubscriberIdentityImsi(semAddrIMSI)}
+		}, semParse(ParseSriLcs), ErrSriLcsMlcNumberEmpty},
+		{"SubscriberLocationReport networkNode-Number", func(t *testing.T, a []byte) semWire {
+			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.LcsLocationInfo.NetworkNodeNumber = a
+			return w
+		}, semParse(ParseSubscriberLocationReport), ErrLCSLocationInfoNetworkNodeEmpty},
+		{"UpdateGprsLocation sgsn-Number", func(t *testing.T, a []byte) semWire {
+			w, err := convertUpdateGprsLocationToArg(&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "12", SGSNAddress: "192.0.2.1"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.SgsnNumber = a
+			return w
+		}, semParse(ParseUpdateGprsLocation), ErrUpdateGprsLocationMissingSGSNNumber},
+		{"UpdateGprsLocationRes hlr-Number", func(_ *testing.T, a []byte) semWire {
+			return &gsm_map.UpdateGprsLocationRes{HlrNumber: a}
+		}, semParse(ParseUpdateGprsLocationRes), ErrUpdateGprsLocationResMissingHLRNumber},
+		{"GPRS-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
+			w, err := convertInsertSubscriberDataArgToWire(&InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{GprsCSI: &GPRSCSI{GprsCamelTDPDataList: GPRSCamelTDPDataList{makeGPRSCamelTDPData()}}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList.Values[0].GsmSCFAddress = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		{"MG-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
+			w, err := convertInsertSubscriberDataArgToWire(&InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{MgCsi: makeMGCSI()}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			w.SgsnCAMELSubscriptionInfo.MgCsi.GsmSCFAddress = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
 		{"AlertServiceCentre msisdn", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.AlertServiceCentreArg{Msisdn: a, ServiceCentreAddress: semTwoDigits}
 		}, semParse(ParseAlertServiceCentre), ErrAscMissingMSISDN},
@@ -186,6 +248,19 @@ func TestMarshalMissingMandatoryAddress(t *testing.T) {
 			SubscriberIdentity: SubscriberIdentity{IMSI: "001010123456789"},
 			RequestedInfo:      RequestedInfo{SubscriberState: true},
 		}, ErrAtiMissingGsmSCFAddress},
+		{"ReportSMDeliveryStatus MSISDN", &ReportSMDeliveryStatus{ServiceCentreAddress: "12"}, ErrReportSMDeliveryStatusMSISDNEmpty},
+		{"ReportSMDeliveryStatus SCA", &ReportSMDeliveryStatus{MSISDN: "12"}, ErrReportSMDeliveryStatusSCAEmpty},
+		{"ProvideSubscriberLocation MlcNumber", &ProvideSubscriberLocationArg{}, ErrPSLArgMlcNumberEmpty},
+		{"SendRoutingInfoForLCS MlcNumber", &SriLcs{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}}, ErrSriLcsMlcNumberEmpty},
+		{"SubscriberLocationReport NetworkNodeNumber", func() *SubscriberLocationReportArg {
+			v := minimalSLRArg()
+			v.LcsLocationInfo.NetworkNodeNumber = ""
+			return v
+		}(), ErrLCSLocationInfoNetworkNodeEmpty},
+		{"UpdateGprsLocation SgsnNumber", &UpdateGprsLocation{IMSI: "001010123456789", SGSNAddress: "192.0.2.1"}, ErrUpdateGprsLocationMissingSGSNNumber},
+		{"UpdateGprsLocationRes HLRNumber", &UpdateGprsLocationRes{}, ErrUpdateGprsLocationResMissingHLRNumber},
+		{"GPRS-CSI gsmSCF-Address", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{GprsCSI: &GPRSCSI{GprsCamelTDPDataList: GPRSCamelTDPDataList{{GprsTriggerDetectionPoint: GPRSTDPAttach}}}}}, ErrCamelMissingGsmSCFAddress},
+		{"MG-CSI gsmSCF-Address", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{MgCsi: &MGCSI{MobilityTriggers: []HexBytes{{1}}}}}, ErrCamelMissingGsmSCFAddress},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := tc.msg.Marshal(); !errors.Is(err, tc.want) {

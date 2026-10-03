@@ -307,8 +307,8 @@ func TestProvideSubscriberLocationArgMlcNumberDecodedEmptyRejected(t *testing.T)
 		MlcNumber:    emptyAddr,
 	}
 	_, err := convertWireToProvideSubscriberLocationArg(w)
-	if !errors.Is(err, ErrPSLArgMlcNumberDecodedEmpty) {
-		t.Errorf("MlcNumber empty digits: want ErrPSLArgMlcNumberDecodedEmpty, got %v", err)
+	if !errors.Is(err, ErrPSLArgMlcNumberEmpty) {
+		t.Errorf("MlcNumber empty digits: want ErrPSLArgMlcNumberEmpty, got %v", err)
 	}
 }
 

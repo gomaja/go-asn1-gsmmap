@@ -157,10 +157,6 @@ func convertWireToEpcAV(w *gsm_map.EPCAV) EpcAV {
 // convertSendAuthenticationInfoToArg converts the public SendAuthenticationInfo
 // into the wire-level gsm_map.SendAuthenticationInfoArg.
 func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.SendAuthenticationInfoArg, error) {
-	if s.IMSI == "" {
-		return nil, ErrSaiMissingIMSI
-	}
-
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)

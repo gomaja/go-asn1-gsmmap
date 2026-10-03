@@ -98,9 +98,9 @@ func TestExtForwInfoRoundTrip(t *testing.T) {
 						BasicService: &ExtBasicServiceCode{
 							ExtTeleservice: HexBytes{0x11},
 						},
-						SsStatus:          HexBytes{0x05},
-						ForwardedToNumber: "31611111111",
-						ForwardedToNature: 16, ForwardedToPlan: 1,
+						SsStatus:                HexBytes{0x05},
+						ForwardedToNumber:       "31611111111",
+						ForwardedToNumberNature: 16, ForwardedToNumberPlan: 1,
 						ForwardedToSubaddress: HexBytes{0xa0, 0x01, 0x02},
 						ForwardingOptions:     HexBytes{0xc0},
 						NoReplyConditionTime:  intPtrV(20),
@@ -188,18 +188,16 @@ func TestExtForwInfoValidation(t *testing.T) {
 	})
 }
 
-// LongForwardedToNumber must round-trip its TON/NPI when it's the only
-// number present. Encoder uses the shared ForwardedToNature/Plan; the
-// decoder must populate them from the long number's wire octets when
-// ForwardedToNumber is absent.
+// LongForwardedToNumber carries its own TON/NPI, including when the short
+// number is absent (3GPP TS 29.002 V19.1.0 §17.7.8).
 func TestExtForwFeatureLongForwardedToNumberRoundTripPreservesNaturePlan(t *testing.T) {
 	in := &ExtForwInfo{
 		SsCode: 0x29,
 		ForwardingFeatureList: []ExtForwFeature{{
-			SsStatus:              HexBytes{0x05},
-			LongForwardedToNumber: "31611111111",
-			ForwardedToNature:     0x20, // National — non-default to detect loss
-			ForwardedToPlan:       9,    // Private — non-default to detect loss
+			SsStatus:                    HexBytes{0x05},
+			LongForwardedToNumber:       "31611111111",
+			LongForwardedToNumberNature: 0x20,
+			LongForwardedToNumberPlan:   9,
 		}},
 	}
 	wire, err := convertExtForwInfoToWire(in)
@@ -310,11 +308,11 @@ func noRepCondTimeISD(v int) *InsertSubscriberDataArg {
 	return &InsertSubscriberDataArg{ProvisionedSS: []ExtSSInfo{{ForwardingInfo: &ExtForwInfo{
 		SsCode: 0x2A,
 		ForwardingFeatureList: []ExtForwFeature{{
-			SsStatus:             HexBytes{0x05},
-			ForwardedToNumber:    "31611111111",
-			ForwardedToNature:    16,
-			ForwardedToPlan:      1,
-			NoReplyConditionTime: &v,
+			SsStatus:                HexBytes{0x05},
+			ForwardedToNumber:       "31611111111",
+			ForwardedToNumberNature: 16,
+			ForwardedToNumberPlan:   1,
+			NoReplyConditionTime:    &v,
 		}},
 	}}}}
 }

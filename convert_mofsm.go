@@ -61,7 +61,7 @@ func convertSmRpDaToWireWithErrors(
 
 		return gsm_map.NewSMRPDALmsi(gsm_map.LMSI(da.LMSI)), nil
 	case da.ServiceCentreAddressDA != "":
-		scaDA, err := encodeAddressField(da.ServiceCentreAddressDA, da.SCADANature, da.SCADAPlan)
+		scaDA, err := encodeAddressField(da.ServiceCentreAddressDA, da.ServiceCentreAddressDANature, da.ServiceCentreAddressDAPlan)
 		if err != nil {
 			return gsm_map.SMRPDA{}, fmt.Errorf("encoding SmRpDa ServiceCentreAddressDA: %w", err)
 		}
@@ -101,8 +101,8 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 			return nil, ErrSmRpDaServiceCentreAddressDecodedEmpty
 		}
 		da.ServiceCentreAddressDA = sca
-		da.SCADANature = nature
-		da.SCADAPlan = plan
+		da.ServiceCentreAddressDANature = nature
+		da.ServiceCentreAddressDAPlan = plan
 	case gsm_map.SMRPDAChoiceNoSMRPDA:
 		da.NoSmRpDa = true
 	default:
@@ -157,7 +157,7 @@ func convertSmRpOaToWireWithErrors(
 		}
 		return gsm_map.NewSMRPOAMsisdn(msisdn), nil
 	case oa.ServiceCentreAddressOA != "":
-		scaOA, err := encodeAddressField(oa.ServiceCentreAddressOA, oa.SCAOANature, oa.SCAOAPlan)
+		scaOA, err := encodeAddressField(oa.ServiceCentreAddressOA, oa.ServiceCentreAddressOANature, oa.ServiceCentreAddressOAPlan)
 		if err != nil {
 			return gsm_map.SMRPOA{}, fmt.Errorf("encoding SmRpOa ServiceCentreAddressOA: %w", err)
 		}
@@ -196,8 +196,8 @@ func convertWireToSmRpOa(w *gsm_map.SMRPOA) (*SmRpOa, error) {
 			return nil, ErrSmRpOaServiceCentreAddressDecodedEmpty
 		}
 		oa.ServiceCentreAddressOA = sca
-		oa.SCAOANature = nature
-		oa.SCAOAPlan = plan
+		oa.ServiceCentreAddressOANature = nature
+		oa.ServiceCentreAddressOAPlan = plan
 	case gsm_map.SMRPOAChoiceNoSMRPOA:
 		oa.NoSmRpOa = true
 	default:

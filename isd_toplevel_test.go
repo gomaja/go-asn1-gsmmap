@@ -153,8 +153,8 @@ func TestInsertSubscriberDataArg_EpsAndCsgRoundTrip(t *testing.T) {
 			},
 		},
 		CsgSubscriptionDataList: CSGSubscriptionDataList{{
-			CsgId:          HexBytes{0x12, 0x34, 0x56, 0x60},
-			CsgIdBitLength: 27,
+			CsgID:     HexBytes{0x12, 0x34, 0x56, 0x60},
+			CsgIDBits: 27,
 		}},
 	}
 	encoded, err := in.Marshal()

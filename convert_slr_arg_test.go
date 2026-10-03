@@ -68,7 +68,7 @@ func TestSLRArgRoundTrip(t *testing.T) {
 			IMSI:                  "204080000000001",
 			IMEI:                  "490154203237510",
 			LocationEstimate:      HexBytes{0x04, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60},
-			AgeOfLocationEstimate: &age,
+			AgeOfLocationEstimate: func() *int { v := int(age); return &v }(),
 		}},
 		{"CGI cell id", &SubscriberLocationReportArg{
 			LcsEvent:        LCSEventMoLr,
