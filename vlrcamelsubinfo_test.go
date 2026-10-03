@@ -41,7 +41,7 @@ func TestSSCSIRoundTrip(t *testing.T) {
 		{
 			name: "multipleEvents",
 			in: &SSCSI{
-				SsEventList:   []SsCode{0x31, 0x51, 0x24, 0x44}, // ect, multiPTY, cd, ccbs
+				SsEventList:   []SsCode{SsCodeECT, SsCodeMultiPTY, SsCodeCD}, // no ccbs to the VLR
 				GsmSCFAddress: "31622222222",
 				GsmSCFNature:  16, GsmSCFPlan: 1,
 				NotificationToCSE: true,
@@ -75,6 +75,9 @@ func TestSSCSIValidation(t *testing.T) {
 	})
 	t.Run("tooManyEvents", func(t *testing.T) {
 		big := make([]SsCode, 11)
+		for i := range big {
+			big[i] = SsCodeECT
+		}
 		_, err := strictWire(convertSSCSIToWire(&SSCSI{SsEventList: big, GsmSCFAddress: "1"}))
 		if !matchesConstraint(err, "ss-EventList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)

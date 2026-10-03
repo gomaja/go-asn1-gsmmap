@@ -968,6 +968,17 @@ type GmscCamelSubscriptionInfo struct {
 // SSCSI (SS-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2254.
 // Supplementary Service CAMEL Subscription Info.
 //
+// 3GPP TS 29.002 V19.1.0 §17.7.1 SS-EventList defines actions for
+// ectSS-Code, multiPTYSS-Code, cdSS-Code and ccbsSS-Code: "all other SS
+// codes shall be ignored". "When SS-CSI is sent to the VLR, it shall not
+// contain a marking for ccbs. If the VLR receives SS-CSI containing a
+// marking for ccbs, the VLR shall discard the ccbs marking in SS-CSI." The
+// package carries SS-CSI only in the VlrCamelSubscriptionInfo of
+// InsertSubscriberData, sent to the VLR: Marshal sends SsCodeECT,
+// SsCodeMultiPTY and SsCodeCD only (ErrSSCSICCBSToVLR, ErrSSEventUnlisted),
+// and Parse drops every other code. An SS-CSI arms its events only through
+// SsEventList, so one left with no code decodes as absent.
+//
 // NotificationToCSE and CsiActive are spec-forbidden in messages sent
 // toward the VLR; they're only legal in ATSI/ATM-ack/NSDC messages.
 // The public API exposes them as bools for those cases.
@@ -1242,6 +1253,15 @@ type OfferedCamel4CSIs struct {
 
 // SsCode is an SS-Code (single octet).
 type SsCode uint8
+
+// SS-Codes with actions defined in CAMEL Phase 3 for the SS-EventList of an
+// SS-CSI (3GPP TS 29.002 V19.1.0 §17.7.1 SS-EventList).
+const (
+	SsCodeECT      SsCode = 0x31 // ectSS-Code '00110001'B
+	SsCodeMultiPTY SsCode = 0x51 // multiPTYSS-Code '01010001'B
+	SsCodeCD       SsCode = 0x24 // cdSS-Code '00100100'B
+	SsCodeCCBS     SsCode = 0x44 // ccbsSS-Code '01000100'B
+)
 
 // Sri represents a SendRoutingInfo (opCode 22) request.
 type Sri struct {
@@ -3765,6 +3785,12 @@ var (
 	// camelCapabilityHandling, and both carry the list (3GPP TS 29.002
 	// V19.1.0 §17.7.1 D-CSI).
 	ErrCamelDCSICapabilityHandlingWithoutList = errors.New("camel: a D-CSI with CamelCapabilityHandling must carry a non-empty DPAnalysedInfoCriteriaList; only subsequent segments, which have no CamelCapabilityHandling, may omit it per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	// ErrSSEventUnlisted and ErrSSCSICCBSToVLR: an SS-CSI sent to the VLR
+	// carries ectSS-Code, multiPTYSS-Code or cdSS-Code only; the receiver
+	// ignores other codes and the VLR discards ccbs (3GPP TS 29.002 V19.1.0
+	// §17.7.1 SS-EventList).
+	ErrSSEventUnlisted = errors.New("ssCSI: SsEventList entry must be ectSS-Code (0x31), multiPTYSS-Code (0x51), cdSS-Code (0x24) or ccbsSS-Code (0x44); all other SS codes shall be ignored per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrSSCSICCBSToVLR  = errors.New("ssCSI: an SS-CSI sent to the VLR shall not contain a marking for ccbs, which the VLR discards, per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// Ext-SS-Info CHOICE / nested SEQUENCE validation
 	ErrExtSSInfoChoiceNoAlternative        = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")

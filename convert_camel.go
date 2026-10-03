@@ -840,6 +840,19 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 
 // --- VlrCamelSubscriptionInfo sub-types (MAP-MS-DataTypes.asn:2183) ---
 
+// isVLRSSEvent reports whether c is an SS-EventList code an SS-CSI sent to
+// the VLR may carry. 3GPP TS 29.002 V19.1.0 §17.7.1 SS-EventList defines
+// actions for ectSS-Code, multiPTYSS-Code, cdSS-Code and ccbsSS-Code: "all
+// other SS codes shall be ignored". "When SS-CSI is sent to the VLR, it
+// shall not contain a marking for ccbs. If the VLR receives SS-CSI
+// containing a marking for ccbs, the VLR shall discard the ccbs marking in
+// SS-CSI."
+func isVLRSSEvent(c SsCode) bool {
+	return c == SsCodeECT || c == SsCodeMultiPTY || c == SsCodeCD
+}
+
+// convertSSCSIToWire encodes the SS-CSI of a VlrCamelSubscriptionInfo, sent
+// to the VLR: SsEventList carries only the codes of isVLRSSEvent.
 func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
 	if s.GsmSCFAddress == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
@@ -850,6 +863,12 @@ func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
 	}
 	events := gsm_map.SSEventList{Values: make([]gsm_map.SSCode, len(s.SsEventList))}
 	for i, c := range s.SsEventList {
+		switch {
+		case c == SsCodeCCBS:
+			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]: %w", i, ErrSSCSICCBSToVLR)
+		case !isVLRSSEvent(c):
+			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]=0x%02x: %w", i, byte(c), ErrSSEventUnlisted)
+		}
 		events.Values[i] = gsm_map.SSCode{byte(c)}
 	}
 	return &gsm_map.SSCSI{
@@ -862,6 +881,11 @@ func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
 	}, nil
 }
 
+// convertWireToSSCSI decodes the SS-CSI of a VlrCamelSubscriptionInfo,
+// received by the VLR: it drops every SsEventList code but those of
+// isVLRSSEvent. It returns nil when none is left: an SS-CSI arms its events
+// only through SS-EventList, SIZE (1..10), so with none left the receiver
+// holds no SS-CSI.
 func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 	events := w.SsCamelData.SsEventList
 
@@ -872,13 +896,18 @@ func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 	if digits == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	ssList := make([]SsCode, len(events.Values))
+	var ssList []SsCode
 	for i, b := range events.Values {
 		// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 		if len(b) != 1 {
 			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]: SsCode must be 1 octet, got %d", i, len(b))
 		}
-		ssList[i] = SsCode(b[0])
+		if c := SsCode(b[0]); isVLRSSEvent(c) {
+			ssList = append(ssList, c)
+		}
+	}
+	if ssList == nil {
+		return nil, nil
 	}
 	return &SSCSI{
 		SsEventList:       ssList,
