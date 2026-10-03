@@ -109,11 +109,11 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 // convertArgToAlertServiceCentre converts a wire-level
 // gsm_map.AlertServiceCentreArg back into the public AlertServiceCentre type.
 func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertServiceCentre, error) {
-	msisdn, msisdnNature, msisdnPlan, err := decodeAddressField(arg.Msisdn)
+	msisdn, msisdnNature, msisdnPlan, err := decodeMandatoryAddressField(arg.Msisdn, ErrAscMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
-	sca, scaNature, scaPlan, err := decodeAddressField(arg.ServiceCentreAddress)
+	sca, scaNature, scaPlan, err := decodeMandatoryAddressField(arg.ServiceCentreAddress, ErrAscMissingServiceCentreAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ServiceCentreAddress: %w", err)
 	}

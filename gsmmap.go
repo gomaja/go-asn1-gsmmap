@@ -3489,6 +3489,12 @@ var (
 	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
 	ErrSriInvalidSupportedCCBSPhase  = errors.New("sri: SupportedCCBSPhase must be 1; 3GPP TS 29.002 V19.1.0 §17.7.3 reserves 2..127, which a receiver maps to 1")
 
+	// A selected CHOICE alternative whose address carries no digits would
+	// select nothing in the public type.
+	ErrAdditionalNumberMscNumberDecodedEmpty  = errors.New("additionalNumber: present wire msc-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrAdditionalNumberSgsnNumberDecodedEmpty = errors.New("additionalNumber: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrRoutingInfoRoamingNumberDecodedEmpty   = errors.New("routingInfo: present wire roamingNumber decoded to empty digits; presence cannot round-trip through string-based API")
+
 	ErrSriSmMissingSipUriB = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
 
 	ErrMtFsmUnexpectedTPDUType = errors.New("mtFsm: unexpected TPDU type")
@@ -3556,17 +3562,19 @@ var (
 
 	ErrPurgeMSMissingIMSI = errors.New("purgeMS: IMSI is empty")
 
-	ErrUpdateLocationMissingIMSI      = errors.New("updateLocation: IMSI is empty")
-	ErrUpdateLocationMissingMSCNumber = errors.New("updateLocation: MSCNumber is empty")
-	ErrUpdateLocationMissingVLRNumber = errors.New("updateLocation: VLRNumber is empty")
+	ErrUpdateLocationMissingIMSI         = errors.New("updateLocation: IMSI is empty")
+	ErrUpdateLocationMissingMSCNumber    = errors.New("updateLocation: MSCNumber is empty")
+	ErrUpdateLocationMissingVLRNumber    = errors.New("updateLocation: VLRNumber is empty")
+	ErrUpdateLocationResMissingHLRNumber = errors.New("updateLocationRes: HLRNumber is empty")
 
 	ErrSmRpDaServiceCentreAddressDecodedEmpty = errors.New("smRpDa: present wire serviceCentreAddressDA decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpOaMSISDNDecodedEmpty               = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpOaServiceCentreAddressDecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
 
-	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
-	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
-	ErrSriSmInvalidSmRpMti              = errors.New("sriSm: SmRpMti must be 0 (SMS Deliver) or 1 (SMS Status Report); 3GPP TS 29.002 V19.1.0 §17.7.6 reserves 2..10, which a receiver discards")
+	ErrSriSmMissingMSISDN                = errors.New("sriSm: MSISDN is empty")
+	ErrSriSmMissingServiceCentreAddress  = errors.New("sriSm: ServiceCentreAddress is empty")
+	ErrSriSmInvalidSmRpMti               = errors.New("sriSm: SmRpMti must be 0 (SMS Deliver) or 1 (SMS Status Report); 3GPP TS 29.002 V19.1.0 §17.7.6 reserves 2..10, which a receiver discards")
+	ErrSriSmRespMissingNetworkNodeNumber = errors.New("sriSmResp: LocationInfoWithLMSI.NetworkNodeNumber is empty")
 
 	ErrSaiMissingIMSI                           = errors.New("sai: IMSI is empty")
 	ErrSaiAuthSetListChoiceMultipleAlternatives = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
@@ -3755,6 +3763,7 @@ var (
 
 	// AnyTimeInterrogation top-level (TS 29.002 MAP-CH-DataTypes.asn).
 	ErrAnyTimeInterrogationNil = errors.New("anyTimeInterrogation: nil argument is not permitted")
+	ErrAtiMissingGsmSCFAddress = errors.New("anyTimeInterrogation: GsmSCFAddress is empty")
 
 	// RequestedInfo, shared by AnyTimeInterrogation and ProvideSubscriberInfo.
 	ErrRequestedDomainInvalid = errors.New("requestedInfo: RequestedDomain must be cs-Domain(0) or ps-Domain(1); a receiver maps values above 1 to cs-Domain per 3GPP TS 29.002 V19.1.0 §17.7.1")

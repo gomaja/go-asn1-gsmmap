@@ -163,12 +163,12 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
-	msc, mscNature, mscPlan, err := decodeAddressField(arg.MscNumber)
+	msc, mscNature, mscPlan, err := decodeMandatoryAddressField(arg.MscNumber, ErrUpdateLocationMissingMSCNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSCNumber: %w", err)
 	}
 
-	vlr, vlrNature, vlrPlan, err := decodeAddressField(arg.VlrNumber)
+	vlr, vlrNature, vlrPlan, err := decodeMandatoryAddressField(arg.VlrNumber, ErrUpdateLocationMissingVLRNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding VLRNumber: %w", err)
 	}
@@ -300,6 +300,9 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 // --- UpdateLocationRes ---
 
 func convertUpdateLocationResToRes(u *UpdateLocationRes) (*gsm_map.UpdateLocationRes, error) {
+	if u.HLRNumber == "" {
+		return nil, ErrUpdateLocationResMissingHLRNumber
+	}
 	hlr, err := encodeAddressField(u.HLRNumber, u.HLRNumberNature, u.HLRNumberPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding HLRNumber: %w", err)
@@ -314,7 +317,7 @@ func convertUpdateLocationResToRes(u *UpdateLocationRes) (*gsm_map.UpdateLocatio
 }
 
 func convertResToUpdateLocationRes(res *gsm_map.UpdateLocationRes) (*UpdateLocationRes, error) {
-	hlr, nature, plan, err := decodeAddressField(res.HlrNumber)
+	hlr, nature, plan, err := decodeMandatoryAddressField(res.HlrNumber, ErrUpdateLocationResMissingHLRNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding HLRNumber: %w", err)
 	}

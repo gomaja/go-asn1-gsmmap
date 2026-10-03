@@ -91,12 +91,12 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 }
 
 func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
-	msisdn, msisdnNature, msisdnPlan, err := decodeAddressField(arg.Msisdn)
+	msisdn, msisdnNature, msisdnPlan, err := decodeMandatoryAddressField(arg.Msisdn, ErrSriSmMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
 
-	sca, scaNature, scaPlan, err := decodeAddressField(arg.ServiceCentreAddress)
+	sca, scaNature, scaPlan, err := decodeMandatoryAddressField(arg.ServiceCentreAddress, ErrSriSmMissingServiceCentreAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ServiceCentreAddress: %w", err)
 	}
@@ -161,6 +161,9 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 // --- SRI-SM Response ---
 
 func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
+	if s.LocationInfoWithLMSI.NetworkNodeNumber == "" {
+		return nil, ErrSriSmRespMissingNetworkNodeNumber
+	}
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
@@ -283,7 +286,7 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
-	nnn, nnnNature, nnnPlan, err := decodeAddressField(res.LocationInfoWithLMSI.NetworkNodeNumber)
+	nnn, nnnNature, nnnPlan, err := decodeMandatoryAddressField(res.LocationInfoWithLMSI.NetworkNodeNumber, ErrSriSmRespMissingNetworkNodeNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding NetworkNodeNumber: %w", err)
 	}

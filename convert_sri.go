@@ -195,12 +195,12 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 }
 
 func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
-	msisdn, msisdnNature, msisdnPlan, err := decodeAddressField(arg.Msisdn)
+	msisdn, msisdnNature, msisdnPlan, err := decodeMandatoryAddressField(arg.Msisdn, ErrSriMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
 
-	gmsc, gmscNature, gmscPlan, err := decodeAddressField(arg.GmscOrGsmSCFAddress)
+	gmsc, gmscNature, gmscPlan, err := decodeMandatoryAddressField(arg.GmscOrGsmSCFAddress, ErrSriMissingGmsc)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GmscOrGsmSCFAddress: %w", err)
 	}

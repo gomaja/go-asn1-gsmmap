@@ -47,6 +47,24 @@ func decodeAddressField(encoded []byte) (digits string, nature, plan uint8, err 
 	return digits, nat, pl, nil
 }
 
+// decodeMandatoryAddressField decodes an AddressString that must carry
+// digits: a mandatory field or a selected CHOICE alternative. The public
+// types hold an address as its digits, "" meaning missing, so an address
+// with only its nature/plan octet (SIZE (1..n) allows it, 3GPP TS 29.002
+// V19.1.0 §17.7.8) or only filler would decode to a value Marshal rejects.
+// It is rejected with empty, the sentinel the encoder returns for the
+// missing field where there is one, so a parsed message marshals again.
+func decodeMandatoryAddressField(encoded []byte, empty error) (digits string, nature, plan uint8, err error) {
+	digits, nature, plan, err = decodeAddressField(encoded)
+	if err != nil {
+		return "", 0, 0, err
+	}
+	if digits == "" {
+		return "", 0, 0, empty
+	}
+	return digits, nature, plan, nil
+}
+
 // boolToNullPtr converts a Go bool into the ASN.1 NULL pointer convention
 // used by go-asn1: nil means "absent", non-nil means "present".
 func boolToNullPtr(b bool) *struct{} {
