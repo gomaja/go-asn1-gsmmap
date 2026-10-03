@@ -225,9 +225,15 @@ func TestExtendedRoutingInfoChoiceValidation(t *testing.T) {
 }
 
 func TestExternalSignalInfoRoundTrip(t *testing.T) {
-	in := &ExternalSignalInfo{ProtocolID: 0, SignalInfo: HexBytes{0xDE, 0xAD}}
-	w := convertExternalSignalInfoToWire(in)
-	got := convertWireToExternalSignalInfo(w)
+	in := &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xDE, 0xAD}}
+	w, err := convertExternalSignalInfoToWire(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := convertWireToExternalSignalInfo(w)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.ProtocolID != in.ProtocolID || !bytes.Equal(got.SignalInfo, in.SignalInfo) {
 		t.Errorf("got %+v want %+v", got, in)
 	}
@@ -384,7 +390,7 @@ func TestSriRespFullStressRoundTrip(t *testing.T) {
 		AllowedServices:                 &AllowedServicesFlags{FirstServiceAllowed: true, SecondServiceAllowed: true},
 		UnavailabilityCause:             &ua,
 		ReleaseResourcesSupported:       true,
-		GsmBearerCapability:             &ExternalSignalInfo{ProtocolID: 0, SignalInfo: HexBytes{0xDE, 0xAD}},
+		GsmBearerCapability:             &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xDE, 0xAD}},
 	}
 
 	data, err := in.Marshal()
@@ -422,8 +428,8 @@ func TestSriFullStressRoundTrip(t *testing.T) {
 		ForwardingReason:    &fr,
 		BasicServiceGroup:   &ExtBasicServiceCode{ExtTeleservice: HexBytes{0x11}},
 		BasicServiceGroup2:  &ExtBasicServiceCode{ExtBearerService: HexBytes{0x21}},
-		NetworkSignalInfo:   &ExternalSignalInfo{ProtocolID: 0, SignalInfo: HexBytes{0xDE, 0xAD}},
-		NetworkSignalInfo2:  &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xBE, 0xEF}},
+		NetworkSignalInfo:   &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xDE, 0xAD}},
+		NetworkSignalInfo2:  &ExternalSignalInfo{ProtocolID: 2, SignalInfo: HexBytes{0xBE, 0xEF}},
 		CamelInfo: &SriCamelInfo{
 			SupportedCamelPhases: SupportedCamelPhases{Phase1: true, Phase2: true, Phase3: true, Phase4: true},
 			SuppressTCSI:         true,

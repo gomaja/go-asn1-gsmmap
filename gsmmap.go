@@ -205,7 +205,7 @@ type MoFsm struct {
 	// Optional fields (post-extension marker).
 	IMSI              string              // optional IMSI
 	CorrelationID     *SriSmCorrelationID // [0] reuse SRI-SM type
-	SmDeliveryOutcome *SmDeliveryOutcome  // [1]
+	SmDeliveryOutcome *SmDeliveryOutcome  // [1] 0..2 (ErrMoFsmSmDeliveryOutcomeInvalid)
 }
 
 // MoFsmResp represents a Mobile Originated Forward Short Message response.
@@ -727,9 +727,13 @@ type ExtBasicServiceCode struct {
 	ExtTeleservice   HexBytes // Ext-TeleserviceCode,   1..5 octets
 }
 
-// ExternalSignalInfo per ASN.1 SEQUENCE.
+// ExternalSignalInfo per ASN.1 SEQUENCE. ProtocolId is not extensible:
+// Marshal and Parse reject a ProtocolID outside 1..4 (ErrProtocolIDInvalid).
+// 3GPP TS 29.002 V19.1.0 §17.7.8: "Value 3 is reserved and must not be
+// used", so Marshal also rejects gsm-BSSMAP (ErrProtocolIDReserved), while
+// Parse keeps a received 3, a listed value.
 type ExternalSignalInfo struct {
-	ProtocolID int      // ProtocolId (ENUMERATED: 0=gsm-0408, 1=gsm-0806, 2=gsm-BSSMAP, 3=ets-300102-1)
+	ProtocolID int      // ProtocolId (ENUMERATED: 1=gsm-0408, 2=gsm-0806, 3=gsm-BSSMAP, 4=ets-300102-1)
 	SignalInfo HexBytes // octet string
 }
 
@@ -1613,7 +1617,9 @@ type CancelLocation struct {
 // --- InsertSubscriberData (opCode 7) — foundation types ---
 
 // SubscriberStatus per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:1756).
-// ENUMERATED { serviceGranted(0), operatorDeterminedBarring(1) }.
+// ENUMERATED { serviceGranted(0), operatorDeterminedBarring(1) }, not
+// extensible: Marshal and Parse reject any other value
+// (ErrSubscriberStatusInvalid).
 type SubscriberStatus = gsm_map.SubscriberStatus
 
 const (
@@ -1633,7 +1639,9 @@ const (
 
 // RegionalSubscriptionResponse per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:2091).
 // ENUMERATED { networkNode-AreaRestricted(0), tooManyZoneCodes(1),
-// zoneCodesConflict(2), regionalSubscNotSupported(3) }.
+// zoneCodesConflict(2), regionalSubscNotSupported(3) }, not extensible:
+// Marshal and Parse reject any other value
+// (ErrRegionalSubscriptionResponseInvalid).
 type RegionalSubscriptionResponse = gsm_map.RegionalSubscriptionResponse
 
 const (
@@ -3025,7 +3033,9 @@ type ExtensibleCallBarredParam struct {
 // node broke — critical for incident triage. The CHOICE is between a
 // bare NetworkResource (legacy) and the extensible variant. Set
 // exactly one on encode; both fields are populated mutually
-// exclusively on decode.
+// exclusively on decode. NetworkResource is not extensible: Parse rejects
+// a value other than plmn(0) to rss(7) in either alternative
+// (ErrNetworkResourceInvalid).
 type SystemFailureParam struct {
 	NetworkResource              *gsm_map.NetworkResource      // legacy alternative
 	ExtensibleSystemFailureParam *ExtensibleSystemFailureParam // extensible alternative
@@ -3555,9 +3565,19 @@ var (
 	// decoder ignores an Ext-ExternalSignalInfo with any other value per
 	// 3GPP TS 29.002 V19.1.0 §17.7.8.
 	ErrExtProtocolIDInvalid = errors.New("extExternalSignalInfo: ExtProtocolID must be ets-300356(1); a receiver ignores the whole Ext-ExternalSignalInfo with any other value per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrProtocolIDInvalid = errors.New("externalSignalInfo: ProtocolID must be gsm-0408(1), gsm-0806(2), gsm-BSSMAP(3) or ets-300102-1(4) per 3GPP TS 29.002 V19.1.0 §17.7.8 (non-extensible ENUMERATED)")
+	// ErrProtocolIDReserved is returned by Marshal for ProtocolID gsm-BSSMAP
+	// (3). 3GPP TS 29.002 V19.1.0 §17.7.8 ProtocolId: "Value 3 is reserved
+	// and must not be used". The value is listed, so Parse keeps it.
+	ErrProtocolIDReserved = errors.New("externalSignalInfo: ProtocolID gsm-BSSMAP(3) is reserved and must not be used per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrNetworkResourceInvalid = errors.New("systemFailureParam: NetworkResource must be plmn(0) to rss(7) per 3GPP TS 29.002 V19.1.0 §17.7.8 (non-extensible ENUMERATED)")
 
 	ErrMtFsmUnexpectedTPDUType = errors.New("mtFsm: unexpected TPDU type")
 	ErrMoFsmUnexpectedTPDUType = errors.New("moFsm: unexpected TPDU type")
+	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrMoFsmSmDeliveryOutcomeInvalid = errors.New("moFsm: SmDeliveryOutcome must be memoryCapacityExceeded(0), absentSubscriber(1) or successfulTransfer(2) per 3GPP TS 29.002 V19.1.0 §17.7.6 (non-extensible ENUMERATED)")
 
 	ErrMoFsmSmRpDaNoAlternative        = errors.New("moFsm: SmRpDa CHOICE has no alternative set")
 	ErrMoFsmSmRpDaMultipleAlternatives = errors.New("moFsm: SmRpDa CHOICE has multiple alternatives set")
@@ -3791,7 +3811,11 @@ var (
 	// ErrNetworkAccessModeInvalid: the encoder sends only the listed values;
 	// the decoder discards any other per 3GPP TS 29.002 V19.1.0 §17.7.1.
 	ErrNetworkAccessModeInvalid = errors.New("insertSubscriberDataArg: NetworkAccessMode must be packetAndCircuit(0), onlyCircuit(1) or onlyPacket(2); a receiver discards any other value per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrIsdResNil                = errors.New("insertSubscriberDataRes: argument must not be nil")
+	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrSubscriberStatusInvalid = errors.New("insertSubscriberDataArg: SubscriberStatus must be serviceGranted(0) or operatorDeterminedBarring(1) per 3GPP TS 29.002 V19.1.0 §17.7.3 (non-extensible ENUMERATED)")
+	ErrIsdResNil               = errors.New("insertSubscriberDataRes: argument must not be nil")
+	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	ErrRegionalSubscriptionResponseInvalid = errors.New("insertSubscriberDataRes: RegionalSubscriptionResponse must be networkNode-AreaRestricted(0) to regionalSubscNotSupported(3) per 3GPP TS 29.002 V19.1.0 §17.7.3 (non-extensible ENUMERATED)")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrIsdBearerServiceCodeSize = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.

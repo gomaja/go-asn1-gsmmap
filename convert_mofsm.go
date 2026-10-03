@@ -252,10 +252,22 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 	}
 	if m.SmDeliveryOutcome != nil {
 		v := *m.SmDeliveryOutcome
+		if !isValidMoFsmSmDeliveryOutcome(v) {
+			return nil, fmt.Errorf("SmDeliveryOutcome=%d: %w", v, ErrMoFsmSmDeliveryOutcomeInvalid)
+		}
 		arg.SmDeliveryOutcome = &v
 	}
 
 	return arg, nil
+}
+
+// isValidMoFsmSmDeliveryOutcome reports whether v is one of the
+// SM-DeliveryOutcome values of 3GPP TS 29.002 V19.1.0 §17.7.6,
+// memoryCapacityExceeded (0) to successfulTransfer (2). The type is not
+// extensible.
+// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+func isValidMoFsmSmDeliveryOutcome(v SmDeliveryOutcome) bool {
+	return v >= gsm_map.SMDeliveryOutcomeMemoryCapacityExceeded && v <= gsm_map.SMDeliveryOutcomeSuccessfulTransfer
 }
 
 func convertArgToMoFsm(arg *gsm_map.MOForwardSMArg) (*MoFsm, error) {
@@ -302,6 +314,9 @@ func convertArgToMoFsm(arg *gsm_map.MOForwardSMArg) (*MoFsm, error) {
 	}
 	if arg.SmDeliveryOutcome != nil {
 		v := *arg.SmDeliveryOutcome
+		if !isValidMoFsmSmDeliveryOutcome(v) {
+			return nil, fmt.Errorf("SmDeliveryOutcome=%d: %w", v, ErrMoFsmSmDeliveryOutcomeInvalid)
+		}
 		moFsm.SmDeliveryOutcome = &v
 	}
 

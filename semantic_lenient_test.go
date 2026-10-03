@@ -84,6 +84,11 @@ func semLenientCases() []semLenientCase {
 			imei := semTBCD(t, "490154203237518")
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{Imei: &imei}}
 		}},
+		{ErrProtocolIDReserved, asParser(ParseSri), func(t *testing.T) semWire {
+			w := semMust(convertSriToArg(&Sri{MSISDN: "31612345678", GmscOrGsmSCFAddress: "31600000001"}))
+			w.NetworkSignalInfo = &gsm_map.ExternalSignalInfo{ProtocolId: gsm_map.ProtocolIdGsmBSSMAP, SignalInfo: gsm_map.SignalInfo{0x01}}
+			return w
+		}},
 		{ErrCancelLocInvalidCancellationType, asParser(ParseCancelLocation), cancel(3, nil)},
 		{ErrCancelLocInvalidTypeOfUpdate, asParser(ParseCancelLocation), cancel(0, &unknownUpdate)},
 		{ErrCamelInvalidTTriggerPoint, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {

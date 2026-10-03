@@ -104,12 +104,20 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// NetworkSignalInfo
 	if s.NetworkSignalInfo != nil {
-		arg.NetworkSignalInfo = convertExternalSignalInfoToWire(s.NetworkSignalInfo)
+		v, err := convertExternalSignalInfoToWire(s.NetworkSignalInfo)
+		if err != nil {
+			return nil, fmt.Errorf("encoding NetworkSignalInfo: %w", err)
+		}
+		arg.NetworkSignalInfo = v
 	}
 
 	// NetworkSignalInfo2
 	if s.NetworkSignalInfo2 != nil {
-		arg.NetworkSignalInfo2 = convertExternalSignalInfoToWire(s.NetworkSignalInfo2)
+		v, err := convertExternalSignalInfoToWire(s.NetworkSignalInfo2)
+		if err != nil {
+			return nil, fmt.Errorf("encoding NetworkSignalInfo2: %w", err)
+		}
+		arg.NetworkSignalInfo2 = v
 	}
 
 	// CamelInfo
@@ -279,12 +287,20 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// NetworkSignalInfo
 	if arg.NetworkSignalInfo != nil {
-		s.NetworkSignalInfo = convertWireToExternalSignalInfo(arg.NetworkSignalInfo)
+		v, err := convertWireToExternalSignalInfo(arg.NetworkSignalInfo)
+		if err != nil {
+			return nil, fmt.Errorf("decoding NetworkSignalInfo: %w", err)
+		}
+		s.NetworkSignalInfo = v
 	}
 
 	// NetworkSignalInfo2
 	if arg.NetworkSignalInfo2 != nil {
-		s.NetworkSignalInfo2 = convertWireToExternalSignalInfo(arg.NetworkSignalInfo2)
+		v, err := convertWireToExternalSignalInfo(arg.NetworkSignalInfo2)
+		if err != nil {
+			return nil, fmt.Errorf("decoding NetworkSignalInfo2: %w", err)
+		}
+		s.NetworkSignalInfo2 = v
 	}
 
 	// CamelInfo
@@ -534,7 +550,11 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// GsmBearerCapability
 	if s.GsmBearerCapability != nil {
-		out.GsmBearerCapability = convertExternalSignalInfoToWire(s.GsmBearerCapability)
+		v, err := convertExternalSignalInfoToWire(s.GsmBearerCapability)
+		if err != nil {
+			return nil, fmt.Errorf("encoding GsmBearerCapability: %w", err)
+		}
+		out.GsmBearerCapability = v
 	}
 
 	return out, nil
@@ -718,7 +738,11 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// GsmBearerCapability
 	if res.GsmBearerCapability != nil {
-		out.GsmBearerCapability = convertWireToExternalSignalInfo(res.GsmBearerCapability)
+		v, err := convertWireToExternalSignalInfo(res.GsmBearerCapability)
+		if err != nil {
+			return nil, fmt.Errorf("decoding GsmBearerCapability: %w", err)
+		}
+		out.GsmBearerCapability = v
 	}
 
 	return out, nil

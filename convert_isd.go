@@ -86,6 +86,9 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	}
 	if a.SubscriberStatus != nil {
 		v := *a.SubscriberStatus
+		if !isValidSubscriberStatus(v) {
+			return nil, fmt.Errorf("SubscriberStatus=%d: %w", v, ErrSubscriberStatusInvalid)
+		}
 		out.SubscriberStatus = &v
 	}
 	if a.BearerServiceList != nil {
@@ -355,6 +358,9 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 	}
 	if w.SubscriberStatus != nil {
 		v := *w.SubscriberStatus
+		if !isValidSubscriberStatus(v) {
+			return nil, fmt.Errorf("SubscriberStatus=%d: %w", v, ErrSubscriberStatusInvalid)
+		}
 		out.SubscriberStatus = &v
 	}
 	if w.BearerServiceList != nil {
@@ -617,6 +623,9 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 	}
 	if r.RegionalSubscriptionResponse != nil {
 		v := *r.RegionalSubscriptionResponse
+		if !isValidRegionalSubscriptionResponse(v) {
+			return nil, fmt.Errorf("RegionalSubscriptionResponse=%d: %w", v, ErrRegionalSubscriptionResponseInvalid)
+		}
 		out.RegionalSubscriptionResponse = &v
 	}
 	if r.SupportedCamelPhases != nil {
@@ -675,6 +684,9 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 	}
 	if w.RegionalSubscriptionResponse != nil {
 		v := *w.RegionalSubscriptionResponse
+		if !isValidRegionalSubscriptionResponse(v) {
+			return nil, fmt.Errorf("Res.RegionalSubscriptionResponse=%d: %w", v, ErrRegionalSubscriptionResponseInvalid)
+		}
 		out.RegionalSubscriptionResponse = &v
 	}
 	if w.SupportedCamelPhases != nil {
@@ -707,4 +719,21 @@ func isListedNetworkAccessMode(v NetworkAccessMode) bool {
 		return true
 	}
 	return false
+}
+
+// isValidSubscriberStatus reports whether v is serviceGranted (0) or
+// operatorDeterminedBarring (1), the SubscriberStatus values of 3GPP TS
+// 29.002 V19.1.0 §17.7.3. The type is not extensible.
+// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+func isValidSubscriberStatus(v SubscriberStatus) bool {
+	return v == SubscriberStatusServiceGranted || v == SubscriberStatusOperatorDeterminedBarring
+}
+
+// isValidRegionalSubscriptionResponse reports whether v is one of the
+// RegionalSubscriptionResponse values of 3GPP TS 29.002 V19.1.0 §17.7.3,
+// networkNode-AreaRestricted (0) to regionalSubscNotSupported (3). The type
+// is not extensible.
+// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+func isValidRegionalSubscriptionResponse(v RegionalSubscriptionResponse) bool {
+	return v >= RegionalSubscriptionResponseNetworkNodeAreaRestricted && v <= RegionalSubscriptionResponseRegionalSubscNotSupported
 }
