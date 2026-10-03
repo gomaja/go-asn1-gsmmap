@@ -14,7 +14,7 @@ import (
 )
 
 // ============================================================================
-// LCSLocationInfo — TS 29.002 MAP-LCS-DataTypes.asn
+// LCSLocationInfo — TS 29.002 §17.7.13
 // ============================================================================
 
 func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo, error) {

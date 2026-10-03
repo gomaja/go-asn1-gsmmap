@@ -63,7 +63,7 @@ func TestMarshalAddressListEntrySize(t *testing.T) {
 		msg  func(string) marshaler
 		want error
 	}{
-		{"GMLC-List", func(d string) marshaler { return gmlcISD(d) }, ErrGMLCAddressInvalidSize},
+		{"GMLC-List", func(d string) marshaler { return gmlcISD(d) }, ErrGMLCListEntryInvalidSize},
 		{"DestinationNumberList ISD", func(d string) marshaler { return destinationISD(d) }, ErrDestinationNumberInvalidSize},
 		{"DestinationNumberList SRI", func(d string) marshaler { return destinationSriResp(d) }, ErrDestinationNumberInvalidSize},
 	} {
@@ -102,7 +102,7 @@ func TestParseAddressListEntrySize(t *testing.T) {
 		parse func([]byte) (marshaler, error)
 		want  error
 	}{
-		{"GMLC-List", gmlcWire, asParser(ParseInsertSubscriberData), ErrGMLCAddressInvalidSize},
+		{"GMLC-List", gmlcWire, asParser(ParseInsertSubscriberData), ErrGMLCListEntryInvalidSize},
 		{"DestinationNumberList ISD", isdDestWire, asParser(ParseInsertSubscriberData), ErrDestinationNumberInvalidSize},
 		{"DestinationNumberList SRI", sriDestWire, asParser(ParseSriResp), ErrDestinationNumberInvalidSize},
 	} {

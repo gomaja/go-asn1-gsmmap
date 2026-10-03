@@ -489,7 +489,7 @@ func convertBitStringToSupportedFeatures(bs runtime.BitString) *SupportedFeature
 	return out
 }
 
-// ExtSupportedFeatures: bit 0 is named; positions 1..39 are currently
+// ExtSupportedFeatures: bit 0 is named; positions 1..39 are
 // unnamed but valid (3GPP TS 29.002 V19.1.0 §17.7.1, SIZE (1..40)).
 func convertExtSupportedFeaturesToBitString(e *ExtSupportedFeatures) runtime.BitString {
 	bits := make([]bool, len(e.UnknownBits)*8)

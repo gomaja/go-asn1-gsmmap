@@ -127,9 +127,9 @@ func isRecognizedLCSClientType(v LCSClientType) bool {
 // checkLCSClientType applies the LCSClientType exception handling of 3GPP
 // TS 29.002 V19.1.0 §17.7.13 to an LCS-ClientID received in a MAP invoke:
 // "unrecognized values may be ignored if the LCS client uses the privacy
-// override otherwise, an unrecognized value shall be treated as unexpected
-// data by a receiver; a return error shall then be returned if received in a
-// MAP invoke". privacyOverride reports whether the invoke carries the privacy
+// override
+// otherwise, an unrecognized value shall be treated as unexpected data by a receiver
+// a return error shall then be returned if received in a MAP invoke". privacyOverride reports whether the invoke carries the privacy
 // override; with it the value is kept.
 func checkLCSClientType(c *gsm_map.LCSClientID, privacyOverride bool) error {
 	if c == nil || privacyOverride || isRecognizedLCSClientType(c.LcsClientType) {

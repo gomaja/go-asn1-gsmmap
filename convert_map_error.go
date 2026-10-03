@@ -13,7 +13,7 @@ import (
 )
 
 // ============================================================================
-// AbsentSubscriberSMParam — TS 29.002 MAP-ER-DataTypes.asn (errorCode 6)
+// AbsentSubscriberSMParam — TS 29.002 §17.7.7 (errorCode 6)
 // ============================================================================
 
 func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*AbsentSubscriberSMParam, error) {
@@ -52,7 +52,7 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 }
 
 // ============================================================================
-// UnknownSubscriberParam — TS 29.002 MAP-ER-DataTypes.asn (errorCode 1)
+// UnknownSubscriberParam — TS 29.002 §17.7.7 (errorCode 1)
 // ============================================================================
 
 func convertWireToUnknownSubscriberParam(w *gsm_map.UnknownSubscriberParam) (*UnknownSubscriberParam, error) {
@@ -76,7 +76,7 @@ func convertWireToUnknownSubscriberParam(w *gsm_map.UnknownSubscriberParam) (*Un
 }
 
 // ============================================================================
-// CallBarredParam — TS 29.002 MAP-ER-DataTypes.asn (errorCode 13)
+// CallBarredParam — TS 29.002 §17.7.7 (errorCode 13)
 // ============================================================================
 
 func convertWireToCallBarredParam(w *gsm_map.CallBarredParam) (*CallBarredParam, error) {
@@ -86,9 +86,6 @@ func convertWireToCallBarredParam(w *gsm_map.CallBarredParam) (*CallBarredParam,
 	out := &CallBarredParam{}
 	switch w.Choice {
 	case gsm_map.CallBarredParamChoiceCallBarringCause:
-		if w.CallBarringCause == nil {
-			return nil, fmt.Errorf("%w: CallBarredParam: choice=CallBarringCause but payload is nil", ErrCallBarredCausePayloadMissing)
-		}
 		v := *w.CallBarringCause
 		// CallBarringCause is non-extensible (3GPP TS 29.002 V19.1.0 §17.7.7);
 		// reject out-of-range values per project convention.
@@ -98,16 +95,13 @@ func convertWireToCallBarredParam(w *gsm_map.CallBarredParam) (*CallBarredParam,
 		}
 		out.CallBarringCause = &v
 	case gsm_map.CallBarredParamChoiceExtensibleCallBarredParam:
-		if w.ExtensibleCallBarredParam == nil {
-			return nil, fmt.Errorf("%w: CallBarredParam: choice=ExtensibleCallBarredParam but payload is nil", ErrCallBarredExtensiblePayloadMissing)
-		}
 		ext, err := convertWireToExtensibleCallBarredParam(w.ExtensibleCallBarredParam)
 		if err != nil {
 			return nil, fmt.Errorf("CallBarredParam.ExtensibleCallBarredParam: %w", err)
 		}
 		out.ExtensibleCallBarredParam = ext
 	default:
-		return nil, fmt.Errorf("%w: CallBarredParam: unsupported choice %d", ErrCallBarredChoiceInvalid, w.Choice)
+		return nil, fmt.Errorf("%w: CallBarredParam: unsupported choice %d", ErrCallBarredParamUnknownAlternative, w.Choice)
 	}
 	return out, nil
 }
@@ -132,7 +126,7 @@ func convertWireToExtensibleCallBarredParam(w *gsm_map.ExtensibleCallBarredParam
 }
 
 // ============================================================================
-// SystemFailureParam — TS 29.002 MAP-ER-DataTypes.asn (errorCode 34)
+// SystemFailureParam — TS 29.002 §17.7.7 (errorCode 34)
 // ============================================================================
 
 // isValidNetworkResource reports whether v is one of the NetworkResource
@@ -150,25 +144,19 @@ func convertWireToSystemFailureParam(w *gsm_map.SystemFailureParam) (*SystemFail
 	out := &SystemFailureParam{}
 	switch w.Choice {
 	case gsm_map.SystemFailureParamChoiceNetworkResource:
-		if w.NetworkResource == nil {
-			return nil, fmt.Errorf("%w: SystemFailureParam: choice=NetworkResource but payload is nil", ErrSystemFailureNetworkResourcePayloadMissing)
-		}
 		v := *w.NetworkResource
 		if !isValidNetworkResource(v) {
 			return nil, fmt.Errorf("SystemFailureParam.NetworkResource=%d: %w", v, ErrNetworkResourceInvalid)
 		}
 		out.NetworkResource = &v
 	case gsm_map.SystemFailureParamChoiceExtensibleSystemFailureParam:
-		if w.ExtensibleSystemFailureParam == nil {
-			return nil, fmt.Errorf("%w: SystemFailureParam: choice=ExtensibleSystemFailureParam but payload is nil", ErrSystemFailureExtensiblePayloadMissing)
-		}
 		ext, err := convertWireToExtensibleSystemFailureParam(w.ExtensibleSystemFailureParam)
 		if err != nil {
 			return nil, fmt.Errorf("SystemFailureParam.ExtensibleSystemFailureParam: %w", err)
 		}
 		out.ExtensibleSystemFailureParam = ext
 	default:
-		return nil, fmt.Errorf("%w: SystemFailureParam: unsupported choice %d", ErrSystemFailureChoiceInvalid, w.Choice)
+		return nil, fmt.Errorf("%w: SystemFailureParam: unsupported choice %d", ErrSystemFailureParamUnknownAlternative, w.Choice)
 	}
 	return out, nil
 }
@@ -201,7 +189,7 @@ func convertWireToExtensibleSystemFailureParam(w *gsm_map.ExtensibleSystemFailur
 }
 
 // ============================================================================
-// RoamingNotAllowedParam — TS 29.002 MAP-ER-DataTypes.asn (errorCode 8)
+// RoamingNotAllowedParam — TS 29.002 §17.7.7 (errorCode 8)
 // ============================================================================
 
 func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) (*RoamingNotAllowedParam, error) {
@@ -273,7 +261,7 @@ func convertWireToDataMissingParam(w *gsm_map.DataMissingParam) (*DataMissingPar
 }
 
 // ============================================================================
-// AbsentSubscriberParam — TS 29.002 MAP-ER-DataTypes.asn (errorCode 27)
+// AbsentSubscriberParam — TS 29.002 §17.7.7 (errorCode 27)
 // ============================================================================
 
 func convertWireToAbsentSubscriberParam(w *gsm_map.AbsentSubscriberParam) (*AbsentSubscriberParam, error) {

@@ -20,9 +20,9 @@ func convertSubscriberIdentityToWire(s SubscriberIdentity) (gsm_map.SubscriberId
 	msisdnSet := s.MSISDN != ""
 	switch {
 	case !imsiSet && !msisdnSet:
-		return gsm_map.SubscriberIdentity{}, ErrSubscriberIdentityNoAlt
+		return gsm_map.SubscriberIdentity{}, ErrSubscriberIdentityNoAlternative
 	case imsiSet && msisdnSet:
-		return gsm_map.SubscriberIdentity{}, ErrSubscriberIdentityMultipleAlts
+		return gsm_map.SubscriberIdentity{}, ErrSubscriberIdentityMultipleAlternatives
 	}
 
 	if imsiSet {
@@ -46,18 +46,12 @@ func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberId
 	var out SubscriberIdentity
 	switch w.Choice {
 	case gsm_map.SubscriberIdentityChoiceImsi:
-		if w.Imsi == nil {
-			return out, ErrSubscriberIdentityUnknownChoice
-		}
 		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return out, fmt.Errorf("decoding SubscriberIdentity.IMSI: %w", err)
 		}
 		out.IMSI = imsi
 	case gsm_map.SubscriberIdentityChoiceMsisdn:
-		if w.Msisdn == nil {
-			return out, ErrSubscriberIdentityUnknownChoice
-		}
 		msisdn, nature, plan, err := decodeAddressField(*w.Msisdn)
 		if err != nil {
 			return out, fmt.Errorf("decoding SubscriberIdentity.MSISDN: %w", err)
@@ -69,7 +63,7 @@ func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberId
 		out.MSISDNNature = nature
 		out.MSISDNPlan = plan
 	default:
-		return out, fmt.Errorf("SubscriberIdentity choice=%d: %w", w.Choice, ErrSubscriberIdentityUnknownChoice)
+		return out, fmt.Errorf("SubscriberIdentity choice=%d: %w", w.Choice, ErrSubscriberIdentityUnknownAlternative)
 	}
 	return out, nil
 }

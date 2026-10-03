@@ -13,7 +13,7 @@ func convertAdditionalNumberToWire(a *AdditionalNumber) (*gsm_map.AdditionalNumb
 	hasSgsn := a.SgsnNumber != ""
 	switch {
 	case hasMsc && hasSgsn:
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrAdditionalNumberMultipleAlternatives
 	case hasMsc:
 		encoded, err := encodeAddressField(a.MscNumber, a.MscNumberNature, a.MscNumberPlan)
 		if err != nil {
@@ -29,7 +29,7 @@ func convertAdditionalNumberToWire(a *AdditionalNumber) (*gsm_map.AdditionalNumb
 		v := gsm_map.NewAdditionalNumberSgsnNumber(encoded)
 		return &v, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrAdditionalNumberNoAlternative
 	}
 }
 
@@ -37,9 +37,6 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 	an := &AdditionalNumber{}
 	switch w.Choice {
 	case gsm_map.AdditionalNumberChoiceMscNumber:
-		if w.MscNumber == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		num, nature, plan, err := decodeAddressWithDigits(*w.MscNumber, ErrAdditionalNumberMscNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MscNumber: %w", err)
@@ -48,9 +45,6 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		an.MscNumberNature = nature
 		an.MscNumberPlan = plan
 	case gsm_map.AdditionalNumberChoiceSgsnNumber:
-		if w.SgsnNumber == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		num, nature, plan, err := decodeAddressWithDigits(*w.SgsnNumber, ErrAdditionalNumberSgsnNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
@@ -59,7 +53,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		an.SgsnNumberNature = nature
 		an.SgsnNumberPlan = plan
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrAdditionalNumberUnknownAlternative
 	}
 	return an, nil
 }
@@ -162,16 +156,14 @@ func convertSuperChargerInfoToWire(s *SuperChargerInfo) (*gsm_map.SuperChargerIn
 }
 
 func convertWireToSuperChargerInfo(w *gsm_map.SuperChargerInfo) (*SuperChargerInfo, error) {
-	if w.SendSubscriberData != nil && w.SubscriberDataStored != nil {
-		return nil, ErrSuperChargerInfoMultipleAlternatives
-	}
 	out := &SuperChargerInfo{}
-	if w.SendSubscriberData != nil {
+	switch w.Choice {
+	case gsm_map.SuperChargerInfoChoiceSendSubscriberData:
 		out.SendSubscriberData = true
-	} else if w.SubscriberDataStored != nil {
+	case gsm_map.SuperChargerInfoChoiceSubscriberDataStored:
 		out.SubscriberDataStored = HexBytes(*w.SubscriberDataStored)
-	} else {
-		return nil, ErrSuperChargerInfoNoAlternative
+	default:
+		return nil, ErrSuperChargerInfoUnknownAlternative
 	}
 	return out, nil
 }
@@ -309,7 +301,7 @@ func convertExtBasicServiceCodeToWire(e *ExtBasicServiceCode) (*gsm_map.ExtBasic
 	hasTele := len(e.ExtTeleservice) > 0
 	switch {
 	case hasBearer && hasTele:
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrExtBasicServiceCodeMultipleAlternatives
 	case hasBearer:
 		v := gsm_map.NewExtBasicServiceCodeExtBearerService(gsm_map.ExtBearerServiceCode(e.ExtBearerService))
 		return &v, nil
@@ -317,24 +309,18 @@ func convertExtBasicServiceCodeToWire(e *ExtBasicServiceCode) (*gsm_map.ExtBasic
 		v := gsm_map.NewExtBasicServiceCodeExtTeleservice(gsm_map.ExtTeleserviceCode(e.ExtTeleservice))
 		return &v, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrExtBasicServiceCodeNoAlternative
 	}
 }
 
 func convertWireToExtBasicServiceCode(w *gsm_map.ExtBasicServiceCode) (*ExtBasicServiceCode, error) {
 	switch w.Choice {
 	case gsm_map.ExtBasicServiceCodeChoiceExtBearerService:
-		if w.ExtBearerService == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		return &ExtBasicServiceCode{ExtBearerService: HexBytes(*w.ExtBearerService)}, nil
 	case gsm_map.ExtBasicServiceCodeChoiceExtTeleservice:
-		if w.ExtTeleservice == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		return &ExtBasicServiceCode{ExtTeleservice: HexBytes(*w.ExtTeleservice)}, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrExtBasicServiceCodeUnknownAlternative
 	}
 }
 
@@ -343,7 +329,7 @@ func convertRoutingInfoToWire(r *RoutingInfo) (*gsm_map.RoutingInfo, error) {
 	hasFwd := r.ForwardingData != nil
 	switch {
 	case hasRoaming && hasFwd:
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrRoutingInfoMultipleAlternatives
 	case hasRoaming:
 		enc, err := encodeAddressField(r.RoamingNumber, r.RoamingNumberNature, r.RoamingNumberPlan)
 		if err != nil {
@@ -359,32 +345,26 @@ func convertRoutingInfoToWire(r *RoutingInfo) (*gsm_map.RoutingInfo, error) {
 		v := gsm_map.NewRoutingInfoForwardingData(*fw)
 		return &v, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrRoutingInfoNoAlternative
 	}
 }
 
 func convertWireToRoutingInfo(w *gsm_map.RoutingInfo) (*RoutingInfo, error) {
 	switch w.Choice {
 	case gsm_map.RoutingInfoChoiceRoamingNumber:
-		if w.RoamingNumber == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		digits, nat, pl, err := decodeAddressWithDigits(*w.RoamingNumber, ErrRoutingInfoRoamingNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding RoamingNumber: %w", err)
 		}
 		return &RoutingInfo{RoamingNumber: digits, RoamingNumberNature: nat, RoamingNumberPlan: pl}, nil
 	case gsm_map.RoutingInfoChoiceForwardingData:
-		if w.ForwardingData == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		fd, err := convertWireToForwardingData(w.ForwardingData)
 		if err != nil {
 			return nil, err
 		}
 		return &RoutingInfo{ForwardingData: fd}, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrRoutingInfoUnknownAlternative
 	}
 }
 
@@ -393,7 +373,7 @@ func convertExtendedRoutingInfoToWire(e *ExtendedRoutingInfo) (*gsm_map.Extended
 	hasCamel := e.CamelRoutingInfo != nil
 	switch {
 	case hasRI && hasCamel:
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrExtendedRoutingInfoMultipleAlternatives
 	case hasRI:
 		ri, err := convertRoutingInfoToWire(e.RoutingInfo)
 		if err != nil {
@@ -409,32 +389,26 @@ func convertExtendedRoutingInfoToWire(e *ExtendedRoutingInfo) (*gsm_map.Extended
 		v := gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(*cri)
 		return &v, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrExtendedRoutingInfoNoAlternative
 	}
 }
 
 func convertWireToExtendedRoutingInfo(w *gsm_map.ExtendedRoutingInfo) (*ExtendedRoutingInfo, error) {
 	switch w.Choice {
 	case gsm_map.ExtendedRoutingInfoChoiceRoutingInfo:
-		if w.RoutingInfo == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		ri, err := convertWireToRoutingInfo(w.RoutingInfo)
 		if err != nil {
 			return nil, err
 		}
 		return &ExtendedRoutingInfo{RoutingInfo: ri}, nil
 	case gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo:
-		if w.CamelRoutingInfo == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		cri, err := convertWireToCamelRoutingInfo(w.CamelRoutingInfo)
 		if err != nil {
 			return nil, err
 		}
 		return &ExtendedRoutingInfo{CamelRoutingInfo: cri}, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrExtendedRoutingInfoUnknownAlternative
 	}
 }
 

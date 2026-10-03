@@ -725,14 +725,14 @@ func isListedNetworkAccessMode(v NetworkAccessMode) bool {
 
 // isValidSubscriberStatus reports whether v is serviceGranted (0) or
 // operatorDeterminedBarring (1), the SubscriberStatus values of 3GPP TS
-// 29.002 V19.1.0 §17.7.3. The type is not extensible.
+// 29.002 V19.1.0 §17.7.1. The type is not extensible.
 // go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 func isValidSubscriberStatus(v SubscriberStatus) bool {
 	return v == SubscriberStatusServiceGranted || v == SubscriberStatusOperatorDeterminedBarring
 }
 
 // isValidRegionalSubscriptionResponse reports whether v is one of the
-// RegionalSubscriptionResponse values of 3GPP TS 29.002 V19.1.0 §17.7.3,
+// RegionalSubscriptionResponse values of 3GPP TS 29.002 V19.1.0 §17.7.1,
 // networkNode-AreaRestricted (0) to regionalSubscNotSupported (3). The type
 // is not extensible.
 // go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.

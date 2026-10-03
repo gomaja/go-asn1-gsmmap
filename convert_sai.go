@@ -61,10 +61,10 @@ func convertAuthenticationSetListToWire(a *AuthenticationSetList) (*gsm_map.Auth
 	hasTriplets := len(a.Triplets) > 0
 	hasQuintuplets := len(a.Quintuplets) > 0
 	if hasTriplets && hasQuintuplets {
-		return nil, ErrSaiAuthSetListChoiceMultipleAlternatives
+		return nil, ErrAuthenticationSetListMultipleAlternatives
 	}
 	if !hasTriplets && !hasQuintuplets {
-		return nil, ErrSaiAuthSetListChoiceNoAlternative
+		return nil, ErrAuthenticationSetListNoAlternative
 	}
 	if hasTriplets {
 		list := gsm_map.TripletList{Values: make([]gsm_map.AuthenticationTriplet, len(a.Triplets))}
@@ -101,9 +101,6 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 	switch w.Choice {
 	case gsm_map.AuthenticationSetListChoiceTripletList:
 		triplets := w.TripletList
-		if triplets == nil {
-			triplets = &gsm_map.TripletList{}
-		}
 		out := make([]AuthenticationTriplet, len(triplets.Values))
 		for i, t := range triplets.Values {
 			out[i] = AuthenticationTriplet{
@@ -115,9 +112,6 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 		return &AuthenticationSetList{Triplets: out}, nil
 	case gsm_map.AuthenticationSetListChoiceQuintupletList:
 		quintuplets := w.QuintupletList
-		if quintuplets == nil {
-			quintuplets = &gsm_map.QuintupletList{}
-		}
 		out := make([]AuthenticationQuintuplet, len(quintuplets.Values))
 		for i, q := range quintuplets.Values {
 			out[i] = AuthenticationQuintuplet{
@@ -130,7 +124,7 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 		}
 		return &AuthenticationSetList{Quintuplets: out}, nil
 	default:
-		return nil, fmt.Errorf("%w: sai: unknown AuthenticationSetList CHOICE %d", ErrSaiAuthenticationSetListChoiceInvalid, w.Choice)
+		return nil, fmt.Errorf("%w: sai: unknown AuthenticationSetList CHOICE %d", ErrAuthenticationSetListUnknownAlternative, w.Choice)
 	}
 }
 
@@ -222,8 +216,8 @@ func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) 
 	// RequestingNodeType — ENUMERATED { vlr(0), sgsn(1), ..., s-cscf(2),
 	// bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17) }
 	// per TS 29.002. Spec exception handling:
-	//   "received values in the range (6-15) shall be treated as 'vlr'"
-	//   "received values greater than 17 shall be treated as 'sgsn'"
+	// received values in the range (6-15) shall be treated as "vlr"
+	// received values greater than 17 shall be treated as "sgsn"
 	// Apply the receiver mapping before exposing the value as int.
 	if arg.RequestingNodeType != nil {
 		// A negative value lies outside both rules; the type is extensible,

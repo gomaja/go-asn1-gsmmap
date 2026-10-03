@@ -437,10 +437,10 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 	hasPdn := e.PdnGwUpdate != nil
 	hasIsr := e.IsrInformationBits != 0 || len(e.IsrInformation) > 0
 	if hasPdn && hasIsr {
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrEpsInfoMultipleAlternatives
 	}
 	if !hasPdn && !hasIsr {
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrEpsInfoNoAlternative
 	}
 	if hasPdn {
 		pgu, err := convertPdnGwUpdateToWire(e.PdnGwUpdate)
@@ -462,25 +462,19 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 	switch w.Choice {
 	case gsm_map.EPSInfoChoicePdnGwUpdate:
-		if w.PdnGwUpdate == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		pgw, err := convertWireToPdnGwUpdate(w.PdnGwUpdate)
 		if err != nil {
 			return nil, err
 		}
 		return &EpsInfo{PdnGwUpdate: pgw}, nil
 	case gsm_map.EPSInfoChoiceIsrInformation:
-		if w.IsrInformation == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		bits := w.IsrInformation.BitLength
 		return &EpsInfo{
 			IsrInformation:     bitStringFromWire(*w.IsrInformation),
 			IsrInformationBits: bits,
 		}, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrEpsInfoUnknownAlternative
 	}
 }
 

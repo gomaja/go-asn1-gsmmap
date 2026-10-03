@@ -72,7 +72,7 @@ func convertWireToZoneCodeList(w *gsm_map.ZoneCodeList) (ZoneCodeList, error) {
 	return out, nil
 }
 
-// --- VoiceBroadcastData / VBSDataList (3GPP TS 29.002 V19.1.0 §17.7.1, 2717) ---
+// --- VoiceBroadcastData / VBSDataList (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
 func convertVoiceBroadcastDataToWire(v *VoiceBroadcastData) (*gsm_map.VoiceBroadcastData, error) {
 	gid, err := encodeGroupID(v.GroupId, v.LongGroupId != "")
@@ -140,7 +140,7 @@ func convertWireToVBSDataList(w *gsm_map.VBSDataList) (VBSDataList, error) {
 	return out, nil
 }
 
-// --- VoiceGroupCallData / VGCSDataList (3GPP TS 29.002 V19.1.0 §17.7.1, 2695) ---
+// --- VoiceGroupCallData / VGCSDataList (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
 func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroupCallData, error) {
 	gid, err := encodeGroupID(v.GroupId, v.LongGroupId != "")

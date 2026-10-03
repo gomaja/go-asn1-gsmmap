@@ -149,9 +149,9 @@ func convertWireToAreaEventInfo(w *gsm_map.AreaEventInfo) *AreaEventInfo {
 // PeriodicLDRInfo — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 //
-// Per spec at lines 375-376: ReportingInterval × ReportingAmount must
-// not exceed 8639999 (99 days, 23 hours, 59 minutes, 59 seconds) for
-// compatibility with OMA MLP and RLP.
+// 3GPP TS 29.002 V19.1.0 §17.7.13: "reportingInterval x reportingAmount
+// shall not exceed 8639999 (99 days, 23 hours, 59 minutes and 59 seconds)"
+// for compatibility with OMA MLP and RLP.
 
 func convertPeriodicLDRInfoToWire(p *PeriodicLDRInfo) (*gsm_map.PeriodicLDRInfo, error) {
 	if p == nil {

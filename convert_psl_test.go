@@ -431,7 +431,7 @@ func TestLCSQoSVerticalAccuracyMustBeOneOctet(t *testing.T) {
 }
 
 // Spec mandates bit 8 = 0 on the Horizontal-Accuracy / Vertical-Accuracy
-// uncertainty code octet (3GPP TS 29.002 V19.1.0 §17.7.13 / 256).
+// uncertainty code octet (3GPP TS 29.002 V19.1.0 §17.7.13).
 // MSB-set values must be rejected on both encode and decode.
 func TestLCSQoSHorizontalAccuracyReservedBitRejected(t *testing.T) {
 	_, err := convertLCSQoSToWire(&LCSQoS{HorizontalAccuracy: HexBytes{0x80}})

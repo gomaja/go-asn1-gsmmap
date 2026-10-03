@@ -58,18 +58,12 @@ func convertCancelLocationIdentityToWire(id *CancelLocationIdentity) (gsm_map.Id
 func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIdentity, error) {
 	switch id.Choice {
 	case gsm_map.IdentityChoiceImsi:
-		if id.Imsi == nil {
-			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
-		}
 		imsi, err := decodeIdentityDigits(identityIMSI, *id.Imsi)
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}
 		return CancelLocationIdentity{IMSI: imsi}, nil
 	case gsm_map.IdentityChoiceImsiWithLMSI:
-		if id.ImsiWithLMSI == nil {
-			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
-		}
 
 		imsi, err := decodeIdentityDigits(identityIMSI, id.ImsiWithLMSI.Imsi)
 		if err != nil {
@@ -81,7 +75,7 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 			IMSIWithLMSI: &CancelLocationIMSIWithLMSI{IMSI: imsi, LMSI: HexBytes(lmsi)},
 		}, nil
 	default:
-		return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
+		return CancelLocationIdentity{}, ErrCancelLocationIdentityUnknownAlternative
 	}
 }
 
@@ -92,9 +86,9 @@ func validateCancelLocation(c *CancelLocation) error {
 	withLmsiSet := c.Identity.IMSIWithLMSI != nil
 	switch {
 	case imsiSet && withLmsiSet:
-		return ErrCancelLocIdentityChoiceMultiple
+		return ErrCancelLocationIdentityMultipleAlternatives
 	case !imsiSet && !withLmsiSet:
-		return ErrCancelLocIdentityChoiceNoAlternative
+		return ErrCancelLocationIdentityNoAlternative
 	}
 	if c.CancellationType != nil && !isValidCancellationType(*c.CancellationType) {
 		return ErrCancelLocInvalidCancellationType

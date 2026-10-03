@@ -47,14 +47,14 @@ func TestSSSubscriptionOptionValidation(t *testing.T) {
 	over := OverrideDisabled
 	t.Run("noAlt", func(t *testing.T) {
 		_, err := convertSSSubscriptionOptionToWire(&SSSubscriptionOption{})
-		if !errors.Is(err, ErrSSSubscriptionOptionChoiceNoAlternative) {
-			t.Errorf("want ErrSSSubscriptionOptionChoiceNoAlternative, got %v", err)
+		if !errors.Is(err, ErrSSSubscriptionOptionNoAlternative) {
+			t.Errorf("want ErrSSSubscriptionOptionNoAlternative, got %v", err)
 		}
 	})
 	t.Run("multipleAlts", func(t *testing.T) {
 		_, err := convertSSSubscriptionOptionToWire(&SSSubscriptionOption{CliRestriction: &cli, Override: &over})
-		if !errors.Is(err, ErrSSSubscriptionOptionChoiceMultipleAlternatives) {
-			t.Errorf("want ErrSSSubscriptionOptionChoiceMultipleAlternatives, got %v", err)
+		if !errors.Is(err, ErrSSSubscriptionOptionMultipleAlternatives) {
+			t.Errorf("want ErrSSSubscriptionOptionMultipleAlternatives, got %v", err)
 		}
 	})
 	t.Run("invalidCliRestriction", func(t *testing.T) {
@@ -711,8 +711,8 @@ func TestExtSSInfoCHOICERoundTrip(t *testing.T) {
 func TestExtSSInfoCHOICEValidation(t *testing.T) {
 	t.Run("noAlt", func(t *testing.T) {
 		_, err := convertExtSSInfoToWire(&ExtSSInfo{})
-		if !errors.Is(err, ErrExtSSInfoChoiceNoAlternative) {
-			t.Errorf("want ErrExtSSInfoChoiceNoAlternative, got %v", err)
+		if !errors.Is(err, ErrExtSSInfoNoAlternative) {
+			t.Errorf("want ErrExtSSInfoNoAlternative, got %v", err)
 		}
 	})
 	t.Run("multipleAlts", func(t *testing.T) {
@@ -723,8 +723,8 @@ func TestExtSSInfoCHOICEValidation(t *testing.T) {
 			},
 			EmlppInfo: &EMLPPInfo{MaximumEntitledPriority: 6, DefaultPriority: 0},
 		})
-		if !errors.Is(err, ErrExtSSInfoChoiceMultipleAlternatives) {
-			t.Errorf("want ErrExtSSInfoChoiceMultipleAlternatives, got %v", err)
+		if !errors.Is(err, ErrExtSSInfoMultipleAlternatives) {
+			t.Errorf("want ErrExtSSInfoMultipleAlternatives, got %v", err)
 		}
 	})
 }

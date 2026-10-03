@@ -145,10 +145,10 @@ type MtFsm struct {
 
 	// Optional fields (post-extension marker).
 	SmDeliveryTimer           *int                // SM-DeliveryTimerValue: 30..600 seconds
-	SmDeliveryStartTime       HexBytes            // Time: 4 octets of seconds since 1900-01-01 UTC (3GPP TS 29.002 V19.1.0 §17.7.8; RFC 6733 §4.3.1); nil if absent
+	SmDeliveryStartTime       HexBytes            // Time: four octets of NTP seconds since 1900-01-01 UTC; 2036 era wrap (RFC 6733 §4.3.1; TS 29.002 §17.7.8); nil if absent
 	SmsOverIPOnlyIndicator    bool                // [0] NULL
 	CorrelationID             *SriSmCorrelationID // [1] reuse SRI-SM type
-	MaximumRetransmissionTime HexBytes            // [2] Time octet string; nil if absent
+	MaximumRetransmissionTime HexBytes            // [2] Time: four octets of NTP seconds since 1900-01-01 UTC; 2036 era wrap (RFC 6733 §4.3.1; TS 29.002 §17.7.8); nil if absent
 	SmsGmscAddress            string              // [3] ISDN-AddressString
 	SmsGmscAddressNature      uint8
 	SmsGmscAddressPlan        uint8
@@ -268,7 +268,7 @@ type VlrCapability struct {
 	SupportedLCSCapabilitySets *SupportedLCSCapabilitySets // [5]
 
 	SolsaSupportIndicator                       bool               // [2] NULL
-	IstSupportIndicator                         *int               // [1] 0=basicISTSupported, 1=istCommandSupported
+	IstSupportIndicator                         *int               // [1] 0=basicISTSupported, 1=istCommandSupported; Parse maps >1 to 1 and keeps negative values
 	SuperChargerSupportedInServingNetworkEntity *SuperChargerInfo  // [3] CHOICE
 	LongFTNSupported                            bool               // [4] NULL
 	OfferedCamel4CSIs                           *OfferedCamel4CSIs // [6]
@@ -511,12 +511,12 @@ type SubscriberInfo struct {
 	SubscriberState                  *SubscriberStateInfo              // [1]
 	LocationInformationGPRS          *GPRSLocationInformation          // [3]
 	PsSubscriberState                *PsSubscriberState                // [4] CHOICE
-	IMEI                             string                            // [5] digits; empty if absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal sends 0, see ErrIMEISpareDigitNotZero)
+	IMEI                             string                            // [5] digits; empty if absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see ErrIMEISpareDigitNotZero)
 	MsClassmark2                     HexBytes                          // [6] raw octets; nil if absent
 	GprsMSClass                      *GprsMSClass                      // [7]
 	MnpInfoRes                       *MnpInfoRes                       // [8]
 	ImsVoiceOverPSSessionsIndication *ImsVoiceOverPSSessionsIndication // [9]
-	LastUEActivityTime               HexBytes                          // [10] Time octet string; nil if absent
+	LastUEActivityTime               HexBytes                          // [10] Time: four octets of NTP seconds since 1900-01-01 UTC; 2036 era wrap (RFC 6733 §4.3.1; TS 29.002 §17.7.8); nil if absent
 	LastRATType                      *UsedRatType                      // [11]
 	EpsSubscriberState               *PsSubscriberState                // [12] CHOICE
 	LocationInformationEPS           *EPSLocationInformation           // [13]
@@ -580,7 +580,7 @@ type LocationInformation5GS struct {
 	AmfAddress               HexBytes          // [4] FQDN
 	TrackingAreaIdentity     HexBytes          // [5]
 	CurrentLocationRetrieved bool              // [6] NULL
-	AgeOfLocationInformation *int              // [7]
+	AgeOfLocationInformation *int              // [7] minutes
 	VplmnID                  HexBytes          // [8] 3 octets
 	LocalTimeZone            HexBytes          // [9]
 	RatType                  *UsedRatType      // [10]
@@ -1352,7 +1352,7 @@ type Sri struct {
 	CcbsCall                        bool
 	SupportedCCBSPhase              *int // only 1 is used; reserved 2..127 decode as 1
 	AdditionalSignalInfo            *ExtExternalSignalInfo
-	IstSupportIndicator             *int // 0 or 1; values above 1 decode as 1
+	IstSupportIndicator             *int // 0 or 1; Parse maps >1 to 1 and keeps negative values
 	PrePagingSupported              bool
 	CallDiversionTreatmentIndicator HexBytes
 	LongFTNSupported                bool
@@ -1437,7 +1437,7 @@ type AlertServiceCentre struct {
 	// Optional fields (post-extension marker).
 	IMSI                      string                      // optional IMSI (TBCD)
 	CorrelationID             *SriSmCorrelationID         // SEQUENCE (reuses SRI-SM type)
-	MaximumUeAvailabilityTime HexBytes                    // [0] Time octet string; nil if absent
+	MaximumUeAvailabilityTime HexBytes                    // [0] Time: four octets of NTP seconds since 1900-01-01 UTC; 2036 era wrap (RFC 6733 §4.3.1; TS 29.002 §17.7.8); nil if absent
 	SmsGmscAlertEvent         *SmsGmscAlertEvent          // [1] ENUMERATED
 	SmsGmscDiameterAddress    *NetworkNodeDiameterAddress // [2]
 	NewSGSNNumber             string                      // [3] ISDN-AddressString
@@ -1857,7 +1857,7 @@ type SupportedFeatures struct {
 }
 
 // ExtSupportedFeatures (BIT STRING SIZE 1..40) per 3GPP TS 29.002 V19.1.0 §17.7.1. Extension to SupportedFeatures for newer
-// feature bits; only bit 0 is currently named. BitLength and UnknownBits
+// feature bits; only bit 0 is named. BitLength and UnknownBits
 // retain unnamed bits 1..39 and trailing zero bits on Parse/Marshal
 // (3GPP TS 29.002 V19.1.0 §17.7.1, SIZE (1..40)).
 type ExtSupportedFeatures struct {
@@ -1949,7 +1949,7 @@ type MCSSInfo struct {
 type CSGSubscriptionData struct {
 	CsgID              HexBytes   // mandatory: CSG-Id BIT STRING (4 octets carrying 27 bits)
 	CsgIDBits          int        // mandatory: SIZE (27), checked by the BER codec
-	ExpirationDate     HexBytes   // optional: Time, 4 octets of seconds since 1900-01-01 UTC (3GPP TS 29.002 V19.1.0 §17.7.8; RFC 6733 §4.3.1)
+	ExpirationDate     HexBytes   // optional: Time: four octets of NTP seconds since 1900-01-01 UTC; 2036 era wrap (RFC 6733 §4.3.1; TS 29.002 §17.7.8)
 	LipaAllowedAPNList []HexBytes // [0] optional: list of APN OCTET STRINGs (SIZE 2..63), 1..50 entries when present
 	PlmnId             HexBytes   // [1] optional: PLMN-Id (3 octets)
 }
@@ -1986,7 +1986,7 @@ type IMSIGroupIdList []IMSIGroupId
 // EDRXCycleLength (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // EDRXCycleLengthValue is a single-octet code per 3GPP TS 29.272 clause 7.3.216.
 type EDRXCycleLength struct {
-	// RatType: currently defined values are 0..5 (UsedRatUTRAN..UsedRatNBIOT);
+	// RatType: defined values are 0..5 (UsedRatUTRAN..UsedRatNBIOT);
 	// the spec marks the enum as extensible, so Parse keeps an unknown
 	// value, which Marshal refuses (ErrUsedRATTypeInvalid).
 	RatType              UsedRatType // [0] mandatory
@@ -2158,7 +2158,7 @@ type AllocationRetentionPriority struct {
 }
 
 // EPSQoSSubscribed (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-// QoS-Class-Identifier is INTEGER (1..9) per asn:1415.
+// QoS-Class-Identifier is INTEGER (1..9) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type EPSQoSSubscribed struct {
 	QosClassIdentifier          int                         // [0] mandatory, 1..9
 	AllocationRetentionPriority AllocationRetentionPriority // [1] mandatory
@@ -2287,7 +2287,7 @@ const (
 )
 
 // LCSClientInternalID (ENUMERATED) per TS 29.002
-// MAP-CommonDataTypes.asn (gsm_map.LCSClientInternalID).
+// §17.7.8 (gsm_map.LCSClientInternalID).
 // Aliased from go-asn1.
 type LCSClientInternalID = gsm_map.LCSClientInternalID
 
@@ -2319,8 +2319,8 @@ type ExternalClient struct {
 // ExternalClientList (SEQUENCE SIZE 0..5 OF ExternalClient) per
 // 3GPP TS 29.002 V19.1.0 §17.7.1.
 //
-// Note: spec allows 0 entries (the only such list in the package),
-// so an empty slice is valid here unlike elsewhere.
+// An empty slice is valid; CUG-SubscriptionList also allows zero entries
+// (3GPP TS 29.002 V19.1.0 §17.7.1).
 type ExternalClientList []ExternalClient
 
 // ExtExternalClientList (SEQUENCE SIZE 1..35 OF ExternalClient) per
@@ -2370,7 +2370,7 @@ type MOLRList []MOLRClass
 // GMLCList (SEQUENCE SIZE 1..5 OF ISDN-AddressString) per 3GPP TS 29.002
 // V19.1.0 §17.7.1. Each entry is an ISDN-AddressString of 1..9 octets, at
 // most 16 digits; Marshal and Parse reject a longer one
-// (ErrGMLCAddressInvalidSize) and one without digits (ErrGMLCAddressEmpty).
+// (ErrGMLCListEntryInvalidSize) and one without digits (ErrGMLCListEntryEmpty).
 type GMLCList []ISDNNumber
 
 // LCSInformation (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2387,7 +2387,7 @@ type LCSInformation struct {
 }
 
 // ============================================================================
-// ProvideSubscriberLocation foundation types (TS 29.002 MAP-LCS-DataTypes.asn)
+// ProvideSubscriberLocation foundation types (TS 29.002 §17.7.13)
 // ============================================================================
 //
 // The LCS types shared by ProvideSubscriberLocation (opCode 83) and
@@ -2439,9 +2439,9 @@ type LocationType struct {
 // LCSClientType (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum. Aliased from go-asn1. Marshal sends only the listed
 // values. 3GPP TS 29.002 V19.1.0 §17.7.13: "unrecognized values may be
-// ignored if the LCS client uses the privacy override otherwise, an
-// unrecognized value shall be treated as unexpected data by a receiver; a
-// return error shall then be returned if received in a MAP invoke". Parse
+// ignored if the LCS client uses the privacy override
+// otherwise, an unrecognized value shall be treated as unexpected data by a receiver
+// a return error shall then be returned if received in a MAP invoke". Parse
 // keeps an unrecognized value in a ProvideSubscriberLocation-Arg with
 // privacyOverride and otherwise rejects it with ErrLCSClientTypeUnrecognized.
 type LCSClientType = gsm_map.LCSClientType
@@ -2517,7 +2517,7 @@ const (
 )
 
 // ResponseTime (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
-// An expandable SEQUENCE per spec, currently carrying only the category.
+// An expandable SEQUENCE per spec, carrying the category.
 type ResponseTime struct {
 	ResponseTimeCategory ResponseTimeCategory // mandatory
 }
@@ -2616,11 +2616,11 @@ type SupportedGADShapes struct {
 type LCSPriority = HexBytes
 
 // LCSReferenceNumber (OCTET STRING SIZE 1) per TS 29.002
-// MAP-CommonDataTypes.asn — single-octet PSL/SLR correlation reference.
+// §17.7.13 — single-octet PSL/SLR correlation reference.
 type LCSReferenceNumber = HexBytes
 
 // ============================================================================
-// PSL geographical / positioning data types (TS 29.002 MAP-LCS-DataTypes.asn)
+// PSL geographical / positioning data types (TS 29.002 §17.7.13)
 // ============================================================================
 //
 // OCTET STRING and INTEGER types referenced by ProvideSubscriberLocation-Res
@@ -2680,7 +2680,7 @@ type UtranBaroPressureMeas = gsm_map.UtranBaroPressureMeas
 
 // ============================================================================
 // PSL area-event / periodic / reporting-PLMN / serving-node types
-// (TS 29.002 MAP-LCS-DataTypes.asn)
+// (TS 29.002 §17.7.13)
 // ============================================================================
 //
 // The SEQUENCE/CHOICE/ENUMERATED types referenced by the
@@ -2809,7 +2809,7 @@ const (
 	TerminationNetworkTermination                  = gsm_map.TerminationCauseNetworkTermination
 )
 
-// ServingNodeAddress (CHOICE) per TS 29.002 MAP-LCS-DataTypes.asn (used
+// ServingNodeAddress (CHOICE) per TS 29.002 §17.7.13 (used
 // in PSL-Res targetServingNodeForHandover field). Set exactly one of
 // MscNumber, SgsnNumber, or MmeNumber.
 //
@@ -2879,7 +2879,7 @@ type ProvideSubscriberLocationArg struct {
 	MSISDNNature              uint8    // address nature indicator
 	MSISDNPlan                uint8    // numbering plan indicator
 	LMSI                      HexBytes // 4 octets opaque
-	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal sends 0, see ErrIMEISpareDigitNotZero)
+	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see ErrIMEISpareDigitNotZero)
 	LcsPriority               LCSPriority
 	LcsQoS                    *LCSQoS
 	SupportedGADShapes        *SupportedGADShapes
@@ -2944,7 +2944,7 @@ type ProvideSubscriberLocationRes struct {
 }
 
 // ============================================================================
-// MAP ReturnError diagnostics (TS 29.002 §17.6 / MAP-ER-DataTypes.asn)
+// MAP ReturnError diagnostics (TS 29.002 §17.6 / §17.7.7)
 // ============================================================================
 //
 // TCAP ReturnError carries an opcode (e.g. absentSubscriberSM, callBarred)
@@ -2992,7 +2992,7 @@ func (c MapErrorCode) String() string {
 // the AbsentSubscriberDiagnosticSM diagnostic carried by SRI-SM and
 // MT-ForwardSM error responses (errorCode 6) and by some PSI/UDS
 // fields. The ASN.1 type is `INTEGER (0..255)` per TS 29.002
-// MAP-ER-DataTypes.asn, with the named values defined out-of-spec in
+// §17.7.7, with the named values defined out-of-spec in
 // 3GPP TS 23.040 §3.3.2 (SMS-side diagnostic information). Upstream
 // go-asn1 surfaces the type as a bare `int64` alias because the ASN.1
 // declaration is not an ENUMERATED; this wrapper promotes it to a
@@ -3052,7 +3052,7 @@ func (v AbsentSubscriberDiagnosticSM) String() string {
 	}
 }
 
-// AbsentSubscriberSMParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// AbsentSubscriberSMParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 6 (absentSubscriberSM) by SRI-SM and
 // MT-ForwardSM. The diagnostic fields explain why the subscriber is
 // absent (phone off, out of coverage, purged from HLR, etc.) and
@@ -3066,11 +3066,11 @@ type AbsentSubscriberSMParam struct {
 	AbsentSubscriberDiagnosticSM           *AbsentSubscriberDiagnosticSM // untagged
 	AdditionalAbsentSubscriberDiagnosticSM *AbsentSubscriberDiagnosticSM // [0]
 	IMSI                                   string                        // [1] TBCD-decoded digits; "" = absent
-	RequestedRetransmissionTime            HexBytes                      // [2] opaque GeneralizedTime octets; nil = absent
+	RequestedRetransmissionTime            HexBytes                      // [2] Time: four octets of NTP seconds since 1900-01-01 UTC; 2036 era wrap (RFC 6733 §4.3.1; TS 29.002 §17.7.8); nil = absent
 	UserIdentifierAlert                    string                        // [3] TBCD-decoded digits; "" = absent
 }
 
-// UnknownSubscriberParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// UnknownSubscriberParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 1 (unknownSubscriber). The diagnostic
 // distinguishes "we never had this MSISDN" from "this MSISDN is not
 // provisioned for the queried service".
@@ -3078,7 +3078,7 @@ type UnknownSubscriberParam struct {
 	UnknownSubscriberDiagnostic *gsm_map.UnknownSubscriberDiagnostic
 }
 
-// CallBarredParam (CHOICE) per TS 29.002 MAP-ER-DataTypes.asn.
+// CallBarredParam (CHOICE) per TS 29.002 §17.7.7.
 // Returned with errorCode 13 (callBarred). The CHOICE is between a
 // bare CallBarringCause and the extensible variant. Decode populates
 // exactly one of CallBarringCause or ExtensibleCallBarredParam.
@@ -3095,7 +3095,7 @@ type ExtensibleCallBarredParam struct {
 	AnonymousCallRejection        bool                      // [2] NULL flag
 }
 
-// SystemFailureParam (CHOICE) per TS 29.002 MAP-ER-DataTypes.asn.
+// SystemFailureParam (CHOICE) per TS 29.002 §17.7.7.
 // Returned with errorCode 34 (systemFailure). Identifies which network
 // node broke — critical for incident triage. The CHOICE is between a
 // bare NetworkResource and the extensible variant. Decode populates
@@ -3115,7 +3115,7 @@ type ExtensibleSystemFailureParam struct {
 	FailureCauseParam         *gsm_map.FailureCauseParam         // [1]
 }
 
-// RoamingNotAllowedParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// RoamingNotAllowedParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 8 (roamingNotAllowed). The cause distinguishes
 // PLMN-roaming-not-allowed from operator-determined-barring.
 // RoamingNotAllowedCause is mandatory on the wire but nil when
@@ -3129,13 +3129,13 @@ type RoamingNotAllowedParam struct {
 }
 
 // UnauthorizedRequestingNetworkParam (SEQUENCE) per TS 29.002
-// MAP-ER-DataTypes.asn. Returned with errorCode 52
+// §17.7.7. Returned with errorCode 52
 // (unauthorizedRequestingNetwork). Carries only ExtensionContainer
 // in the spec; the public type is empty (placeholder for opaque
 // pass-through callers).
 type UnauthorizedRequestingNetworkParam struct{}
 
-// FacilityNotSupParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// FacilityNotSupParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 21 (facilityNotSupported). Optional
 // indicators identify which sub-facility is unsupported.
 type FacilityNotSupParam struct {
@@ -3143,17 +3143,17 @@ type FacilityNotSupParam struct {
 	NeededLcsCapabilityNotSupportedInServingNode bool // [1] NULL flag
 }
 
-// TeleservNotProvParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// TeleservNotProvParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 11 (teleserviceNotProvisioned). Carries
 // only ExtensionContainer in the spec; the public type is empty.
 type TeleservNotProvParam struct{}
 
-// DataMissingParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// DataMissingParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 35 (dataMissing). Carries only
 // ExtensionContainer in the spec; the public type is empty.
 type DataMissingParam struct{}
 
-// AbsentSubscriberParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
+// AbsentSubscriberParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 27 (absentSubscriber) by SRI and PSI on the
 // GSM CS side. Distinct from AbsentSubscriberSMParam (errorCode 6),
 // which is the SMS-side variant. The optional AbsentSubscriberReason
@@ -3182,7 +3182,7 @@ type UnexpectedDataParam struct {
 }
 
 // ============================================================================
-// SubscriberLocationReport foundation types (TS 29.002 MAP-LCS-DataTypes.asn)
+// SubscriberLocationReport foundation types (TS 29.002 §17.7.13)
 // ============================================================================
 //
 // The types of SubscriberLocationReport (opCode 86) that
@@ -3208,11 +3208,11 @@ const (
 )
 
 // SequenceNumber (INTEGER 1..maxReportingAmount=8639999) per TS 29.002
-// MAP-LCS-DataTypes.asn. Identifies a periodic LDR report within a
+// §17.7.13. Identifies a periodic LDR report within a
 // reporting sequence. Aliased from go-asn1 to int64.
 type SequenceNumber = gsm_map.SequenceNumber
 
-// LCSLocationInfo (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn.
+// LCSLocationInfo (SEQUENCE) per TS 29.002 §17.7.13.
 // Identifies the network node that produced the location report.
 // NetworkNodeNumber is an ISDN-AddressString (MSC, SGSN, or the dummy
 // value "0") surfaced as digits + Nature/Plan triple consistent with
@@ -3285,7 +3285,7 @@ type SubscriberLocationReportArg struct {
 	MSISDNNature uint8
 	MSISDNPlan   uint8
 	IMSI         string // [1] TBCD-decoded digits; "" = absent (6..15 digits, ErrIMSIInvalidLength)
-	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal sends 0, see ErrIMEISpareDigitNotZero)
+	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see ErrIMEISpareDigitNotZero)
 
 	// Optional emergency-services routing identifiers (ISDN-AddressString).
 	NaESRD       string // [3] North-American Emergency Service Routing Digits; "" = absent
@@ -3411,7 +3411,7 @@ type SriLcsResp struct {
 // ============================================================================
 
 // GPRSTriggerDetectionPoint (ENUMERATED) per TS 29.002
-// MAP-MS-DataTypes.asn (extensible enum). Aliased from go-asn1. The encoder
+// §17.7.1 (extensible enum). Aliased from go-asn1. The encoder
 // accepts only the listed values; the decoder ignores a GPRSCamelTDPData
 // carrying any other value, and a GPRSCSI left without entries decodes as
 // absent (3GPP TS 29.002 V19.1.0 §17.7.1).
@@ -3440,7 +3440,7 @@ const (
 // All four fields are mandatory per spec.
 type GPRSCamelTDPData struct {
 	GprsTriggerDetectionPoint GPRSTriggerDetectionPoint // [0] mandatory
-	ServiceKey                int64                     // [1] mandatory, 0..2147483647 per CAMEL convention
+	ServiceKey                int64                     // [1] mandatory, 0..2147483647 per 3GPP TS 29.002 V19.1.0 §17.7.1 ServiceKey
 	GsmSCFAddress             string                    // [2] mandatory ISDN-AddressString digits
 	GsmSCFAddressNature       uint8
 	GsmSCFAddressPlan         uint8
@@ -3487,7 +3487,7 @@ type GPRSCSI struct {
 // nothing to the node the CSI is sent to.
 type MGCSI struct {
 	MobilityTriggers    []MMCode // mandatory, 1..10 PS domain MM-Codes
-	ServiceKey          int64    // mandatory, 0..2147483647 per CAMEL convention
+	ServiceKey          int64    // mandatory, 0..2147483647 per 3GPP TS 29.002 V19.1.0 §17.7.1 ServiceKey
 	GsmSCFAddress       string   // [0] mandatory ISDN-AddressString digits
 	GsmSCFAddressNature uint8
 	GsmSCFAddressPlan   uint8
@@ -3616,57 +3616,44 @@ type InsertSubscriberDataRes struct {
 
 // MAP operation sentinel errors.
 var (
-	ErrCallBarredCausePayloadMissing              = errors.New("CallBarredParam.CallBarringCause payload is missing")
-	ErrCallBarredChoiceInvalid                    = errors.New("CallBarredParam choice is invalid")
-	ErrCallBarredExtensiblePayloadMissing         = errors.New("CallBarredParam.ExtensibleCallBarredParam payload is missing")
-	ErrCellGlobalIdOrLAIChoiceInvalid             = errors.New("CellGlobalIdOrServiceAreaIdOrLAI choice is invalid")
-	ErrCellGlobalIdPayloadMissing                 = errors.New("CellGlobalIdOrServiceAreaIdOrLAI cellGlobalId payload is missing")
-	ErrGeoAltitudeOutOfRange                      = errors.New("geographical altitude is out of range")
-	ErrGeoAngleOutOfRange                         = errors.New("geographical angle is out of range")
-	ErrGeoArcFieldsMissing                        = errors.New("ellipsoid arc has missing fields")
-	ErrGeoArcInvalidLength                        = errors.New("ellipsoid arc has invalid length")
-	ErrGeoCodeOutOfRange                          = errors.New("geographical code is out of range")
-	ErrGeoInformationTooShort                     = errors.New("geographical information is too short")
-	ErrGeoLatitudeEncodingOverflow                = errors.New("latitude rounds beyond the encoding range")
-	ErrGeoLatitudeNotFinite                       = errors.New("latitude is not finite")
-	ErrGeoLatitudeOutOfRange                      = errors.New("latitude is out of range")
-	ErrGeoLongitudeEncodingCollapse               = errors.New("longitude rounds to a different boundary value")
-	ErrGeoLongitudeEncodingOverflow               = errors.New("longitude rounds beyond the encoding range")
-	ErrGeoLongitudeNotFinite                      = errors.New("longitude is not finite")
-	ErrGeoLongitudeOutOfRange                     = errors.New("longitude is out of range")
-	ErrGeoPointAltitudeFieldsMissing              = errors.New("ellipsoid point with altitude has missing fields")
-	ErrGeoPointAltitudeInvalidLength              = errors.New("ellipsoid point with altitude has invalid length")
-	ErrGeoPointInvalidLength                      = errors.New("ellipsoid point has invalid length")
-	ErrGeoPointUncertaintyEllipseFieldsMissing    = errors.New("ellipsoid point with uncertainty ellipse has missing fields")
-	ErrGeoPointUncertaintyEllipseInvalidLength    = errors.New("ellipsoid point with uncertainty ellipse has invalid length")
-	ErrGeoPointUncertaintyFieldsMissing           = errors.New("ellipsoid point with uncertainty has missing fields")
-	ErrGeoPointUncertaintyInvalidLength           = errors.New("ellipsoid point with uncertainty has invalid length")
-	ErrGeoShapeTypeInvalid                        = errors.New("geographical shape type is unsupported")
-	ErrGoIntOverflow                              = errors.New("integer does not fit Go int")
-	ErrInt64Overflow                              = errors.New("integer does not fit int64")
-	ErrIntegerMissing                             = errors.New("integer value is missing")
-	ErrIntegerOutOfRange                          = errors.New("integer value is out of range")
-	ErrLAIPayloadMissing                          = errors.New("CellGlobalIdOrServiceAreaIdOrLAI LAI payload is missing")
-	ErrPdnGwIdentityAddressMissing                = errors.New("PdnGwIdentity has no address or name")
-	ErrPdnGwIdentityIPv4AddressInvalidLength      = errors.New("PdnGwIdentity IPv4Address has invalid length")
-	ErrPdnGwIdentityIPv6AddressInvalidLength      = errors.New("PdnGwIdentity IPv6Address has invalid length")
-	ErrPsSubscriberStateChoiceInvalid             = errors.New("PsSubscriberState choice is invalid")
-	ErrPsSubscriberStateReasonMissing             = errors.New("PsSubscriberState NetDetNotReachable reason is missing")
-	ErrSaiAuthenticationSetListChoiceInvalid      = errors.New("AuthenticationSetList choice is invalid")
-	ErrSmRpDaChoiceInvalid                        = errors.New("SmRpDa choice is invalid")
-	ErrSmRpDaIMSIPayloadMissing                   = errors.New("SmRpDa IMSI payload is missing")
-	ErrSmRpDaLMSIPayloadMissing                   = errors.New("SmRpDa LMSI payload is missing")
-	ErrSmRpDaServiceCentreAddressDAPayloadMissing = errors.New("SmRpDa ServiceCentreAddressDA payload is missing")
-	ErrSmRpOaChoiceInvalid                        = errors.New("SmRpOa choice is invalid")
-	ErrSmRpOaMSISDNPayloadMissing                 = errors.New("SmRpOa MSISDN payload is missing")
-	ErrSmRpOaServiceCentreAddressOAPayloadMissing = errors.New("SmRpOa ServiceCentreAddressOA payload is missing")
-	ErrSubscriberStateChoiceInvalid               = errors.New("SubscriberState choice is invalid")
-	ErrSubscriberStateInvalid                     = errors.New("SubscriberState state is invalid")
-	ErrSubscriberStateNotReachableReasonMissing   = errors.New("SubscriberState NotReachableReason is missing")
-	ErrSystemFailureChoiceInvalid                 = errors.New("SystemFailureParam choice is invalid")
-	ErrSystemFailureExtensiblePayloadMissing      = errors.New("SystemFailureParam extensible payload is missing")
-	ErrSystemFailureNetworkResourcePayloadMissing = errors.New("SystemFailureParam NetworkResource payload is missing")
-	ErrTPDUDecodedNil                             = errors.New("TPDU decoder returned nil without an error")
+	ErrCallBarredParamUnknownAlternative        = errors.New("callBarredParam: unknown CHOICE alternative")
+	ErrGeoAltitudeOutOfRange                    = errors.New("geographical altitude is out of range")
+	ErrGeoAngleOutOfRange                       = errors.New("geographical angle is out of range")
+	ErrGeoArcFieldsMissing                      = errors.New("ellipsoid arc has missing fields")
+	ErrGeoArcInvalidLength                      = errors.New("ellipsoid arc has invalid length")
+	ErrGeoCodeOutOfRange                        = errors.New("geographical code is out of range")
+	ErrGeoInformationTooShort                   = errors.New("geographical information is too short")
+	ErrGeoLatitudeEncodingOverflow              = errors.New("latitude rounds beyond the encoding range")
+	ErrGeoLatitudeNotFinite                     = errors.New("latitude is not finite")
+	ErrGeoLatitudeOutOfRange                    = errors.New("latitude is out of range")
+	ErrGeoLongitudeEncodingCollapse             = errors.New("longitude rounds to a different boundary value")
+	ErrGeoLongitudeEncodingOverflow             = errors.New("longitude rounds beyond the encoding range")
+	ErrGeoLongitudeNotFinite                    = errors.New("longitude is not finite")
+	ErrGeoLongitudeOutOfRange                   = errors.New("longitude is out of range")
+	ErrGeoPointAltitudeFieldsMissing            = errors.New("ellipsoid point with altitude has missing fields")
+	ErrGeoPointAltitudeInvalidLength            = errors.New("ellipsoid point with altitude has invalid length")
+	ErrGeoPointInvalidLength                    = errors.New("ellipsoid point has invalid length")
+	ErrGeoPointUncertaintyEllipseFieldsMissing  = errors.New("ellipsoid point with uncertainty ellipse has missing fields")
+	ErrGeoPointUncertaintyEllipseInvalidLength  = errors.New("ellipsoid point with uncertainty ellipse has invalid length")
+	ErrGeoPointUncertaintyFieldsMissing         = errors.New("ellipsoid point with uncertainty has missing fields")
+	ErrGeoPointUncertaintyInvalidLength         = errors.New("ellipsoid point with uncertainty has invalid length")
+	ErrGeoShapeTypeInvalid                      = errors.New("geographical shape type is unsupported")
+	ErrGoIntOverflow                            = errors.New("integer does not fit Go int")
+	ErrInt64Overflow                            = errors.New("integer does not fit int64")
+	ErrIntegerMissing                           = errors.New("integer value is missing")
+	ErrIntegerOutOfRange                        = errors.New("integer value is out of range")
+	ErrPdnGwIdentityAddressMissing              = errors.New("PdnGwIdentity has no address or name")
+	ErrPdnGwIdentityIPv4AddressInvalidLength    = errors.New("PdnGwIdentity IPv4Address has invalid length")
+	ErrPdnGwIdentityIPv6AddressInvalidLength    = errors.New("PdnGwIdentity IPv6Address has invalid length")
+	ErrPsSubscriberStateUnknownAlternative      = errors.New("psSubscriberState: unknown CHOICE alternative")
+	ErrAuthenticationSetListUnknownAlternative  = errors.New("authenticationSetList: unknown CHOICE alternative")
+	ErrSmRpDaUnknownAlternative                 = errors.New("smRpDa: unknown CHOICE alternative")
+	ErrSmRpOaUnknownAlternative                 = errors.New("smRpOa: unknown CHOICE alternative")
+	ErrSubscriberStateUnknownAlternative        = errors.New("subscriberState: unknown CHOICE alternative")
+	ErrSubscriberStateInvalid                   = errors.New("SubscriberState state is invalid")
+	ErrSubscriberStateNotReachableReasonMissing = errors.New("SubscriberState NotReachableReason is missing")
+	ErrSystemFailureParamUnknownAlternative     = errors.New("systemFailureParam: unknown CHOICE alternative")
+	ErrTPDUDecodedNil                           = errors.New("TPDU decoder returned nil without an error")
 
 	ErrSriForwardingReasonInvalid                 = errors.New("sri: ForwardingReason must be 0..2")
 	ErrNumberPortabilityStatusInvalid             = errors.New("NumberPortabilityStatus must be a listed value")
@@ -3681,13 +3668,36 @@ var (
 	ErrCallBarringCauseInvalid                    = errors.New("CallBarringCause must be 0..1")
 	ErrRoamingNotAllowedCauseInvalid              = errors.New("RoamingNotAllowedCause must be 0 or 3")
 
+	ErrAdditionalNumberUnknownAlternative                 = errors.New("additionalNumber: unknown CHOICE alternative")
+	ErrExtBasicServiceCodeUnknownAlternative              = errors.New("extBasicServiceCode: unknown CHOICE alternative")
+	ErrRoutingInfoUnknownAlternative                      = errors.New("routingInfo: unknown CHOICE alternative")
+	ErrExtendedRoutingInfoUnknownAlternative              = errors.New("extendedRoutingInfo: unknown CHOICE alternative")
+	ErrEpsInfoUnknownAlternative                          = errors.New("epsInfo: unknown CHOICE alternative")
+	ErrServingNodeAddressUnknownAlternative               = errors.New("servingNodeAddress: unknown CHOICE alternative")
+	ErrSSSubscriptionOptionUnknownAlternative             = errors.New("ssSubscriptionOption: unknown CHOICE alternative")
+	ErrExtSSInfoUnknownAlternative                        = errors.New("extSSInfo: unknown CHOICE alternative")
+	ErrCancelLocationIdentityUnknownAlternative           = errors.New("cancelLocationIdentity: unknown CHOICE alternative")
+	ErrAdditionalNumberNoAlternative                      = errors.New("additionalNumber: CHOICE has no alternative set")
+	ErrAdditionalNumberMultipleAlternatives               = errors.New("additionalNumber: CHOICE has multiple alternatives set")
+	ErrExtBasicServiceCodeNoAlternative                   = errors.New("extBasicServiceCode: CHOICE has no alternative set")
+	ErrExtBasicServiceCodeMultipleAlternatives            = errors.New("extBasicServiceCode: CHOICE has multiple alternatives set")
+	ErrRoutingInfoNoAlternative                           = errors.New("routingInfo: CHOICE has no alternative set")
+	ErrRoutingInfoMultipleAlternatives                    = errors.New("routingInfo: CHOICE has multiple alternatives set")
+	ErrExtendedRoutingInfoNoAlternative                   = errors.New("extendedRoutingInfo: CHOICE has no alternative set")
+	ErrExtendedRoutingInfoMultipleAlternatives            = errors.New("extendedRoutingInfo: CHOICE has multiple alternatives set")
+	ErrEpsInfoNoAlternative                               = errors.New("epsInfo: CHOICE has no alternative set")
+	ErrEpsInfoMultipleAlternatives                        = errors.New("epsInfo: CHOICE has multiple alternatives set")
+	ErrSmRpDaNoAlternative                                = errors.New("smRpDa: CHOICE has no alternative set")
+	ErrSmRpDaMultipleAlternatives                         = errors.New("smRpDa: CHOICE has multiple alternatives set")
+	ErrSmRpOaNoAlternative                                = errors.New("smRpOa: CHOICE has no alternative set")
+	ErrSmRpOaMultipleAlternatives                         = errors.New("smRpOa: CHOICE has multiple alternatives set")
+	ErrCellGlobalIdOrServiceAreaIdOrLAIUnknownAlternative = errors.New("cellGlobalIdOrServiceAreaIdOrLAI: unknown CHOICE alternative")
+
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
 	ErrSriMissingGmscOrGsmSCFAddress = errors.New("sri: GmscOrGsmSCFAddress is empty")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrSriInvalidInterrogationType   = errors.New("sri: InterrogationType must be 0 or 1")
-	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
-	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
-	ErrSriInvalidSupportedCCBSPhase  = errors.New("sri: SupportedCCBSPhase must be 1; 3GPP TS 29.002 V19.1.0 §17.7.3 reserves 2..127, which a receiver maps to 1")
+	ErrSriInvalidInterrogationType  = errors.New("sri: InterrogationType must be 0 or 1")
+	ErrSriInvalidSupportedCCBSPhase = errors.New("sri: SupportedCCBSPhase must be 1; 3GPP TS 29.002 V19.1.0 §17.7.3 reserves 2..127, which a receiver maps to 1")
 	// ErrISTSupportIndicatorInvalid and ErrUnavailabilityCauseInvalid: the
 	// encoder sends only the listed values; the decoder keeps any other
 	// (both types are extensible, 3GPP TS 29.002 V19.1.0 §17.1.4).
@@ -3720,21 +3730,12 @@ var (
 	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrMoFsmSmDeliveryOutcomeInvalid = errors.New("moFsm: SmDeliveryOutcome must be memoryCapacityExceeded(0), absentSubscriber(1) or successfulTransfer(2) per 3GPP TS 29.002 V19.1.0 §17.7.6 (non-extensible ENUMERATED)")
 
-	ErrMoFsmSmRpDaNoAlternative        = errors.New("moFsm: SmRpDa CHOICE has no alternative set")
-	ErrMoFsmSmRpDaMultipleAlternatives = errors.New("moFsm: SmRpDa CHOICE has multiple alternatives set")
-	ErrMoFsmSmRpOaNoAlternative        = errors.New("moFsm: SmRpOa CHOICE has no alternative set")
-	ErrMoFsmSmRpOaMultipleAlternatives = errors.New("moFsm: SmRpOa CHOICE has multiple alternatives set")
+	ErrSuperChargerInfoNoAlternative        = errors.New("superChargerInfo: CHOICE has no alternative set")
+	ErrSuperChargerInfoMultipleAlternatives = errors.New("superChargerInfo: CHOICE has multiple alternatives set")
+	ErrSuperChargerInfoUnknownAlternative   = errors.New("superChargerInfo: unknown CHOICE alternative")
 
-	ErrMtFsmSmRpDaNoAlternative        = errors.New("mtFsm: SmRpDa CHOICE has no alternative set")
-	ErrMtFsmSmRpDaMultipleAlternatives = errors.New("mtFsm: SmRpDa CHOICE has multiple alternatives set")
-	ErrMtFsmSmRpOaNoAlternative        = errors.New("mtFsm: SmRpOa CHOICE has no alternative set")
-	ErrMtFsmSmRpOaMultipleAlternatives = errors.New("mtFsm: SmRpOa CHOICE has multiple alternatives set")
-
-	ErrSuperChargerInfoNoAlternative        = errors.New("updateLocation: SuperChargerInfo CHOICE has no alternative set")
-	ErrSuperChargerInfoMultipleAlternatives = errors.New("updateLocation: SuperChargerInfo CHOICE has multiple alternatives set")
-
-	ErrAtiPsSubscriberStateNoAlternative        = errors.New("ati: PsSubscriberState CHOICE has no alternative set")
-	ErrAtiPsSubscriberStateMultipleAlternatives = errors.New("ati: PsSubscriberState CHOICE has multiple alternatives set")
+	ErrPsSubscriberStateNoAlternative        = errors.New("psSubscriberState: CHOICE has no alternative set")
+	ErrPsSubscriberStateMultipleAlternatives = errors.New("psSubscriberState: CHOICE has multiple alternatives set")
 
 	// ErrAddressNatureInvalid is returned when an address nature of address
 	// is not one of the address.Nature* values (bits 7..5 of the first
@@ -3769,7 +3770,7 @@ var (
 	// it shall be set to zero, when transmitted by the MS", and "The Check
 	// Digit is not part of the digits transmitted". Parse keeps a non-zero
 	// spare digit, so an IMEI from a peer that puts the Check Digit there
-	// decodes; Marshal sends 0. Every public IMEI field follows this
+	// decodes; Marshal rejects a non-zero spare digit. Every public IMEI field follows this
 	// rule.
 	ErrIMEISpareDigitNotZero = errors.New("identity: a 15-digit IMEI carries the spare digit 0 in its last position, not the check digit, per 3GPP TS 29.002 V19.1.0 §17.7.8 and 3GPP TS 23.003 V20.1.0 §6.2.1")
 	// ErrIMEISVInvalidLength is returned when an IMEISV does not have 16
@@ -3843,13 +3844,13 @@ var (
 	// 29.002 V19.1.0 §17.1.4, and §17.7.6 gives no exception handling).
 	ErrSMDeliveryNotIntendedInvalid = errors.New("sriSm: SmDeliveryNotIntended must be onlyIMSI-requested(0) or onlyMCC-MNC-requested(1) per 3GPP TS 29.002 V19.1.0 §17.7.6 (extensible enum: unknown values preserved on decode)")
 
-	ErrSaiAuthSetListChoiceMultipleAlternatives = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
-	ErrSaiAuthSetListChoiceNoAlternative        = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
+	ErrAuthenticationSetListMultipleAlternatives = errors.New("authenticationSetList: CHOICE has multiple alternatives set")
+	ErrAuthenticationSetListNoAlternative        = errors.New("authenticationSetList: CHOICE has no alternative set")
 	// Sender accepts defined values; receivers map 6..15 to vlr and values above 17 to sgsn (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrSaiInvalidRequestingNodeType = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
 
-	ErrCancelLocIdentityChoiceNoAlternative = errors.New("cancelLocation: Identity CHOICE has no alternative set")
-	ErrCancelLocIdentityChoiceMultiple      = errors.New("cancelLocation: Identity CHOICE has multiple alternatives set")
+	ErrCancelLocationIdentityNoAlternative        = errors.New("cancelLocationIdentity: CHOICE has no alternative set")
+	ErrCancelLocationIdentityMultipleAlternatives = errors.New("cancelLocationIdentity: CHOICE has multiple alternatives set")
 	// Sender accepts only defined values (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrCancelLocInvalidCancellationType = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2) (extensible enum: unknown values preserved on decode)")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
@@ -3895,12 +3896,12 @@ var (
 	ErrSSCSICCBSToVLR  = errors.New("ssCSI: an SS-CSI sent to the VLR shall not contain a marking for ccbs, which the VLR discards, per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// Ext-SS-Info CHOICE / nested SEQUENCE validation
-	ErrExtSSInfoChoiceNoAlternative        = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
-	ErrExtSSInfoChoiceMultipleAlternatives = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
+	ErrExtSSInfoNoAlternative        = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
+	ErrExtSSInfoMultipleAlternatives = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrIntraCUGOptionsInvalidValue                    = errors.New("extSSInfo: IntraCUGOptions must be noCUG-Restrictions(0), cugIC-CallBarred(1), or cugOG-CallBarred(2)")
-	ErrSSSubscriptionOptionChoiceNoAlternative        = errors.New("extSSInfo: SsSubscriptionOption requires exactly one of CliRestriction or Override")
-	ErrSSSubscriptionOptionChoiceMultipleAlternatives = errors.New("extSSInfo: SsSubscriptionOption may only have one of CliRestriction or Override set")
+	ErrIntraCUGOptionsInvalidValue              = errors.New("extSSInfo: IntraCUGOptions must be noCUG-Restrictions(0), cugIC-CallBarred(1), or cugOG-CallBarred(2)")
+	ErrSSSubscriptionOptionNoAlternative        = errors.New("ssSubscriptionOption: CHOICE requires exactly one of CliRestriction or Override")
+	ErrSSSubscriptionOptionMultipleAlternatives = errors.New("ssSubscriptionOption: CHOICE may only have one of CliRestriction or Override set")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrCliRestrictionOptionInvalidValue = errors.New("extSSInfo: CliRestrictionOption must be permanent(0), temporaryDefaultRestricted(1), or temporaryDefaultAllowed(2)")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
@@ -3955,9 +3956,9 @@ var (
 	ErrNotificationToMSUserInvalid = errors.New("notificationToMSUser: must be 0..3 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrLCSClientInternalIDInvalid = errors.New("lcsClientInternalID: LCSClientInternalID must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.8 (extensible enum: unknown values preserved on decode)")
-	ErrGMLCAddressEmpty           = errors.New("gmlcList: each entry must carry digits, on encode and decode")
+	ErrGMLCListEntryEmpty         = errors.New("gmlcList: entry must carry digits, on encode and decode")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrGMLCAddressInvalidSize = errors.New("gmlcList: each entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	ErrGMLCListEntryInvalidSize = errors.New("gmlcList: entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
 	// ErrLCSAddPrivacyExceptionListNotAllowed: "add-lcs-PrivacyExceptionList
 	// may be sent only if lcs-PrivacyExceptionList is present and contains four
 	// instances of LCS-PrivacyClass" (3GPP TS 29.002 V19.1.0 §17.7.1). Marshal
@@ -3974,10 +3975,10 @@ var (
 	// the decoder discards any other per 3GPP TS 29.002 V19.1.0 §17.7.1.
 	ErrNetworkAccessModeInvalid = errors.New("insertSubscriberDataArg: NetworkAccessMode must be packetAndCircuit(0), onlyCircuit(1) or onlyPacket(2); a receiver discards any other value per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrSubscriberStatusInvalid = errors.New("insertSubscriberDataArg: SubscriberStatus must be serviceGranted(0) or operatorDeterminedBarring(1) per 3GPP TS 29.002 V19.1.0 §17.7.3 (non-extensible ENUMERATED)")
+	ErrSubscriberStatusInvalid = errors.New("insertSubscriberDataArg: SubscriberStatus must be serviceGranted(0) or operatorDeterminedBarring(1) per 3GPP TS 29.002 V19.1.0 §17.7.1 (non-extensible ENUMERATED)")
 	ErrIsdResNil               = errors.New("insertSubscriberDataRes: argument must not be nil")
 	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrRegionalSubscriptionResponseInvalid = errors.New("insertSubscriberDataRes: RegionalSubscriptionResponse must be networkNode-AreaRestricted(0) to regionalSubscNotSupported(3) per 3GPP TS 29.002 V19.1.0 §17.7.3 (non-extensible ENUMERATED)")
+	ErrRegionalSubscriptionResponseInvalid = errors.New("insertSubscriberDataRes: RegionalSubscriptionResponse must be networkNode-AreaRestricted(0) to regionalSubscNotSupported(3) per 3GPP TS 29.002 V19.1.0 §17.7.1 (non-extensible ENUMERATED)")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrIsdBearerServiceCodeSize = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
@@ -4019,9 +4020,9 @@ var (
 	// whose LCSClientType is not a listed value, unless the
 	// ProvideSubscriberLocation-Arg carrying it has privacyOverride. 3GPP TS
 	// 29.002 V19.1.0 §17.7.13: "unrecognized values may be ignored if the LCS
-	// client uses the privacy override otherwise, an unrecognized value shall
-	// be treated as unexpected data by a receiver; a return error shall then
-	// be returned if received in a MAP invoke".
+	// client uses the privacy override
+	// otherwise, an unrecognized value shall be treated as unexpected data by a receiver
+	// a return error shall then be returned if received in a MAP invoke".
 	ErrLCSClientTypeUnrecognized = errors.New("lcsClientID: unrecognized LcsClientType without privacy override; the invoke is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrLCSFormatIndicatorInvalid = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
@@ -4058,8 +4059,8 @@ var (
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrRANTechnologyInvalid                     = errors.New("reportingPLMN: RanTechnology must be 0..1 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
 	ErrTerminationCauseInvalid                  = errors.New("deferredmt-lrData: TerminationCause must be 0..9; the decoder treats unrecognized values as errorundefined(1) per 3GPP TS 29.002 V19.1.0 §17.7.13")
-	ErrServingNodeAddressMultipleAlts           = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
-	ErrServingNodeAddressNoAlt                  = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
+	ErrServingNodeAddressMultipleAlternatives   = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
+	ErrServingNodeAddressNoAlternative          = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
 	ErrServingNodeAddressMscNumberDecodedEmpty  = errors.New("servingNodeAddress: present wire MscNumber decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrServingNodeAddressSgsnNumberDecodedEmpty = errors.New("servingNodeAddress: present wire SgsnNumber decoded to empty digits; presence cannot round-trip through string-based API")
 
@@ -4067,9 +4068,8 @@ var (
 	ErrPSLArgMlcNumberEmpty     = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory on encode and decode")
 	ErrPSLArgMSISDNDecodedEmpty = errors.New("provideSubscriberLocationArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 
-	ErrPSLResNil                      = errors.New("provideSubscriberLocationRes: argument must not be nil")
-	ErrPSLResCellGlobalIdAndLAIMutex  = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
-	ErrPSLResCellIdOrSaiInvalidChoice = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
+	ErrPSLResNil                     = errors.New("provideSubscriberLocationRes: argument must not be nil")
+	ErrPSLResCellGlobalIdAndLAIMutex = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
 
 	// Encoder accepts only defined LCS-Event values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
 	ErrLCSEventInvalid = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per 3GPP TS 29.002 V19.1.0 §17.7.13 (a receiver rejects unknown values: ErrLCSEventUnrecognized)")
@@ -4092,30 +4092,30 @@ var (
 	ErrSLRResNaESRKDecodedEmpty = errors.New("subscriberLocationReportRes: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRResNaESRDDecodedEmpty = errors.New("subscriberLocationReportRes: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
 
-	// SubscriberIdentity CHOICE (TS 29.002 MAP-CommonDataTypes.asn).
-	ErrSubscriberIdentityNoAlt              = errors.New("subscriberIdentity: exactly one of IMSI or MSISDN must be set (CHOICE); neither was provided")
-	ErrSubscriberIdentityMultipleAlts       = errors.New("subscriberIdentity: exactly one of IMSI or MSISDN must be set (CHOICE); both were provided")
-	ErrSubscriberIdentityMSISDNDecodedEmpty = errors.New("subscriberIdentity: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSubscriberIdentityUnknownChoice      = errors.New("subscriberIdentity: CHOICE has unknown or empty selected alternative on the wire; cannot decode")
+	// SubscriberIdentity CHOICE (TS 29.002 §17.7.8).
+	ErrSubscriberIdentityNoAlternative        = errors.New("subscriberIdentity: exactly one of IMSI or MSISDN must be set (CHOICE); neither was provided")
+	ErrSubscriberIdentityMultipleAlternatives = errors.New("subscriberIdentity: exactly one of IMSI or MSISDN must be set (CHOICE); both were provided")
+	ErrSubscriberIdentityMSISDNDecodedEmpty   = errors.New("subscriberIdentity: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSubscriberIdentityUnknownAlternative   = errors.New("subscriberIdentity: unknown CHOICE alternative")
 
 	// SendRoutingInfoForLCS top-level (3GPP TS 29.002 V19.1.0 §17.7.13).
 	ErrSriLcsNil            = errors.New("sriLcs: nil argument is not permitted")
 	ErrSriLcsMlcNumberEmpty = errors.New("sriLcs: MlcNumber digits are mandatory on encode and decode")
 	ErrSriLcsRespNil        = errors.New("sriLcsResp: nil argument is not permitted")
 
-	// AnyTimeInterrogation top-level (TS 29.002 MAP-CH-DataTypes.asn).
+	// AnyTimeInterrogation top-level (TS 29.002 §17.7.3).
 	ErrAnyTimeInterrogationNil = errors.New("anyTimeInterrogation: nil argument is not permitted")
 	ErrAtiMissingGsmSCFAddress = errors.New("anyTimeInterrogation: GsmSCFAddress is empty")
 
 	// RequestedInfo, shared by AnyTimeInterrogation and ProvideSubscriberInfo.
 	ErrRequestedDomainInvalid = errors.New("requestedInfo: RequestedDomain must be cs-Domain(0) or ps-Domain(1); a receiver maps values above 1 to cs-Domain per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
-	// ReportSMDeliveryStatus top-level (TS 29.002 MAP-SM-DataTypes.asn).
+	// ReportSMDeliveryStatus top-level (TS 29.002 §17.7.6).
 	ErrReportSMDeliveryStatusNil                       = errors.New("reportSMDeliveryStatus: nil argument is not permitted")
 	ErrReportSMDeliveryStatusMSISDNEmpty               = errors.New("reportSMDeliveryStatus: MSISDN digits are mandatory on encode and decode")
 	ErrReportSMDeliveryStatusServiceCentreAddressEmpty = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory on encode and decode")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrReportSMDeliveryStatusOutcomeInvalid              = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 MAP-SM-DataTypes.asn")
+	ErrReportSMDeliveryStatusOutcomeInvalid              = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 §17.7.6")
 	ErrReportSMDeliveryStatusResNil                      = errors.New("reportSMDeliveryStatusRes: nil argument is not permitted")
 	ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty = errors.New("reportSMDeliveryStatusRes: present wire StoredMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 )

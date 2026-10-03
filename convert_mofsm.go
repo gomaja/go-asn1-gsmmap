@@ -12,16 +12,16 @@ import (
 func convertSmRpDaToWire(da *SmRpDa) (gsm_map.SMRPDA, error) {
 	return convertSmRpDaToWireWithErrors(
 		da,
-		ErrMoFsmSmRpDaNoAlternative,
-		ErrMoFsmSmRpDaMultipleAlternatives,
+		ErrSmRpDaNoAlternative,
+		ErrSmRpDaMultipleAlternatives,
 	)
 }
 
 func convertMtSmRpDaToWire(da *SmRpDa) (gsm_map.SMRPDA, error) {
 	return convertSmRpDaToWireWithErrors(
 		da,
-		ErrMtFsmSmRpDaNoAlternative,
-		ErrMtFsmSmRpDaMultipleAlternatives,
+		ErrSmRpDaNoAlternative,
+		ErrSmRpDaMultipleAlternatives,
 	)
 }
 
@@ -75,24 +75,15 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 	da := &SmRpDa{}
 	switch w.Choice {
 	case gsm_map.SMRPDAChoiceImsi:
-		if w.Imsi == nil {
-			return nil, fmt.Errorf("%w: SMRPDA IMSI is nil", ErrSmRpDaIMSIPayloadMissing)
-		}
 		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpDa IMSI: %w", err)
 		}
 		da.IMSI = imsi
 	case gsm_map.SMRPDAChoiceLmsi:
-		if w.Lmsi == nil {
-			return nil, fmt.Errorf("%w: SMRPDA LMSI is nil", ErrSmRpDaLMSIPayloadMissing)
-		}
 
 		da.LMSI = HexBytes(*w.Lmsi)
 	case gsm_map.SMRPDAChoiceServiceCentreAddressDA:
-		if w.ServiceCentreAddressDA == nil {
-			return nil, fmt.Errorf("%w: SMRPDA ServiceCentreAddressDA is nil", ErrSmRpDaServiceCentreAddressDAPayloadMissing)
-		}
 		sca, nature, plan, err := decodeAddressField(*w.ServiceCentreAddressDA)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpDa ServiceCentreAddressDA: %w", err)
@@ -106,7 +97,7 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 	case gsm_map.SMRPDAChoiceNoSMRPDA:
 		da.NoSmRpDa = true
 	default:
-		return nil, fmt.Errorf("%w: unexpected SMRPDA choice: %d", ErrSmRpDaChoiceInvalid, w.Choice)
+		return nil, fmt.Errorf("%w: unexpected SMRPDA choice: %d", ErrSmRpDaUnknownAlternative, w.Choice)
 	}
 	return da, nil
 }
@@ -114,16 +105,16 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 func convertSmRpOaToWire(oa *SmRpOa) (gsm_map.SMRPOA, error) {
 	return convertSmRpOaToWireWithErrors(
 		oa,
-		ErrMoFsmSmRpOaNoAlternative,
-		ErrMoFsmSmRpOaMultipleAlternatives,
+		ErrSmRpOaNoAlternative,
+		ErrSmRpOaMultipleAlternatives,
 	)
 }
 
 func convertMtSmRpOaToWire(oa *SmRpOa) (gsm_map.SMRPOA, error) {
 	return convertSmRpOaToWireWithErrors(
 		oa,
-		ErrMtFsmSmRpOaNoAlternative,
-		ErrMtFsmSmRpOaMultipleAlternatives,
+		ErrSmRpOaNoAlternative,
+		ErrSmRpOaMultipleAlternatives,
 	)
 }
 
@@ -171,9 +162,6 @@ func convertWireToSmRpOa(w *gsm_map.SMRPOA) (*SmRpOa, error) {
 	oa := &SmRpOa{}
 	switch w.Choice {
 	case gsm_map.SMRPOAChoiceMsisdn:
-		if w.Msisdn == nil {
-			return nil, fmt.Errorf("%w: SMRPOA MSISDN is nil", ErrSmRpOaMSISDNPayloadMissing)
-		}
 		msisdn, nature, plan, err := decodeAddressField(*w.Msisdn)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpOa MSISDN: %w", err)
@@ -185,9 +173,6 @@ func convertWireToSmRpOa(w *gsm_map.SMRPOA) (*SmRpOa, error) {
 		oa.MSISDNNature = nature
 		oa.MSISDNPlan = plan
 	case gsm_map.SMRPOAChoiceServiceCentreAddressOA:
-		if w.ServiceCentreAddressOA == nil {
-			return nil, fmt.Errorf("%w: SMRPOA ServiceCentreAddressOA is nil", ErrSmRpOaServiceCentreAddressOAPayloadMissing)
-		}
 		sca, nature, plan, err := decodeAddressField(*w.ServiceCentreAddressOA)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpOa ServiceCentreAddressOA: %w", err)
@@ -201,7 +186,7 @@ func convertWireToSmRpOa(w *gsm_map.SMRPOA) (*SmRpOa, error) {
 	case gsm_map.SMRPOAChoiceNoSMRPOA:
 		oa.NoSmRpOa = true
 	default:
-		return nil, fmt.Errorf("%w: unexpected SMRPOA choice: %d", ErrSmRpOaChoiceInvalid, w.Choice)
+		return nil, fmt.Errorf("%w: unexpected SMRPOA choice: %d", ErrSmRpOaUnknownAlternative, w.Choice)
 	}
 	return oa, nil
 }
