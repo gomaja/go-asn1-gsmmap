@@ -86,9 +86,10 @@ func convertCorrelationIDToWire(c *SriSmCorrelationID) (*gsm_map.CorrelationID, 
 		SipUriB: gsm_map.SIPURI(c.SipUriB),
 	}
 	if c.HlrID != "" {
-		// HLR-Id ::= IMSI, "leading digits of IMSI, i.e. (MCC, MNC,
-		// leading digits of MSIN)" (3GPP TS 29.002 V19.1.0 §17.7.8), so
-		// the IMSI digit rule applies.
+		// HLR-Id ::= IMSI (3GPP TS 29.002 V19.1.0 §17.7.8). An HLR id
+		// consists "of the leading digits of the IMSI (MCC + MNC + leading
+		// digits of MSIN)" (3GPP TS 23.003 V20.1.0 §5.2), at least one MSIN
+		// digit included, so the IMSI digit rule applies.
 		hlr, err := encodeIdentityDigits(identityIMSI, c.HlrID)
 		if err != nil {
 			return nil, fmt.Errorf("encoding CorrelationID.HlrID: %w", err)
