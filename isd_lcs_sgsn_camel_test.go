@@ -541,25 +541,6 @@ func TestGPRSCSI_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestGPRSCSI_RequiresBothListAndPhase(t *testing.T) {
-	// Per TS 29.002 MAP-MS-DataTypes.asn:1615-1616, when GPRS-CSI is
-	// present BOTH GprsCamelTDPDataList AND CamelCapabilityHandling
-	// SHALL be present.
-	phase := 2
-	cases := []*GPRSCSI{
-		{GprsCamelTDPDataList: GPRSCamelTDPDataList{makeGPRSCamelTDPData()}}, // missing phase
-		{CamelCapabilityHandling: &phase},                                    // missing list
-		{},                                                                   // both missing
-		{NotificationToCSE: true},                                            // both missing, only NULL flag set
-	}
-	for i, c := range cases {
-		_, err := convertGPRSCSIToWire(c)
-		if !errors.Is(err, ErrGPRSCSIRequiresTDPListAndPhase) {
-			t.Fatalf("case %d: want ErrGPRSCSIRequiresTDPListAndPhase, got %v", i, err)
-		}
-	}
-}
-
 func TestGPRSCSI_PhaseOutOfRange(t *testing.T) {
 	for _, p := range []int{0, 5, 100} {
 		phase := p

@@ -924,11 +924,19 @@ type DPAnalysedInfoCriterium struct {
 }
 
 // DCSI (D-CSI) per 3GPP TS 29.002. Dialled-number CAMEL Subscription Info.
-// The list and CamelCapabilityHandling are OPTIONAL in the ASN.1 but "shall
-// be present in the D-CSI sequence" (3GPP TS 29.002 V19.1.0 §17.7.1).
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "DP-AnalysedInfoCriteria and
+// camelCapabilityHandling shall be present in the D-CSI sequence. If D-CSI is
+// segmented, then the first segment shall contain dp-AnalysedInfoCriteriaList
+// and camelCapabilityHandling. Subsequent segments shall not contain
+// camelCapabilityHandling, but may contain dp-AnalysedInfoCriteriaList." A
+// message may hold any segment, so Marshal and Parse enforce neither: a nil
+// list and a nil CamelCapabilityHandling are absent on the wire and back.
+// The presence rules apply to the reassembled D-CSI and are the caller's to
+// check.
 type DCSI struct {
-	DPAnalysedInfoCriteriaList []DPAnalysedInfoCriterium // [0] mandatory 1..10 entries
-	CamelCapabilityHandling    *int                      // [1] mandatory phase (1..4)
+	DPAnalysedInfoCriteriaList []DPAnalysedInfoCriterium // [0] 1..10 entries; nil = absent
+	CamelCapabilityHandling    *int                      // [1] phase (1..4); nil = absent
 	NotificationToCSE          bool                      // [3] NULL
 	CsiActive                  bool                      // [4] NULL
 }
@@ -1013,13 +1021,18 @@ type SMSCAMELTDPData struct {
 // SMSCSI (SMS-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2458.
 // Used for both mo-sms-CSI and mt-sms-CSI fields on the VLR.
 //
-// Per spec, SmsCAMELTDPDataList and CamelCapabilityHandling SHALL be
-// present in an SMS-CSI sequence (spec clause 8.8.1). The encoder
-// enforces that invariant. A received SMS-CSI whose every entry is
-// ignored (see SMSTriggerDetectionPoint) decodes as absent.
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "SMS-CAMEL-TDP-Data and
+// camelCapabilityHandling shall be present in the SMS-CSI sequence. If
+// SMS-CSI is segmented, sms-CAMEL-TDP-DataList and camelCapabilityHandling
+// shall be present in the first segment". A message may hold any segment,
+// so Marshal and Parse enforce neither: a nil list and a nil
+// CamelCapabilityHandling are absent on the wire and back. The presence
+// rules apply to the reassembled SMS-CSI and are the caller's to check. A
+// received entry the receiver ignores (see SMSTriggerDetectionPoint) is
+// dropped from the list.
 type SMSCSI struct {
-	SmsCAMELTDPDataList     []SMSCAMELTDPData // [0] mandatory 1..10 entries
-	CamelCapabilityHandling *int              // [1] mandatory phase (1..4)
+	SmsCAMELTDPDataList     []SMSCAMELTDPData // [0] 1..10 entries; nil = absent
+	CamelCapabilityHandling *int              // [1] phase (1..4); nil = absent
 	NotificationToCSE       bool              // [3] NULL (ATSI/ATM/NSDC only)
 	CsiActive               bool              // [4] NULL (ATSI/ATM/NSDC only)
 }
@@ -3336,12 +3349,19 @@ type GPRSCamelTDPData struct {
 type GPRSCamelTDPDataList []GPRSCamelTDPData
 
 // GPRSCSI (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1606.
-// Per spec clause 8.8.x, when GPRSCSI is present both
-// GprsCamelTDPDataList and CamelCapabilityHandling SHALL be set;
-// otherwise all fields are optional.
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "GPRS-CamelTDPData and
+// camelCapabilityHandling shall be present in the GPRS-CSI sequence. If
+// GPRS-CSI is segmented, gprs-CamelTDPDataList and camelCapabilityHandling
+// shall be present in the first segment". A message may hold any segment, so
+// Marshal and Parse enforce neither: a nil list and a nil
+// CamelCapabilityHandling are absent on the wire and back. The presence
+// rules apply to the reassembled GPRS-CSI and are the caller's to check. A
+// received entry the receiver ignores (see GPRSTriggerDetectionPoint) is
+// dropped from the list.
 type GPRSCSI struct {
-	GprsCamelTDPDataList    GPRSCamelTDPDataList // [0] optional, 1..10 entries when present
-	CamelCapabilityHandling *int                 // [1] optional, CAMEL phase 1..4
+	GprsCamelTDPDataList    GPRSCamelTDPDataList // [0] 1..10 entries; nil = absent
+	CamelCapabilityHandling *int                 // [1] CAMEL phase 1..4; nil = absent
 	NotificationToCSE       bool                 // [3] optional NULL — true when present
 	CsiActive               bool                 // [4] optional NULL — true when present
 }
@@ -3612,10 +3632,6 @@ var (
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrCamelInvalidMobilityTriggerOctet     = errors.New("camel: each MobilityTriggers entry must be exactly 1 octet")
-	ErrCamelSMSCSIMissingTDPData            = errors.New("camel: SMS-CSI must include a non-empty SmsCAMELTDPDataList per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrCamelSMSCSIMissingCapabilityHandling = errors.New("camel: SMS-CSI must include CamelCapabilityHandling per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrCamelDCSIMissingCriteriaList         = errors.New("camel: D-CSI must include a non-empty DPAnalysedInfoCriteriaList per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrCamelDCSIMissingCapabilityHandling   = errors.New("camel: D-CSI must include CamelCapabilityHandling per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidSMSTriggerDetectionPoint = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) in an MO-SMS-CSI and sms-DeliveryRequest(2) in an MT-SMS-CSI or MT-smsCAMELTDP-Criteria; a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidDefaultSMSHandling       = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
 	ErrCamelInvalidMTSMSTPDUType            = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0) or sms-STATUS-REPORT(2); sms-SUBMIT-REPORT(1) is not used in CAMEL phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
@@ -3693,7 +3709,6 @@ var (
 	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
 	ErrGPRSTriggerDetectionPointInvalid  = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be attach(1), attachChangeOfPosition(2), pdp-ContextEstablishment(11), pdp-ContextEstablishmentAcknowledgement(12) or pdp-ContextChangeOfPosition(14); a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelCapabilityHandlingOutOfRange = errors.New("camel: CamelCapabilityHandling must be 1..4 (CAMEL phases 1 to 4) when set; the decoder treats received values above 4 as phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrGPRSCSIRequiresTDPListAndPhase    = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrMMCodeInvalidSize = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
 

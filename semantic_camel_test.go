@@ -163,42 +163,6 @@ func TestParseIgnoresTPDUCriterionWithSubmitReport(t *testing.T) {
 
 // --- SMS-CSI presence ---
 
-// 3GPP TS 29.002 V19.1.0 §17.7.1 SMS-CSI: "SMS-CAMEL-TDP-Data and
-// camelCapabilityHandling shall be present in the SMS-CSI sequence." The
-// encoder reports a missing list with the sentinel the decoder uses, so
-// errors.Is agrees in both directions.
-func TestMarshalSMSCSIWithoutTDPData(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		list []SMSCAMELTDPData
-	}{
-		{"nil list", nil},
-		{"empty list", []SMSCAMELTDPData{}},
-	} {
-		for where, build := range map[string]func(*SMSCSI) *InsertSubscriberDataArg{
-			"VLR mo-sms-CSI": func(c *SMSCSI) *InsertSubscriberDataArg {
-				return &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{MoSmsCSI: c}}
-			},
-			"VLR mt-sms-CSI": func(c *SMSCSI) *InsertSubscriberDataArg {
-				return &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{MtSmsCSI: c}}
-			},
-			"SGSN mo-sms-CSI": func(c *SMSCSI) *InsertSubscriberDataArg {
-				return &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{MoSmsCSI: c}}
-			},
-			"SGSN mt-sms-CSI": func(c *SMSCSI) *InsertSubscriberDataArg {
-				return &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{MtSmsCSI: c}}
-			},
-		} {
-			t.Run(where+"/"+tc.name, func(t *testing.T) {
-				a := build(&SMSCSI{SmsCAMELTDPDataList: tc.list, CamelCapabilityHandling: semPhase()})
-				if _, err := a.Marshal(); !errors.Is(err, ErrCamelSMSCSIMissingTDPData) {
-					t.Errorf("Marshal: err = %v, want ErrCamelSMSCSIMissingTDPData", err)
-				}
-			})
-		}
-	}
-}
-
 // The upper bound stays the codec's SIZE (1..10) check.
 func TestMarshalSMSCSITDPDataListSize(t *testing.T) {
 	list := make([]SMSCAMELTDPData, 10)
@@ -221,39 +185,6 @@ func TestMarshalSMSCSITDPDataListSize(t *testing.T) {
 
 // --- D-CSI presence ---
 
-// 3GPP TS 29.002 V19.1.0 §17.7.1 D-CSI: "DP-AnalysedInfoCriteria and
-// camelCapabilityHandling shall be present in the D-CSI sequence."
-func TestMarshalDCSIPresence(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		dcsi DCSI
-		want error
-	}{
-		{"no criteria", DCSI{CamelCapabilityHandling: semPhase()}, ErrCamelDCSIMissingCriteriaList},
-		{"empty criteria", DCSI{DPAnalysedInfoCriteriaList: []DPAnalysedInfoCriterium{}, CamelCapabilityHandling: semPhase()}, ErrCamelDCSIMissingCriteriaList},
-		{"no camelCapabilityHandling", DCSI{DPAnalysedInfoCriteriaList: []DPAnalysedInfoCriterium{semDPCriterium()}}, ErrCamelDCSIMissingCapabilityHandling},
-		{"neither", DCSI{}, ErrCamelDCSIMissingCriteriaList},
-	} {
-		t.Run("VLR/"+tc.name, func(t *testing.T) {
-			d := tc.dcsi
-			a := &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{DCSI: &d}}
-			if _, err := a.Marshal(); !errors.Is(err, tc.want) {
-				t.Errorf("Marshal: err = %v, want %v", err, tc.want)
-			}
-		})
-		t.Run("GMSC/"+tc.name, func(t *testing.T) {
-			d := tc.dcsi
-			r := &SriResp{
-				IMSI:                "204080012345678",
-				ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: GmscCamelSubscriptionInfo{DCSI: &d}}},
-			}
-			if _, err := r.Marshal(); !errors.Is(err, tc.want) {
-				t.Errorf("Marshal: err = %v, want %v", err, tc.want)
-			}
-		})
-	}
-}
-
 func TestDCSIRoundTrip(t *testing.T) {
 	list := make([]DPAnalysedInfoCriterium, 10)
 	for i := range list {
@@ -266,48 +197,5 @@ func TestDCSIRoundTrip(t *testing.T) {
 		}}
 		got := semMarshalParseISD(t, in)
 		semWantEqual(t, "ISD", in, got)
-	}
-}
-
-func TestParseDCSIPresence(t *testing.T) {
-	dp, err := convertDPAnalysedInfoCriteriumToWire(&DPAnalysedInfoCriterium{
-		DialledNumber: "31622222222", ServiceKey: 1, GsmSCFAddress: "31611111111",
-		DefaultCallHandling: DefaultCallHandlingContinueCall,
-	})
-	if err != nil {
-		t.Fatalf("convertDPAnalysedInfoCriteriumToWire: %v", err)
-	}
-	cch := gsm_map.CamelCapabilityHandling(semCamelPhase)
-	list := &gsm_map.DPAnalysedInfoCriteriaList{Values: []gsm_map.DPAnalysedInfoCriterium{dp}}
-	for _, tc := range []struct {
-		name string
-		dcsi gsm_map.DCSI
-		want error
-	}{
-		{"no criteria", gsm_map.DCSI{CamelCapabilityHandling: &cch}, ErrCamelDCSIMissingCriteriaList},
-		{"no camelCapabilityHandling", gsm_map.DCSI{DpAnalysedInfoCriteriaList: list}, ErrCamelDCSIMissingCapabilityHandling},
-		{"neither", gsm_map.DCSI{}, ErrCamelDCSIMissingCriteriaList},
-	} {
-		t.Run("VLR/"+tc.name, func(t *testing.T) {
-			d := tc.dcsi
-			_, err := semParseISDWire(t, &gsm_map.InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &gsm_map.VlrCamelSubscriptionInfo{DCSI: &d}})
-			if !errors.Is(err, tc.want) {
-				t.Errorf("ParseInsertSubscriberData: err = %v, want %v", err, tc.want)
-			}
-		})
-		t.Run("GMSC/"+tc.name, func(t *testing.T) {
-			d := tc.dcsi
-			cri := gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(gsm_map.CamelRoutingInfo{
-				GmscCamelSubscriptionInfo: gsm_map.GmscCamelSubscriptionInfo{DCsi: &d},
-			})
-			imsi := gsm_map.IMSI{0x02, 0x04, 0x08, 0x10, 0x32, 0x54, 0x76, 0xf8}
-			data, err := (&gsm_map.SendRoutingInfoRes{Imsi: &imsi, ExtendedRoutingInfo: &cri}).MarshalBER()
-			if err != nil {
-				t.Fatalf("MarshalBER: %v", err)
-			}
-			if _, err := ParseSriResp(data); !errors.Is(err, tc.want) {
-				t.Errorf("ParseSriResp: err = %v, want %v", err, tc.want)
-			}
-		})
 	}
 }
