@@ -425,12 +425,13 @@ func TestEDRXCycleLength_ValueWrongSize(t *testing.T) {
 }
 
 func TestEDRXCycleLength_PreservesUnknownRAT(t *testing.T) {
-	// Postel's law: spec is extensible — preserve unknown values.
+	// Used-RAT-Type is extensible: the decoder keeps an unknown value
+	// (3GPP TS 29.002 V19.1.0 §17.1.4), which the encoder refuses.
 	in := &EDRXCycleLength{RatType: UsedRatType(99), EDRXCycleLengthValue: HexBytes{0xff}}
-	w, err := convertEDRXCycleLengthToWire(in)
-	if err != nil {
-		t.Fatalf("toWire: %v", err)
+	if _, err := convertEDRXCycleLengthToWire(in); !errors.Is(err, ErrUsedRATTypeInvalid) {
+		t.Fatalf("toWire: err = %v, want ErrUsedRATTypeInvalid", err)
 	}
+	w := &gsm_map.EDRXCycleLength{RatType: 99, EDRXCycleLengthValue: gsm_map.EDRXCycleLengthValue{0xff}}
 	out, err := convertWireToEDRXCycleLength(w)
 	if err != nil {
 		t.Fatalf("fromWire: %v", err)

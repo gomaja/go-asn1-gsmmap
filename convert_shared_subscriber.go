@@ -85,10 +85,12 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 	}
 
 	// LastRATType — Used-RAT-Type per TS 29.002 MAP-MS-DataTypes.asn:582.
-	// Spec marks the enum extensible (`...`), so unknown values are
-	// preserved through the codec (Postel's law).
+	// Spec marks the enum extensible (`...`): only a listed value is sent.
 	if s.LastRATType != nil {
 		v := *s.LastRATType
+		if !isListedUsedRATType(v) {
+			return nil, fmt.Errorf("LastRATType=%d: %w", v, ErrUsedRATTypeInvalid)
+		}
 		si.LastRATType = &v
 	}
 
@@ -211,8 +213,9 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 		out.LastUEActivityTime = *si.LastUEActivityTime
 	}
 
-	// LastRATType — Used-RAT-Type per TS 29.002 (extensible enum;
-	// preserve unknown values per Postel's law).
+	// LastRATType — Used-RAT-Type per TS 29.002 (extensible enum): an
+	// unknown value is kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal
+	// refuses it.
 	if si.LastRATType != nil {
 		v := *si.LastRATType
 		out.LastRATType = &v
@@ -555,6 +558,13 @@ func convertWireToUserCSGInformation(w *gsm_map.UserCSGInformation) *UserCSGInfo
 
 // --- LocationInformation5GS (opCode 71) ---
 
+// isListedUsedRATType reports whether v is one of the Used-RAT-Type values
+// of 3GPP TS 29.002 V19.1.0 §17.7.1, utran (0) to nb-iot (5). The type is
+// extensible: the decoders keep any other value (§17.1.4).
+func isListedUsedRATType(v UsedRatType) bool {
+	return v >= UsedRatUTRAN && v <= UsedRatNBIOT
+}
+
 func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.LocationInformation5GS, error) {
 	out := &gsm_map.LocationInformation5GS{}
 
@@ -609,10 +619,13 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 		out.LocaltimeZone = &tz
 	}
 
-	// RatType — Used-RAT-Type per TS 29.002 (extensible enum;
-	// preserve unknown values per Postel's law).
+	// RatType — Used-RAT-Type per TS 29.002 (extensible enum): only a
+	// listed value is sent.
 	if l.RatType != nil {
 		v := *l.RatType
+		if !isListedUsedRATType(v) {
+			return nil, fmt.Errorf("LocationInformation5GS.RatType=%d: %w", v, ErrUsedRATTypeInvalid)
+		}
 		out.RatType = &v
 	}
 
@@ -672,8 +685,8 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 		out.LocalTimeZone = *w.LocaltimeZone
 	}
 
-	// RatType — Used-RAT-Type per TS 29.002 (extensible enum;
-	// preserve unknown values per Postel's law).
+	// RatType — Used-RAT-Type per TS 29.002 (extensible enum): an unknown
+	// value is kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	if w.RatType != nil {
 		v := *w.RatType
 		out.RatType = &v

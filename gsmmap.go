@@ -37,7 +37,9 @@ func (h *HexBytes) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// SmDeliveryNotIntended per 3GPP TS 29.002.
+// SmDeliveryNotIntended per 3GPP TS 29.002. Extensible: Marshal sends only
+// the listed values (ErrSMDeliveryNotIntendedInvalid); Parse keeps any other
+// (3GPP TS 29.002 V19.1.0 §17.1.4).
 type SmDeliveryNotIntended = gsm_map.SMDeliveryNotIntended
 
 const (
@@ -304,6 +306,9 @@ type UpdateLocationRes struct {
 }
 
 // UsedRatType aliases the go-asn1 type for 3GPP TS 29.002 (opCode 23).
+// Extensible: Marshal sends only the listed values (ErrUsedRATTypeInvalid);
+// Parse keeps any other (3GPP TS 29.002 V19.1.0 §17.1.4). The same holds for
+// UeSrvccCapability and SmsRegisterRequest.
 type UsedRatType = gsm_map.UsedRATType
 
 const (
@@ -1903,8 +1908,8 @@ type IMSIGroupIdList []IMSIGroupId
 // EDRXCycleLengthValue is a single-octet code per 3GPP TS 29.272 clause 7.3.216.
 type EDRXCycleLength struct {
 	// RatType: currently defined values are 0..5 (UsedRatUTRAN..UsedRatNBIOT);
-	// the spec marks the enum as extensible, so unknown values are preserved
-	// across round-trip per Postel's law.
+	// the spec marks the enum as extensible, so Parse keeps an unknown
+	// value, which Marshal refuses (ErrUsedRATTypeInvalid).
 	RatType              UsedRatType // [0] mandatory
 	EDRXCycleLengthValue HexBytes    // [1] mandatory: exactly 1 octet
 }
@@ -3684,6 +3689,14 @@ var (
 	ErrUpdateLocationMissingVLRNumber    = errors.New("updateLocation: VLRNumber is empty")
 	ErrUpdateLocationResMissingHLRNumber = errors.New("updateLocationRes: HLRNumber is empty")
 
+	// ErrUsedRATTypeInvalid, ErrUESRVCCCapabilityInvalid and
+	// ErrSMSRegisterRequestInvalid: the encoder sends only the listed
+	// values; the decoder keeps any other (the types are extensible, 3GPP TS
+	// 29.002 V19.1.0 §17.1.4, and §17.7.1 gives no exception handling).
+	ErrUsedRATTypeInvalid        = errors.New("usedRAT-Type: must be utran(0), geran(1), gan(2), i-hspa-evolution(3), e-utran(4) or nb-iot(5) per 3GPP TS 29.002 V19.1.0 §17.7.1 (extensible enum: unknown values preserved on decode)")
+	ErrUESRVCCCapabilityInvalid  = errors.New("updateGprsLocation: UeSrvccCapability must be ue-srvcc-not-supported(0) or ue-srvcc-supported(1) per 3GPP TS 29.002 V19.1.0 §17.7.1 (extensible enum: unknown values preserved on decode)")
+	ErrSMSRegisterRequestInvalid = errors.New("updateGprsLocation: SmsRegisterRequest must be sms-registration-required(0), sms-registration-not-preferred(1) or no-preference(2) per 3GPP TS 29.002 V19.1.0 §17.7.1 (extensible enum: unknown values preserved on decode)")
+
 	ErrSmRpDaServiceCentreAddressDecodedEmpty = errors.New("smRpDa: present wire serviceCentreAddressDA decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpOaMSISDNDecodedEmpty               = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpOaServiceCentreAddressDecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
@@ -3692,6 +3705,11 @@ var (
 	ErrSriSmMissingServiceCentreAddress  = errors.New("sriSm: ServiceCentreAddress is empty")
 	ErrSriSmInvalidSmRpMti               = errors.New("sriSm: SmRpMti must be 0 (SMS Deliver) or 1 (SMS Status Report); 3GPP TS 29.002 V19.1.0 §17.7.6 reserves 2..10, which a receiver discards")
 	ErrSriSmRespMissingNetworkNodeNumber = errors.New("sriSmResp: LocationInfoWithLMSI.NetworkNodeNumber is empty")
+
+	// ErrSMDeliveryNotIntendedInvalid: the encoder sends only the listed
+	// values; the decoder keeps any other (the type is extensible, 3GPP TS
+	// 29.002 V19.1.0 §17.1.4, and §17.7.6 gives no exception handling).
+	ErrSMDeliveryNotIntendedInvalid = errors.New("sriSm: SmDeliveryNotIntended must be onlyIMSI-requested(0) or onlyMCC-MNC-requested(1) per 3GPP TS 29.002 V19.1.0 §17.7.6 (extensible enum: unknown values preserved on decode)")
 
 	ErrSaiMissingIMSI                           = errors.New("sai: IMSI is empty")
 	ErrSaiAuthSetListChoiceMultipleAlternatives = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")

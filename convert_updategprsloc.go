@@ -81,10 +81,13 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	arg.ServingNodeTypeIndicator = boolToNullPtr(u.ServingNodeTypeIndicator)
 	arg.SkipSubscriberDataUpdate = boolToNullPtr(u.SkipSubscriberDataUpdate)
 
-	// [8] usedRatType — Used-RAT-Type per TS 29.002 (extensible enum;
-	// preserve unknown values per Postel's law).
+	// [8] usedRatType — Used-RAT-Type per TS 29.002 (extensible enum):
+	// only a listed value is sent.
 	if u.UsedRatType != nil {
 		v := *u.UsedRatType
+		if !isListedUsedRATType(v) {
+			return nil, fmt.Errorf("UsedRatType=%d: %w", v, ErrUsedRATTypeInvalid)
+		}
 		arg.UsedRATType = &v
 	}
 
@@ -95,9 +98,12 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	arg.EpsSubscriptionDataNotNeeded = boolToNullPtr(u.EpsSubscriptionDataNotNeeded)
 
 	// [14] ue-SRVCC-Capability — extensible enum per TS 29.002
-	// MAP-MS-DataTypes.asn:690; preserve unknown values per Postel's law.
+	// MAP-MS-DataTypes.asn:690: only a listed value is sent.
 	if u.UeSrvccCapability != nil {
 		v := *u.UeSrvccCapability
+		if v != UeSrvccNotSupported && v != UeSrvccSupported {
+			return nil, fmt.Errorf("UeSrvccCapability=%d: %w", v, ErrUESRVCCCapabilityInvalid)
+		}
 		arg.UeSrvccCapability = &v
 	}
 
@@ -128,6 +134,10 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	// MAP-MS-DataTypes.asn:576; preserve unknown values per Postel's law.
 	if u.SmsRegisterRequest != nil {
 		v := *u.SmsRegisterRequest
+		// SMSRegisterRequest is extensible: only a listed value is sent.
+		if v < SmsRegistrationRequired || v > SmsRegistrationNoPreference {
+			return nil, fmt.Errorf("SmsRegisterRequest=%d: %w", v, ErrSMSRegisterRequestInvalid)
+		}
 		arg.SmsRegisterRequest = &v
 	}
 
@@ -228,8 +238,8 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.ServingNodeTypeIndicator = nullPtrToBool(arg.ServingNodeTypeIndicator)
 	u.SkipSubscriberDataUpdate = nullPtrToBool(arg.SkipSubscriberDataUpdate)
 
-	// UsedRATType — extensible enum per TS 29.002; preserve unknown
-	// values per Postel's law.
+	// UsedRATType — extensible enum per TS 29.002; an unknown value is kept
+	// (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	if arg.UsedRATType != nil {
 		v := *arg.UsedRATType
 		u.UsedRatType = &v
@@ -241,8 +251,8 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.UeReachableIndicator = nullPtrToBool(arg.UeReachableIndicator)
 	u.EpsSubscriptionDataNotNeeded = nullPtrToBool(arg.EpsSubscriptionDataNotNeeded)
 
-	// UeSrvccCapability — extensible enum per TS 29.002; preserve unknown
-	// values per Postel's law.
+	// UeSrvccCapability — extensible enum per TS 29.002; an unknown value is
+	// kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	if arg.UeSrvccCapability != nil {
 		v := *arg.UeSrvccCapability
 		u.UeSrvccCapability = &v
@@ -270,8 +280,8 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 		u.MmeNumberForMTSMSPlan = plan
 	}
 
-	// SmsRegisterRequest — extensible enum per TS 29.002; preserve unknown
-	// values per Postel's law.
+	// SmsRegisterRequest — extensible enum per TS 29.002; an unknown value
+	// is kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	if arg.SmsRegisterRequest != nil {
 		v := *arg.SmsRegisterRequest
 		u.SmsRegisterRequest = &v

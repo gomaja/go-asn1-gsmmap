@@ -155,6 +155,10 @@ var strictEncodeErrors = []error{
 	ErrAreaTypeInvalid,
 	ErrOccurrenceInfoInvalid,
 	ErrRANTechnologyInvalid,
+	ErrUsedRATTypeInvalid,
+	ErrUESRVCCCapabilityInvalid,
+	ErrSMSRegisterRequestInvalid,
+	ErrSMDeliveryNotIntendedInvalid,
 	// An unrecognized LCSClientType is kept only in a
 	// ProvideSubscriberLocation-Arg with privacyOverride (§17.7.13).
 	ErrLCSClientTypeInvalid,
