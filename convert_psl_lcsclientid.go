@@ -39,8 +39,7 @@ func convertLCSClientNameToWire(c *LCSClientName) (*gsm_map.LCSClientName, error
 	if c.LcsFormatIndicator != nil {
 		v := *c.LcsFormatIndicator
 		// LCSFormatIndicator is extensible (TS 29.002:224); encoder
-		// strict, decoder lenient (consistent with LcsClientType,
-		// LocationEstimateType, etc.).
+		// strict, decoder lenient (3GPP TS 29.002 V19.1.0 §17.1.4).
 		if int64(v) < 0 || int64(v) > 4 {
 			return nil, fmt.Errorf("LCSClientName.LcsFormatIndicator=%d: %w", v, ErrLCSFormatIndicatorInvalid)
 		}
@@ -111,16 +110,39 @@ func convertWireToLCSRequestorID(w *gsm_map.LCSRequestorID) *LCSRequestorID {
 // ============================================================================
 //
 // LcsClientType is an extensible ENUMERATED (TS 29.002:188); encoder is
-// strict (0..3), decoder preserves unknown values per Postel.
+// strict (0..3). convertWireToLCSClientID copies any value; the
+// ProvideSubscriberLocation-Arg and SubscriberLocationReport-Arg decoders
+// apply the receiver rule (see checkLCSClientType).
 // LcsClientDialedByMS is an AddressString surfaced as digits +
 // Nature/Plan triple consistent with the rest of the public API; empty
 // digits = absent.
+
+// isRecognizedLCSClientType reports whether v is one of the LCSClientType
+// values 3GPP TS 29.002 V19.1.0 §17.7.13 lists, emergencyServices(0) to
+// lawfulInterceptServices(3).
+func isRecognizedLCSClientType(v LCSClientType) bool {
+	return v >= LCSClientTypeEmergencyServices && v <= LCSClientTypeLawfulInterceptServices
+}
+
+// checkLCSClientType applies the LCSClientType exception handling of 3GPP
+// TS 29.002 V19.1.0 §17.7.13 to an LCS-ClientID received in a MAP invoke:
+// "unrecognized values may be ignored if the LCS client uses the privacy
+// override otherwise, an unrecognized value shall be treated as unexpected
+// data by a receiver; a return error shall then be returned if received in a
+// MAP invoke". privacyOverride reports whether the invoke carries the privacy
+// override; with it the value is kept.
+func checkLCSClientType(c *gsm_map.LCSClientID, privacyOverride bool) error {
+	if c == nil || privacyOverride || isRecognizedLCSClientType(c.LcsClientType) {
+		return nil
+	}
+	return fmt.Errorf("LCSClientID.LcsClientType=%d: %w", c.LcsClientType, ErrLCSClientTypeUnrecognized)
+}
 
 func convertLCSClientIDToWire(c *LCSClientID) (*gsm_map.LCSClientID, error) {
 	if c == nil {
 		return nil, nil
 	}
-	if int64(c.LcsClientType) < 0 || int64(c.LcsClientType) > 3 {
+	if !isRecognizedLCSClientType(c.LcsClientType) {
 		return nil, fmt.Errorf("LCSClientID.LcsClientType=%d: %w", c.LcsClientType, ErrLCSClientTypeInvalid)
 	}
 	out := &gsm_map.LCSClientID{

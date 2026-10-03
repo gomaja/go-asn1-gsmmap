@@ -7,11 +7,13 @@
 // a subsequent D-CSI segment "shall not contain camelCapabilityHandling, but
 // may contain dp-AnalysedInfoCriteriaList". A single message may hold either
 // kind of segment, so both kinds marshal, reach the wire exactly as given
-// and parse back unchanged.
+// and parse back unchanged. A D-CSI with camelCapabilityHandling is the first
+// segment or an unsegmented one, so it needs the list.
 package gsmmap
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
@@ -154,6 +156,87 @@ func TestSegmentedGmscDCSIRoundTrip(t *testing.T) {
 				t.Fatalf("ParseSriResp: %v", err)
 			}
 			semWantEqual(t, "D-CSI", d, got.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCSI)
+		})
+	}
+}
+
+// A D-CSI that carries camelCapabilityHandling is unsegmented or the first
+// segment of a segmented one, since "Subsequent segments shall not contain
+// camelCapabilityHandling" (3GPP TS 29.002 V19.1.0 §17.7.1), and both of
+// those carry dp-AnalysedInfoCriteriaList. Marshal and Parse reject a D-CSI
+// with camelCapabilityHandling and no list. SMS-CSI and GPRS-CSI have no such
+// rule for subsequent segments, so they keep camelCapabilityHandling alone.
+func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
+	cchOnly := func() *DCSI { return &DCSI{CamelCapabilityHandling: semPhase()} }
+	first := func() *DCSI {
+		return &DCSI{DPAnalysedInfoCriteriaList: []DPAnalysedInfoCriterium{semDPCriterium()}, CamelCapabilityHandling: semPhase()}
+	}
+	sriResp := func(d *DCSI) *SriResp {
+		return &SriResp{
+			IMSI:                "204080012345678",
+			ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: GmscCamelSubscriptionInfo{DCSI: d}}},
+		}
+	}
+	isd := func(d *DCSI) *InsertSubscriberDataArg {
+		return &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{DCSI: d}}
+	}
+
+	t.Run("Marshal", func(t *testing.T) {
+		if _, err := isd(cchOnly()).Marshal(); !errors.Is(err, ErrCamelDCSICapabilityHandlingWithoutList) {
+			t.Errorf("VLR D-CSI: err = %v, want ErrCamelDCSICapabilityHandlingWithoutList", err)
+		}
+		if _, err := sriResp(cchOnly()).Marshal(); !errors.Is(err, ErrCamelDCSICapabilityHandlingWithoutList) {
+			t.Errorf("GMSC D-CSI: err = %v, want ErrCamelDCSICapabilityHandlingWithoutList", err)
+		}
+	})
+
+	t.Run("Parse VLR D-CSI", func(t *testing.T) {
+		w, err := convertInsertSubscriberDataArgToWire(isd(first()))
+		if err != nil {
+			t.Fatalf("convertInsertSubscriberDataArgToWire: %v", err)
+		}
+		w.VlrCamelSubscriptionInfo.DCSI.DpAnalysedInfoCriteriaList = nil
+		if got, err := ParseInsertSubscriberData(strictBER(t, w)); !errors.Is(err, ErrCamelDCSICapabilityHandlingWithoutList) {
+			t.Errorf("ParseInsertSubscriberData = %+v, %v; want ErrCamelDCSICapabilityHandlingWithoutList", got, err)
+		}
+		// A present but empty list breaks SIZE (1..10) and the codec
+		// rejects it.
+		w.VlrCamelSubscriptionInfo.DCSI.DpAnalysedInfoCriteriaList = &gsm_map.DPAnalysedInfoCriteriaList{}
+		if got, err := ParseInsertSubscriberData(tolerantBER(t, w)); err == nil {
+			t.Errorf("empty list: ParseInsertSubscriberData = %+v, want an error", got)
+		}
+	})
+	t.Run("Parse GMSC D-CSI", func(t *testing.T) {
+		w, err := convertSriRespToRes(sriResp(first()))
+		if err != nil {
+			t.Fatalf("convertSriRespToRes: %v", err)
+		}
+		w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCsi.DpAnalysedInfoCriteriaList = nil
+		if got, err := ParseSriResp(strictBER(t, w)); !errors.Is(err, ErrCamelDCSICapabilityHandlingWithoutList) {
+			t.Errorf("ParseSriResp = %+v, %v; want ErrCamelDCSICapabilityHandlingWithoutList", got, err)
+		}
+		w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCsi.DpAnalysedInfoCriteriaList = &gsm_map.DPAnalysedInfoCriteriaList{}
+		if got, err := ParseSriResp(tolerantBER(t, w)); err == nil {
+			t.Errorf("empty list: ParseSriResp = %+v, want an error", got)
+		}
+	})
+
+	// SMS-CSI and GPRS-CSI with camelCapabilityHandling alone still marshal
+	// and parse back unchanged.
+	for name, in := range semSegmentCases(semSegment{"camelCapabilityHandling without list", false, true}) {
+		if name == "VLR D-CSI" {
+			continue
+		}
+		t.Run(name, func(t *testing.T) {
+			data, err := in.Marshal()
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			got, err := ParseInsertSubscriberData(data)
+			if err != nil {
+				t.Fatalf("ParseInsertSubscriberData: %v", err)
+			}
+			semWantEqual(t, "ISD", in, got)
 		})
 	}
 }

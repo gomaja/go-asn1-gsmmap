@@ -155,15 +155,40 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 // struct back to the public type. Validation rules:
 //   - Round-trip safety: present-but-empty MlcNumber/MSISDN decoded
 //     values are rejected (cannot round-trip through the string API).
-//   - Extensible enums (LocationEstimateType, LCSClientType,
-//     LCSFormatIndicator, AccuracyFulfilmentIndicator, AreaType,
-//     OccurrenceInfo, RANTechnology): unknown values preserved per
-//     Postel; encoder-side strictness lives in the leaf converters.
+//   - An unrecognized LocationEstimateType or PrivacyCheckRelatedAction
+//     rejects the argument, as does an unrecognized LCSClientType without
+//     privacyOverride (3GPP TS 29.002 V19.1.0 §17.7.13); the caller
+//     answers with unexpected data value. With privacyOverride an
+//     unrecognized LCSClientType is kept.
+//   - Other extensible enums (LCSFormatIndicator,
+//     AccuracyFulfilmentIndicator, AreaType, OccurrenceInfo,
+//     RANTechnology): unknown values preserved per Postel; encoder-side
+//     strictness lives in the leaf converters.
 //   - ExtensionContainer at tag [8]: dropped (opaque metadata not
 //     surfaced; see ProvideSubscriberLocationArg doc).
 func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocationArg) (*ProvideSubscriberLocationArg, error) {
 	if w == nil {
 		return nil, ErrPSLArgNil
+	}
+
+	// 3GPP TS 29.002 V19.1.0 §17.7.13: "a ProvideSubscriberLocation-Arg
+	// containing an unrecognized LocationEstimateType shall be rejected by
+	// the receiver with a return error cause of unexpected data value". The
+	// clause says the same of PrivacyCheckRelatedAction, and of LCSClientType
+	// unless the client uses the privacy override.
+	if v := w.LocationType.LocationEstimateType; !isRecognizedLocationEstimateType(v) {
+		return nil, fmt.Errorf("ProvideSubscriberLocationArg.LocationType.LocationEstimateType=%d: %w", v, ErrLocationEstimateTypeUnrecognized)
+	}
+	if p := w.LcsPrivacyCheck; p != nil {
+		if !isRecognizedPrivacyCheckRelatedAction(p.CallSessionUnrelated) {
+			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsPrivacyCheck.CallSessionUnrelated=%d: %w", p.CallSessionUnrelated, ErrPrivacyCheckRelatedActionUnrecognized)
+		}
+		if r := p.CallSessionRelated; r != nil && !isRecognizedPrivacyCheckRelatedAction(*r) {
+			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsPrivacyCheck.CallSessionRelated=%d: %w", *r, ErrPrivacyCheckRelatedActionUnrecognized)
+		}
+	}
+	if err := checkLCSClientType(w.LcsClientID, w.PrivacyOverride != nil); err != nil {
+		return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsClientID: %w", err)
 	}
 
 	loc := convertWireToLocationType(&w.LocationType)

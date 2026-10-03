@@ -136,25 +136,16 @@ func semLenientCases() []semLenientCase {
 			w.LcsClientID.LcsClientInternalID = &id
 			return w
 		}},
-		{ErrLocationEstimateTypeInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
-			w := pslWithClient(t)
-			w.LocationType.LocationEstimateType = 6
-			return w
-		}},
 		{ErrLCSClientTypeInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			w.LcsClientID.LcsClientType = 4
+			w.PrivacyOverride = &struct{}{}
 			return w
 		}},
 		{ErrLCSFormatIndicatorInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			f := gsm_map.LCSFormatIndicator(5)
 			w.LcsClientID.LcsClientName.LcsFormatIndicator = &f
-			return w
-		}},
-		{ErrPrivacyCheckRelatedActionInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
-			w := pslWithClient(t)
-			w.LcsPrivacyCheck.CallSessionUnrelated = 5
 			return w
 		}},
 		{ErrAreaTypeInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
@@ -178,11 +169,6 @@ func semLenientCases() []semLenientCase {
 			w := semMust(convertProvideSubscriberLocationResToWire(&ProvideSubscriberLocationRes{LocationEstimate: ExtGeographicalInformation{0x10, 0, 0, 0, 0, 0, 0}}))
 			a := gsm_map.AccuracyFulfilmentIndicator(2)
 			w.AccuracyFulfilmentIndicator = &a
-			return w
-		}},
-		{ErrLCSEventInvalid, asParser(ParseSubscriberLocationReport), func(t *testing.T) semWire {
-			w := semMust(convertSubscriberLocationReportArgToWire(semSLRArg()))
-			w.LcsEvent = 6
 			return w
 		}},
 	}

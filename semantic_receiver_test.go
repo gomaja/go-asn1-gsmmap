@@ -6,6 +6,7 @@
 package gsmmap
 
 import (
+	"bytes"
 	"errors"
 	"math"
 	"testing"
@@ -154,18 +155,44 @@ func TestAbsentSubscriberReasonIgnoresUnknown(t *testing.T) {
 
 // §17.7.7: "if the additionalRoamingNotallowedCause is received by the
 // MSC/VLR or SGSN then the roamingNotAllowedCause shall be discarded."
-func TestRoamingNotAllowedCauseDiscardedWithAdditionalCause(t *testing.T) {
+// Parse leaves the discarding to the MSC/VLR or SGSN: with the additional
+// cause present it passes RoamingNotAllowedCause through unchecked, exactly
+// as received, so the parsed fields encode back to the received octets.
+func TestRoamingNotAllowedCausePassedThroughWithAdditionalCause(t *testing.T) {
 	additional := gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed
 	for _, cause := range []gsm_map.RoamingNotAllowedCause{1, 2, -1, math.MaxInt64} {
-		got := semParseError(t, MapErrorRoamingNotAllowed, &gsm_map.RoamingNotAllowedParam{
+		data, err := (&gsm_map.RoamingNotAllowedParam{
 			RoamingNotAllowedCause:           cause,
 			AdditionalRoamingNotAllowedCause: &additional,
-		}).(*RoamingNotAllowedParam)
+		}).MarshalBER()
+		if err != nil {
+			t.Fatalf("MarshalBER: %v", err)
+		}
+		v, err := ParseReturnErrorParameter(MapErrorRoamingNotAllowed, data)
+		if err != nil {
+			t.Fatalf("cause %d: ParseReturnErrorParameter: %v", cause, err)
+		}
+		got := v.(*RoamingNotAllowedParam)
+		if got.RoamingNotAllowedCause != cause {
+			t.Errorf("cause %d: RoamingNotAllowedCause = %d, want the wire value", cause, got.RoamingNotAllowedCause)
+		}
 		if got.AdditionalRoamingNotAllowedCause == nil || *got.AdditionalRoamingNotAllowedCause != additional {
 			t.Errorf("cause %d: AdditionalRoamingNotAllowedCause = %v", cause, got.AdditionalRoamingNotAllowedCause)
 		}
+		// The package has no encoder for error parameters, so the parsed
+		// fields go back through the wire type.
+		again, err := (&gsm_map.RoamingNotAllowedParam{
+			RoamingNotAllowedCause:           got.RoamingNotAllowedCause,
+			AdditionalRoamingNotAllowedCause: got.AdditionalRoamingNotAllowedCause,
+		}).MarshalBER()
+		if err != nil {
+			t.Fatalf("cause %d: MarshalBER of the parsed value: %v", cause, err)
+		}
+		if !bytes.Equal(again, data) {
+			t.Errorf("cause %d: parsed value encodes to %x, want %x", cause, again, data)
+		}
 		// Without the additional cause the non-extensible cause is checked.
-		data, err := (&gsm_map.RoamingNotAllowedParam{RoamingNotAllowedCause: cause}).MarshalBER()
+		data, err = (&gsm_map.RoamingNotAllowedParam{RoamingNotAllowedCause: cause}).MarshalBER()
 		if err != nil {
 			t.Fatalf("MarshalBER: %v", err)
 		}

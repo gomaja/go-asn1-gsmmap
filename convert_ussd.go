@@ -12,12 +12,12 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// validateAlertingPatternToWire accepts the seven values defined in
+// validateAlertingPatternToWire accepts the eight values defined in
 // 3GPP TS 29.002 V19.1.0 §17.7.8; decode is lenient, encode is strict.
 func validateAlertingPatternToWire(p AlertingPattern) error {
 	switch p {
 	case AlertingLevel0, AlertingLevel1, AlertingLevel2,
-		AlertingCategory1, AlertingCategory2, AlertingCategory3, AlertingCategory4:
+		AlertingCategory1, AlertingCategory2, AlertingCategory3, AlertingCategory4, AlertingCategory5:
 		return nil
 	}
 	return fmt.Errorf("value 0x%02X: %w", uint8(p), ErrAlertingPatternReserved)

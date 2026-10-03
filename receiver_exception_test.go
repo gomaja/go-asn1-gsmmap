@@ -1088,13 +1088,10 @@ func pslWire(t *testing.T, a *ProvideSubscriberLocationArg) *gsm_map.ProvideSubs
 
 // "a ProvideSubscriberLocation-Arg containing an unrecognized
 // PrivacyCheckRelatedAction shall be rejected by the receiver with a return
-// error cause of unexpected data value". The return error is the
-// application's, so Parse hands it the value.
-func TestParsePreservesUnrecognizedPrivacyCheckRelatedAction(t *testing.T) {
-	for _, v := range []PrivacyCheckRelatedAction{
-		PrivacyCheckNotAllowed, // last listed value, 4
-		5, -1, math.MaxInt64,
-	} {
+// error cause of unexpected data value". Parse rejects it, in either field,
+// so the caller can answer with unexpectedDataValue.
+func TestParseRejectsUnrecognizedPrivacyCheckRelatedAction(t *testing.T) {
+	for _, v := range []PrivacyCheckRelatedAction{PrivacyCheckAllowedWithoutNotification, PrivacyCheckNotAllowed} {
 		w := pslWire(t, pslArg())
 		related := v
 		w.LcsPrivacyCheck.CallSessionUnrelated, w.LcsPrivacyCheck.CallSessionRelated = v, &related
@@ -1103,6 +1100,148 @@ func TestParsePreservesUnrecognizedPrivacyCheckRelatedAction(t *testing.T) {
 			t.Fatalf("wire %d: ParseProvideSubscriberLocation: %v", v, err)
 		}
 		wantEqual(t, fmt.Sprintf("wire %d", v), &LCSPrivacyCheck{CallSessionUnrelated: v, CallSessionRelated: &related}, got.LcsPrivacyCheck)
+	}
+	for _, v := range []PrivacyCheckRelatedAction{5, -1, math.MaxInt64, math.MinInt64} {
+		w := pslWire(t, pslArg())
+		w.LcsPrivacyCheck.CallSessionUnrelated = v
+		if got, err := ParseProvideSubscriberLocation(strictBER(t, w)); !errors.Is(err, ErrPrivacyCheckRelatedActionUnrecognized) || got != nil {
+			t.Errorf("callSessionUnrelated %d: got %v, %v; want ErrPrivacyCheckRelatedActionUnrecognized", v, got, err)
+		}
+		w = pslWire(t, pslArg())
+		related := v
+		w.LcsPrivacyCheck.CallSessionRelated = &related
+		if got, err := ParseProvideSubscriberLocation(strictBER(t, w)); !errors.Is(err, ErrPrivacyCheckRelatedActionUnrecognized) || got != nil {
+			t.Errorf("callSessionRelated %d: got %v, %v; want ErrPrivacyCheckRelatedActionUnrecognized", v, got, err)
+		}
+	}
+}
+
+// "a ProvideSubscriberLocation-Arg containing an unrecognized
+// LocationEstimateType shall be rejected by the receiver with a return error
+// cause of unexpected data value".
+func TestParseRejectsUnrecognizedLocationEstimateType(t *testing.T) {
+	for _, v := range []LocationEstimateType{LocationEstimateCurrentLocation, LocationEstimateNotificationVerificationOnly} {
+		w := pslWire(t, pslArg())
+		w.LocationType.LocationEstimateType = v
+		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		if err != nil {
+			t.Fatalf("wire %d: ParseProvideSubscriberLocation: %v", v, err)
+		}
+		if got.LocationType.LocationEstimateType != v {
+			t.Errorf("wire %d: LocationEstimateType = %d", v, got.LocationType.LocationEstimateType)
+		}
+	}
+	for _, v := range []LocationEstimateType{6, -1, math.MaxInt64, math.MinInt64} {
+		w := pslWire(t, pslArg())
+		w.LocationType.LocationEstimateType = v
+		if got, err := ParseProvideSubscriberLocation(strictBER(t, w)); !errors.Is(err, ErrLocationEstimateTypeUnrecognized) || got != nil {
+			t.Errorf("wire %d: got %v, %v; want ErrLocationEstimateTypeUnrecognized", v, got, err)
+		}
+	}
+}
+
+// "a SubscriberLocationReport-Arg containing an unrecognized LCS-Event shall
+// be rejected by a receiver with a return error cause of unexpected data
+// value".
+func TestParseRejectsUnrecognizedLCSEvent(t *testing.T) {
+	slrWire := func(t *testing.T) *gsm_map.SubscriberLocationReportArg {
+		t.Helper()
+		w, err := convertSubscriberLocationReportArgToWire(minimalSLRArg())
+		if err != nil {
+			t.Fatalf("convertSubscriberLocationReportArgToWire: %v", err)
+		}
+		return w
+	}
+	for _, v := range []LCSEvent{LCSEventEmergencyCallOrigination, LCSEventEmergencyCallHandover} {
+		w := slrWire(t)
+		w.LcsEvent = v
+		got, err := ParseSubscriberLocationReport(strictBER(t, w))
+		if err != nil {
+			t.Fatalf("wire %d: ParseSubscriberLocationReport: %v", v, err)
+		}
+		if got.LcsEvent != v {
+			t.Errorf("wire %d: LcsEvent = %d", v, got.LcsEvent)
+		}
+	}
+	for _, v := range []LCSEvent{6, -1, math.MaxInt64, math.MinInt64} {
+		w := slrWire(t)
+		w.LcsEvent = v
+		if got, err := ParseSubscriberLocationReport(strictBER(t, w)); !errors.Is(err, ErrLCSEventUnrecognized) || got != nil {
+			t.Errorf("wire %d: got %v, %v; want ErrLCSEventUnrecognized", v, got, err)
+		}
+	}
+}
+
+// LCSClientType: "unrecognized values may be ignored if the LCS client uses
+// the privacy override otherwise, an unrecognized value shall be treated as
+// unexpected data by a receiver; a return error shall then be returned if
+// received in a MAP invoke". ProvideSubscriberLocation-Arg carries
+// privacyOverride: with it Parse keeps the value, which Marshal does not
+// send; without it Parse rejects the value. SubscriberLocationReport-Arg has
+// no privacy override and always rejects it.
+func TestParseLCSClientTypeUnrecognized(t *testing.T) {
+	psl := func(t *testing.T, override bool) *gsm_map.ProvideSubscriberLocationArg {
+		t.Helper()
+		a := pslArg()
+		a.LcsClientID = &LCSClientID{LcsClientType: LCSClientTypeValueAddedServices}
+		a.PrivacyOverride = override
+		return pslWire(t, a)
+	}
+	slr := func(t *testing.T) *gsm_map.SubscriberLocationReportArg {
+		t.Helper()
+		w, err := convertSubscriberLocationReportArgToWire(minimalSLRArg())
+		if err != nil {
+			t.Fatalf("convertSubscriberLocationReportArgToWire: %v", err)
+		}
+		return w
+	}
+	for _, v := range []LCSClientType{LCSClientTypeEmergencyServices, LCSClientTypeLawfulInterceptServices} {
+		for _, override := range []bool{false, true} {
+			w := psl(t, override)
+			w.LcsClientID.LcsClientType = v
+			got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+			if err != nil {
+				t.Fatalf("PSL wire %d, override %t: %v", v, override, err)
+			}
+			if got.LcsClientID.LcsClientType != v {
+				t.Errorf("PSL wire %d, override %t: LcsClientType = %d", v, override, got.LcsClientID.LcsClientType)
+			}
+		}
+		w := slr(t)
+		w.LcsClientID.LcsClientType = v
+		got, err := ParseSubscriberLocationReport(strictBER(t, w))
+		if err != nil {
+			t.Fatalf("SLR wire %d: %v", v, err)
+		}
+		if got.LcsClientID.LcsClientType != v {
+			t.Errorf("SLR wire %d: LcsClientType = %d", v, got.LcsClientID.LcsClientType)
+		}
+	}
+	for _, v := range []LCSClientType{4, -1, math.MaxInt64, math.MinInt64} {
+		w := psl(t, false)
+		w.LcsClientID.LcsClientType = v
+		if got, err := ParseProvideSubscriberLocation(strictBER(t, w)); !errors.Is(err, ErrLCSClientTypeUnrecognized) || got != nil {
+			t.Errorf("PSL wire %d without privacyOverride: got %v, %v; want ErrLCSClientTypeUnrecognized", v, got, err)
+		}
+
+		w = psl(t, true)
+		w.LcsClientID.LcsClientType = v
+		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		if err != nil {
+			t.Fatalf("PSL wire %d with privacyOverride: %v", v, err)
+		}
+		if !got.PrivacyOverride || got.LcsClientID.LcsClientType != v {
+			t.Errorf("PSL wire %d with privacyOverride: PrivacyOverride = %t, LcsClientType = %d", v, got.PrivacyOverride, got.LcsClientID.LcsClientType)
+		}
+		if _, err := got.Marshal(); !errors.Is(err, ErrLCSClientTypeInvalid) {
+			t.Errorf("PSL wire %d with privacyOverride: Marshal err = %v, want ErrLCSClientTypeInvalid", v, err)
+		}
+
+		s := slr(t)
+		s.LcsClientID.LcsClientType = v
+		if got, err := ParseSubscriberLocationReport(strictBER(t, s)); !errors.Is(err, ErrLCSClientTypeUnrecognized) || got != nil {
+			t.Errorf("SLR wire %d: got %v, %v; want ErrLCSClientTypeUnrecognized", v, got, err)
+		}
 	}
 }
 
