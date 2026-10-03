@@ -15,6 +15,10 @@ import (
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
 )
 
+// lcsPriorityNormal is LCS-Priority 1, normal priority; 0 is the highest
+// (3GPP TS 29.002 V19.1.0 §17.7.13).
+const lcsPriorityNormal = 0x01
+
 // convertProvideSubscriberLocationArgToWire builds the wire-form
 // gsm_map.ProvideSubscriberLocationArg from the public type. Semantic
 // validation errors carry field context and the relevant sentinel.
@@ -82,6 +86,12 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		out.Imei = &v
 	}
 	if len(a.LcsPriority) > 0 {
+		// §17.7.13 LCS-Priority: 0 is the highest and 1 the normal priority;
+		// "all other values treated as 1", so only 0 and 1 are sent. The
+		// codec checks SIZE (1).
+		if len(a.LcsPriority) == 1 && a.LcsPriority[0] > lcsPriorityNormal {
+			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsPriority=%x: %w", []byte(a.LcsPriority), ErrLCSPriorityInvalid)
+		}
 		v := gsm_map.LCSPriority(a.LcsPriority)
 		out.LcsPriority = &v
 	}
@@ -155,8 +165,10 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 // struct back to the public type. Validation rules:
 //   - Round-trip safety: present-but-empty MlcNumber/MSISDN decoded
 //     values are rejected (cannot round-trip through the string API).
-//   - An unrecognized LocationEstimateType or PrivacyCheckRelatedAction
-//     rejects the argument, as does an unrecognized LCSClientType without
+//   - An unrecognized LocationEstimateType or PrivacyCheckRelatedAction,
+//     or a DeferredLocationEventType bit other than msAvailable(0) to
+//     periodicLDR(4), rejects the argument, as does an unrecognized
+//     LCSClientType without
 //     privacyOverride (3GPP TS 29.002 V19.1.0 §17.7.13); the caller
 //     answers with unexpected data value. With privacyOverride an
 //     unrecognized LCSClientType is kept.
@@ -178,6 +190,13 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 	// unless the client uses the privacy override.
 	if v := w.LocationType.LocationEstimateType; !isRecognizedLocationEstimateType(v) {
 		return nil, fmt.Errorf("ProvideSubscriberLocationArg.LocationType.LocationEstimateType=%d: %w", v, ErrLocationEstimateTypeUnrecognized)
+	}
+	// §17.7.13 DeferredLocationEventType: "a ProvideSubscriberLocation-Arg
+	// containing other values than listed above in DeferredLocationEventType
+	// shall be rejected by the receiver with a return error cause of
+	// unexpected data value".
+	if d := w.LocationType.DeferredLocationEventType; d != nil && hasUnlistedDeferredLocationEvent(*d) {
+		return nil, fmt.Errorf("ProvideSubscriberLocationArg.LocationType.DeferredLocationEventType=%x/%d: %w", d.Bytes, d.BitLength, ErrDeferredLocationEventTypeUnrecognized)
 	}
 	if p := w.LcsPrivacyCheck; p != nil {
 		if !isRecognizedPrivacyCheckRelatedAction(p.CallSessionUnrelated) {
@@ -246,7 +265,11 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.IMEI = imei
 	}
 	if w.LcsPriority != nil {
+		// §17.7.13 LCS-Priority: "all other values treated as 1".
 		out.LcsPriority = LCSPriority(*w.LcsPriority)
+		if len(out.LcsPriority) == 1 && out.LcsPriority[0] > lcsPriorityNormal {
+			out.LcsPriority = LCSPriority{lcsPriorityNormal}
+		}
 	}
 	if w.LcsQoS != nil {
 		v, err := convertWireToLCSQoS(w.LcsQoS)

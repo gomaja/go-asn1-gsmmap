@@ -1260,22 +1260,65 @@ func TestMarshalRejectsUnrecognizedPrivacyCheckRelatedAction(t *testing.T) {
 	}
 }
 
-// "an unrecognized value shall be treated the same as value 0
-// (bestEffort)". LCSQoS does not surface lcs-qos-class, which "may only be
-// included in MO-LR request sent by the UE to the network" and so never in a
-// ProvideSubscriberLocation-Arg; Parse decodes every class, recognized or
-// not, to the same LCSQoS.
-func TestParseLCSQoSClassAnyValue(t *testing.T) {
-	want := pslArg().LcsQoS
-	for _, v := range []gsm_map.LCSQoSClass{gsm_map.LCSQoSClassBestEffort, gsm_map.LCSQoSClassAssured, 2, -1, math.MaxInt64} {
+// LCS-QoS-Class: "an unrecognized value shall be treated the same as value 0
+// (bestEffort)". Parse maps it to LCSQoSClassBestEffort, which marshals
+// again.
+func TestParseLCSQoSClassMapsUnrecognizedToBestEffort(t *testing.T) {
+	for _, tc := range []struct{ wire, want LCSQoSClass }{
+		{LCSQoSClassBestEffort, LCSQoSClassBestEffort},
+		{LCSQoSClassAssured, LCSQoSClassAssured},
+		{2, LCSQoSClassBestEffort},
+		{-1, LCSQoSClassBestEffort},
+		{math.MaxInt64, LCSQoSClassBestEffort},
+		{math.MinInt64, LCSQoSClassBestEffort},
+	} {
 		w := pslWire(t, pslArg())
-		class := v
+		class := tc.wire
 		w.LcsQoS.LcsQosClass = &class
-		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		data := strictBER(t, w)
+		got, err := ParseProvideSubscriberLocation(data)
 		if err != nil {
-			t.Fatalf("lcs-qos-class %d: ParseProvideSubscriberLocation: %v", v, err)
+			t.Fatalf("lcs-qos-class %d: ParseProvideSubscriberLocation: %v", tc.wire, err)
 		}
-		wantEqual(t, fmt.Sprintf("lcs-qos-class %d", v), want, got.LcsQoS)
+		want := pslArg().LcsQoS
+		want.LcsQosClass = &tc.want
+		wantEqual(t, fmt.Sprintf("lcs-qos-class %d", tc.wire), want, got.LcsQoS)
+		if err := checkParseRoundTrip("ProvideSubscriberLocation", asParser(ParseProvideSubscriberLocation), data); err != nil {
+			t.Error(err)
+		}
+	}
+	w := pslWire(t, pslArg())
+	got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.LcsQoS.LcsQosClass != nil {
+		t.Errorf("absent lcs-qos-class decoded as %d", *got.LcsQoS.LcsQosClass)
+	}
+}
+
+func TestMarshalLCSQoSClass(t *testing.T) {
+	for _, c := range []LCSQoSClass{LCSQoSClassBestEffort, LCSQoSClassAssured} {
+		a := pslArg()
+		class := c
+		a.LcsQoS.LcsQosClass = &class
+		data, err := a.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal %d: %v", c, err)
+		}
+		got, err := ParseProvideSubscriberLocation(data)
+		if err != nil {
+			t.Fatalf("Parse %d: %v", c, err)
+		}
+		wantEqual(t, "LcsQoS", a.LcsQoS, got.LcsQoS)
+	}
+	for _, c := range []LCSQoSClass{-1, 2, math.MaxInt64} {
+		a := pslArg()
+		class := c
+		a.LcsQoS.LcsQosClass = &class
+		if _, err := a.Marshal(); !errors.Is(err, ErrLCSQoSClassInvalid) {
+			t.Errorf("Marshal %d: err = %v, want ErrLCSQoSClassInvalid", c, err)
+		}
 	}
 }
 

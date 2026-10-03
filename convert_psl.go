@@ -58,8 +58,9 @@ func convertDeferredLocationEventTypeToBitString(d *DeferredLocationEventType) r
 	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
 }
 
-// convertBitStringToDeferredLocationEventType decodes the 5 named bits.
-// Bits past them are tolerated and ignored on decode.
+// convertBitStringToDeferredLocationEventType decodes the 5 named bits and
+// ignores the others. A ProvideSubscriberLocation-Arg setting another bit is
+// rejected first (hasUnlistedDeferredLocationEvent).
 func convertBitStringToDeferredLocationEventType(bs runtime.BitString) *DeferredLocationEventType {
 	return &DeferredLocationEventType{
 		MsAvailable:      bs.Has(0),
@@ -68,6 +69,18 @@ func convertBitStringToDeferredLocationEventType(bs runtime.BitString) *Deferred
 		BeingInsideArea:  bs.Has(3),
 		PeriodicLDR:      bs.Has(4),
 	}
+}
+
+// hasUnlistedDeferredLocationEvent reports whether bs sets a bit past
+// periodicLDR(4), the last value 3GPP TS 29.002 V19.1.0 §17.7.13
+// DeferredLocationEventType lists.
+func hasUnlistedDeferredLocationEvent(bs runtime.BitString) bool {
+	for bit := 5; bit < bs.BitLength; bit++ {
+		if bs.Has(bit) {
+			return true
+		}
+	}
+	return false
 }
 
 // SupportedGADShapes (BIT STRING SIZE 7..16, 7 named bits) per TS 29.002
@@ -304,6 +317,13 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 		out.ResponseTime = rt
 	}
 	out.VelocityRequest = boolToNullPtr(q.VelocityRequest)
+	if q.LcsQosClass != nil {
+		c := *q.LcsQosClass
+		if c != LCSQoSClassBestEffort && c != LCSQoSClassAssured {
+			return nil, fmt.Errorf("LCSQoS.LcsQosClass=%d: %w", c, ErrLCSQoSClassInvalid)
+		}
+		out.LcsQosClass = &c
+	}
 	return out, nil
 }
 
@@ -329,5 +349,14 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 		out.ResponseTime = convertWireToResponseTime(w.ResponseTime)
 	}
 	out.VelocityRequest = nullPtrToBool(w.VelocityRequest)
+	if w.LcsQosClass != nil {
+		// 3GPP TS 29.002 V19.1.0 §17.7.13 LCS-QoS-Class: "an unrecognized
+		// value shall be treated the same as value 0 (bestEffort)".
+		c := *w.LcsQosClass
+		if c != LCSQoSClassAssured {
+			c = LCSQoSClassBestEffort
+		}
+		out.LcsQosClass = &c
+	}
 	return out, nil
 }

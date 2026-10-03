@@ -12,6 +12,7 @@ import (
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
+	"github.com/gomaja/go-asn1/runtime/ber"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -153,10 +154,14 @@ func TestIdentityDigitsOnly(t *testing.T) {
 	}
 }
 
-func TestDecodeAddressFieldZeroOctets(t *testing.T) {
-	for _, in := range [][]byte{nil, {}} {
-		if _, _, _, err := decodeAddressField(in); !errors.Is(err, ErrAddressStringEmpty) {
-			t.Errorf("decodeAddressField(%#v) err = %v, want ErrAddressStringEmpty", in, err)
-		}
+// An AddressString of zero octets violates SIZE (1..n): the codec rejects
+// a field, and the SEQUENCE OF element checks reject a list entry
+// (TestParseAddressListEntrySize), before the digits are decoded.
+func TestParseZeroOctetAddressString(t *testing.T) {
+	w := &gsm_map.RoutingInfoForSMArg{Msisdn: []byte{}, ServiceCentreAddress: []byte{0x91, 0x21}}
+	_, err := ParseSriSm(tolerantBER(t, w))
+	var ce *ber.ConstraintError
+	if !errors.As(err, &ce) || ce.Constraint != "SIZE (1..9)" {
+		t.Errorf("err = %v, want the SIZE (1..9) constraint error", err)
 	}
 }

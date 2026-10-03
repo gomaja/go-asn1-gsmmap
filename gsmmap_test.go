@@ -3730,8 +3730,6 @@ func TestCamelOCSIRoundTrip(t *testing.T) {
 				},
 			},
 			CamelCapabilityHandling: &phase,
-			NotificationToCSE:       true,
-			CsiActive:               true,
 		},
 	}
 	got := camelRoundTrip(t, in)
@@ -3779,8 +3777,6 @@ func TestCamelDCSIRoundTrip(t *testing.T) {
 				},
 			},
 			CamelCapabilityHandling: intPtr(3),
-			NotificationToCSE:       true,
-			CsiActive:               true,
 		},
 	}
 	got := camelRoundTrip(t, in)

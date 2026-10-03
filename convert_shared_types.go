@@ -472,18 +472,42 @@ func convertWireToCamelRoutingInfo(w *gsm_map.CamelRoutingInfo) (*CamelRoutingIn
 
 // --- SRI remaining helpers ---
 
-func convertExternalSignalInfoToWire(e *ExternalSignalInfo) *gsm_map.ExternalSignalInfo {
-	return &gsm_map.ExternalSignalInfo{
-		ProtocolId: gsm_map.ProtocolId(int64(e.ProtocolID)),
-		SignalInfo: gsm_map.SignalInfo(e.SignalInfo),
-	}
+// isListedProtocolID reports whether v is one of the ProtocolId values of
+// 3GPP TS 29.002 V19.1.0 §17.7.8, gsm-0408 (1) to ets-300102-1 (4). The type
+// is not extensible.
+// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+func isListedProtocolID(v gsm_map.ProtocolId) bool {
+	return v >= gsm_map.ProtocolIdGsm0408 && v <= gsm_map.ProtocolIdEts3001021
 }
 
-func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) *ExternalSignalInfo {
+// convertExternalSignalInfoToWire encodes an ExternalSignalInfo. Besides an
+// unlisted ProtocolID it rejects gsm-BSSMAP (3): 3GPP TS 29.002 V19.1.0
+// §17.7.8 ProtocolId, "Value 3 is reserved and must not be used".
+func convertExternalSignalInfoToWire(e *ExternalSignalInfo) (*gsm_map.ExternalSignalInfo, error) {
+	id := gsm_map.ProtocolId(int64(e.ProtocolID))
+	if !isListedProtocolID(id) {
+		return nil, fmt.Errorf("ProtocolID=%d: %w", e.ProtocolID, ErrProtocolIDInvalid)
+	}
+	if id == gsm_map.ProtocolIdGsmBSSMAP {
+		return nil, fmt.Errorf("ProtocolID=%d: %w", e.ProtocolID, ErrProtocolIDReserved)
+	}
+	return &gsm_map.ExternalSignalInfo{
+		ProtocolId: id,
+		SignalInfo: gsm_map.SignalInfo(e.SignalInfo),
+	}, nil
+}
+
+// convertWireToExternalSignalInfo decodes an ExternalSignalInfo. It rejects
+// an unlisted ProtocolId and keeps the listed gsm-BSSMAP (3), whose "must
+// not be used" binds the sender.
+func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) (*ExternalSignalInfo, error) {
+	if !isListedProtocolID(w.ProtocolId) {
+		return nil, fmt.Errorf("ProtocolId=%d: %w", w.ProtocolId, ErrProtocolIDInvalid)
+	}
 	return &ExternalSignalInfo{
 		ProtocolID: int(w.ProtocolId),
 		SignalInfo: HexBytes(w.SignalInfo),
-	}
+	}, nil
 }
 
 func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) (*gsm_map.ExtExternalSignalInfo, error) {

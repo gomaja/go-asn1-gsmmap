@@ -135,6 +135,14 @@ func convertWireToExtensibleCallBarredParam(w *gsm_map.ExtensibleCallBarredParam
 // SystemFailureParam — TS 29.002 MAP-ER-DataTypes.asn (errorCode 34)
 // ============================================================================
 
+// isValidNetworkResource reports whether v is one of the NetworkResource
+// values of 3GPP TS 29.002 V19.1.0 §17.7.8, plmn (0) to rss (7). The type is
+// not extensible.
+// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+func isValidNetworkResource(v gsm_map.NetworkResource) bool {
+	return v >= gsm_map.NetworkResourcePlmn && v <= gsm_map.NetworkResourceRss
+}
+
 func convertWireToSystemFailureParam(w *gsm_map.SystemFailureParam) (*SystemFailureParam, error) {
 	if w == nil {
 		return nil, nil
@@ -146,6 +154,9 @@ func convertWireToSystemFailureParam(w *gsm_map.SystemFailureParam) (*SystemFail
 			return nil, fmt.Errorf("SystemFailureParam: choice=NetworkResource but payload is nil")
 		}
 		v := *w.NetworkResource
+		if !isValidNetworkResource(v) {
+			return nil, fmt.Errorf("SystemFailureParam.NetworkResource=%d: %w", v, ErrNetworkResourceInvalid)
+		}
 		out.NetworkResource = &v
 	case gsm_map.SystemFailureParamChoiceExtensibleSystemFailureParam:
 		if w.ExtensibleSystemFailureParam == nil {
@@ -169,6 +180,9 @@ func convertWireToExtensibleSystemFailureParam(w *gsm_map.ExtensibleSystemFailur
 	out := &ExtensibleSystemFailureParam{}
 	if w.NetworkResource != nil {
 		v := *w.NetworkResource
+		if !isValidNetworkResource(v) {
+			return nil, fmt.Errorf("ExtensibleSystemFailureParam.NetworkResource=%d: %w", v, ErrNetworkResourceInvalid)
+		}
 		out.NetworkResource = &v
 	}
 	// 3GPP TS 29.002 V19.1.0 §17.7.8 AdditionalNetworkResource: "if unknown

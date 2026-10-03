@@ -305,6 +305,9 @@ func convertEDRXCycleLengthToWire(e *EDRXCycleLength) (*gsm_map.EDRXCycleLength,
 	if e == nil {
 		return nil, nil
 	}
+	if !isListedUsedRATType(e.RatType) {
+		return nil, fmt.Errorf("EDRXCycleLength.RatType=%d: %w", e.RatType, ErrUsedRATTypeInvalid)
+	}
 
 	return &gsm_map.EDRXCycleLength{
 		RatType:              e.RatType,
@@ -317,8 +320,8 @@ func convertWireToEDRXCycleLength(w *gsm_map.EDRXCycleLength) (*EDRXCycleLength,
 		return nil, nil
 	}
 
-	// UsedRatType is an extensible enum (Postel's law) — preserve unknown
-	// values via direct assignment.
+	// UsedRatType is an extensible enum: an unknown value is kept (3GPP TS
+	// 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	return &EDRXCycleLength{
 		RatType:              w.RatType,
 		EDRXCycleLengthValue: HexBytes(w.EDRXCycleLengthValue),

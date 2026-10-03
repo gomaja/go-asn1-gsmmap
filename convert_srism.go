@@ -60,6 +60,11 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 
 	if s.SmDeliveryNotIntended != nil {
 		v := *s.SmDeliveryNotIntended
+		// SM-DeliveryNotIntended is extensible: only a listed value is sent;
+		// the decoder keeps any other (3GPP TS 29.002 V19.1.0 §17.1.4).
+		if v != SmDeliveryOnlyIMSIRequested && v != SmDeliveryOnlyMCCMNCRequested {
+			return nil, fmt.Errorf("SmDeliveryNotIntended=%d: %w", v, ErrSMDeliveryNotIntendedInvalid)
+		}
 		arg.SmDeliveryNotIntended = &v
 	}
 

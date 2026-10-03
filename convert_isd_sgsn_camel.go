@@ -140,10 +140,7 @@ func convertGPRSCSIToWire(g *GPRSCSI) (*gsm_map.GPRSCSI, error) {
 	if err := validateCamelCapabilityHandling(g.CamelCapabilityHandling); err != nil {
 		return nil, err
 	}
-	out := &gsm_map.GPRSCSI{
-		NotificationToCSE: boolToNullPtr(g.NotificationToCSE),
-		CsiActive:         boolToNullPtr(g.CsiActive),
-	}
+	out := &gsm_map.GPRSCSI{}
 	if len(g.GprsCamelTDPDataList) > 0 {
 		dl, err := convertGPRSCamelTDPDataListToWire(g.GprsCamelTDPDataList)
 		if err != nil {
@@ -172,8 +169,6 @@ func convertWireToGPRSCSI(w *gsm_map.GPRSCSI) (*GPRSCSI, error) {
 	}
 	out := &GPRSCSI{
 		GprsCamelTDPDataList: dl,
-		NotificationToCSE:    nullPtrToBool(w.NotificationToCSE),
-		CsiActive:            nullPtrToBool(w.CsiActive),
 	}
 	if w.CamelCapabilityHandling != nil {
 		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
@@ -192,10 +187,10 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 
 	mt := gsm_map.MobilityTriggers{Values: make([]gsm_map.MMCode, len(m.MobilityTriggers))}
 	for i, c := range m.MobilityTriggers {
-		if len(c) != 1 {
-			return nil, fmt.Errorf("MobilityTriggers[%d]: %w (got %d)", i, ErrMMCodeInvalidSize, len(c))
+		if !isPSMMCode(c) {
+			return nil, fmt.Errorf("MGCSI.MobilityTriggers[%d]=0x%02x: %w", i, byte(c), ErrMGCSIMMCodeInvalid)
 		}
-		mt.Values[i] = gsm_map.MMCode(c)
+		mt.Values[i] = gsm_map.MMCode{byte(c)}
 	}
 	if m.GsmSCFAddress == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
@@ -206,29 +201,26 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 		return nil, fmt.Errorf("encoding MGCSI.GsmSCFAddress: %w", err)
 	}
 	return &gsm_map.MGCSI{
-		MobilityTriggers:  &mt,
-		ServiceKey:        m.ServiceKey,
-		GsmSCFAddress:     addr,
-		NotificationToCSE: boolToNullPtr(m.NotificationToCSE),
-		CsiActive:         boolToNullPtr(m.CsiActive),
+		MobilityTriggers: &mt,
+		ServiceKey:       m.ServiceKey,
+		GsmSCFAddress:    addr,
 	}, nil
 }
 
+// convertWireToMGCSI decodes an MG-CSI received by the SGSN. It returns nil
+// when the receiver ignores every MM-Code (mmCodesFromWire): an MG-CSI arms
+// its events only through MobilityTriggers, SIZE (1..10), so with none left
+// the receiver holds no MG-CSI.
 func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 	if w == nil {
 		return nil, nil
 	}
-	triggers := w.MobilityTriggers
-	if triggers == nil {
-		triggers = &gsm_map.MobilityTriggers{}
+	mt, err := mmCodesFromWire("MGCSI.MobilityTriggers", w.MobilityTriggers, isPSMMCode)
+	if err != nil {
+		return nil, err
 	}
-
-	mt := make([]HexBytes, len(triggers.Values))
-	for i, c := range triggers.Values {
-		if len(c) != 1 {
-			return nil, fmt.Errorf("MobilityTriggers[%d]: %w (got %d)", i, ErrMMCodeInvalidSize, len(c))
-		}
-		mt[i] = HexBytes(c)
+	if mt == nil {
+		return nil, nil
 	}
 
 	addr, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
@@ -246,8 +238,6 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 		GsmSCFAddress:       addr,
 		GsmSCFAddressNature: nature,
 		GsmSCFAddressPlan:   plan,
-		NotificationToCSE:   nullPtrToBool(w.NotificationToCSE),
-		CsiActive:           nullPtrToBool(w.CsiActive),
 	}, nil
 }
 

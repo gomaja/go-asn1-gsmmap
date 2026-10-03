@@ -516,8 +516,6 @@ func TestGPRSCSI_RoundTrip(t *testing.T) {
 	in := &GPRSCSI{
 		GprsCamelTDPDataList:    GPRSCamelTDPDataList{makeGPRSCamelTDPData()},
 		CamelCapabilityHandling: &phase,
-		NotificationToCSE:       true,
-		CsiActive:               true,
 	}
 	w, err := convertGPRSCSIToWire(in)
 	if err != nil {
@@ -552,12 +550,11 @@ func TestGPRSCSI_PhaseOutOfRange(t *testing.T) {
 
 func makeMGCSI() *MGCSI {
 	return &MGCSI{
-		MobilityTriggers:    []HexBytes{{0x01}, {0x02}, {0x03}},
+		MobilityTriggers:    []MMCode{MMCodeRouteingAreaUpdateInSameSGSN, MMCodeGPRSAttach, MMCodeNetworkInitiatedGPRSDetach},
 		ServiceKey:          7,
 		GsmSCFAddress:       "31633333333",
 		GsmSCFAddressNature: 0x10,
 		GsmSCFAddressPlan:   0x01,
-		NotificationToCSE:   true,
 	}
 }
 
@@ -578,14 +575,14 @@ func TestMGCSI_RoundTrip(t *testing.T) {
 
 func TestMGCSI_MobilityTriggersBoundsRejected(t *testing.T) {
 	in := makeMGCSI()
-	in.MobilityTriggers = []HexBytes{}
+	in.MobilityTriggers = []MMCode{}
 	_, err := strictWire(convertMGCSIToWire(in))
 	if !matchesConstraint(err, "mobilityTriggers", "SIZE (1..10)") {
 		t.Fatalf("empty: want BER constraint error, got %v", err)
 	}
-	in.MobilityTriggers = make([]HexBytes, 11)
+	in.MobilityTriggers = make([]MMCode, 11)
 	for i := range in.MobilityTriggers {
-		in.MobilityTriggers[i] = HexBytes{byte(i)}
+		in.MobilityTriggers[i] = MMCodeGPRSAttach
 	}
 	_, err = strictWire(convertMGCSIToWire(in))
 	if !matchesConstraint(err, "mobilityTriggers", "SIZE (1..10)") {
@@ -594,10 +591,12 @@ func TestMGCSI_MobilityTriggersBoundsRejected(t *testing.T) {
 }
 
 func TestMGCSI_MMCodeWrongSize(t *testing.T) {
-	in := makeMGCSI()
-	in.MobilityTriggers[0] = HexBytes{0x01, 0x02} // not 1 octet
-	_, err := convertMGCSIToWire(in)
-	if !errors.Is(err, ErrMMCodeInvalidSize) {
+	w, err := convertMGCSIToWire(makeMGCSI())
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.MobilityTriggers.Values[0] = gsm_map.MMCode{0x80, 0x81} // not 1 octet
+	if _, err := convertWireToMGCSI(w); !errors.Is(err, ErrMMCodeInvalidSize) {
 		t.Fatalf("want ErrMMCodeInvalidSize, got %v", err)
 	}
 }

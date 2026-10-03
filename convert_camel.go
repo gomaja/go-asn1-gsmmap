@@ -271,6 +271,9 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
 			}
+			if !isISDNAddressStringSize(len(enc)) {
+				return nil, fmt.Errorf("DestinationNumberList[%d]: %d octets: %w", i, len(enc), ErrDestinationNumberInvalidSize)
+			}
 			list.Values[i] = enc
 		}
 		out.DestinationNumberList = &list
@@ -301,6 +304,11 @@ func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria
 	if w.DestinationNumberList != nil && len(w.DestinationNumberList.Values) > 0 {
 		list := make([]ISDNNumber, len(w.DestinationNumberList.Values))
 		for i, n := range w.DestinationNumberList.Values {
+			// SIZE (1..9) is the ISDN-AddressString type, not the format of
+			// the number that §17.7.1 tells the receiver not to check.
+			if !isISDNAddressStringSize(len(n)) {
+				return nil, fmt.Errorf("DestinationNumberList[%d]: %d octets: %w", i, len(n), ErrDestinationNumberInvalidSize)
+			}
 			digits, nature, plan, err := decodeAddressField(n)
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
@@ -514,8 +522,6 @@ func convertOCSIToWire(o *OCSI) (*gsm_map.OCSI, error) {
 		v := int64(*o.CamelCapabilityHandling)
 		out.CamelCapabilityHandling = &v
 	}
-	out.NotificationToCSE = boolToNullPtr(o.NotificationToCSE)
-	out.CsiActive = boolToNullPtr(o.CsiActive)
 	return out, nil
 }
 
@@ -536,8 +542,6 @@ func convertWireToOCSI(w *gsm_map.OCSI) (*OCSI, error) {
 	if w.CamelCapabilityHandling != nil {
 		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
 	}
-	out.NotificationToCSE = nullPtrToBool(w.NotificationToCSE)
-	out.CsiActive = nullPtrToBool(w.CsiActive)
 	return out, nil
 }
 
@@ -563,8 +567,6 @@ func convertTCSIToWire(t *TCSI) (*gsm_map.TCSI, error) {
 		v := int64(*t.CamelCapabilityHandling)
 		out.CamelCapabilityHandling = &v
 	}
-	out.NotificationToCSE = boolToNullPtr(t.NotificationToCSE)
-	out.CsiActive = boolToNullPtr(t.CsiActive)
 	return out, nil
 }
 
@@ -585,8 +587,6 @@ func convertWireToTCSI(w *gsm_map.TCSI) (*TCSI, error) {
 	if w.CamelCapabilityHandling != nil {
 		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
 	}
-	out.NotificationToCSE = nullPtrToBool(w.NotificationToCSE)
-	out.CsiActive = nullPtrToBool(w.CsiActive)
 	return out, nil
 }
 
@@ -684,10 +684,7 @@ func convertDCSIToWire(d *DCSI) (*gsm_map.DCSI, error) {
 	if d.CamelCapabilityHandling != nil && len(d.DPAnalysedInfoCriteriaList) == 0 {
 		return nil, ErrCamelDCSICapabilityHandlingWithoutList
 	}
-	out := &gsm_map.DCSI{
-		NotificationToCSE: boolToNullPtr(d.NotificationToCSE),
-		CsiActive:         boolToNullPtr(d.CsiActive),
-	}
+	out := &gsm_map.DCSI{}
 	if len(d.DPAnalysedInfoCriteriaList) > 0 {
 		list := gsm_map.DPAnalysedInfoCriteriaList{Values: make([]gsm_map.DPAnalysedInfoCriterium, len(d.DPAnalysedInfoCriteriaList))}
 		for i := range d.DPAnalysedInfoCriteriaList {
@@ -711,10 +708,7 @@ func convertWireToDCSI(w *gsm_map.DCSI) (*DCSI, error) {
 	if w.CamelCapabilityHandling != nil && (w.DpAnalysedInfoCriteriaList == nil || len(w.DpAnalysedInfoCriteriaList.Values) == 0) {
 		return nil, ErrCamelDCSICapabilityHandlingWithoutList
 	}
-	out := &DCSI{
-		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
-		CsiActive:         nullPtrToBool(w.CsiActive),
-	}
+	out := &DCSI{}
 	if w.DpAnalysedInfoCriteriaList != nil && len(w.DpAnalysedInfoCriteriaList.Values) > 0 {
 		out.DPAnalysedInfoCriteriaList = make([]DPAnalysedInfoCriterium, len(w.DpAnalysedInfoCriteriaList.Values))
 		for i := range w.DpAnalysedInfoCriteriaList.Values {
@@ -832,6 +826,19 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 
 // --- VlrCamelSubscriptionInfo sub-types (MAP-MS-DataTypes.asn:2183) ---
 
+// isVLRSSEvent reports whether c is an SS-EventList code an SS-CSI sent to
+// the VLR may carry. 3GPP TS 29.002 V19.1.0 §17.7.1 SS-EventList defines
+// actions for ectSS-Code, multiPTYSS-Code, cdSS-Code and ccbsSS-Code: "all
+// other SS codes shall be ignored". "When SS-CSI is sent to the VLR, it
+// shall not contain a marking for ccbs. If the VLR receives SS-CSI
+// containing a marking for ccbs, the VLR shall discard the ccbs marking in
+// SS-CSI."
+func isVLRSSEvent(c SsCode) bool {
+	return c == SsCodeECT || c == SsCodeMultiPTY || c == SsCodeCD
+}
+
+// convertSSCSIToWire encodes the SS-CSI of a VlrCamelSubscriptionInfo, sent
+// to the VLR: SsEventList carries only the codes of isVLRSSEvent.
 func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
 	if s.GsmSCFAddress == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
@@ -842,6 +849,12 @@ func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
 	}
 	events := gsm_map.SSEventList{Values: make([]gsm_map.SSCode, len(s.SsEventList))}
 	for i, c := range s.SsEventList {
+		switch {
+		case c == SsCodeCCBS:
+			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]: %w", i, ErrSSCSICCBSToVLR)
+		case !isVLRSSEvent(c):
+			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]=0x%02x: %w", i, byte(c), ErrSSEventUnlisted)
+		}
 		events.Values[i] = gsm_map.SSCode{byte(c)}
 	}
 	return &gsm_map.SSCSI{
@@ -849,11 +862,14 @@ func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
 			SsEventList:   &events,
 			GsmSCFAddress: addr,
 		},
-		NotificationToCSE: boolToNullPtr(s.NotificationToCSE),
-		CsiActive:         boolToNullPtr(s.CsiActive),
 	}, nil
 }
 
+// convertWireToSSCSI decodes the SS-CSI of a VlrCamelSubscriptionInfo,
+// received by the VLR: it drops every SsEventList code but those of
+// isVLRSSEvent. It returns nil when none is left: an SS-CSI arms its events
+// only through SS-EventList, SIZE (1..10), so with none left the receiver
+// holds no SS-CSI.
 func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 	events := w.SsCamelData.SsEventList
 
@@ -864,22 +880,61 @@ func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 	if digits == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	ssList := make([]SsCode, len(events.Values))
+	var ssList []SsCode
 	for i, b := range events.Values {
 		// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 		if len(b) != 1 {
 			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]: SsCode must be 1 octet, got %d", i, len(b))
 		}
-		ssList[i] = SsCode(b[0])
+		if c := SsCode(b[0]); isVLRSSEvent(c) {
+			ssList = append(ssList, c)
+		}
+	}
+	if ssList == nil {
+		return nil, nil
 	}
 	return &SSCSI{
 		SsEventList:         ssList,
 		GsmSCFAddress:       digits,
 		GsmSCFAddressNature: nat,
 		GsmSCFAddressPlan:   plan,
-		NotificationToCSE:   nullPtrToBool(w.NotificationToCSE),
-		CsiActive:           nullPtrToBool(w.CsiActive),
 	}, nil
+}
+
+// isCSMMCode reports whether c is a CS domain MM-Code, the events an M-CSI
+// arms at the VLR (3GPP TS 29.002 V19.1.0 §17.7.1 MM-Code).
+func isCSMMCode(c MMCode) bool {
+	return c >= MMCodeLocationUpdateInSameVLR && c <= MMCodeNetworkInitiatedIMSIDetach
+}
+
+// isPSMMCode reports whether c is a PS domain MM-Code, the events an MG-CSI
+// arms at the SGSN (3GPP TS 29.002 V19.1.0 §17.7.1 MM-Code).
+func isPSMMCode(c MMCode) bool {
+	return c >= MMCodeRouteingAreaUpdateInSameSGSN && c <= MMCodeNetworkInitiatedTransferToMSNotReachableForPaging
+}
+
+// mmCodesFromWire decodes the MobilityTriggers of an M-CSI or MG-CSI,
+// keeping the MM-Codes listed for the receiving domain. 3GPP TS 29.002
+// V19.1.0 §17.7.1 MM-Code: "If the MSC receives any other MM-code than the
+// ones listed above for the CS domain, then the MSC shall ignore that
+// MM-code. If the SGSN receives any other MM-code than the ones listed above
+// for the PS domain, then the SGSN shall ignore that MM-code." It returns
+// nil when none is left.
+func mmCodesFromWire(field string, w *gsm_map.MobilityTriggers, listed func(MMCode) bool) ([]MMCode, error) {
+	if w == nil {
+		return nil, nil
+	}
+	var out []MMCode
+	for i, mm := range w.Values {
+		// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+		if len(mm) != 1 {
+			return nil, fmt.Errorf("%s[%d]: %w (got %d)", field, i, ErrMMCodeInvalidSize, len(mm))
+		}
+		if c := MMCode(mm[0]); listed(c) {
+			out = append(out, c)
+		}
+	}
+	return out, nil
 }
 
 func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
@@ -891,18 +946,23 @@ func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
 		return nil, fmt.Errorf("encoding M-CSI.GsmSCFAddress: %w", err)
 	}
 	triggers := gsm_map.MobilityTriggers{Values: make([]gsm_map.MMCode, len(m.MobilityTriggers))}
-	for i, b := range m.MobilityTriggers {
-		triggers.Values[i] = gsm_map.MMCode{b}
+	for i, c := range m.MobilityTriggers {
+		if !isCSMMCode(c) {
+			return nil, fmt.Errorf("M-CSI.MobilityTriggers[%d]=0x%02x: %w", i, byte(c), ErrMCSIMMCodeInvalid)
+		}
+		triggers.Values[i] = gsm_map.MMCode{byte(c)}
 	}
 	return &gsm_map.MCSI{
-		MobilityTriggers:  &triggers,
-		ServiceKey:        m.ServiceKey,
-		GsmSCFAddress:     addr,
-		NotificationToCSE: boolToNullPtr(m.NotificationToCSE),
-		CsiActive:         boolToNullPtr(m.CsiActive),
+		MobilityTriggers: &triggers,
+		ServiceKey:       m.ServiceKey,
+		GsmSCFAddress:    addr,
 	}, nil
 }
 
+// convertWireToMCSI decodes an M-CSI received by the VLR. It returns nil
+// when the receiver ignores every MM-Code: an M-CSI arms its events only
+// through MobilityTriggers, SIZE (1..10), so with none left the receiver
+// holds no M-CSI.
 func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 	sk := w.ServiceKey
 	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
@@ -912,12 +972,12 @@ func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 	if digits == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	triggers := make([]byte, len(w.MobilityTriggers.Values))
-	for i, mm := range w.MobilityTriggers.Values {
-		if len(mm) != 1 {
-			return nil, fmt.Errorf("M-CSI.MobilityTriggers[%d]: %w", i, ErrCamelInvalidMobilityTriggerOctet)
-		}
-		triggers[i] = mm[0]
+	triggers, err := mmCodesFromWire("M-CSI.MobilityTriggers", w.MobilityTriggers, isCSMMCode)
+	if err != nil {
+		return nil, err
+	}
+	if triggers == nil {
+		return nil, nil
 	}
 	return &MCSI{
 		MobilityTriggers:    triggers,
@@ -925,8 +985,6 @@ func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 		GsmSCFAddress:       digits,
 		GsmSCFAddressNature: nat,
 		GsmSCFAddressPlan:   plan,
-		NotificationToCSE:   nullPtrToBool(w.NotificationToCSE),
-		CsiActive:           nullPtrToBool(w.CsiActive),
 	}, nil
 }
 
@@ -1059,10 +1117,7 @@ func convertSMSCSIToWire(s *SMSCSI, tdp SMSTriggerDetectionPoint) (*gsm_map.SMSC
 	if err := validateCamelCapabilityHandling(s.CamelCapabilityHandling); err != nil {
 		return nil, err
 	}
-	out := &gsm_map.SMSCSI{
-		NotificationToCSE: boolToNullPtr(s.NotificationToCSE),
-		CsiActive:         boolToNullPtr(s.CsiActive),
-	}
+	out := &gsm_map.SMSCSI{}
 	if len(s.SmsCAMELTDPDataList) > 0 {
 		list := gsm_map.SMSCAMELTDPDataList{Values: make([]gsm_map.SMSCAMELTDPData, len(s.SmsCAMELTDPDataList))}
 		seen := map[SMSTriggerDetectionPoint]bool{}
@@ -1092,10 +1147,7 @@ func convertSMSCSIToWire(s *SMSCSI, tdp SMSTriggerDetectionPoint) (*gsm_map.SMSC
 // rest of the CSI is kept, since another segment may carry the TDP data
 // (see convertDCSIToWire).
 func convertWireToSMSCSI(w *gsm_map.SMSCSI, tdp SMSTriggerDetectionPoint) (*SMSCSI, error) {
-	out := &SMSCSI{
-		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
-		CsiActive:         nullPtrToBool(w.CsiActive),
-	}
+	out := &SMSCSI{}
 	if w.SmsCAMELTDPDataList != nil {
 		decode := func(d *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData, error) {
 			return convertWireToSMSCAMELTDPData(d, tdp)

@@ -260,7 +260,7 @@ func TestMarshalMissingMandatoryAddress(t *testing.T) {
 		{"UpdateGprsLocation SgsnNumber", &UpdateGprsLocation{IMSI: "001010123456789", SGSNAddress: "192.0.2.1"}, ErrUpdateGprsLocationMissingSGSNNumber},
 		{"UpdateGprsLocationRes HLRNumber", &UpdateGprsLocationRes{}, ErrUpdateGprsLocationResMissingHLRNumber},
 		{"GPRS-CSI gsmSCF-Address", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{GprsCSI: &GPRSCSI{GprsCamelTDPDataList: GPRSCamelTDPDataList{{GprsTriggerDetectionPoint: GPRSTDPAttach}}}}}, ErrCamelMissingGsmSCFAddress},
-		{"MG-CSI gsmSCF-Address", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{MgCsi: &MGCSI{MobilityTriggers: []HexBytes{{1}}}}}, ErrCamelMissingGsmSCFAddress},
+		{"MG-CSI gsmSCF-Address", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{MgCsi: &MGCSI{MobilityTriggers: []MMCode{MMCodeGPRSAttach}}}}, ErrCamelMissingGsmSCFAddress},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := tc.msg.Marshal(); !errors.Is(err, tc.want) {

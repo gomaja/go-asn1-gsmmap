@@ -84,6 +84,33 @@ func semLenientCases() []semLenientCase {
 			imei := semTBCD(t, "490154203237518")
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{Imei: &imei}}
 		}},
+		{ErrProtocolIDReserved, asParser(ParseSri), func(t *testing.T) semWire {
+			w := semMust(convertSriToArg(&Sri{MSISDN: "31612345678", GmscOrGsmSCFAddress: "31600000001"}))
+			w.NetworkSignalInfo = &gsm_map.ExternalSignalInfo{ProtocolId: gsm_map.ProtocolIdGsmBSSMAP, SignalInfo: gsm_map.SignalInfo{0x01}}
+			return w
+		}},
+		{ErrUsedRATTypeInvalid, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
+			r := gsm_map.UsedRATType(6)
+			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{LastRATType: &r}}
+		}},
+		{ErrUESRVCCCapabilityInvalid, asParser(ParseUpdateGprsLocation), func(t *testing.T) semWire {
+			w := semMust(convertUpdateGprsLocationToArg(&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "31612345678", SGSNAddress: "192.168.31.1"}))
+			c := gsm_map.UESRVCCCapability(2)
+			w.UeSrvccCapability = &c
+			return w
+		}},
+		{ErrSMSRegisterRequestInvalid, asParser(ParseUpdateGprsLocation), func(t *testing.T) semWire {
+			w := semMust(convertUpdateGprsLocationToArg(&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "31612345678", SGSNAddress: "192.168.31.1"}))
+			r := gsm_map.SMSRegisterRequest(3)
+			w.SmsRegisterRequest = &r
+			return w
+		}},
+		{ErrSMDeliveryNotIntendedInvalid, asParser(ParseSriSm), func(t *testing.T) semWire {
+			w := semMust(convertSriSmToArg(&SriSm{MSISDN: "31612345678", ServiceCentreAddress: "31611111111"}))
+			n := gsm_map.SMDeliveryNotIntended(2)
+			w.SmDeliveryNotIntended = &n
+			return w
+		}},
 		{ErrCancelLocInvalidCancellationType, asParser(ParseCancelLocation), cancel(3, nil)},
 		{ErrCancelLocInvalidTypeOfUpdate, asParser(ParseCancelLocation), cancel(0, &unknownUpdate)},
 		{ErrCamelInvalidTTriggerPoint, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {

@@ -150,6 +150,18 @@ What that means for a consumer:
   `LCSCodeword` is a `USSDDataCodingScheme`, the type of every
   USSD-DataCodingScheme, so their strings decode with
   `DataCodingScheme.Decode`.
+- `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` are `[]MMCode` (were
+  `[]byte` and `[]HexBytes`), with `MMCode*` constants for the CS and PS
+  domain events.
+- The CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`,
+  `GPRSCSI`, `MGCSI`) no longer have `NotificationToCSE` and `CsiActive`:
+  TS 29.002 §17.7.1 allows them only in ATSI, ATM ack and NSDC messages,
+  which this package does not implement. `Parse` drops them.
+- `LCSQoS.LcsQosClass` carries lcs-qos-class, which `Parse` dropped; an
+  unrecognized value decodes as `LCSQoSClassBestEffort` (§17.7.13).
+- `ErrAddressStringEmpty` and `ErrCamelInvalidMobilityTriggerOctet` are
+  gone: a zero-octet AddressString fails its SIZE check first, and a
+  wrong-size MM-Code is `ErrMMCodeInvalidSize` in both CSIs.
 
 ## Usage
 
