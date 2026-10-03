@@ -133,8 +133,7 @@ func TestServingNodeAddressSgsnNumberDecodedEmptyRejected(t *testing.T) {
 
 // Decoder must reject malformed CellIdOrSai CHOICEs (selected
 // alternative but nil payload, or unknown choice value) instead of
-// silently coercing to "absent". Caught by 3 reviewers (CodeRabbit,
-// Codex, cubic) on PR #47.
+// silently coercing to "absent".
 func TestProvideSubscriberLocationResCellIdOrSaiInvalidChoice(t *testing.T) {
 	t.Run("CGI choice but nil payload", func(t *testing.T) {
 		w := &gsm_map.ProvideSubscriberLocationRes{

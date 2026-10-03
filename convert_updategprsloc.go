@@ -476,7 +476,7 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 		}
 		bits := w.IsrInformation.BitLength
 		return &EpsInfo{
-			IsrInformation:     HexBytes(append([]byte(nil), w.IsrInformation.Bytes...)),
+			IsrInformation:     bitStringFromWire(*w.IsrInformation),
 			IsrInformationBits: bits,
 		}, nil
 	default:

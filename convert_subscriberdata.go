@@ -15,7 +15,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -153,11 +152,11 @@ func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroup
 		bs := convertAdditionalSubscriptionsToBitString(v.AdditionalSubscriptions)
 		out.AdditionalSubscriptions = &bs
 	}
-	if len(v.AdditionalInfo) > 0 {
-		// AdditionalInfo is modeled as HexBytes per the public type's
-		// godoc — byte-aligned only. Set BitLength to len(bytes)*8;
-		// non-byte-aligned peer values are lossy on decode.
-		bs := runtime.BitString{Bytes: []byte(v.AdditionalInfo), BitLength: len(v.AdditionalInfo) * 8}
+	if len(v.AdditionalInfo) > 0 || v.AdditionalInfoBits != 0 {
+		bs, err := bitStringToWire("VoiceGroupCallData.AdditionalInfo", v.AdditionalInfo, v.AdditionalInfoBits)
+		if err != nil {
+			return nil, err
+		}
 		out.AdditionalInfo = &bs
 	}
 	if v.LongGroupId != "" {
@@ -180,15 +179,8 @@ func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroup
 		out.AdditionalSubscriptions = convertBitStringToAdditionalSubscriptions(*w.AdditionalSubscriptions)
 	}
 	if w.AdditionalInfo != nil {
-		// Byte-aligned-only public type per the VoiceGroupCallData.Additional-
-		// Info godoc: take full octets only (BitLength / 8, floor),
-		// discarding any sub-byte trailing bits. A BitLength of 7 surfaces
-		// zero bytes; callers who need sub-byte handling should read the
-		// underlying BIT STRING directly.
-		byteLen := w.AdditionalInfo.BitLength / 8
-		if byteLen > 0 {
-			out.AdditionalInfo = HexBytes(w.AdditionalInfo.Bytes[:byteLen])
-		}
+		out.AdditionalInfo = bitStringFromWire(*w.AdditionalInfo)
+		out.AdditionalInfoBits = w.AdditionalInfo.BitLength
 	}
 	if w.LongGroupId != nil {
 		lg, err := decodeLongGroupID(*w.LongGroupId)

@@ -544,7 +544,7 @@ func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInf
 
 func convertWireToUserCSGInformation(w *gsm_map.UserCSGInformation) *UserCSGInformation {
 	out := &UserCSGInformation{
-		CsgID:     append([]byte(nil), w.CsgId.Bytes...),
+		CsgID:     bitStringFromWire(w.CsgId),
 		CsgIDBits: w.CsgId.BitLength,
 	}
 	if w.AccessMode != nil {

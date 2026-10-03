@@ -23,6 +23,18 @@ func bitStringToWire(field string, octets []byte, bits int) (runtime.BitString, 
 	return runtime.BitString{Bytes: append([]byte(nil), octets...), BitLength: bits}, nil
 }
 
+// bitStringFromWire copies the octets of a decoded BIT STRING with the
+// unused bits of the last octet cleared. BER leaves them unconstrained
+// (ITU-T X.690 §11.2.1 requires them to be zero only in DER and CER), so
+// they carry no value.
+func bitStringFromWire(bs runtime.BitString) HexBytes {
+	out := append(HexBytes(nil), bs.Bytes...)
+	if r := bs.BitLength % 8; r != 0 && len(out) > 0 {
+		out[len(out)-1] &= 0xFF << uint(8-r)
+	}
+	return out
+}
+
 func convertCamelPhasesToBitString(cp *SupportedCamelPhases) runtime.BitString {
 	var b byte
 	bitLen := 1
@@ -501,13 +513,8 @@ func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedF
 		UnlicensedSpectrumAsSecondaryRAT: bs.Has(0),
 	}
 	if len(bs.Bytes) > 0 {
-		out.UnknownBits = append(HexBytes(nil), bs.Bytes...)
+		out.UnknownBits = bitStringFromWire(bs)
 		out.UnknownBits[0] &^= 0x80
-		// The unused bits of the last octet carry no value in BER (ITU-T
-		// X.690 §11.2.1 requires them to be zero only in DER and CER).
-		if r := bs.BitLength % 8; r != 0 {
-			out.UnknownBits[len(out.UnknownBits)-1] &= 0xFF << uint(8-r)
-		}
 		for len(out.UnknownBits) > 0 && out.UnknownBits[len(out.UnknownBits)-1] == 0 {
 			out.UnknownBits = out.UnknownBits[:len(out.UnknownBits)-1]
 		}

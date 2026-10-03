@@ -269,3 +269,35 @@ func TestExtSupportedFeaturesIgnoresPaddingBits(t *testing.T) {
 		t.Errorf("Marshal = %x, want %x", out, want)
 	}
 }
+
+// The unused bits of a BIT STRING's last octet carry no value in BER (ITU-T
+// X.690 §11.2.1 makes zero padding a DER/CER rule): a received value with
+// them set equals the same value with them clear.
+func TestBitStringPaddingBitsCleared(t *testing.T) {
+	// 27 bits of CSG-Id 0x12345620 with the five padding bits set.
+	padded := runtime.BitString{Bytes: []byte{0x12, 0x34, 0x56, 0x3F}, BitLength: 27}
+	want := HexBytes{0x12, 0x34, 0x56, 0x20}
+
+	csg, err := convertWireToCSGSubscriptionData(&gsm_map.CSGSubscriptionData{CsgId: padded})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(csg.CsgID, want) || csg.CsgIDBits != 27 {
+		t.Errorf("CSGSubscriptionData.CsgID = %x (%d bits), want %x (27 bits)", csg.CsgID, csg.CsgIDBits, want)
+	}
+
+	user := convertWireToUserCSGInformation(&gsm_map.UserCSGInformation{CsgId: padded})
+	if !bytes.Equal(user.CsgID, want) || user.CsgIDBits != 27 {
+		t.Errorf("UserCSGInformation.CsgID = %x (%d bits), want %x (27 bits)", user.CsgID, user.CsgIDBits, want)
+	}
+
+	// ISR-Information, 3 bits '101'B with the five padding bits set.
+	isr := runtime.BitString{Bytes: []byte{0xBF}, BitLength: 3}
+	eps, err := convertWireToEpsInfo(&gsm_map.EPSInfo{Choice: gsm_map.EPSInfoChoiceIsrInformation, IsrInformation: &isr})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(eps.IsrInformation, HexBytes{0xA0}) || eps.IsrInformationBits != 3 {
+		t.Errorf("EpsInfo.IsrInformation = %x (%d bits), want a0 (3 bits)", eps.IsrInformation, eps.IsrInformationBits)
+	}
+}

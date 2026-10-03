@@ -1912,15 +1912,14 @@ type VoiceBroadcastData struct {
 // the groupId comment of TS 29.002. The encoder rejects inputs that violate
 // these invariants.
 //
-// AdditionalInfo is an opaque BIT STRING (SIZE 1..136 per TS 43.068),
-// modeled here as HexBytes. This representation only preserves
-// byte-aligned values — the encoder sets BitLength to len(bytes)*8,
-// and the decoder discards any trailing sub-byte bits. The encoder
-// rejects values exceeding the 17-octet (136-bit) maximum.
+// AdditionalInfo is a BIT STRING (SIZE (1..136)) (3GPP TS 29.002 V19.1.0
+// §17.7.1) of AdditionalInfoBits bits in (AdditionalInfoBits+7)/8 octets,
+// like CsgID and IsrInformation.
 type VoiceGroupCallData struct {
 	GroupId                 string                   // mandatory TBCD digits, at most 6 (empty only with LongGroupId)
 	AdditionalSubscriptions *AdditionalSubscriptions // optional
-	AdditionalInfo          HexBytes                 // optional, byte-aligned only, at most 17 octets per TS 43.068
+	AdditionalInfo          HexBytes                 // optional BIT STRING content
+	AdditionalInfoBits      int                      // its bit length, 1..136
 	LongGroupId             string                   // optional TBCD digits, at most 8
 }
 
