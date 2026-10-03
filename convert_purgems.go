@@ -11,10 +11,6 @@ import (
 // convertPurgeMSToArg converts the public PurgeMS into the wire-level
 // gsm_map.PurgeMSArg.
 func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
-	if p.IMSI == "" {
-		return nil, ErrPurgeMSMissingIMSI
-	}
-
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, p.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)

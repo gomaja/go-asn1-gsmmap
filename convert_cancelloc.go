@@ -95,10 +95,6 @@ func validateCancelLocation(c *CancelLocation) error {
 		return ErrCancelLocIdentityChoiceMultiple
 	case !imsiSet && !withLmsiSet:
 		return ErrCancelLocIdentityChoiceNoAlternative
-	case withLmsiSet:
-		if c.Identity.IMSIWithLMSI.IMSI == "" {
-			return ErrCancelLocIdentityMissingIMSI
-		}
 	}
 	if c.CancellationType != nil && !isValidCancellationType(*c.CancellationType) {
 		return ErrCancelLocInvalidCancellationType

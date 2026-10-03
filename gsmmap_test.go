@@ -2860,8 +2860,8 @@ func TestPurgeMSValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrPurgeMSMissingIMSI) {
-			t.Errorf("expected ErrPurgeMSMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 }
@@ -3307,8 +3307,8 @@ func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrPsiMissingIMSI) {
-			t.Errorf("expected ErrPsiMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 
@@ -3556,8 +3556,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty nested IMSI")
 		}
-		if !errors.Is(err, ErrCancelLocIdentityMissingIMSI) {
-			t.Errorf("expected ErrCancelLocIdentityMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 

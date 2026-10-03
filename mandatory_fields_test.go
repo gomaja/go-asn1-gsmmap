@@ -31,8 +31,8 @@ func TestUpdateLocationMandatoryFields(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrUpdateLocationMissingIMSI) {
-			t.Errorf("expected ErrUpdateLocationMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 

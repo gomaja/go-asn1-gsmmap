@@ -10,12 +10,9 @@ import (
 // --- UpdateLocation ---
 
 func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, error) {
-	// imsi, msc-Number, vlr-Number are all non-OPTIONAL in
-	// UpdateLocationArg per MAP-MS-DataTypes.asn:256-259. Reject empty
-	// caller input explicitly so malformed wire bytes never reach the peer.
-	if u.IMSI == "" {
-		return nil, ErrUpdateLocationMissingIMSI
-	}
+	// imsi, msc-Number and vlr-Number are mandatory in UpdateLocationArg
+	// (3GPP TS 29.002 V19.1.0 §17.7.1). An empty IMSI fails in
+	// encodeIdentityDigits with ErrIdentityEmpty.
 	if u.MscNumber == "" {
 		return nil, ErrUpdateLocationMissingMSCNumber
 	}

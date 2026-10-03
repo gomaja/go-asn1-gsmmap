@@ -3651,9 +3651,6 @@ var (
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrAscInvalidSmsGmscAlertEvent = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
 
-	ErrPurgeMSMissingIMSI = errors.New("purgeMS: IMSI is empty")
-
-	ErrUpdateLocationMissingIMSI             = errors.New("updateLocation: IMSI is empty")
 	ErrUpdateLocationMissingMSCNumber        = errors.New("updateLocation: MscNumber is empty")
 	ErrUpdateLocationMissingVLRNumber        = errors.New("updateLocation: VlrNumber is empty")
 	ErrUpdateLocationResMissingHLRNumber     = errors.New("updateLocationRes: HLRNumber is empty")
@@ -3674,11 +3671,8 @@ var (
 	// Sender accepts defined values; receivers map 6..15 to vlr and values above 17 to sgsn (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrSaiInvalidRequestingNodeType = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
 
-	ErrPsiMissingIMSI = errors.New("psi: IMSI is empty")
-
 	ErrCancelLocIdentityChoiceNoAlternative = errors.New("cancelLocation: Identity CHOICE has no alternative set")
 	ErrCancelLocIdentityChoiceMultiple      = errors.New("cancelLocation: Identity CHOICE has multiple alternatives set")
-	ErrCancelLocIdentityMissingIMSI         = errors.New("cancelLocation: IMSIWithLMSI.IMSI is empty")
 	// Sender accepts only defined values (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrCancelLocInvalidCancellationType = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2) (extensible enum: unknown values preserved on decode)")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
