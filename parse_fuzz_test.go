@@ -131,7 +131,8 @@ var strictEncodeErrors = []error{
 	// A reserved AlertingPattern (§17.7.8) is decoded and not sent.
 	ErrAlertingPatternReserved,
 	// A 15-digit IMEI whose last digit is a peer's Check Digit instead of
-	// the spare digit 0 (§17.7.8 IMEI, TS 23.003 §6.2.1).
+	// the spare digit 0. Parse keeps it on purpose; Marshal sends 0 (3GPP
+	// TS 29.002 V19.1.0 §17.7.8 IMEI, 3GPP TS 23.003 V20.1.0 §6.2.1).
 	ErrIMEISpareDigitNotZero,
 	// Unknown values of extensible ENUMERATEDs are kept (§17.1.4); negative
 	// values lie outside the ranges the exception handling maps.

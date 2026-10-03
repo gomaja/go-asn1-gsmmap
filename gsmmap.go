@@ -514,7 +514,7 @@ type SubscriberInfo struct {
 	SubscriberState                  *SubscriberStateInfo              // [1]
 	LocationInformationGPRS          *GPRSLocationInformation          // [3]
 	PsSubscriberState                *PsSubscriberState                // [4] CHOICE
-	IMEI                             string                            // [5] digits; empty if absent (15 digits ending in the spare digit 0, or 16 with the SVN)
+	IMEI                             string                            // [5] digits; empty if absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal sends 0, see ErrIMEISpareDigitNotZero)
 	MsClassmark2                     HexBytes                          // [6] raw octets; nil if absent
 	GprsMSClass                      *GprsMSClass                      // [7]
 	MnpInfoRes                       *MnpInfoRes                       // [8]
@@ -2801,7 +2801,7 @@ type ProvideSubscriberLocationArg struct {
 	MSISDNNature              uint8    // address nature indicator
 	MSISDNPlan                uint8    // numbering plan indicator
 	LMSI                      HexBytes // 4 octets opaque
-	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits ending in the spare digit 0, or 16 with the SVN)
+	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal sends 0, see ErrIMEISpareDigitNotZero)
 	LcsPriority               LCSPriority
 	LcsQoS                    *LCSQoS
 	SupportedGADShapes        *SupportedGADShapes
@@ -3205,7 +3205,7 @@ type SubscriberLocationReportArg struct {
 	MSISDNNature uint8
 	MSISDNPlan   uint8
 	IMSI         string // [1] TBCD-decoded digits; "" = absent (6..15 digits, ErrIMSIInvalidLength)
-	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits ending in the spare digit 0, or 16 with the SVN)
+	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal sends 0, see ErrIMEISpareDigitNotZero)
 
 	// Optional emergency-services routing identifiers (ISDN-AddressString).
 	NaESRD       string // [3] North-American Emergency Service Routing Digits; "" = absent
@@ -3597,10 +3597,19 @@ var (
 	// software version number, §6.2.2), the two forms 3GPP TS 29.002 V19.1.0
 	// §17.7.8 IMEI carries.
 	ErrIMEIInvalidLength = errors.New("identity: IMEI must have 15 digits, or 16 with the software version number, per 3GPP TS 23.003 V20.1.0 §6.2 and 3GPP TS 29.002 V19.1.0 §17.7.8")
+	// ErrIMEISpareDigitNotZero is returned by Marshal for a 15-digit IMEI
+	// whose last digit is not 0. 3GPP TS 29.002 V19.1.0 §17.7.8 IMEI: "If
+	// the SVN is not present the last octet shall contain the digit 0 and a
+	// filler." 3GPP TS 23.003 V20.1.0 §6.2.1: "if this digit is Spare Digit
+	// it shall be set to zero, when transmitted by the MS", and "The Check
+	// Digit is not part of the digits transmitted". Parse keeps a non-zero
+	// spare digit, so an IMEI from a peer that puts the Check Digit there
+	// still decodes; Marshal sends 0. Every public IMEI field follows this
+	// rule.
+	ErrIMEISpareDigitNotZero = errors.New("identity: a 15-digit IMEI carries the spare digit 0 in its last position, not the check digit, per 3GPP TS 29.002 V19.1.0 §17.7.8 and 3GPP TS 23.003 V20.1.0 §6.2.1")
 	// ErrIMEISVInvalidLength is returned when an IMEISV does not have 16
 	// digits (3GPP TS 23.003 V20.1.0 §6.2.2).
-	ErrIMEISpareDigitNotZero = errors.New("identity: a 15-digit IMEI carries the spare digit 0 in its last position, not the check digit, per 3GPP TS 29.002 V19.1.0 §17.7.8 and 3GPP TS 23.003 V20.1.0 §6.2.1")
-	ErrIMEISVInvalidLength   = errors.New("identity: IMEISV must have 16 digits per 3GPP TS 23.003 V20.1.0 §6.2.2")
+	ErrIMEISVInvalidLength = errors.New("identity: IMEISV must have 16 digits per 3GPP TS 23.003 V20.1.0 §6.2.2")
 
 	// ErrAddressStringEmpty is returned when an AddressString has no octets
 	// at all, not even the nature/plan octet.
