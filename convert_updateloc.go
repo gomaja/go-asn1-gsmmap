@@ -62,7 +62,7 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		if u.VlrCapability.IstSupportIndicator != nil {
 			// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 			if *u.VlrCapability.IstSupportIndicator < 0 || *u.VlrCapability.IstSupportIndicator > 1 {
-				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator out of range 0..1: %d", *u.VlrCapability.IstSupportIndicator)
+				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *u.VlrCapability.IstSupportIndicator)
 			}
 			v := gsm_map.ISTSupportIndicator(int64(*u.VlrCapability.IstSupportIndicator))
 			vlrCap.IstSupportIndicator = &v
@@ -163,12 +163,12 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
-	msc, mscNature, mscPlan, err := decodeMandatoryAddressField(arg.MscNumber, ErrUpdateLocationMissingMSCNumber)
+	msc, mscNature, mscPlan, err := decodeAddressWithDigits(arg.MscNumber, ErrUpdateLocationMissingMSCNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSCNumber: %w", err)
 	}
 
-	vlr, vlrNature, vlrPlan, err := decodeMandatoryAddressField(arg.VlrNumber, ErrUpdateLocationMissingVLRNumber)
+	vlr, vlrNature, vlrPlan, err := decodeAddressWithDigits(arg.VlrNumber, ErrUpdateLocationMissingVLRNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding VLRNumber: %w", err)
 	}
@@ -313,7 +313,7 @@ func convertUpdateLocationResToRes(u *UpdateLocationRes) (*gsm_map.UpdateLocatio
 }
 
 func convertResToUpdateLocationRes(res *gsm_map.UpdateLocationRes) (*UpdateLocationRes, error) {
-	hlr, nature, plan, err := decodeMandatoryAddressField(res.HlrNumber, ErrUpdateLocationResMissingHLRNumber)
+	hlr, nature, plan, err := decodeAddressWithDigits(res.HlrNumber, ErrUpdateLocationResMissingHLRNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding HLRNumber: %w", err)
 	}

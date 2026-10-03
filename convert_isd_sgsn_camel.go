@@ -125,15 +125,12 @@ func convertWireToGPRSCamelTDPDataList(w *gsm_map.GPRSCamelTDPDataList) (GPRSCam
 // GPRSCSI — TS 29.002 MAP-MS-DataTypes.asn:1606
 // ============================================================================
 
+// convertGPRSCSIToWire encodes a GPRS-CSI. The list and
+// camelCapabilityHandling are encoded when set; their presence depends on
+// the segment (convertDCSIToWire in convert_camel.go).
 func convertGPRSCSIToWire(g *GPRSCSI) (*gsm_map.GPRSCSI, error) {
 	if g == nil {
 		return nil, nil
-	}
-	// Per TS 29.002 MAP-MS-DataTypes.asn:1615-1616: when GPRS-CSI is
-	// present, BOTH GprsCamelTDPDataList AND CamelCapabilityHandling
-	// SHALL be present.
-	if g.GprsCamelTDPDataList == nil || g.CamelCapabilityHandling == nil {
-		return nil, ErrGPRSCSIRequiresTDPListAndPhase
 	}
 	if err := validateCamelCapabilityHandling(g.CamelCapabilityHandling); err != nil {
 		return nil, err
@@ -142,7 +139,7 @@ func convertGPRSCSIToWire(g *GPRSCSI) (*gsm_map.GPRSCSI, error) {
 		NotificationToCSE: boolToNullPtr(g.NotificationToCSE),
 		CsiActive:         boolToNullPtr(g.CsiActive),
 	}
-	if g.GprsCamelTDPDataList != nil {
+	if len(g.GprsCamelTDPDataList) > 0 {
 		dl, err := convertGPRSCamelTDPDataListToWire(g.GprsCamelTDPDataList)
 		if err != nil {
 			return nil, err
@@ -156,30 +153,27 @@ func convertGPRSCSIToWire(g *GPRSCSI) (*gsm_map.GPRSCSI, error) {
 	return out, nil
 }
 
-// convertWireToGPRSCSI decodes a wire GPRS-CSI. It returns nil when the
-// receiver ignores every GPRS-CamelTDPData (convertWireToGPRSCamelTDPData):
-// a GPRS-CSI arms its TDPs only through GPRS-CamelTDPDataList, SIZE (1..10),
-// so with none left the receiver holds no GPRS-CSI.
+// convertWireToGPRSCSI decodes a wire GPRS-CSI. An absent list, or one
+// whose every GPRS-CamelTDPData the receiver ignores
+// (convertWireToGPRSCamelTDPData), decodes to a nil list; the rest of the
+// CSI is kept, since another segment may carry the TDP data.
 func convertWireToGPRSCSI(w *gsm_map.GPRSCSI) (*GPRSCSI, error) {
 	if w == nil {
 		return nil, nil
-	}
-	if w.GprsCamelTDPDataList == nil || w.CamelCapabilityHandling == nil {
-		return nil, ErrGPRSCSIRequiresTDPListAndPhase
 	}
 	dl, err := convertWireToGPRSCamelTDPDataList(w.GprsCamelTDPDataList)
 	if err != nil {
 		return nil, err
 	}
-	if dl == nil {
-		return nil, nil
+	out := &GPRSCSI{
+		GprsCamelTDPDataList: dl,
+		NotificationToCSE:    nullPtrToBool(w.NotificationToCSE),
+		CsiActive:            nullPtrToBool(w.CsiActive),
 	}
-	return &GPRSCSI{
-		GprsCamelTDPDataList:    dl,
-		CamelCapabilityHandling: camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling),
-		NotificationToCSE:       nullPtrToBool(w.NotificationToCSE),
-		CsiActive:               nullPtrToBool(w.CsiActive),
-	}, nil
+	if w.CamelCapabilityHandling != nil {
+		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
+	}
+	return out, nil
 }
 
 // ============================================================================

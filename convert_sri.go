@@ -142,14 +142,18 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// AdditionalSignalInfo
 	if s.AdditionalSignalInfo != nil {
-		arg.AdditionalSignalInfo = convertExtExternalSignalInfoToWire(s.AdditionalSignalInfo)
+		v, err := convertExtExternalSignalInfoToWire(s.AdditionalSignalInfo)
+		if err != nil {
+			return nil, fmt.Errorf("AdditionalSignalInfo: %w", err)
+		}
+		arg.AdditionalSignalInfo = v
 	}
 
 	// IstSupportIndicator
 	if s.IstSupportIndicator != nil {
 		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *s.IstSupportIndicator < 0 || *s.IstSupportIndicator > 1 {
-			return nil, fmt.Errorf("IstSupportIndicator out of range 0..1: %d", *s.IstSupportIndicator)
+			return nil, fmt.Errorf("IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *s.IstSupportIndicator)
 		}
 		v := gsm_map.ISTSupportIndicator(int64(*s.IstSupportIndicator))
 		arg.IstSupportIndicator = &v
@@ -195,12 +199,12 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 }
 
 func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
-	msisdn, msisdnNature, msisdnPlan, err := decodeMandatoryAddressField(arg.Msisdn, ErrSriMissingMSISDN)
+	msisdn, msisdnNature, msisdnPlan, err := decodeAddressWithDigits(arg.Msisdn, ErrSriMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
 
-	gmsc, gmscNature, gmscPlan, err := decodeMandatoryAddressField(arg.GmscOrGsmSCFAddress, ErrSriMissingGmsc)
+	gmsc, gmscNature, gmscPlan, err := decodeAddressWithDigits(arg.GmscOrGsmSCFAddress, ErrSriMissingGmsc)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GmscOrGsmSCFAddress: %w", err)
 	}
@@ -367,13 +371,18 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 // --- SRI Response (SendRoutingInfoRes) full converters ---
 
 func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
-	imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
-	if err != nil {
-		return nil, fmt.Errorf(errEncodingIMSI, err)
-	}
+	out := &gsm_map.SendRoutingInfoRes{}
 
-	out := &gsm_map.SendRoutingInfoRes{
-		Imsi: (*gsm_map.IMSI)(&imsiBytes),
+	// 3GPP TS 29.002 V19.1.0 §17.7.3: "IMSI must be present if
+	// SendRoutingInfoRes is not segmented. If the TC-Result-NL segmentation
+	// option is taken the IMSI must be present in one segmented transmission
+	// of SendRoutingInfoRes." A message may be any segment, so "" is absent.
+	if s.IMSI != "" {
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
+		if err != nil {
+			return nil, fmt.Errorf(errEncodingIMSI, err)
+		}
+		out.Imsi = (*gsm_map.IMSI)(&imsiBytes)
 	}
 
 	// ExtendedRoutingInfo
@@ -516,7 +525,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 	if s.UnavailabilityCause != nil {
 		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *s.UnavailabilityCause < 1 || *s.UnavailabilityCause > 6 {
-			return nil, fmt.Errorf("UnavailabilityCause out of range 1..6: %d", *s.UnavailabilityCause)
+			return nil, fmt.Errorf("UnavailabilityCause: %w (got %d)", ErrUnavailabilityCauseInvalid, *s.UnavailabilityCause)
 		}
 		v := *s.UnavailabilityCause
 		out.UnavailabilityCause = &v
@@ -597,7 +606,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// VmscAddress
 	if res.VmscAddress != nil {
-		digits, nat, pl, err := decodeAddressField(*res.VmscAddress)
+		digits, nat, pl, err := decodeAddressWithDigits(*res.VmscAddress, ErrSriRespVmscAddressDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding VmscAddress: %w", err)
 		}
@@ -618,7 +627,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// Msisdn
 	if res.Msisdn != nil {
-		digits, nat, pl, err := decodeAddressField(*res.Msisdn)
+		digits, nat, pl, err := decodeAddressWithDigits(*res.Msisdn, ErrSriRespMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MSISDN: %w", err)
 		}

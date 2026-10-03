@@ -47,7 +47,7 @@ const (
 
 // SriSmCorrelationID corresponds to CorrelationID SEQUENCE.
 type SriSmCorrelationID struct {
-	HlrID   HexBytes // HLR-Id, optional
+	HlrID   string   // HLR-Id digits, optional ("" = absent); HLR-Id ::= IMSI, see identityIMSI
 	SipUriA HexBytes // SIP-URI, optional
 	SipUriB HexBytes // SIP-URI, mandatory within CorrelationID
 }
@@ -514,7 +514,7 @@ type SubscriberInfo struct {
 	SubscriberState                  *SubscriberStateInfo              // [1]
 	LocationInformationGPRS          *GPRSLocationInformation          // [3]
 	PsSubscriberState                *PsSubscriberState                // [4] CHOICE
-	IMEI                             string                            // [5] decoded TBCD; empty if absent
+	IMEI                             string                            // [5] digits; empty if absent (15 digits ending in the spare digit 0, or 16 with the SVN)
 	MsClassmark2                     HexBytes                          // [6] raw octets; nil if absent
 	GprsMSClass                      *GprsMSClass                      // [7]
 	MnpInfoRes                       *MnpInfoRes                       // [8]
@@ -924,11 +924,19 @@ type DPAnalysedInfoCriterium struct {
 }
 
 // DCSI (D-CSI) per 3GPP TS 29.002. Dialled-number CAMEL Subscription Info.
-// The list and CamelCapabilityHandling are OPTIONAL in the ASN.1 but "shall
-// be present in the D-CSI sequence" (3GPP TS 29.002 V19.1.0 §17.7.1).
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "DP-AnalysedInfoCriteria and
+// camelCapabilityHandling shall be present in the D-CSI sequence. If D-CSI is
+// segmented, then the first segment shall contain dp-AnalysedInfoCriteriaList
+// and camelCapabilityHandling. Subsequent segments shall not contain
+// camelCapabilityHandling, but may contain dp-AnalysedInfoCriteriaList." A
+// message may hold any segment, so Marshal and Parse enforce neither: a nil
+// list and a nil CamelCapabilityHandling are absent on the wire and back.
+// The presence rules apply to the reassembled D-CSI and are the caller's to
+// check.
 type DCSI struct {
-	DPAnalysedInfoCriteriaList []DPAnalysedInfoCriterium // [0] mandatory 1..10 entries
-	CamelCapabilityHandling    *int                      // [1] mandatory phase (1..4)
+	DPAnalysedInfoCriteriaList []DPAnalysedInfoCriterium // [0] 1..10 entries; nil = absent
+	CamelCapabilityHandling    *int                      // [1] phase (1..4); nil = absent
 	NotificationToCSE          bool                      // [3] NULL
 	CsiActive                  bool                      // [4] NULL
 }
@@ -1013,13 +1021,18 @@ type SMSCAMELTDPData struct {
 // SMSCSI (SMS-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2458.
 // Used for both mo-sms-CSI and mt-sms-CSI fields on the VLR.
 //
-// Per spec, SmsCAMELTDPDataList and CamelCapabilityHandling SHALL be
-// present in an SMS-CSI sequence (spec clause 8.8.1). The encoder
-// enforces that invariant. A received SMS-CSI whose every entry is
-// ignored (see SMSTriggerDetectionPoint) decodes as absent.
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "SMS-CAMEL-TDP-Data and
+// camelCapabilityHandling shall be present in the SMS-CSI sequence. If
+// SMS-CSI is segmented, sms-CAMEL-TDP-DataList and camelCapabilityHandling
+// shall be present in the first segment". A message may hold any segment,
+// so Marshal and Parse enforce neither: a nil list and a nil
+// CamelCapabilityHandling are absent on the wire and back. The presence
+// rules apply to the reassembled SMS-CSI and are the caller's to check. A
+// received entry the receiver ignores (see SMSTriggerDetectionPoint) is
+// dropped from the list.
 type SMSCSI struct {
-	SmsCAMELTDPDataList     []SMSCAMELTDPData // [0] mandatory 1..10 entries
-	CamelCapabilityHandling *int              // [1] mandatory phase (1..4)
+	SmsCAMELTDPDataList     []SMSCAMELTDPData // [0] 1..10 entries; nil = absent
+	CamelCapabilityHandling *int              // [1] phase (1..4); nil = absent
 	NotificationToCSE       bool              // [3] NULL (ATSI/ATM/NSDC only)
 	CsiActive               bool              // [4] NULL (ATSI/ATM/NSDC only)
 }
@@ -1258,6 +1271,10 @@ type Sri struct {
 }
 
 // SriResp represents a SendRoutingInfo response.
+//
+// IMSI is OPTIONAL in the ASN.1 and "must be present if SendRoutingInfoRes
+// is not segmented" (3GPP TS 29.002 V19.1.0 §17.7.3); a segment may lack it,
+// so Marshal and Parse treat "" as absent and the rule is the caller's.
 type SriResp struct {
 	IMSI                            string
 	ExtendedRoutingInfo             *ExtendedRoutingInfo
@@ -2771,7 +2788,7 @@ type ProvideSubscriberLocationArg struct {
 	MSISDNNature              uint8    // address nature indicator
 	MSISDNPlan                uint8    // numbering plan indicator
 	LMSI                      HexBytes // 4 octets opaque
-	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; ErrIMEIInvalidLength)
+	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits ending in the spare digit 0, or 16 with the SVN)
 	LcsPriority               LCSPriority
 	LcsQoS                    *LCSQoS
 	SupportedGADShapes        *SupportedGADShapes
@@ -3010,7 +3027,9 @@ type ExtensibleSystemFailureParam struct {
 // RoamingNotAllowedParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
 // Returned with errorCode 8 (roamingNotAllowed). Mandatory cause +
 // optional additional cause distinguish PLMN-roaming-not-allowed from
-// operator-determined-barring.
+// operator-determined-barring. With AdditionalRoamingNotAllowedCause present
+// the receiver discards RoamingNotAllowedCause (3GPP TS 29.002 V19.1.0
+// §17.7.7), so Parse does not check it then and passes it through.
 type RoamingNotAllowedParam struct {
 	RoamingNotAllowedCause           gsm_map.RoamingNotAllowedCause            // untagged, mandatory
 	AdditionalRoamingNotAllowedCause *gsm_map.AdditionalRoamingNotAllowedCause // [0]
@@ -3169,7 +3188,7 @@ type SubscriberLocationReportArg struct {
 	MSISDNNature uint8
 	MSISDNPlan   uint8
 	IMSI         string // [1] TBCD-decoded digits; "" = absent (6..15 digits, ErrIMSIInvalidLength)
-	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; ErrIMEIInvalidLength)
+	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits ending in the spare digit 0, or 16 with the SVN)
 
 	// Optional emergency-services routing identifiers (ISDN-AddressString).
 	NaESRD       string // [3] North-American Emergency Service Routing Digits; "" = absent
@@ -3336,12 +3355,19 @@ type GPRSCamelTDPData struct {
 type GPRSCamelTDPDataList []GPRSCamelTDPData
 
 // GPRSCSI (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1606.
-// Per spec clause 8.8.x, when GPRSCSI is present both
-// GprsCamelTDPDataList and CamelCapabilityHandling SHALL be set;
-// otherwise all fields are optional.
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "GPRS-CamelTDPData and
+// camelCapabilityHandling shall be present in the GPRS-CSI sequence. If
+// GPRS-CSI is segmented, gprs-CamelTDPDataList and camelCapabilityHandling
+// shall be present in the first segment". A message may hold any segment, so
+// Marshal and Parse enforce neither: a nil list and a nil
+// CamelCapabilityHandling are absent on the wire and back. The presence
+// rules apply to the reassembled GPRS-CSI and are the caller's to check. A
+// received entry the receiver ignores (see GPRSTriggerDetectionPoint) is
+// dropped from the list.
 type GPRSCSI struct {
-	GprsCamelTDPDataList    GPRSCamelTDPDataList // [0] optional, 1..10 entries when present
-	CamelCapabilityHandling *int                 // [1] optional, CAMEL phase 1..4
+	GprsCamelTDPDataList    GPRSCamelTDPDataList // [0] 1..10 entries; nil = absent
+	CamelCapabilityHandling *int                 // [1] CAMEL phase 1..4; nil = absent
 	NotificationToCSE       bool                 // [3] optional NULL — true when present
 	CsiActive               bool                 // [4] optional NULL — true when present
 }
@@ -3378,8 +3404,8 @@ type SGSNCAMELSubscriptionInfo struct {
 // fields are surfaced as `HexBytes` or typed integers.
 type InsertSubscriberDataArg struct {
 	// Identification (typically present together)
-	IMSI         HexBytes // [0] optional, IMSI octets (TBCD-encoded)
-	MSISDN       string   // [1] optional, ISDN-AddressString digits ("" = absent)
+	IMSI         string // [0] optional, IMSI digits ("" = absent)
+	MSISDN       string // [1] optional, ISDN-AddressString digits ("" = absent)
 	MSISDNNature uint8
 	MSISDNPlan   uint8
 
@@ -3490,6 +3516,11 @@ var (
 	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
 	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
 	ErrSriInvalidSupportedCCBSPhase  = errors.New("sri: SupportedCCBSPhase must be 1; 3GPP TS 29.002 V19.1.0 §17.7.3 reserves 2..127, which a receiver maps to 1")
+	// ErrISTSupportIndicatorInvalid and ErrUnavailabilityCauseInvalid: the
+	// encoder sends only the listed values; the decoder keeps any other
+	// (both types are extensible, 3GPP TS 29.002 V19.1.0 §17.1.4).
+	ErrISTSupportIndicatorInvalid = errors.New("istSupportIndicator: must be basicISTSupported(0) or istCommandSupported(1); a receiver maps values above 1 to istCommandSupported per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrUnavailabilityCauseInvalid = errors.New("unavailabilityCause: must be 1..6 per 3GPP TS 29.002 V19.1.0 §17.7.3 (extensible enum: unknown values preserved on decode)")
 
 	// A selected CHOICE alternative whose address carries no digits would
 	// select nothing in the public type.
@@ -3498,6 +3529,11 @@ var (
 	ErrRoutingInfoRoamingNumberDecodedEmpty   = errors.New("routingInfo: present wire roamingNumber decoded to empty digits; presence cannot round-trip through string-based API")
 
 	ErrSriSmMissingSipUriB = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
+
+	// ErrExtProtocolIDInvalid: the encoder sends only ets-300356 (1); the
+	// decoder ignores an Ext-ExternalSignalInfo with any other value per
+	// 3GPP TS 29.002 V19.1.0 §17.7.8.
+	ErrExtProtocolIDInvalid = errors.New("extExternalSignalInfo: ExtProtocolID must be ets-300356(1); a receiver ignores the whole Ext-ExternalSignalInfo with any other value per 3GPP TS 29.002 V19.1.0 §17.7.8")
 
 	ErrMtFsmUnexpectedTPDUType = errors.New("mtFsm: unexpected TPDU type")
 	ErrMoFsmUnexpectedTPDUType = errors.New("moFsm: unexpected TPDU type")
@@ -3546,7 +3582,8 @@ var (
 	ErrIMEIInvalidLength = errors.New("identity: IMEI must have 15 digits, or 16 with the software version number, per 3GPP TS 23.003 V20.1.0 §6.2 and 3GPP TS 29.002 V19.1.0 §17.7.8")
 	// ErrIMEISVInvalidLength is returned when an IMEISV does not have 16
 	// digits (3GPP TS 23.003 V20.1.0 §6.2.2).
-	ErrIMEISVInvalidLength = errors.New("identity: IMEISV must have 16 digits per 3GPP TS 23.003 V20.1.0 §6.2.2")
+	ErrIMEISpareDigitNotZero = errors.New("identity: a 15-digit IMEI carries the spare digit 0 in its last position, not the check digit, per 3GPP TS 29.002 V19.1.0 §17.7.8 and 3GPP TS 23.003 V20.1.0 §6.2.1")
+	ErrIMEISVInvalidLength   = errors.New("identity: IMEISV must have 16 digits per 3GPP TS 23.003 V20.1.0 §6.2.2")
 
 	// ErrAddressStringEmpty is returned when an AddressString has no octets
 	// at all, not even the nature/plan octet.
@@ -3556,6 +3593,34 @@ var (
 	// carries no digits: StoredMSISDN "" means absent, so the field could not
 	// round-trip.
 	ErrIscStoredMSISDNDecodedEmpty = errors.New("informServiceCentre: present wire storedMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+
+	// A present OPTIONAL address that holds only its nature/plan octet (or
+	// filler) has no digits. The public field uses "" for absent, so the
+	// address could not round-trip and is rejected on decode.
+	ErrAscNewSGSNNumberDecodedEmpty                    = errors.New("alertServiceCentre: present wire newSGSN-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrAscNewMMENumberDecodedEmpty                     = errors.New("alertServiceCentre: present wire newMME-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrAscNewMSCNumberDecodedEmpty                     = errors.New("alertServiceCentre: present wire newMSC-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrCancelLocNewMSCNumberDecodedEmpty               = errors.New("cancelLocation: present wire newMSC-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrCancelLocNewVLRNumberDecodedEmpty               = errors.New("cancelLocation: present wire newVLR-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrExtForwFeatureForwardedToNumberDecodedEmpty     = errors.New("extForwFeature: present wire forwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrExtForwFeatureLongForwardedToNumberDecodedEmpty = errors.New("extForwFeature: present wire longForwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrForwardingDataForwardedToNumberDecodedEmpty     = errors.New("forwardingData: present wire forwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriSmRespSmsf3gppNumberDecodedEmpty             = errors.New("sriSmResp: present wire smsf-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriSmRespSmsfNon3gppNumberDecodedEmpty          = errors.New("sriSmResp: present wire smsf-non-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPurgeMSVLRNumberDecodedEmpty                    = errors.New("purgeMS: present wire vlr-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPurgeMSSGSNNumberDecodedEmpty                   = errors.New("purgeMS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrMnpInfoResMSISDNDecodedEmpty                    = errors.New("mnpInfoRes: present wire msisdn decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrUpdateGprsLocationMmeNumberForMTSMSDecodedEmpty = errors.New("updateGprsLocation: present wire mmeNumberforMTSMS decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriRespVmscAddressDecodedEmpty                  = errors.New("sriResp: present wire vmsc-Address decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriRespMSISDNDecodedEmpty                       = errors.New("sriResp: present wire msisdn decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLocationInformationVLRNumberDecodedEmpty        = errors.New("locationInformation: present wire vlr-number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLocationInformationMSCNumberDecodedEmpty        = errors.New("locationInformation: present wire msc-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLocationInformationGPRSSGSNNumberDecodedEmpty   = errors.New("locationInformationGPRS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrMtFsmSmsGmscAddressDecodedEmpty                 = errors.New("mtFsm: present wire smsGmscAddress decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrIsdSGSNNumberDecodedEmpty                       = errors.New("insertSubscriberDataArg: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrIsdAdditionalMSISDNDecodedEmpty                 = errors.New("insertSubscriberDataArg: present wire additionalMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrEPSSubscriptionDataStnSrDecodedEmpty            = errors.New("epsSubscriptionData: present wire stn-sr decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLCSClientExternalIDExternalAddressDecodedEmpty  = errors.New("lcsClientExternalID: present wire externalAddress decoded to empty digits; presence cannot round-trip through string-based API")
 
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
@@ -3612,10 +3677,6 @@ var (
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrCamelInvalidMobilityTriggerOctet     = errors.New("camel: each MobilityTriggers entry must be exactly 1 octet")
-	ErrCamelSMSCSIMissingTDPData            = errors.New("camel: SMS-CSI must include a non-empty SmsCAMELTDPDataList per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrCamelSMSCSIMissingCapabilityHandling = errors.New("camel: SMS-CSI must include CamelCapabilityHandling per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrCamelDCSIMissingCriteriaList         = errors.New("camel: D-CSI must include a non-empty DPAnalysedInfoCriteriaList per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrCamelDCSIMissingCapabilityHandling   = errors.New("camel: D-CSI must include CamelCapabilityHandling per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidSMSTriggerDetectionPoint = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) in an MO-SMS-CSI and sms-DeliveryRequest(2) in an MT-SMS-CSI or MT-smsCAMELTDP-Criteria; a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidDefaultSMSHandling       = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
 	ErrCamelInvalidMTSMSTPDUType            = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0) or sms-STATUS-REPORT(2); sms-SUBMIT-REPORT(1) is not used in CAMEL phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
@@ -3681,7 +3742,10 @@ var (
 	ErrGMLCAddressEmpty           = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
 
 	ErrIsdArgNil = errors.New("insertSubscriberDataArg: argument must not be nil")
-	ErrIsdResNil = errors.New("insertSubscriberDataRes: argument must not be nil")
+	// ErrNetworkAccessModeInvalid: the encoder sends only the listed values;
+	// the decoder discards any other per 3GPP TS 29.002 V19.1.0 §17.7.1.
+	ErrNetworkAccessModeInvalid = errors.New("insertSubscriberDataArg: NetworkAccessMode must be packetAndCircuit(0), onlyCircuit(1) or onlyPacket(2); a receiver discards any other value per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrIsdResNil                = errors.New("insertSubscriberDataRes: argument must not be nil")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrIsdBearerServiceCodeSize = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
@@ -3693,7 +3757,6 @@ var (
 	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
 	ErrGPRSTriggerDetectionPointInvalid  = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be attach(1), attachChangeOfPosition(2), pdp-ContextEstablishment(11), pdp-ContextEstablishmentAcknowledgement(12) or pdp-ContextChangeOfPosition(14); a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelCapabilityHandlingOutOfRange = errors.New("camel: CamelCapabilityHandling must be 1..4 (CAMEL phases 1 to 4) when set; the decoder treats received values above 4 as phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrGPRSCSIRequiresTDPListAndPhase    = errors.New("gprsCSI: when GPRS-CSI is present, GprsCamelTDPDataList AND CamelCapabilityHandling SHALL both be present per TS 29.002 MAP-MS-DataTypes.asn:1615-1616")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrMMCodeInvalidSize = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
 

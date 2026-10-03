@@ -183,13 +183,6 @@ func TestSMSCSIRoundTrip(t *testing.T) {
 
 func TestSMSCSIValidation(t *testing.T) {
 	cch := 2
-	t.Run("missingTDPList", func(t *testing.T) {
-		// An empty TDP list violates the BER SIZE (1..10) constraint.
-		_, err := strictWire(convertSMSCSIToWire(&SMSCSI{CamelCapabilityHandling: &cch}, moSMSTriggerDetectionPoint))
-		if !errors.Is(err, ErrCamelSMSCSIMissingTDPData) {
-			t.Errorf("want ErrCamelSMSCSIMissingTDPData, got %v", err)
-		}
-	})
 	t.Run("oversizeTDPList", func(t *testing.T) {
 		// Eleven entries violate the BER SIZE (1..10) constraint.
 		big := make([]SMSCAMELTDPData, 11)
@@ -206,18 +199,6 @@ func TestSMSCSIValidation(t *testing.T) {
 		}, moSMSTriggerDetectionPoint))
 		if !matchesConstraint(err, "sms-CAMEL-TDP-DataList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
-		}
-	})
-	t.Run("missingCapabilityHandling", func(t *testing.T) {
-		_, err := convertSMSCSIToWire(&SMSCSI{
-			SmsCAMELTDPDataList: []SMSCAMELTDPData{{
-				SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsCollectedInfo,
-				GsmSCFAddress:            "1",
-				DefaultSMSHandling:       DefaultSMSHandlingContinueTransaction,
-			}},
-		}, moSMSTriggerDetectionPoint)
-		if !errors.Is(err, ErrCamelSMSCSIMissingCapabilityHandling) {
-			t.Errorf("want ErrCamelSMSCSIMissingCapabilityHandling, got %v", err)
 		}
 	})
 	t.Run("invalidTriggerDetectionPoint", func(t *testing.T) {

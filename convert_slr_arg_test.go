@@ -66,7 +66,7 @@ func TestSLRArgRoundTrip(t *testing.T) {
 			LcsClientID:           LCSClientID{LcsClientType: LCSClientTypePlmnOperatorServices},
 			LcsLocationInfo:       LCSLocationInfo{NetworkNodeNumber: "31650000000", NetworkNodeNumberNature: 0x10, NetworkNodeNumberPlan: 0x01},
 			IMSI:                  "204080000000001",
-			IMEI:                  "490154203237518",
+			IMEI:                  "490154203237510",
 			LocationEstimate:      HexBytes{0x04, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60},
 			AgeOfLocationEstimate: &age,
 		}},

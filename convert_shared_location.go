@@ -98,7 +98,7 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 	}
 
 	if li.VlrNumber != nil {
-		vlr, nature, plan, err := decodeAddressField(*li.VlrNumber)
+		vlr, nature, plan, err := decodeAddressWithDigits(*li.VlrNumber, ErrLocationInformationVLRNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding VlrNumber: %w", err)
 		}
@@ -108,7 +108,7 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 	}
 
 	if li.MscNumber != nil {
-		msc, nature, plan, err := decodeAddressField(*li.MscNumber)
+		msc, nature, plan, err := decodeAddressWithDigits(*li.MscNumber, ErrLocationInformationMSCNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MscNumber: %w", err)
 		}
@@ -440,7 +440,7 @@ func convertAsn1ToGPRSLocation(li *gsm_map.LocationInformationGPRS) (*GPRSLocati
 	}
 
 	if li.SgsnNumber != nil {
-		sgsn, nature, plan, err := decodeAddressField(*li.SgsnNumber)
+		sgsn, nature, plan, err := decodeAddressWithDigits(*li.SgsnNumber, ErrLocationInformationGPRSSGSNNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}

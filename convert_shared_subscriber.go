@@ -474,7 +474,7 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	}
 
 	if w.Msisdn != nil {
-		digits, nat, pl, err := decodeAddressField(*w.Msisdn)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.Msisdn, ErrMnpInfoResMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MSISDN: %w", err)
 		}

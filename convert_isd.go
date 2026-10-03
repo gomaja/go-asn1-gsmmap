@@ -65,8 +65,12 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		IabOperationAllowedIndicator:          boolToNullPtr(a.IabOperationAllowedIndicator),
 	}
 
-	if len(a.IMSI) > 0 {
-		v := gsm_map.IMSI(a.IMSI)
+	if a.IMSI != "" {
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, a.IMSI)
+		if err != nil {
+			return nil, fmt.Errorf(errEncodingIMSI, err)
+		}
+		v := gsm_map.IMSI(imsiBytes)
 		out.Imsi = &v
 	}
 	if a.MSISDN != "" {
@@ -157,6 +161,9 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	}
 	if a.NetworkAccessMode != nil {
 		v := *a.NetworkAccessMode
+		if !isListedNetworkAccessMode(v) {
+			return nil, fmt.Errorf("%w (got %d)", ErrNetworkAccessModeInvalid, v)
+		}
 		out.NetworkAccessMode = &v
 	}
 	if a.LsaInformation != nil {
@@ -326,7 +333,11 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 	}
 
 	if w.Imsi != nil {
-		out.IMSI = HexBytes(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
+		if err != nil {
+			return nil, fmt.Errorf("decoding IMSI: %w", err)
+		}
+		out.IMSI = imsi
 	}
 	if w.Msisdn != nil {
 		s, nature, plan, err := decodeAddressField([]byte(*w.Msisdn))
@@ -413,7 +424,9 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		}
 		out.GprsSubscriptionData = v
 	}
-	if w.NetworkAccessMode != nil {
+	// 3GPP TS 29.002 V19.1.0 §17.7.1 NetworkAccessMode: "if unknown values
+	// are received in NetworkAccessMode they shall be discarded."
+	if w.NetworkAccessMode != nil && isListedNetworkAccessMode(*w.NetworkAccessMode) {
 		v := *w.NetworkAccessMode
 		out.NetworkAccessMode = &v
 	}
@@ -485,7 +498,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
 		if s == "" {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.SgsnNumber: %w", ErrIsdMSISDNDecodedEmpty)
+			return nil, fmt.Errorf("InsertSubscriberDataArg.SgsnNumber: %w", ErrIsdSGSNNumberDecodedEmpty)
 		}
 		out.SgsnNumber = s
 		out.SgsnNumberNature = nature
@@ -519,7 +532,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 			return nil, fmt.Errorf("decoding AdditionalMSISDN: %w", err)
 		}
 		if s == "" {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.AdditionalMSISDN: %w", ErrIsdMSISDNDecodedEmpty)
+			return nil, fmt.Errorf("InsertSubscriberDataArg.AdditionalMSISDN: %w", ErrIsdAdditionalMSISDNDecodedEmpty)
 		}
 		out.AdditionalMSISDN = s
 		out.AdditionalMSISDNNature = nature
@@ -683,3 +696,16 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 // Public ParseInsertSubscriberData/Res functions live in parse.go;
 // Marshal methods live in marshal.go (matching the package convention
 // established by every other operation).
+
+// isListedNetworkAccessMode reports whether v is one of the NetworkAccessMode
+// values of 3GPP TS 29.002 V19.1.0 §17.7.1: packetAndCircuit (0),
+// onlyCircuit (1), onlyPacket (2).
+func isListedNetworkAccessMode(v NetworkAccessMode) bool {
+	switch v {
+	case gsm_map.NetworkAccessModePacketAndCircuit,
+		gsm_map.NetworkAccessModeOnlyCircuit,
+		gsm_map.NetworkAccessModeOnlyPacket:
+		return true
+	}
+	return false
+}

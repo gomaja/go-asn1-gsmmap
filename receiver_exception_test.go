@@ -566,14 +566,14 @@ func TestParseGPRSTriggerDetectionPointIgnoresSequence(t *testing.T) {
 			wantEqual(t, "GPRS-CamelTDPDataList", kept, got.GprsCamelTDPDataList)
 		})
 	}
-	// With every entry ignored the GPRS-CSI is absent; the other SGSN CSIs
-	// survive.
+	// With every entry ignored the GPRS-CSI keeps no list (another segment
+	// may carry the TDP data); the other SGSN CSIs survive.
 	t.Run("all ignored", func(t *testing.T) {
 		w := isdWire(t, camelISD())
 		w.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList.Values[0].GprsTriggerDetectionPoint = 13
 		got := parseISD(t, w).SgsnCAMELSubscriptionInfo
-		if got.GprsCSI != nil {
-			t.Errorf("GPRS-CSI = %+v, want absent", got.GprsCSI)
+		if got.GprsCSI == nil || got.GprsCSI.GprsCamelTDPDataList != nil {
+			t.Errorf("GPRS-CSI = %+v, want present without a list", got.GprsCSI)
 		}
 		if got.MoSmsCSI == nil || got.MtSmsCSI == nil {
 			t.Errorf("sibling CSIs lost: %+v", got)
@@ -642,8 +642,8 @@ func TestParseSMSTriggerDetectionPointIgnoresSequence(t *testing.T) {
 			w := isdWire(t, camelISD())
 			p.csi(w).SmsCAMELTDPDataList.Values[0].SmsTriggerDetectionPoint = p.wrong
 			got := parseISD(t, w)
-			if csi := p.got(got); csi != nil {
-				t.Errorf("SMS-CSI = %+v, want absent", csi)
+			if csi := p.got(got); csi == nil || csi.SmsCAMELTDPDataList != nil {
+				t.Errorf("SMS-CSI = %+v, want present without a list", csi)
 			}
 			if got.VlrCamelSubscriptionInfo.OCSI == nil || got.SgsnCAMELSubscriptionInfo.GprsCSI == nil {
 				t.Errorf("sibling CSIs lost: %+v", got)

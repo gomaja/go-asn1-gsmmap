@@ -40,7 +40,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		if w.MscNumber == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		num, nature, plan, err := decodeMandatoryAddressField(*w.MscNumber, ErrAdditionalNumberMscNumberDecodedEmpty)
+		num, nature, plan, err := decodeAddressWithDigits(*w.MscNumber, ErrAdditionalNumberMscNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MscNumber: %w", err)
 		}
@@ -51,7 +51,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		if w.SgsnNumber == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		num, nature, plan, err := decodeMandatoryAddressField(*w.SgsnNumber, ErrAdditionalNumberSgsnNumberDecodedEmpty)
+		num, nature, plan, err := decodeAddressWithDigits(*w.SgsnNumber, ErrAdditionalNumberSgsnNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
@@ -85,8 +85,15 @@ func convertCorrelationIDToWire(c *SriSmCorrelationID) (*gsm_map.CorrelationID, 
 	out := &gsm_map.CorrelationID{
 		SipUriB: gsm_map.SIPURI(c.SipUriB),
 	}
-	if len(c.HlrID) > 0 {
-		v := gsm_map.HLRId(c.HlrID)
+	if c.HlrID != "" {
+		// HLR-Id ::= IMSI, "leading digits of IMSI, i.e. (MCC, MNC,
+		// leading digits of MSIN)" (3GPP TS 29.002 V19.1.0 §17.7.8), so
+		// the IMSI digit rule applies.
+		hlr, err := encodeIdentityDigits(identityIMSI, c.HlrID)
+		if err != nil {
+			return nil, fmt.Errorf("encoding CorrelationID.HlrID: %w", err)
+		}
+		v := gsm_map.HLRId(hlr)
 		out.HlrId = &v
 	}
 	if len(c.SipUriA) > 0 {
@@ -107,7 +114,11 @@ func convertWireToCorrelationID(w *gsm_map.CorrelationID) (*SriSmCorrelationID, 
 		SipUriB: HexBytes(w.SipUriB),
 	}
 	if w.HlrId != nil {
-		c.HlrID = HexBytes(*w.HlrId)
+		hlr, err := decodeIdentityDigits(identityIMSI, *w.HlrId)
+		if err != nil {
+			return nil, fmt.Errorf("decoding CorrelationID.HlrID: %w", err)
+		}
+		c.HlrID = hlr
 	}
 	if w.SipUriA != nil {
 		c.SipUriA = HexBytes(*w.SipUriA)
@@ -232,7 +243,7 @@ func convertForwardingDataToWire(f *ForwardingData) (*gsm_map.ForwardingData, er
 func convertWireToForwardingData(w *gsm_map.ForwardingData) (*ForwardingData, error) {
 	out := &ForwardingData{}
 	if w.ForwardedToNumber != nil {
-		digits, nat, pl, err := decodeAddressField(*w.ForwardedToNumber)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.ForwardedToNumber, ErrForwardingDataForwardedToNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ForwardedToNumber: %w", err)
 		}
@@ -347,7 +358,7 @@ func convertWireToRoutingInfo(w *gsm_map.RoutingInfo) (*RoutingInfo, error) {
 		if w.RoamingNumber == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		digits, nat, pl, err := decodeMandatoryAddressField(*w.RoamingNumber, ErrRoutingInfoRoamingNumberDecodedEmpty)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.RoamingNumber, ErrRoutingInfoRoamingNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding RoamingNumber: %w", err)
 		}
@@ -464,14 +475,25 @@ func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) *ExternalSig
 	}
 }
 
-func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) *gsm_map.ExtExternalSignalInfo {
-	return &gsm_map.ExtExternalSignalInfo{
-		ExtProtocolId: gsm_map.ExtProtocolId(int64(e.ExtProtocolID)),
-		SignalInfo:    gsm_map.SignalInfo(e.SignalInfo),
+func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) (*gsm_map.ExtExternalSignalInfo, error) {
+	if gsm_map.ExtProtocolId(e.ExtProtocolID) != gsm_map.ExtProtocolIdEts300356 {
+		return nil, fmt.Errorf("%w (got %d)", ErrExtProtocolIDInvalid, e.ExtProtocolID)
 	}
+	return &gsm_map.ExtExternalSignalInfo{
+		ExtProtocolId: gsm_map.ExtProtocolIdEts300356,
+		SignalInfo:    gsm_map.SignalInfo(e.SignalInfo),
+	}, nil
 }
 
+// convertWireToExtExternalSignalInfo decodes an Ext-ExternalSignalInfo. 3GPP
+// TS 29.002 V19.1.0 §17.7.8 Ext-ProtocolId: "For Ext-ExternalSignalInfo
+// sequences containing this parameter with any other value than the ones
+// listed the receiver shall ignore the whole Ext-ExternalSignalInfo
+// sequence." It returns nil for such a sequence.
 func convertWireToExtExternalSignalInfo(w *gsm_map.ExtExternalSignalInfo) *ExtExternalSignalInfo {
+	if w.ExtProtocolId != gsm_map.ExtProtocolIdEts300356 {
+		return nil
+	}
 	return &ExtExternalSignalInfo{
 		ExtProtocolID: int(w.ExtProtocolId),
 		SignalInfo:    HexBytes(w.SignalInfo),

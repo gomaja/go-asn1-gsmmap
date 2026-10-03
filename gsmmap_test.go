@@ -796,7 +796,7 @@ func TestATIResGPRSLocationRoundTrip(t *testing.T) {
 func TestATIResIMEIRoundTrip(t *testing.T) {
 	res := &AnyTimeInterrogationRes{
 		SubscriberInfo: SubscriberInfo{
-			IMEI: "353456789012345",
+			IMEI: "353456789012340",
 		},
 	}
 
@@ -810,7 +810,7 @@ func TestATIResIMEIRoundTrip(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if parsed.SubscriberInfo.IMEI != "353456789012345" {
+	if parsed.SubscriberInfo.IMEI != "353456789012340" {
 		t.Errorf("IMEI: got %s, want 353456789012345", parsed.SubscriberInfo.IMEI)
 	}
 }
@@ -830,7 +830,7 @@ func TestATIResFullRoundTrip(t *testing.T) {
 				State:              StateNetDetNotReachable,
 				NotReachableReason: &reason,
 			},
-			IMEI:               "353456789012345",
+			IMEI:               "353456789012340",
 			MsClassmark2:       []byte{0x33, 0x19, 0x83},
 			TimeZone:           []byte{0x08, 0x00}, // TimeZone SIZE (2..3), TS 29.002 §17.7.1.
 			DaylightSavingTime: &dst,
@@ -866,7 +866,7 @@ func TestATIResFullRoundTrip(t *testing.T) {
 	}
 
 	// IMEI
-	if si.IMEI != "353456789012345" {
+	if si.IMEI != "353456789012340" {
 		t.Errorf("IMEI: got %s, want 353456789012345", si.IMEI)
 	}
 
@@ -1346,7 +1346,7 @@ func TestSriSmFullStressRoundTrip(t *testing.T) {
 		SingleAttemptDelivery:   true,
 		T4TriggerIndicator:      true,
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0x21, 0x43, 0xf5}, // HLR-Id ::= IMSI, SIZE (3..8), TS 29.002 §17.7.8.
+			HlrID:   "204080", // HLR-Id ::= IMSI: MCC, MNC, leading MSIN digits, TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -1513,7 +1513,7 @@ func TestMtFsmFullStressRoundTrip(t *testing.T) {
 		SmDeliveryStartTime:    HexBytes{0x01, 0x02, 0x03, 0x04},
 		SmsOverIPOnlyIndicator: true,
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0x21, 0x43, 0xf5}, // HLR-Id ::= IMSI, SIZE (3..8), TS 29.002 §17.7.8.
+			HlrID:   "204080", // HLR-Id ::= IMSI: MCC, MNC, leading MSIN digits, TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -1952,7 +1952,7 @@ func TestMoFsmFullStressRoundTrip(t *testing.T) {
 
 		IMSI: "310260123456789",
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0x21, 0x43, 0xf5}, // HLR-Id ::= IMSI, SIZE (3..8), TS 29.002 §17.7.8.
+			HlrID:   "204080", // HLR-Id ::= IMSI: MCC, MNC, leading MSIN digits, TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -2672,7 +2672,7 @@ func TestAlertServiceCentreFullStressRoundTrip(t *testing.T) {
 		ServiceCentreAddress: "31611111111",
 		IMSI:                 "204080012345678",
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0x21, 0x43, 0xf5}, // HLR-Id ::= IMSI, SIZE (3..8), TS 29.002 §17.7.8.
+			HlrID:   "204080", // HLR-Id ::= IMSI: MCC, MNC, leading MSIN digits, TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},

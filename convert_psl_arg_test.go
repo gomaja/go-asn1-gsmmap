@@ -80,7 +80,7 @@ func TestProvideSubscriberLocationArgFullPopulationRoundTrip(t *testing.T) {
 		MSISDNNature:    0x10,
 		MSISDNPlan:      0x01,
 		LMSI:            HexBytes{0x01, 0x02, 0x03, 0x04},
-		IMEI:            "490154203237518",
+		IMEI:            "490154203237510",
 		LcsPriority:     LCSPriority{0x00},
 		LcsQoS: &LCSQoS{
 			HorizontalAccuracy:        HexBytes{0x10},

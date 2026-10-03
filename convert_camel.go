@@ -610,68 +610,74 @@ func convertWireToDPAnalysedInfoCriterium(w *gsm_map.DPAnalysedInfoCriterium) (D
 	}, nil
 }
 
-// D-CSI marks both of its components OPTIONAL, but 3GPP TS 29.002 V19.1.0
-// §17.7.1 D-CSI requires them: "DP-AnalysedInfoCriteria and
-// camelCapabilityHandling shall be present in the D-CSI sequence." The
-// encoder and the decoder enforce this with the same sentinels, as for
-// SMS-CSI and GPRS-CSI.
+// D-CSI, SMS-CSI and GPRS-CSI may be segmented across the
+// InsertSubscriberData operations of one dialogue, and their presence rules
+// depend on the segment (3GPP TS 29.002 V19.1.0 §17.7.1):
 //
-// The same clause continues: "If D-CSI is segmented, then the first segment
-// shall contain dp-AnalysedInfoCriteriaList and camelCapabilityHandling.
-// Subsequent segments shall not contain camelCapabilityHandling, but may
-// contain dp-AnalysedInfoCriteriaList." A single message does not tell which
-// segment it is, so every D-CSI is handled as a complete, unsegmented one;
-// a subsequent segment of a segmented D-CSI is neither built nor accepted.
+//	D-CSI: "If D-CSI is segmented, then the first segment shall contain
+//	dp-AnalysedInfoCriteriaList and camelCapabilityHandling. Subsequent
+//	segments shall not contain camelCapabilityHandling, but may contain
+//	dp-AnalysedInfoCriteriaList."
+//
+//	SMS-CSI: "If SMS-CSI is segmented, sms-CAMEL-TDP-DataList and
+//	camelCapabilityHandling shall be present in the first segment"
+//
+//	GPRS-CSI: "If GPRS-CSI is segmented, gprs-CamelTDPDataList and
+//	camelCapabilityHandling shall be present in the first segment"
+//
+// A single message does not tell which segment it holds, so the converters
+// enforce neither presence nor absence of these components: an absent list
+// is a nil or empty public list and an absent camelCapabilityHandling a nil
+// CamelCapabilityHandling, in both directions. The presence rules apply to
+// the reassembled CSI and are the caller's to check. O-CSI and T-CSI "shall
+// not be segmented" and keep their rules.
 
 // convertDCSIToWire encodes a D-CSI.
 func convertDCSIToWire(d *DCSI) (*gsm_map.DCSI, error) {
-	if len(d.DPAnalysedInfoCriteriaList) == 0 {
-		return nil, ErrCamelDCSIMissingCriteriaList
-	}
-	if d.CamelCapabilityHandling == nil {
-		return nil, ErrCamelDCSIMissingCapabilityHandling
-	}
 	if err := validateCamelCapabilityHandling(d.CamelCapabilityHandling); err != nil {
 		return nil, err
 	}
-	list := gsm_map.DPAnalysedInfoCriteriaList{Values: make([]gsm_map.DPAnalysedInfoCriterium, len(d.DPAnalysedInfoCriteriaList))}
-	for i := range d.DPAnalysedInfoCriteriaList {
-		w, err := convertDPAnalysedInfoCriteriumToWire(&d.DPAnalysedInfoCriteriaList[i])
-		if err != nil {
-			return nil, fmt.Errorf("DPAnalysedInfoCriteriaList[%d]: %w", i, err)
-		}
-		list.Values[i] = w
+	out := &gsm_map.DCSI{
+		NotificationToCSE: boolToNullPtr(d.NotificationToCSE),
+		CsiActive:         boolToNullPtr(d.CsiActive),
 	}
-	cch := gsm_map.CamelCapabilityHandling(int64(*d.CamelCapabilityHandling))
-	return &gsm_map.DCSI{
-		DpAnalysedInfoCriteriaList: &list,
-		CamelCapabilityHandling:    &cch,
-		NotificationToCSE:          boolToNullPtr(d.NotificationToCSE),
-		CsiActive:                  boolToNullPtr(d.CsiActive),
-	}, nil
+	if len(d.DPAnalysedInfoCriteriaList) > 0 {
+		list := gsm_map.DPAnalysedInfoCriteriaList{Values: make([]gsm_map.DPAnalysedInfoCriterium, len(d.DPAnalysedInfoCriteriaList))}
+		for i := range d.DPAnalysedInfoCriteriaList {
+			w, err := convertDPAnalysedInfoCriteriumToWire(&d.DPAnalysedInfoCriteriaList[i])
+			if err != nil {
+				return nil, fmt.Errorf("DPAnalysedInfoCriteriaList[%d]: %w", i, err)
+			}
+			list.Values[i] = w
+		}
+		out.DpAnalysedInfoCriteriaList = &list
+	}
+	if d.CamelCapabilityHandling != nil {
+		cch := gsm_map.CamelCapabilityHandling(int64(*d.CamelCapabilityHandling))
+		out.CamelCapabilityHandling = &cch
+	}
+	return out, nil
 }
 
 // convertWireToDCSI decodes a D-CSI.
 func convertWireToDCSI(w *gsm_map.DCSI) (*DCSI, error) {
-	if w.DpAnalysedInfoCriteriaList == nil {
-		return nil, ErrCamelDCSIMissingCriteriaList
-	}
-	if w.CamelCapabilityHandling == nil {
-		return nil, ErrCamelDCSIMissingCapabilityHandling
-	}
 	out := &DCSI{
-		DPAnalysedInfoCriteriaList: make([]DPAnalysedInfoCriterium, len(w.DpAnalysedInfoCriteriaList.Values)),
-		CamelCapabilityHandling:    camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling),
+		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
+		CsiActive:         nullPtrToBool(w.CsiActive),
 	}
-	for i := range w.DpAnalysedInfoCriteriaList.Values {
-		c, err := convertWireToDPAnalysedInfoCriterium(&w.DpAnalysedInfoCriteriaList.Values[i])
-		if err != nil {
-			return nil, fmt.Errorf("DpAnalysedInfoCriteriaList[%d]: %w", i, err)
+	if w.DpAnalysedInfoCriteriaList != nil && len(w.DpAnalysedInfoCriteriaList.Values) > 0 {
+		out.DPAnalysedInfoCriteriaList = make([]DPAnalysedInfoCriterium, len(w.DpAnalysedInfoCriteriaList.Values))
+		for i := range w.DpAnalysedInfoCriteriaList.Values {
+			c, err := convertWireToDPAnalysedInfoCriterium(&w.DpAnalysedInfoCriteriaList.Values[i])
+			if err != nil {
+				return nil, fmt.Errorf("DpAnalysedInfoCriteriaList[%d]: %w", i, err)
+			}
+			out.DPAnalysedInfoCriteriaList[i] = c
 		}
-		out.DPAnalysedInfoCriteriaList[i] = c
 	}
-	out.NotificationToCSE = nullPtrToBool(w.NotificationToCSE)
-	out.CsiActive = nullPtrToBool(w.CsiActive)
+	if w.CamelCapabilityHandling != nil {
+		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
+	}
 	return out, nil
 }
 
@@ -997,67 +1003,61 @@ func convertWireToSMSCAMELTDPData(w *gsm_map.SMSCAMELTDPData, tdp SMSTriggerDete
 
 // convertSMSCSIToWire encodes an SMS-CSI whose only permitted trigger
 // detection point is tdp: moSMSTriggerDetectionPoint for mo-sms-CSI,
-// mtSMSTriggerDetectionPoint for mt-sms-CSI.
+// mtSMSTriggerDetectionPoint for mt-sms-CSI. The list and
+// camelCapabilityHandling are encoded when set; their presence depends on
+// the segment (see convertDCSIToWire). More than maxNumOfCamelTDPData
+// entries is the codec's SIZE (1..10) violation.
 func convertSMSCSIToWire(s *SMSCSI, tdp SMSTriggerDetectionPoint) (*gsm_map.SMSCSI, error) {
-	// 3GPP TS 29.002 V19.1.0 §17.7.1 SMS-CSI: "SMS-CAMEL-TDP-Data and
-	// camelCapabilityHandling shall be present in the SMS-CSI sequence."
-	// A missing list is the same error on encode and decode; more than
-	// maxNumOfCamelTDPData entries is the codec's SIZE (1..10) violation.
-	if len(s.SmsCAMELTDPDataList) == 0 {
-		return nil, ErrCamelSMSCSIMissingTDPData
-	}
-	if s.CamelCapabilityHandling == nil {
-		return nil, ErrCamelSMSCSIMissingCapabilityHandling
-	}
 	if err := validateCamelCapabilityHandling(s.CamelCapabilityHandling); err != nil {
 		return nil, err
 	}
-	list := gsm_map.SMSCAMELTDPDataList{Values: make([]gsm_map.SMSCAMELTDPData, len(s.SmsCAMELTDPDataList))}
-	for i := range s.SmsCAMELTDPDataList {
-		w, err := convertSMSCAMELTDPDataToWire(&s.SmsCAMELTDPDataList[i], tdp)
-		if err != nil {
-			return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
-		}
-		list.Values[i] = w
+	out := &gsm_map.SMSCSI{
+		NotificationToCSE: boolToNullPtr(s.NotificationToCSE),
+		CsiActive:         boolToNullPtr(s.CsiActive),
 	}
-	cch := gsm_map.CamelCapabilityHandling(int64(*s.CamelCapabilityHandling))
-	return &gsm_map.SMSCSI{
-		SmsCAMELTDPDataList:     &list,
-		CamelCapabilityHandling: &cch,
-		NotificationToCSE:       boolToNullPtr(s.NotificationToCSE),
-		CsiActive:               boolToNullPtr(s.CsiActive),
-	}, nil
+	if len(s.SmsCAMELTDPDataList) > 0 {
+		list := gsm_map.SMSCAMELTDPDataList{Values: make([]gsm_map.SMSCAMELTDPData, len(s.SmsCAMELTDPDataList))}
+		for i := range s.SmsCAMELTDPDataList {
+			w, err := convertSMSCAMELTDPDataToWire(&s.SmsCAMELTDPDataList[i], tdp)
+			if err != nil {
+				return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
+			}
+			list.Values[i] = w
+		}
+		out.SmsCAMELTDPDataList = &list
+	}
+	if s.CamelCapabilityHandling != nil {
+		cch := gsm_map.CamelCapabilityHandling(int64(*s.CamelCapabilityHandling))
+		out.CamelCapabilityHandling = &cch
+	}
+	return out, nil
 }
 
 // convertWireToSMSCSI decodes an SMS-CSI whose only permitted trigger
 // detection point is tdp: moSMSTriggerDetectionPoint for mo-sms-CSI,
-// mtSMSTriggerDetectionPoint for mt-sms-CSI. It returns nil when the
-// receiver ignores every SMS-CAMEL-TDP-Data: an SMS-CSI arms its TDP only
-// through SMS-CAMEL-TDP-DataList, SIZE (1..10), so with none left the
-// receiver holds no SMS-CSI.
+// mtSMSTriggerDetectionPoint for mt-sms-CSI. An absent list, or one whose
+// every SMS-CAMEL-TDP-Data the receiver ignores, decodes to a nil list; the
+// rest of the CSI is kept, since another segment may carry the TDP data
+// (see convertDCSIToWire).
 func convertWireToSMSCSI(w *gsm_map.SMSCSI, tdp SMSTriggerDetectionPoint) (*SMSCSI, error) {
-	if w.SmsCAMELTDPDataList == nil {
-		return nil, ErrCamelSMSCSIMissingTDPData
+	out := &SMSCSI{
+		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
+		CsiActive:         nullPtrToBool(w.CsiActive),
 	}
-	if w.CamelCapabilityHandling == nil {
-		return nil, ErrCamelSMSCSIMissingCapabilityHandling
+	if w.SmsCAMELTDPDataList != nil {
+		decode := func(d *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData, error) {
+			return convertWireToSMSCAMELTDPData(d, tdp)
+		}
+		list, err := convertIgnorableWireList("SmsCAMELTDPDataList", w.SmsCAMELTDPDataList.Values, decode)
+		if err != nil {
+			return nil, err
+		}
+		out.SmsCAMELTDPDataList = list
 	}
-	decode := func(d *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData, error) {
-		return convertWireToSMSCAMELTDPData(d, tdp)
+	if w.CamelCapabilityHandling != nil {
+		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
 	}
-	list, err := convertIgnorableWireList("SmsCAMELTDPDataList", w.SmsCAMELTDPDataList.Values, decode)
-	if err != nil {
-		return nil, err
-	}
-	if list == nil {
-		return nil, nil
-	}
-	return &SMSCSI{
-		SmsCAMELTDPDataList:     list,
-		CamelCapabilityHandling: camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling),
-		NotificationToCSE:       nullPtrToBool(w.NotificationToCSE),
-		CsiActive:               nullPtrToBool(w.CsiActive),
-	}, nil
+	return out, nil
 }
 
 func convertMTSmsCAMELTDPCriteriaToWire(c *MTSmsCAMELTDPCriteria) (gsm_map.MTSmsCAMELTDPCriteria, error) {

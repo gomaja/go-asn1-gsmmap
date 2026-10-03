@@ -126,7 +126,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 		mtFsm.MaximumRetransmissionTime = HexBytes(*arg.MaximumRetransmissionTime)
 	}
 	if arg.SmsGmscAddress != nil {
-		addr, nature, plan, err := decodeAddressField([]byte(*arg.SmsGmscAddress))
+		addr, nature, plan, err := decodeAddressWithDigits([]byte(*arg.SmsGmscAddress), ErrMtFsmSmsGmscAddressDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmsGmscAddress: %w", err)
 		}
