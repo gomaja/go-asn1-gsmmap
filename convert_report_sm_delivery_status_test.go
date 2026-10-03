@@ -82,7 +82,7 @@ func TestReportSMDeliveryStatusRoundTrip(t *testing.T) {
 			IMSI:                                   "204080000000001",
 			SingleAttemptDelivery:                  true,
 			CorrelationID: &SriSmCorrelationID{
-				HlrID:   HexBytes{0xAA, 0xBB},
+				HlrID:   "204080",
 				SipUriA: HexBytes{0xCC, 0xDD},
 				SipUriB: HexBytes{0xEE, 0xFF},
 			},

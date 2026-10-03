@@ -47,7 +47,7 @@ const (
 
 // SriSmCorrelationID corresponds to CorrelationID SEQUENCE.
 type SriSmCorrelationID struct {
-	HlrID   HexBytes // HLR-Id, optional
+	HlrID   string   // HLR-Id digits, optional ("" = absent); HLR-Id ::= IMSI, see identityIMSI
 	SipUriA HexBytes // SIP-URI, optional
 	SipUriB HexBytes // SIP-URI, mandatory within CorrelationID
 }
@@ -3398,8 +3398,8 @@ type SGSNCAMELSubscriptionInfo struct {
 // fields are surfaced as `HexBytes` or typed integers.
 type InsertSubscriberDataArg struct {
 	// Identification (typically present together)
-	IMSI         HexBytes // [0] optional, IMSI octets (TBCD-encoded)
-	MSISDN       string   // [1] optional, ISDN-AddressString digits ("" = absent)
+	IMSI         string // [0] optional, IMSI digits ("" = absent)
+	MSISDN       string // [1] optional, ISDN-AddressString digits ("" = absent)
 	MSISDNNature uint8
 	MSISDNPlan   uint8
 

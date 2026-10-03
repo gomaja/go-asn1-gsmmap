@@ -65,8 +65,12 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		IabOperationAllowedIndicator:          boolToNullPtr(a.IabOperationAllowedIndicator),
 	}
 
-	if len(a.IMSI) > 0 {
-		v := gsm_map.IMSI(a.IMSI)
+	if a.IMSI != "" {
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, a.IMSI)
+		if err != nil {
+			return nil, fmt.Errorf(errEncodingIMSI, err)
+		}
+		v := gsm_map.IMSI(imsiBytes)
 		out.Imsi = &v
 	}
 	if a.MSISDN != "" {
@@ -326,7 +330,11 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 	}
 
 	if w.Imsi != nil {
-		out.IMSI = HexBytes(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
+		if err != nil {
+			return nil, fmt.Errorf("decoding IMSI: %w", err)
+		}
+		out.IMSI = imsi
 	}
 	if w.Msisdn != nil {
 		s, nature, plan, err := decodeAddressField([]byte(*w.Msisdn))

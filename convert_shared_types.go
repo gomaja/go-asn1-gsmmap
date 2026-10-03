@@ -85,8 +85,15 @@ func convertCorrelationIDToWire(c *SriSmCorrelationID) (*gsm_map.CorrelationID, 
 	out := &gsm_map.CorrelationID{
 		SipUriB: gsm_map.SIPURI(c.SipUriB),
 	}
-	if len(c.HlrID) > 0 {
-		v := gsm_map.HLRId(c.HlrID)
+	if c.HlrID != "" {
+		// HLR-Id ::= IMSI, "leading digits of IMSI, i.e. (MCC, MNC,
+		// leading digits of MSIN)" (3GPP TS 29.002 V19.1.0 §17.7.8), so
+		// the IMSI digit rule applies.
+		hlr, err := encodeIdentityDigits(identityIMSI, c.HlrID)
+		if err != nil {
+			return nil, fmt.Errorf("encoding CorrelationID.HlrID: %w", err)
+		}
+		v := gsm_map.HLRId(hlr)
 		out.HlrId = &v
 	}
 	if len(c.SipUriA) > 0 {
@@ -107,7 +114,11 @@ func convertWireToCorrelationID(w *gsm_map.CorrelationID) (*SriSmCorrelationID, 
 		SipUriB: HexBytes(w.SipUriB),
 	}
 	if w.HlrId != nil {
-		c.HlrID = HexBytes(*w.HlrId)
+		hlr, err := decodeIdentityDigits(identityIMSI, *w.HlrId)
+		if err != nil {
+			return nil, fmt.Errorf("decoding CorrelationID.HlrID: %w", err)
+		}
+		c.HlrID = hlr
 	}
 	if w.SipUriA != nil {
 		c.SipUriA = HexBytes(*w.SipUriA)
