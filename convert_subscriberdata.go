@@ -298,15 +298,21 @@ func encodeFixedTBCD(s string, octets int) ([]byte, error) {
 	return out, nil
 }
 
-// decodeGroupID returns the digits of a TBCD GroupId. Filler padding is
-// dropped, so six fillers decode to "", valid only when a LongGroupId is
-// present (ErrGroupIdDecodedEmpty otherwise).
+// decodeGroupID returns the digits of a TBCD GroupId, applying the rules of
+// encodeGroupID. Filler padding is dropped, so the six fillers decode to "".
+// With a LongGroupId present the GroupId "shall be filled with six TBCD
+// fillers" (3GPP TS 29.002 V19.1.0 §17.7.1 VoiceBroadcastData,
+// VoiceGroupCallData), so any digit is ErrGroupIdFillerRequired; without one
+// the GroupId must carry digits (ErrGroupIdDecodedEmpty).
 func decodeGroupID(raw []byte, hasLong bool) (string, error) {
 	s, err := tbcd.Decode(raw)
 	if err != nil {
 		return "", err
 	}
-	if s == "" && !hasLong {
+	switch {
+	case hasLong && s != "":
+		return "", ErrGroupIdFillerRequired
+	case !hasLong && s == "":
 		return "", ErrGroupIdDecodedEmpty
 	}
 	return s, nil

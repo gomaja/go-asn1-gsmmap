@@ -243,7 +243,7 @@ func TestVoiceBroadcastDataValidation(t *testing.T) {
 			t.Errorf("want tbcd.ErrMisplacedFiller, got %v", err)
 		}
 		lg := gsm_map.LongGroupId{0x21, 0xff, 0x65, 0x87}
-		w = &gsm_map.VoiceBroadcastData{Groupid: []byte{0x21, 0x43, 0x65}, LongGroupId: &lg}
+		w = &gsm_map.VoiceBroadcastData{Groupid: []byte{0xff, 0xff, 0xff}, LongGroupId: &lg}
 		if _, err := convertWireToVoiceBroadcastData(w); !errors.Is(err, tbcd.ErrMisplacedFiller) {
 			t.Errorf("LongGroupId: want tbcd.ErrMisplacedFiller, got %v", err)
 		}
