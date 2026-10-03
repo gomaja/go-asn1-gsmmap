@@ -317,6 +317,13 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 		out.ResponseTime = rt
 	}
 	out.VelocityRequest = boolToNullPtr(q.VelocityRequest)
+	if q.LcsQosClass != nil {
+		c := *q.LcsQosClass
+		if c != LCSQoSClassBestEffort && c != LCSQoSClassAssured {
+			return nil, fmt.Errorf("LCSQoS.LcsQosClass=%d: %w", c, ErrLCSQoSClassInvalid)
+		}
+		out.LcsQosClass = &c
+	}
 	return out, nil
 }
 
@@ -342,5 +349,14 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 		out.ResponseTime = convertWireToResponseTime(w.ResponseTime)
 	}
 	out.VelocityRequest = nullPtrToBool(w.VelocityRequest)
+	if w.LcsQosClass != nil {
+		// 3GPP TS 29.002 V19.1.0 §17.7.13 LCS-QoS-Class: "an unrecognized
+		// value shall be treated the same as value 0 (bestEffort)".
+		c := *w.LcsQosClass
+		if c != LCSQoSClassAssured {
+			c = LCSQoSClassBestEffort
+		}
+		out.LcsQosClass = &c
+	}
 	return out, nil
 }

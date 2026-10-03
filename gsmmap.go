@@ -2551,9 +2551,28 @@ type ResponseTime struct {
 	ResponseTimeCategory ResponseTimeCategory // mandatory
 }
 
+// LCSQoSClass (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13
+// LCS-QoS-Class: bestEffort(0), assured(1), extensible. "an unrecognized
+// value shall be treated the same as value 0 (bestEffort)", so Parse decodes
+// any other value as LCSQoSClassBestEffort, and Marshal sends only the two
+// listed values (ErrLCSQoSClassInvalid). Aliased from go-asn1.
+type LCSQoSClass = gsm_map.LCSQoSClass
+
+const (
+	LCSQoSClassBestEffort = gsm_map.LCSQoSClassBestEffort
+	LCSQoSClassAssured    = gsm_map.LCSQoSClassAssured
+)
+
 // LCSQoS (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:237.
 // All fields optional. Horizontal/Vertical-Accuracy are 1-octet uncertainty
 // codes per 3GPP TS 23.032; surfaced as raw single-octet HexBytes.
+//
+// LcsQosClass carries lcs-qos-class. 3GPP TS 29.002 V19.1.0 §13A.2.3 says
+// the LCS QoS of a ProvideSubscriberLocation "indicates the required quality
+// of service in terms of response time, accuracy and lcs qos class", while
+// the §17.7.13 ASN.1 comment says "lcs-qos-class may only be included in
+// MO-LR request sent by the UE to the network". The package follows
+// §13A.2.3 and §7.6.11.8, which list the LCS QoS Class.
 //
 // Note: the ASN.1 definition includes an optional ExtensionContainer at
 // tag [4]; consistent with the package-wide convention (see
@@ -2566,6 +2585,7 @@ type LCSQoS struct {
 	VerticalAccuracy          HexBytes      // [2] optional, 1 octet per TS 23.032
 	ResponseTime              *ResponseTime // [3] optional
 	VelocityRequest           bool          // [5] optional NULL; true when present, false when absent; present only past the extensibility marker
+	LcsQosClass               *LCSQoSClass  // [6] optional, past the extensibility marker; nil = absent
 }
 
 // PrivacyCheckRelatedAction (ENUMERATED) per TS 29.002
@@ -4003,6 +4023,10 @@ var (
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:457 (extensible enum: unknown values preserved on decode)")
 	// Sender accepts only defined values; receivers map unknown values to delaytolerant (3GPP TS 29.002 V19.1.0 §17.7.13).
+	// ErrLCSQoSClassInvalid: the encoder sends only bestEffort(0) or
+	// assured(1); the decoder treats any other value as bestEffort per 3GPP
+	// TS 29.002 V19.1.0 §17.7.13 LCS-QoS-Class.
+	ErrLCSQoSClassInvalid            = errors.New("lcsQoS: LcsQosClass must be bestEffort(0) or assured(1); a receiver treats an unrecognized value as bestEffort per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrResponseTimeCategoryInvalid   = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
 	ErrHorizontalAccuracyReservedBit = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:250 (only the low 7 bits encode the uncertainty code per TS 23.032)")
 	ErrVerticalAccuracyReservedBit   = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:256 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")

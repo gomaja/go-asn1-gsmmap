@@ -129,6 +129,8 @@ What that means for a consumer:
   `GPRSCSI`, `MGCSI`) no longer have `NotificationToCSE` and `CsiActive`:
   TS 29.002 §17.7.1 allows them only in ATSI, ATM ack and NSDC messages,
   which this package does not implement. `Parse` drops them.
+- `LCSQoS.LcsQosClass` carries lcs-qos-class, which `Parse` dropped; an
+  unrecognized value decodes as `LCSQoSClassBestEffort` (§17.7.13).
 
 ## Usage
 
