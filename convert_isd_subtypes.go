@@ -49,7 +49,7 @@ func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubsc
 		return nil, nil
 	}
 	// CSG-Id SIZE (27) is checked by the BER codec; bitStringToWire also
-	// enforces the octet count (3GPP TS 29.002 V19.1.0 §17.7.8, X.690 §8.6.2).
+	// enforces the octet count (3GPP TS 29.002 V19.1.0 §17.7.1, X.690 §8.6.2).
 	csgID, err := bitStringToWire("CSGSubscriptionData.CsgID", c.CsgID, c.CsgIDBits)
 	if err != nil {
 		return nil, err

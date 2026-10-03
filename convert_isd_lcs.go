@@ -476,10 +476,10 @@ func convertGMLCListToWire(list GMLCList) (*gsm_map.GMLCList, error) {
 
 	out := gsm_map.GMLCList{Values: make([]gsm_map.ISDNAddressString, len(list))}
 	for i, a := range list {
-		if a.Address == "" {
+		if a.Digits == "" {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCAddressEmpty)
 		}
-		isdn, err := encodeAddressField(a.Address, a.Nature, a.Plan)
+		isdn, err := encodeAddressField(a.Digits, a.Nature, a.Plan)
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
 		}
@@ -508,7 +508,7 @@ func convertWireToGMLCList(w *gsm_map.GMLCList) (GMLCList, error) {
 		if s == "" {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCAddressEmpty)
 		}
-		out[i] = GMLCAddress{Address: s, Nature: nature, Plan: plan}
+		out[i] = ISDNNumber{Digits: s, Nature: nature, Plan: plan}
 	}
 	return out, nil
 }

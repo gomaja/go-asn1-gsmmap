@@ -298,9 +298,9 @@ type SupportedLCSCapabilitySets struct {
 
 // UpdateLocationRes represents an UpdateLocation response (opCode 2).
 type UpdateLocationRes struct {
-	HLRNumber            string
-	HLRNumberNature      uint8 // address nature indicator
-	HLRNumberPlan        uint8 // numbering plan indicator
+	HlrNumber            string
+	HlrNumberNature      uint8 // address nature indicator
+	HlrNumberPlan        uint8 // numbering plan indicator
 	AddCapability        bool  // NULL
 	PagingAreaCapability bool  // [0] NULL
 }
@@ -422,9 +422,9 @@ type SGSNCapability struct {
 
 // UpdateGprsLocationRes represents an UpdateGprsLocation response (opCode 23).
 type UpdateGprsLocationRes struct {
-	HLRNumber       string
-	HLRNumberNature uint8 // address nature indicator
-	HLRNumberPlan   uint8 // numbering plan indicator
+	HlrNumber       string
+	HlrNumberNature uint8 // address nature indicator
+	HlrNumberPlan   uint8 // numbering plan indicator
 
 	AddCapability              bool // untagged NULL
 	SgsnMmeSeparationSupported bool // [0] NULL
@@ -846,8 +846,8 @@ type DestinationNumberCriteria struct {
 	DestinationNumberLengthList []int        // [2] list of number lengths (1..15)
 }
 
-// ISDNNumber represents an ISDN-AddressString with its nature/plan indicators.
-// Reused for DestinationNumberList entries in CAMEL criteria.
+// ISDNNumber is an ISDN-AddressString entry of a list: the
+// DestinationNumberList of CAMEL criteria and the GMLC-List.
 type ISDNNumber struct {
 	Digits string
 	Nature uint8
@@ -1863,7 +1863,7 @@ type SupportedFeatures struct {
 type ExtSupportedFeatures struct {
 	UnlicensedSpectrumAsSecondaryRAT bool     // bit 0
 	BitLength                        int      // 0 selects the shortest valid length
-	UnknownBits                      HexBytes // positions 1..39, MSB first; bit 0 is ignored
+	UnknownBits                      HexBytes // positions 1..39, MSB first, without trailing zero octets; bit 0 is ignored
 }
 
 // ODBData per 3GPP TS 29.002 V19.1.0 §17.7.1. Wraps the general
@@ -1946,7 +1946,7 @@ type MCSSInfo struct {
 
 // CSGSubscriptionData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // CsgID is a 27-bit Closed Subscriber Group identifier (3GPP TS 29.002
-// V19.1.0 §17.7.8); its bit length is explicit as in UserCSGInformation.
+// V19.1.0 §17.7.1); its bit length is explicit as in UserCSGInformation.
 type CSGSubscriptionData struct {
 	CsgID              HexBytes   // mandatory: CSG-Id BIT STRING (4 octets carrying 27 bits)
 	CsgIDBits          int        // mandatory: SIZE (27), checked by the BER codec
@@ -2368,17 +2368,11 @@ type MOLRClass struct {
 // MOLRList (SEQUENCE SIZE 1..3 OF MOLR-Class) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type MOLRList []MOLRClass
 
-// GMLCAddress represents an ISDN-AddressString entry in a GMLC-List.
-type GMLCAddress struct {
-	Address string // mandatory ISDN-AddressString digits
-	Nature  uint8
-	Plan    uint8
-}
-
-// GMLCList (SEQUENCE SIZE 1..5 OF ISDN-AddressString) per 3GPP TS 29.002 V19.1.0 §17.7.1. Each entry is an ISDN-AddressString of 1..9
-// octets, at most 16 digits; Marshal and Parse reject a longer one
-// (ErrGMLCAddressInvalidSize).
-type GMLCList []GMLCAddress
+// GMLCList (SEQUENCE SIZE 1..5 OF ISDN-AddressString) per 3GPP TS 29.002
+// V19.1.0 §17.7.1. Each entry is an ISDN-AddressString of 1..9 octets, at
+// most 16 digits; Marshal and Parse reject a longer one
+// (ErrGMLCAddressInvalidSize) and one without digits (ErrGMLCAddressEmpty).
+type GMLCList []ISDNNumber
 
 // LCSInformation (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // All four lists are OPTIONAL. AddLcsPrivacyExceptionList requires an
@@ -3554,7 +3548,7 @@ type InsertSubscriberDataArg struct {
 	// LCS / IST / supercharger
 	LmuIndicator                  bool                       // [21] optional NULL
 	LcsInformation                *LCSInformation            // [22] optional
-	IstAlertTimer                 *int                       // [26] optional, ISTAlertTimerValue; same shape as SriResp
+	IstAlertTimer                 *int                       // [26] optional, IST-AlertTimerValue INTEGER (15..255), 3GPP TS 29.002 V19.1.0 §17.7.1
 	SuperChargerSupportedInHLR    HexBytes                   // [27] optional, AgeIndicator OCTET STRING (SIZE 1..6)
 	McSSInfo                      *MCSSInfo                  // [28] optional
 	CsAllocationRetentionPriority HexBytes                   // [29] optional, OCTET STRING SIZE 1
@@ -3824,9 +3818,9 @@ var (
 
 	ErrUpdateLocationMissingMscNumber        = errors.New("updateLocation: MscNumber is empty")
 	ErrUpdateLocationMissingVlrNumber        = errors.New("updateLocation: VlrNumber is empty")
-	ErrUpdateLocationResMissingHLRNumber     = errors.New("updateLocationRes: HLRNumber is empty")
+	ErrUpdateLocationResMissingHlrNumber     = errors.New("updateLocationRes: HlrNumber is empty")
 	ErrUpdateGprsLocationMissingSgsnNumber   = errors.New("updateGprsLocation: SgsnNumber is mandatory and must be non-empty")
-	ErrUpdateGprsLocationResMissingHLRNumber = errors.New("updateGprsLocationRes: HLRNumber is mandatory and must be non-empty")
+	ErrUpdateGprsLocationResMissingHlrNumber = errors.New("updateGprsLocationRes: HlrNumber is mandatory and must be non-empty")
 
 	// ErrUsedRATTypeInvalid, ErrUESRVCCCapabilityInvalid and
 	// ErrSMSRegisterRequestInvalid: the encoder sends only the listed
@@ -3962,7 +3956,7 @@ var (
 	ErrNotificationToMSUserInvalid = errors.New("notificationToMSUser: must be 0..3 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrLCSClientInternalIDInvalid = errors.New("lcsClientInternalID: LCSClientInternalID must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.8 (extensible enum: unknown values preserved on decode)")
-	ErrGMLCAddressEmpty           = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
+	ErrGMLCAddressEmpty           = errors.New("gmlcList: each entry must carry digits, on encode and decode")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrGMLCAddressInvalidSize = errors.New("gmlcList: each entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
 	// ErrLCSAddPrivacyExceptionListNotAllowed: "add-lcs-PrivacyExceptionList

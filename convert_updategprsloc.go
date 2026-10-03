@@ -582,12 +582,12 @@ func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error
 // --- UpdateGprsLocationRes ---
 
 func convertUpdateGprsLocationResToRes(u *UpdateGprsLocationRes) (*gsm_map.UpdateGprsLocationRes, error) {
-	if u.HLRNumber == "" {
-		return nil, ErrUpdateGprsLocationResMissingHLRNumber
+	if u.HlrNumber == "" {
+		return nil, ErrUpdateGprsLocationResMissingHlrNumber
 	}
-	hlr, err := encodeAddressField(u.HLRNumber, u.HLRNumberNature, u.HLRNumberPlan)
+	hlr, err := encodeAddressField(u.HlrNumber, u.HlrNumberNature, u.HlrNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding HLRNumber: %w", err)
+		return nil, fmt.Errorf("encoding HlrNumber: %w", err)
 	}
 
 	return &gsm_map.UpdateGprsLocationRes{
@@ -601,16 +601,16 @@ func convertUpdateGprsLocationResToRes(u *UpdateGprsLocationRes) (*gsm_map.Updat
 func convertResToUpdateGprsLocationRes(res *gsm_map.UpdateGprsLocationRes) (*UpdateGprsLocationRes, error) {
 	hlr, nature, plan, err := decodeAddressField(res.HlrNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding HLRNumber: %w", err)
+		return nil, fmt.Errorf("decoding HlrNumber: %w", err)
 	}
 	if hlr == "" {
-		return nil, ErrUpdateGprsLocationResMissingHLRNumber
+		return nil, ErrUpdateGprsLocationResMissingHlrNumber
 	}
 
 	return &UpdateGprsLocationRes{
-		HLRNumber:                  hlr,
-		HLRNumberNature:            nature,
-		HLRNumberPlan:              plan,
+		HlrNumber:                  hlr,
+		HlrNumberNature:            nature,
+		HlrNumberPlan:              plan,
 		AddCapability:              nullPtrToBool(res.AddCapability),
 		SgsnMmeSeparationSupported: nullPtrToBool(res.SgsnMmeSeparationSupported),
 		MmeRegisteredforSMS:        nullPtrToBool(res.MmeRegisteredforSMS),

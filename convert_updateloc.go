@@ -293,12 +293,12 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 // --- UpdateLocationRes ---
 
 func convertUpdateLocationResToRes(u *UpdateLocationRes) (*gsm_map.UpdateLocationRes, error) {
-	if u.HLRNumber == "" {
-		return nil, ErrUpdateLocationResMissingHLRNumber
+	if u.HlrNumber == "" {
+		return nil, ErrUpdateLocationResMissingHlrNumber
 	}
-	hlr, err := encodeAddressField(u.HLRNumber, u.HLRNumberNature, u.HLRNumberPlan)
+	hlr, err := encodeAddressField(u.HlrNumber, u.HlrNumberNature, u.HlrNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding HLRNumber: %w", err)
+		return nil, fmt.Errorf("encoding HlrNumber: %w", err)
 	}
 
 	res := &gsm_map.UpdateLocationRes{
@@ -310,15 +310,15 @@ func convertUpdateLocationResToRes(u *UpdateLocationRes) (*gsm_map.UpdateLocatio
 }
 
 func convertResToUpdateLocationRes(res *gsm_map.UpdateLocationRes) (*UpdateLocationRes, error) {
-	hlr, nature, plan, err := decodeAddressWithDigits(res.HlrNumber, ErrUpdateLocationResMissingHLRNumber)
+	hlr, nature, plan, err := decodeAddressWithDigits(res.HlrNumber, ErrUpdateLocationResMissingHlrNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding HLRNumber: %w", err)
+		return nil, fmt.Errorf("decoding HlrNumber: %w", err)
 	}
 
 	return &UpdateLocationRes{
-		HLRNumber:            hlr,
-		HLRNumberNature:      nature,
-		HLRNumberPlan:        plan,
+		HlrNumber:            hlr,
+		HlrNumberNature:      nature,
+		HlrNumberPlan:        plan,
 		AddCapability:        nullPtrToBool(res.AddCapability),
 		PagingAreaCapability: nullPtrToBool(res.PagingAreaCapability),
 	}, nil

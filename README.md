@@ -77,8 +77,8 @@ What that means for a consumer:
 - Removed constraint and bounds sentinels include `ErrSaiInvalidPLMNId`, `ErrIntervalTimeOutOfRange`, `ErrGPRSDataListSize`, and `ErrUtranBaroPressureMeasOutOfRange`. Element-size, bit-length, and sender-rule checks retain dedicated sentinels where the codec does not check them.
 - `ErrCamelInvalidCamelCapabilityHandling` is `ErrCamelCapabilityHandlingOutOfRange`. Other removed `Err*` names for duplicated presence, identity, size, receiver, and digitless-address checks are replaced by the applicable current semantic sentinel or codec error; update `errors.Is` checks by condition.
 - `ErrReportSMDeliveryStatusResStoredMSISDNEmpty` → `ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty`; `ErrLCSClientIDDialedByMSEmpty` splits into `ErrLCSClientIDDialedByMSDecodedEmpty` on decode and `ErrLCSClientIDDialedByMSNaturePlanWithoutDigits` on encode.
-- Error names follow current Go fields: `ErrUpdateLocationMissingMSCNumber` → `ErrUpdateLocationMissingMscNumber`, `ErrUpdateLocationMissingVLRNumber` → `ErrUpdateLocationMissingVlrNumber`, and `ErrUpdateGprsLocationMissingSGSNNumber` → `ErrUpdateGprsLocationMissingSgsnNumber`.
-- The decoded-empty names for `Isd.SgsnNumber`, `LocationInformation.{MscNumber,VlrNumber}`, `LocationInformationGPRS.SgsnNumber`, and `PurgeMS.{SgsnNumber,VlrNumber}` likewise use `Sgsn`, `Msc`, and `Vlr` in place of `SGSN`, `MSC`, and `VLR`.
+- Error names follow current Go fields: `ErrUpdateLocationMissingMSCNumber` → `ErrUpdateLocationMissingMscNumber` and `ErrUpdateLocationMissingVLRNumber` → `ErrUpdateLocationMissingVlrNumber`.
+- A digitless mandatory value returns the sentinel `Marshal` returns for the missing field: `ErrPSLArgMlcNumberDecodedEmpty` → `ErrPSLArgMlcNumberEmpty`, `ErrSriLcsMlcNumberDecodedEmpty` → `ErrSriLcsMlcNumberEmpty`, `ErrLCSLocationInfoNetworkNodeDecodedEmpty` → `ErrLCSLocationInfoNetworkNodeNumberEmpty`, `ErrReportSMDeliveryStatusMSISDNDecodedEmpty` → `ErrReportSMDeliveryStatusMSISDNEmpty` and `ErrReportSMDeliveryStatusSCADecodedEmpty` → `ErrReportSMDeliveryStatusServiceCentreAddressEmpty`. `ErrCSGIdInvalidSize` is replaced by the codec's `*ber.ConstraintError` and `ErrBitStringOctetsMismatch`.
 - `ErrSriMissingGmsc` → `ErrSriMissingGmscOrGsmSCFAddress`; SM-RP-DA/OA service-centre address sentinels add `DA`/`OA` to match their fields. `ErrLCSLocationInfoNetworkNodeEmpty` → `ErrLCSLocationInfoNetworkNodeNumberEmpty`, and `ErrReportSMDeliveryStatusSCAEmpty` → `ErrReportSMDeliveryStatusServiceCentreAddressEmpty`.
 
 **Identities and addresses**
@@ -103,14 +103,14 @@ What that means for a consumer:
 - `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`. `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` become pointers to named feature structs; `ExtSupportedFeatures` gains `UnknownBits`, making it non-comparable, and both feature structs preserve bit lengths.
 - `ProvideSubscriberLocationRes.AgeOfLocationEstimate` and `SubscriberLocationReportArg.AgeOfLocationEstimate` change from `*int64` to `*int`; so does `InsertSubscriberDataArg.IstAlertTimer`. `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` become `[]MMCode`.
 - `GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan` in ATI and CAMEL structs. `SCANature/Plan` → `ServiceCentreAddressNature/Plan` in SRI-SM, AlertServiceCentre, and ReportSMDeliveryStatus; `SCADANature/Plan` and `SCAOANature/Plan` follow their full ServiceCentreAddress field names.
-- `UpdateLocation.MSCNumber/VLRNumber` → `MscNumber/VlrNumber`; `UpdateGprsLocation.SGSNNumber` → `SgsnNumber`; `PurgeMS.VLRNumber/SGSNNumber` → `VlrNumber/SgsnNumber`. Each associated nature/plan field follows the new base name.
+- `UpdateLocation.MSCNumber/VLRNumber` → `MscNumber/VlrNumber`; `UpdateGprsLocation.SGSNNumber` → `SgsnNumber`; `PurgeMS.VLRNumber/SGSNNumber` → `VlrNumber/SgsnNumber`; `UpdateLocationRes.HLRNumber` and `UpdateGprsLocationRes.HLRNumber` → `HlrNumber`. Each associated nature/plan field follows the new base name.
 - `Sri.GmscNature/Plan` → `GmscOrGsmSCFAddressNature/Plan`, and `SriResp.VmscNature/Plan` → `VmscAddressNature/Plan`.
 - LCS client and codeword data coding schemes use `USSDDataCodingScheme`, with strings decoded by `DataCodingScheme.Decode`.
 
 **Removed identifiers**
 
 - 53 exported min/max and bound constants are removed; examples include `AreaListMaxEntries`, `MaxNumOfResetId`, `ReportingIntervalMax`, and `VelocityEstimateMinLen`. Use the codec constraints and current semantic errors rather than these constants.
-- `ErrAddressStringEmpty`, `ErrCamelInvalidMobilityTriggerOctet`, `CSGIdBitLength`, and `MaxResetIdOctets` are removed. Use `ErrMMCodeInvalidSize` for wrong-size MM-Code values.
+- `ErrCamelInvalidMobilityTriggerOctet`, `CSGIdBitLength`, and `MaxResetIdOctets` are removed. `GMLCAddress` is removed: `GMLCList` is a `[]ISDNNumber`, like the CAMEL `DestinationNumberList`. Use `ErrMMCodeInvalidSize` for wrong-size MM-Code values.
 
 ## Usage
 

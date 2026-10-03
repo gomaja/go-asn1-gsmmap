@@ -279,8 +279,8 @@ func TestMOLRList_BoundsRejected(t *testing.T) {
 
 func TestGMLCList_RoundTrip(t *testing.T) {
 	in := GMLCList{
-		{Address: "31611111111", Nature: 0x10, Plan: 0x01},
-		{Address: "31622222222", Nature: 0x10, Plan: 0x01},
+		{Digits: "31611111111", Nature: 0x10, Plan: 0x01},
+		{Digits: "31622222222", Nature: 0x10, Plan: 0x01},
 	}
 	w, err := convertGMLCListToWire(in)
 	if err != nil {
@@ -302,7 +302,7 @@ func TestGMLCList_BoundsRejected(t *testing.T) {
 	}
 	too := make(GMLCList, 6)
 	for i := range too {
-		too[i] = GMLCAddress{Address: "31611111111", Nature: 0x10, Plan: 0x01}
+		too[i] = ISDNNumber{Digits: "31611111111", Nature: 0x10, Plan: 0x01}
 	}
 	_, err = strictWire(convertGMLCListToWire(too))
 	if !matchesConstraint(err, "gmlc-List", "SIZE (1..5)") {
@@ -316,7 +316,7 @@ func TestGMLCList_BoundsRejected(t *testing.T) {
 
 func TestLCSInformation_FullRoundTrip(t *testing.T) {
 	in := &LCSInformation{
-		GmlcList:                GMLCList{{Address: "31611111111", Nature: 0x10, Plan: 0x01}},
+		GmlcList:                GMLCList{{Digits: "31611111111", Nature: 0x10, Plan: 0x01}},
 		LcsPrivacyExceptionList: LCSPrivacyExceptionList{makeLCSPrivacyClass()},
 		MolrList:                MOLRList{{SsCode: SsCode(0x42), SsStatus: HexBytes{0x01}}},
 	}
@@ -458,7 +458,7 @@ func TestMOLRClass_SsCodeStrictSize(t *testing.T) {
 }
 
 func TestGMLCAddress_EmptyRejected(t *testing.T) {
-	in := GMLCList{{Address: "", Nature: 0x10, Plan: 0x01}}
+	in := GMLCList{{Digits: "", Nature: 0x10, Plan: 0x01}}
 	_, err := convertGMLCListToWire(in)
 	if !errors.Is(err, ErrGMLCAddressEmpty) {
 		t.Fatalf("encode empty: want ErrGMLCAddressEmpty, got %v", err)

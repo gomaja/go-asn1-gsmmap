@@ -161,7 +161,7 @@ func TestUpdateLocationWithLCSRoundTrip(t *testing.T) {
 
 func TestUpdateLocationResRoundTrip(t *testing.T) {
 	res := &UpdateLocationRes{
-		HLRNumber: "62816036",
+		HlrNumber: "62816036",
 	}
 
 	data, err := res.Marshal()
@@ -174,8 +174,8 @@ func TestUpdateLocationResRoundTrip(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if res.HLRNumber != parsed.HLRNumber {
-		t.Errorf("HLRNumber: got %s, want %s", parsed.HLRNumber, res.HLRNumber)
+	if res.HlrNumber != parsed.HlrNumber {
+		t.Errorf("HlrNumber: got %s, want %s", parsed.HlrNumber, res.HlrNumber)
 	}
 }
 
@@ -253,7 +253,7 @@ func TestUpdateGprsLocationWithLCSRoundTrip(t *testing.T) {
 
 func TestUpdateGprsLocationResRoundTrip(t *testing.T) {
 	res := &UpdateGprsLocationRes{
-		HLRNumber: "62816036",
+		HlrNumber: "62816036",
 	}
 
 	data, err := res.Marshal()
@@ -266,8 +266,8 @@ func TestUpdateGprsLocationResRoundTrip(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if res.HLRNumber != parsed.HLRNumber {
-		t.Errorf("HLRNumber: got %s, want %s", parsed.HLRNumber, res.HLRNumber)
+	if res.HlrNumber != parsed.HlrNumber {
+		t.Errorf("HlrNumber: got %s, want %s", parsed.HlrNumber, res.HlrNumber)
 	}
 }
 
@@ -485,8 +485,8 @@ func TestUpdateLocationResParseKnownBytes(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if parsed.HLRNumber != "62816036" {
-		t.Errorf("HLRNumber: got %s, want 62816036", parsed.HLRNumber)
+	if parsed.HlrNumber != "62816036" {
+		t.Errorf("HlrNumber: got %s, want 62816036", parsed.HlrNumber)
 	}
 }
 
@@ -2090,7 +2090,7 @@ func TestUpdateLocationFullStressRoundTrip(t *testing.T) {
 
 func TestUpdateLocationResFullRoundTrip(t *testing.T) {
 	in := &UpdateLocationRes{
-		HLRNumber:            "31612345678",
+		HlrNumber:            "31612345678",
 		AddCapability:        true,
 		PagingAreaCapability: true,
 	}
@@ -2418,7 +2418,7 @@ func TestUpdateGprsLocationEpsInfoIsrMinimum(t *testing.T) {
 
 func TestUpdateGprsLocationResFullRoundTrip(t *testing.T) {
 	in := &UpdateGprsLocationRes{
-		HLRNumber:                  "31612345678",
+		HlrNumber:                  "31612345678",
 		AddCapability:              true,
 		SgsnMmeSeparationSupported: true,
 		MmeRegisteredforSMS:        true,

@@ -27,7 +27,7 @@ func isdnOctets(n int) []byte {
 
 func gmlcISD(digits string) *InsertSubscriberDataArg {
 	return &InsertSubscriberDataArg{LcsInformation: &LCSInformation{
-		GmlcList: GMLCList{{Address: digits, Nature: address.NatureInternational, Plan: address.PlanISDN}},
+		GmlcList: GMLCList{{Digits: digits, Nature: address.NatureInternational, Plan: address.PlanISDN}},
 	}}
 }
 

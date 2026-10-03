@@ -175,7 +175,7 @@ func TestInsertSubscriberDataArg_LcsAndSgsnCamelRoundTrip(t *testing.T) {
 	in := &InsertSubscriberDataArg{
 		IMSI: "214365",
 		LcsInformation: &LCSInformation{
-			GmlcList: GMLCList{{Address: "31622222222", Nature: 0x10, Plan: 0x01}},
+			GmlcList: GMLCList{{Digits: "31622222222", Nature: 0x10, Plan: 0x01}},
 		},
 		SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{
 			GprsCSI: &GPRSCSI{

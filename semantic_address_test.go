@@ -118,7 +118,7 @@ func semAddressCases() []semAddressCase {
 		}, semParse(ParseUpdateGprsLocation), ErrUpdateGprsLocationMissingSgsnNumber},
 		{"UpdateGprsLocationRes hlr-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.UpdateGprsLocationRes{HlrNumber: a}
-		}, semParse(ParseUpdateGprsLocationRes), ErrUpdateGprsLocationResMissingHLRNumber},
+		}, semParse(ParseUpdateGprsLocationRes), ErrUpdateGprsLocationResMissingHlrNumber},
 		{"GPRS-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
 			w, err := convertInsertSubscriberDataArgToWire(&InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{GprsCSI: &GPRSCSI{GprsCamelTDPDataList: GPRSCamelTDPDataList{makeGPRSCamelTDPData()}}}})
 			if err != nil {
@@ -181,7 +181,7 @@ func semAddressCases() []semAddressCase {
 		}, semParse(ParseUpdateLocation), ErrUpdateLocationMissingVlrNumber},
 		{"UpdateLocationRes hlr-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.UpdateLocationRes{HlrNumber: a}
-		}, semParse(ParseUpdateLocationRes), ErrUpdateLocationResMissingHLRNumber},
+		}, semParse(ParseUpdateLocationRes), ErrUpdateLocationResMissingHlrNumber},
 		{"AnyTimeInterrogation gsmSCF-Address", func(_ *testing.T, a []byte) semWire {
 			v := struct{}{}
 			return &gsm_map.AnyTimeInterrogationArg{
@@ -242,7 +242,7 @@ func TestMarshalMissingMandatoryAddress(t *testing.T) {
 		msg  interface{ Marshal() ([]byte, error) }
 		want error
 	}{
-		{"UpdateLocationRes HLRNumber", &UpdateLocationRes{}, ErrUpdateLocationResMissingHLRNumber},
+		{"UpdateLocationRes HlrNumber", &UpdateLocationRes{}, ErrUpdateLocationResMissingHlrNumber},
 		{"SriSmResp NetworkNodeNumber", &SriSmResp{IMSI: "001010123456789"}, ErrSriSmRespMissingNetworkNodeNumber},
 		{"AnyTimeInterrogation GsmSCFAddress", &AnyTimeInterrogation{
 			SubscriberIdentity: SubscriberIdentity{IMSI: "001010123456789"},
@@ -258,7 +258,7 @@ func TestMarshalMissingMandatoryAddress(t *testing.T) {
 			return v
 		}(), ErrLCSLocationInfoNetworkNodeNumberEmpty},
 		{"UpdateGprsLocation SgsnNumber", &UpdateGprsLocation{IMSI: "001010123456789", SGSNAddress: "192.0.2.1"}, ErrUpdateGprsLocationMissingSgsnNumber},
-		{"UpdateGprsLocationRes HLRNumber", &UpdateGprsLocationRes{}, ErrUpdateGprsLocationResMissingHLRNumber},
+		{"UpdateGprsLocationRes HlrNumber", &UpdateGprsLocationRes{}, ErrUpdateGprsLocationResMissingHlrNumber},
 		{"GPRS-CSI gsmSCF-Address", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{GprsCSI: &GPRSCSI{GprsCamelTDPDataList: GPRSCamelTDPDataList{{GprsTriggerDetectionPoint: GPRSTDPAttach}}}}}, ErrCamelMissingGsmSCFAddress},
 		{"MG-CSI gsmSCF-Address", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{MgCsi: &MGCSI{MobilityTriggers: []MMCode{MMCodeGPRSAttach}}}}, ErrCamelMissingGsmSCFAddress},
 	} {

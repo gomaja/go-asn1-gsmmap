@@ -150,15 +150,15 @@ func TestSriSmNaturePlanLossless(t *testing.T) {
 
 func TestUpdateLocationResNaturePlanLossless(t *testing.T) {
 	base := &UpdateLocationRes{
-		HLRNumber:       "31612345678",
-		HLRNumberNature: address.NatureInternational,
-		HLRNumberPlan:   address.PlanISDN,
+		HlrNumber:       "31612345678",
+		HlrNumberNature: address.NatureInternational,
+		HlrNumberPlan:   address.PlanISDN,
 	}
 	baseWire, err := base.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	addr, err := encodeAddressField(base.HLRNumber, address.NatureInternational, address.PlanISDN)
+	addr, err := encodeAddressField(base.HlrNumber, address.NatureInternational, address.PlanISDN)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,9 +169,9 @@ func TestUpdateLocationResNaturePlanLossless(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseUpdateLocationRes: %v", err)
 			}
-			if got.HLRNumber != base.HLRNumber || got.HLRNumberNature != c.nature || got.HLRNumberPlan != c.plan {
+			if got.HlrNumber != base.HlrNumber || got.HlrNumberNature != c.nature || got.HlrNumberPlan != c.plan {
 				t.Errorf("got %q 0x%02X 0x%02X, want %q 0x%02X 0x%02X",
-					got.HLRNumber, got.HLRNumberNature, got.HLRNumberPlan, base.HLRNumber, c.nature, c.plan)
+					got.HlrNumber, got.HlrNumberNature, got.HlrNumberPlan, base.HlrNumber, c.nature, c.plan)
 			}
 			assertMarshalReproduces(t, wire, got.Marshal)
 		})

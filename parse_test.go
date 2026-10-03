@@ -424,8 +424,8 @@ func TestParseUpdateLocationRes(t *testing.T) {
 				return
 			}
 
-			if updLocRes.HLRNumber != tc.expectedHLRNumber {
-				t.Errorf("HLRNumber mismatch: got %s, expected %s", updLocRes.HLRNumber, tc.expectedHLRNumber)
+			if updLocRes.HlrNumber != tc.expectedHLRNumber {
+				t.Errorf("HlrNumber mismatch: got %s, expected %s", updLocRes.HlrNumber, tc.expectedHLRNumber)
 			}
 
 			marshaledBytes, err := updLocRes.Marshal()
@@ -477,8 +477,8 @@ func TestParseUpdateGprsLocationRes(t *testing.T) {
 				return
 			}
 
-			if updGprsLocRes.HLRNumber != tc.expectedHLRNumber {
-				t.Errorf("HLRNumber mismatch: got %s, expected %s", updGprsLocRes.HLRNumber, tc.expectedHLRNumber)
+			if updGprsLocRes.HlrNumber != tc.expectedHLRNumber {
+				t.Errorf("HlrNumber mismatch: got %s, expected %s", updGprsLocRes.HlrNumber, tc.expectedHLRNumber)
 			}
 
 			marshaledBytes, err := updGprsLocRes.Marshal()
