@@ -483,6 +483,9 @@ func convertGMLCListToWire(list GMLCList) (*gsm_map.GMLCList, error) {
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
 		}
+		if !isISDNAddressStringSize(len(isdn)) {
+			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(isdn), ErrGMLCAddressInvalidSize)
+		}
 		out.Values[i] = isdn
 	}
 	return &out, nil
@@ -495,6 +498,9 @@ func convertWireToGMLCList(w *gsm_map.GMLCList) (GMLCList, error) {
 
 	out := make(GMLCList, len(w.Values))
 	for i, a := range w.Values {
+		if !isISDNAddressStringSize(len(a)) {
+			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(a), ErrGMLCAddressInvalidSize)
+		}
 		s, nature, plan, err := decodeAddressField(a)
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)

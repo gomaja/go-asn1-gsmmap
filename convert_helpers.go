@@ -66,6 +66,19 @@ func decodeAddressWithDigits(encoded []byte, empty error) (digits string, nature
 	return digits, nature, plan, nil
 }
 
+// maxISDNAddressLength is maxISDN-AddressLength, the upper bound of
+// ISDN-AddressString SIZE (1..maxISDN-AddressLength) (3GPP TS 29.002 V19.1.0
+// §17.7.8).
+const maxISDNAddressLength = 9
+
+// isISDNAddressStringSize reports whether an ISDN-AddressString of n octets
+// fits SIZE (1..9). The codec checks it for a field, but not for the element
+// of a SEQUENCE OF.
+// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+func isISDNAddressStringSize(n int) bool {
+	return n >= 1 && n <= maxISDNAddressLength
+}
+
 // boolToNullPtr converts a Go bool into the ASN.1 NULL pointer convention
 // used by go-asn1: nil means "absent", non-nil means "present".
 func boolToNullPtr(b bool) *struct{} {

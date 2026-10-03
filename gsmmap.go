@@ -841,7 +841,9 @@ const (
 
 // DestinationNumberCriteria per 3GPP TS 29.002.
 // At least one of DestinationNumberList or DestinationNumberLengthList must
-// be present when this criteria SEQUENCE is set.
+// be present when this criteria SEQUENCE is set. Each DestinationNumberList
+// entry is an ISDN-AddressString of 1..9 octets, at most 16 digits; Marshal
+// and Parse reject a longer one (ErrDestinationNumberInvalidSize).
 type DestinationNumberCriteria struct {
 	MatchType                   MatchType    // mandatory
 	DestinationNumberList       []ISDNNumber // [1] list of destination numbers
@@ -2310,7 +2312,9 @@ type GMLCAddress struct {
 }
 
 // GMLCList (SEQUENCE SIZE 1..5 OF ISDN-AddressString) per TS 29.002
-// MAP-MS-DataTypes.asn:1503.
+// MAP-MS-DataTypes.asn:1503. Each entry is an ISDN-AddressString of 1..9
+// octets, at most 16 digits; Marshal and Parse reject a longer one
+// (ErrGMLCAddressInvalidSize).
 type GMLCList []GMLCAddress
 
 // LCSInformation (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1490.
@@ -3744,6 +3748,8 @@ var (
 	ErrCamelMissingDestinationNumber         = errors.New("camel: DestinationNumberList entry must have non-empty Digits")
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+	ErrDestinationNumberInvalidSize = errors.New("camel: each DestinationNumberList entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrCamelInvalidMobilityTriggerOctet     = errors.New("camel: each MobilityTriggers entry must be exactly 1 octet")
 	ErrCamelInvalidSMSTriggerDetectionPoint = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) in an MO-SMS-CSI and sms-DeliveryRequest(2) in an MT-SMS-CSI or MT-smsCAMELTDP-Criteria; a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidDefaultSMSHandling       = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
@@ -3824,6 +3830,8 @@ var (
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrLCSClientInternalIDInvalid = errors.New("lcsClientInternalID: LCSClientInternalID must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.8 (extensible enum: unknown values preserved on decode)")
 	ErrGMLCAddressEmpty           = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+	ErrGMLCAddressInvalidSize = errors.New("gmlcList: each entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
 
 	ErrIsdArgNil = errors.New("insertSubscriberDataArg: argument must not be nil")
 	// ErrNetworkAccessModeInvalid: the encoder sends only the listed values;

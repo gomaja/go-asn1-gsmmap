@@ -271,6 +271,9 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
 			}
+			if !isISDNAddressStringSize(len(enc)) {
+				return nil, fmt.Errorf("DestinationNumberList[%d]: %d octets: %w", i, len(enc), ErrDestinationNumberInvalidSize)
+			}
 			list.Values[i] = enc
 		}
 		out.DestinationNumberList = &list
@@ -301,6 +304,11 @@ func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria
 	if w.DestinationNumberList != nil && len(w.DestinationNumberList.Values) > 0 {
 		list := make([]ISDNNumber, len(w.DestinationNumberList.Values))
 		for i, n := range w.DestinationNumberList.Values {
+			// SIZE (1..9) is the ISDN-AddressString type, not the format of
+			// the number that §17.7.1 tells the receiver not to check.
+			if !isISDNAddressStringSize(len(n)) {
+				return nil, fmt.Errorf("DestinationNumberList[%d]: %d octets: %w", i, len(n), ErrDestinationNumberInvalidSize)
+			}
 			digits, nature, plan, err := decodeAddressField(n)
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
