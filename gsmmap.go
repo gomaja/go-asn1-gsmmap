@@ -2590,7 +2590,9 @@ type SupportedGADShapes struct {
 }
 
 // LCSPriority (OCTET STRING SIZE 1) per TS 29.002 MAP-LCS-DataTypes.asn:232.
-// Per spec: 0 = highest, 1 = normal, all other values treated as 1.
+// Per spec: 0 = highest, 1 = normal, all other values treated as 1
+// (3GPP TS 29.002 V19.1.0 §17.7.13). Marshal sends only {0x00} or {0x01}
+// (ErrLCSPriorityInvalid); Parse decodes any other value as {0x01}.
 type LCSPriority = HexBytes
 
 // LCSReferenceNumber (OCTET STRING SIZE 1) per TS 29.002
@@ -3961,6 +3963,10 @@ var (
 	ErrHorizontalAccuracyReservedBit = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:250 (only the low 7 bits encode the uncertainty code per TS 23.032)")
 	ErrVerticalAccuracyReservedBit   = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:256 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")
 	ErrLCSClientIDDialedByMSEmpty    = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
+	// ErrLCSPriorityInvalid: the encoder sends only 0 (highest) or 1
+	// (normal); the decoder treats any other value as 1 per 3GPP TS 29.002
+	// V19.1.0 §17.7.13 LCS-Priority.
+	ErrLCSPriorityInvalid = errors.New("lcsPriority: must be 0 (highest priority) or 1 (normal priority); a receiver treats all other values as 1 per 3GPP TS 29.002 V19.1.0 §17.7.13")
 
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrAreaTypeInvalid = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
