@@ -43,7 +43,7 @@ var (
 	// decode, are empty: USSD-String is SIZE (1..maxUSSD-StringLength).
 	ErrUSSDTextEmpty = errors.New("ussd: empty text")
 	// ErrAlertingPatternReserved is returned when marshalling an
-	// AlertingPattern that is not one of the seven values 3GPP TS 29.002
+	// AlertingPattern that is not one of the eight values 3GPP TS 29.002
 	// V19.1.0 §17.7.8 defines.
 	ErrAlertingPatternReserved = errors.New("alertingPattern: reserved value")
 	// ErrUSSDMSISDNDecodedEmpty is returned when a wire MSISDN is present but
@@ -241,7 +241,7 @@ func (d USSDDataCodingScheme) Encode(text string) ([]byte, error) {
 // category) and bits 2..1 the type of alerting.
 type AlertingPattern uint8
 
-// The seven values 3GPP TS 29.002 V19.1.0 §17.7.8 defines. All other values
+// The eight values 3GPP TS 29.002 V19.1.0 §17.7.8 defines. All other values
 // are reserved.
 const (
 	AlertingLevel0    AlertingPattern = 0x00
@@ -251,6 +251,7 @@ const (
 	AlertingCategory2 AlertingPattern = 0x05
 	AlertingCategory3 AlertingPattern = 0x06
 	AlertingCategory4 AlertingPattern = 0x07
+	AlertingCategory5 AlertingPattern = 0x08
 )
 
 // String returns the ASN.1 value name of p from 3GPP TS 29.002 V19.1.0
@@ -272,6 +273,8 @@ func (p AlertingPattern) String() string {
 		return "alertingCategory-3"
 	case AlertingCategory4:
 		return "alertingCategory-4"
+	case AlertingCategory5:
+		return "alertingCategory-5"
 	default:
 		return fmt.Sprintf("reserved(0x%02X)", uint8(p))
 	}

@@ -33,8 +33,9 @@ func TestAlertingPatternString(t *testing.T) {
 		{AlertingCategory2, "alertingCategory-2"},
 		{AlertingCategory3, "alertingCategory-3"},
 		{AlertingCategory4, "alertingCategory-4"},
+		{AlertingCategory5, "alertingCategory-5"},
 		{0x03, "reserved(0x03)"},
-		{0x08, "reserved(0x08)"},
+		{0x09, "reserved(0x09)"},
 		{0xFF, "reserved(0xFF)"},
 	}
 	for _, tc := range cases {
@@ -49,6 +50,7 @@ func TestAlertingPatternValues(t *testing.T) {
 	want := map[AlertingPattern]uint8{
 		AlertingLevel0: 0x00, AlertingLevel1: 0x01, AlertingLevel2: 0x02,
 		AlertingCategory1: 0x04, AlertingCategory2: 0x05, AlertingCategory3: 0x06, AlertingCategory4: 0x07,
+		AlertingCategory5: 0x08,
 	}
 	for p, v := range want {
 		if uint8(p) != v {
@@ -402,7 +404,7 @@ func TestUSSDDataCodingSchemeDecodeNonBMP(t *testing.T) {
 }
 
 func ussdAllPatterns() []AlertingPattern {
-	return []AlertingPattern{AlertingLevel0, AlertingLevel1, AlertingLevel2, AlertingCategory1, AlertingCategory2, AlertingCategory3, AlertingCategory4}
+	return []AlertingPattern{AlertingLevel0, AlertingLevel1, AlertingLevel2, AlertingCategory1, AlertingCategory2, AlertingCategory3, AlertingCategory4, AlertingCategory5}
 }
 
 func ussdText(t *testing.T, d USSDDataCodingScheme, text string) HexBytes {
@@ -555,13 +557,45 @@ func TestUSSDNilReceivers(t *testing.T) {
 }
 
 func TestUSSDArgMarshalReservedAlertingPattern(t *testing.T) {
-	for _, v := range []AlertingPattern{0x03, 0x08, 0x0F, 0x10, 0x80, 0xFF} {
+	for _, v := range []AlertingPattern{0x03, 0x09, 0x0F, 0x10, 0x80, 0xFF} {
 		v := v
 		a := &USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: []byte{0x31}, AlertingPattern: &v}
 		_, err := a.Marshal()
 		if !errors.Is(err, ErrAlertingPatternReserved) {
 			t.Errorf("0x%02X: err = %v, want ErrAlertingPatternReserved", uint8(v), err)
 		}
+	}
+}
+
+// 3GPP TS 29.002 V19.1.0 §17.7.8: "alertingCategory-5 AlertingPattern ::=
+// '00001000'B". The octet 0x08 reaches the wire as given and parses back.
+func TestUSSDArgAlertingCategory5(t *testing.T) {
+	ap := AlertingCategory5
+	in := &USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: []byte{0x31}, AlertingPattern: &ap}
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	var w gsm_map.USSDArg
+	if err := w.UnmarshalBER(data); err != nil {
+		t.Fatalf("UnmarshalBER: %v", err)
+	}
+	if w.AlertingPattern == nil || !bytes.Equal(*w.AlertingPattern, []byte{0x08}) {
+		t.Fatalf("wire alertingPattern = %x, want 08", w.AlertingPattern)
+	}
+	got, err := ParseUSSDArg(data)
+	if err != nil {
+		t.Fatalf("ParseUSSDArg: %v", err)
+	}
+	if diff := cmp.Diff(in, got); diff != "" {
+		t.Errorf("round trip mismatch (-want +got):\n%s", diff)
+	}
+	again, err := got.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal of the parsed value: %v", err)
+	}
+	if !bytes.Equal(again, data) {
+		t.Errorf("re-marshalled %x, want %x", again, data)
 	}
 }
 
@@ -584,7 +618,7 @@ func ussdWireArg(t *testing.T, w *gsm_map.USSDArg) []byte {
 
 func TestParseUSSDArgLenientAlertingPattern(t *testing.T) {
 	// Decode keeps any single octet; Marshal is strict.
-	for _, v := range []byte{0x03, 0x08, 0xFF} {
+	for _, v := range []byte{0x03, 0x09, 0xFF} {
 		ap := gsm_map.AlertingPattern{v}
 		data := ussdWireArg(t, &gsm_map.USSDArg{UssdDataCodingScheme: []byte{0x0F}, UssdString: []byte{0x31}, AlertingPattern: &ap})
 		got, err := ParseUSSDArg(data)
