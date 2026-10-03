@@ -930,10 +930,13 @@ type DPAnalysedInfoCriterium struct {
 // segmented, then the first segment shall contain dp-AnalysedInfoCriteriaList
 // and camelCapabilityHandling. Subsequent segments shall not contain
 // camelCapabilityHandling, but may contain dp-AnalysedInfoCriteriaList." A
-// message may hold any segment, so Marshal and Parse enforce neither: a nil
-// list and a nil CamelCapabilityHandling are absent on the wire and back.
-// The presence rules apply to the reassembled D-CSI and are the caller's to
-// check.
+// message may hold any segment, so a nil list and a nil
+// CamelCapabilityHandling are absent on the wire and back, and the presence
+// rules of the reassembled D-CSI are the caller's to check. Only an
+// unsegmented D-CSI or its first segment carries CamelCapabilityHandling, and
+// both carry the list, so Marshal and Parse reject a D-CSI with
+// CamelCapabilityHandling and no list
+// (ErrCamelDCSICapabilityHandlingWithoutList).
 type DCSI struct {
 	DPAnalysedInfoCriteriaList []DPAnalysedInfoCriterium // [0] 1..10 entries; nil = absent
 	CamelCapabilityHandling    *int                      // [1] phase (1..4); nil = absent
@@ -3680,6 +3683,12 @@ var (
 	// or GPRS-CamelTDPDataList holds two entries with the same trigger
 	// detection point. On decode only the entries the receiver keeps count.
 	ErrCamelDuplicateTriggerDetectionPoint = errors.New("camel: a CAMEL TDP data list shall not contain more than one instance with the same trigger detection point per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	// ErrCamelDCSICapabilityHandlingWithoutList is returned when a D-CSI
+	// carries camelCapabilityHandling without dp-AnalysedInfoCriteriaList.
+	// Only an unsegmented D-CSI or its first segment carries
+	// camelCapabilityHandling, and both carry the list (3GPP TS 29.002
+	// V19.1.0 §17.7.1 D-CSI).
+	ErrCamelDCSICapabilityHandlingWithoutList = errors.New("camel: a D-CSI with CamelCapabilityHandling must carry a non-empty DPAnalysedInfoCriteriaList; only subsequent segments, which have no CamelCapabilityHandling, may omit it per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// Ext-SS-Info CHOICE / nested SEQUENCE validation
 	ErrExtSSInfoChoiceNoAlternative        = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")

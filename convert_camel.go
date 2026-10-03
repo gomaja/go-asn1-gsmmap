@@ -669,11 +669,20 @@ func convertWireToDPAnalysedInfoCriterium(w *gsm_map.DPAnalysedInfoCriterium) (D
 // CamelCapabilityHandling, in both directions. The presence rules apply to
 // the reassembled CSI and are the caller's to check. O-CSI and T-CSI "shall
 // not be segmented" and keep their rules.
+//
+// One D-CSI rule holds in every message: a D-CSI with
+// camelCapabilityHandling is unsegmented or the first segment, so it carries
+// dp-AnalysedInfoCriteriaList too (ErrCamelDCSICapabilityHandlingWithoutList).
+// SMS-CSI and GPRS-CSI do not keep camelCapabilityHandling out of subsequent
+// segments, so the same does not follow for them.
 
 // convertDCSIToWire encodes a D-CSI.
 func convertDCSIToWire(d *DCSI) (*gsm_map.DCSI, error) {
 	if err := validateCamelCapabilityHandling(d.CamelCapabilityHandling); err != nil {
 		return nil, err
+	}
+	if d.CamelCapabilityHandling != nil && len(d.DPAnalysedInfoCriteriaList) == 0 {
+		return nil, ErrCamelDCSICapabilityHandlingWithoutList
 	}
 	out := &gsm_map.DCSI{
 		NotificationToCSE: boolToNullPtr(d.NotificationToCSE),
@@ -699,6 +708,9 @@ func convertDCSIToWire(d *DCSI) (*gsm_map.DCSI, error) {
 
 // convertWireToDCSI decodes a D-CSI.
 func convertWireToDCSI(w *gsm_map.DCSI) (*DCSI, error) {
+	if w.CamelCapabilityHandling != nil && (w.DpAnalysedInfoCriteriaList == nil || len(w.DpAnalysedInfoCriteriaList.Values) == 0) {
+		return nil, ErrCamelDCSICapabilityHandlingWithoutList
+	}
 	out := &DCSI{
 		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
 		CsiActive:         nullPtrToBool(w.CsiActive),
