@@ -320,14 +320,10 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	// Apply the mapping in int64 space first so wire values that exceed
 	// platform int still satisfy the spec mandate on 32-bit builds.
 	if arg.IstSupportIndicator != nil {
-		v64 := int64(*arg.IstSupportIndicator)
-		if v64 < 0 {
-			return nil, fmt.Errorf("IstSupportIndicator cannot be negative: %d", v64)
+		v, err := istSupportIndicatorFromWire(*arg.IstSupportIndicator)
+		if err != nil {
+			return nil, fmt.Errorf("IstSupportIndicator: %w", err)
 		}
-		if v64 > 1 {
-			v64 = 1 // per TS 29.002 exception handling
-		}
-		v := int(v64) // post-mapping value is always 0 or 1
 		s.IstSupportIndicator = &v
 	}
 
@@ -704,19 +700,11 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	// UnavailabilityCause — ENUMERATED 1..6 (extensible) per TS 29.002.
 	// Spec exception: "Reception of other values than the ones listed shall
 	// result in the service being unavailable for that call." The protocol
-	// decode surfaces the raw value; treating unknown causes as
+	// decode surfaces the raw value, any value including a negative one
+	// (3GPP TS 29.002 V19.1.0 §17.1.4); treating unknown causes as
 	// service-unavailable is an application-layer concern.
 	if res.UnavailabilityCause != nil {
-		v64 := int64(*res.UnavailabilityCause)
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		if v64 < 0 {
-			return nil, fmt.Errorf("UnavailabilityCause cannot be negative: %d", v64)
-		}
-		v, err := narrowInt64(v64)
-		if err != nil {
-			return nil, fmt.Errorf("UnavailabilityCause: %w", err)
-		}
-		uc := UnavailabilityCause(v)
+		uc := *res.UnavailabilityCause
 		out.UnavailabilityCause = &uc
 	}
 

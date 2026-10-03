@@ -77,10 +77,10 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 	// MAP-MS-DataTypes.asn:1638-1640) says decoders MUST treat
 	//   - values 2..31  as continueTransaction (0)
 	//   - values >  31  as releaseTransaction (1)
+	// A negative value lies outside both ranges; the type is extensible,
+	// so it is kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal rejects it.
 	dgh := DefaultGPRSHandling(w.DefaultSessionHandling)
 	switch {
-	case dgh < 0:
-		return nil, fmt.Errorf("%w (got %d)", ErrDefaultGPRSHandlingInvalid, dgh)
 	case dgh >= 2 && dgh <= 31:
 		dgh = DefaultGPRSContinueTransaction
 	case dgh > 31:

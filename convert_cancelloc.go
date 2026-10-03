@@ -195,19 +195,19 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 
 	out := &CancelLocation{Identity: id}
 
+	// CancellationType and TypeOfUpdate are extensible ENUMERATEDs (3GPP TS
+	// 29.002 V19.1.0 §17.7.1) without exception handling, so an unlisted
+	// value is kept: "An entity supporting a version greater than 1 shall
+	// not reject an unsupported extension following "..." of that SEQUENCE
+	// or ENUMERATED data type." (§17.1.4). Marshal still sends only the
+	// listed values.
 	if arg.CancellationType != nil {
 		ct := *arg.CancellationType
-		if !isValidCancellationType(ct) {
-			return nil, ErrCancelLocInvalidCancellationType
-		}
 		out.CancellationType = &ct
 	}
 
 	if arg.TypeOfUpdate != nil {
 		t := *arg.TypeOfUpdate
-		if !isValidTypeOfUpdate(t) {
-			return nil, ErrCancelLocInvalidTypeOfUpdate
-		}
 		// TS 29.002: TypeOfUpdate only valid with updateProcedure/initialAttachProcedure.
 		if out.CancellationType == nil ||
 			(*out.CancellationType != CancellationTypeUpdateProcedure &&

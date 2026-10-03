@@ -807,7 +807,8 @@ const (
 // ENUMERATED { continueCall(0), releaseCall(1), ... }. Per 3GPP TS 29.002
 // V19.1.0 §17.7.1 exception handling, values 2..31 are treated as
 // continueCall and values > 31 as releaseCall on decode — the decoder maps
-// them accordingly and the encoder rejects anything outside 0..1.
+// them accordingly, keeps a negative value (the type is extensible, §17.1.4)
+// and the encoder rejects anything outside 0..1.
 type DefaultCallHandling = gsm_map.DefaultCallHandling
 
 const (
@@ -975,8 +976,9 @@ type MCSI struct {
 // ENUMERATED { continueTransaction(0), releaseTransaction(1), ... }.
 // Per spec exception handling, values 2..31 are treated as
 // continueTransaction and values > 31 as releaseTransaction on decode —
-// the decoder maps them accordingly and the encoder rejects anything
-// outside 0..1.
+// the decoder maps them accordingly, keeps a negative value (the type is
+// extensible, 3GPP TS 29.002 V19.1.0 §17.1.4) and the encoder rejects
+// anything outside 0..1.
 type DefaultSMSHandling = gsm_map.DefaultSMSHandling
 
 const (
@@ -3588,9 +3590,9 @@ var (
 	ErrCancelLocIdentityChoiceMultiple      = errors.New("cancelLocation: Identity CHOICE has multiple alternatives set")
 	ErrCancelLocIdentityMissingIMSI         = errors.New("cancelLocation: IMSIWithLMSI.IMSI is empty")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrCancelLocInvalidCancellationType = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2)")
+	ErrCancelLocInvalidCancellationType = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2) (extensible enum: unknown values preserved on decode)")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrCancelLocInvalidTypeOfUpdate       = errors.New("cancelLocation: TypeOfUpdate must be one of sgsn-change(0), mme-change(1)")
+	ErrCancelLocInvalidTypeOfUpdate       = errors.New("cancelLocation: TypeOfUpdate must be one of sgsn-change(0), mme-change(1) (extensible enum: unknown values preserved on decode)")
 	ErrCancelLocTypeOfUpdateNotApplicable = errors.New("cancelLocation: TypeOfUpdate is only valid when CancellationType is updateProcedure or initialAttachProcedure")
 	ErrCancelLocMtrfBothSet               = errors.New("cancelLocation: MtrfSupportedAndAuthorized and MtrfSupportedAndNotAuthorized are mutually exclusive")
 
@@ -3675,7 +3677,7 @@ var (
 	ErrGMLCRestrictionInvalid      = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
 	ErrNotificationToMSUserInvalid = errors.New("notificationToMSUser: must be 0..3 per TS 29.002 MAP-MS-DataTypes.asn:2035")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrLCSClientInternalIDInvalid = errors.New("plmnClientList: LCSClientInternalID must be 0..4 per TS 29.002 MAP-CommonDataTypes.asn")
+	ErrLCSClientInternalIDInvalid = errors.New("lcsClientInternalID: LCSClientInternalID must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.8 (extensible enum: unknown values preserved on decode)")
 	ErrGMLCAddressEmpty           = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
 
 	ErrIsdArgNil = errors.New("insertSubscriberDataArg: argument must not be nil")
