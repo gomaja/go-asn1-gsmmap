@@ -122,6 +122,9 @@ What that means for a consumer:
   `LCSCodeword` is a `USSDDataCodingScheme`, the type of every
   USSD-DataCodingScheme, so their strings decode with
   `DataCodingScheme.Decode`.
+- `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` are `[]MMCode` (were
+  `[]byte` and `[]HexBytes`), with `MMCode*` constants for the CS and PS
+  domain events.
 
 ## Usage
 

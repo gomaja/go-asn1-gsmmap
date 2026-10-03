@@ -95,7 +95,7 @@ func TestSSCSIValidation(t *testing.T) {
 
 func TestMCSIRoundTrip(t *testing.T) {
 	in := &MCSI{
-		MobilityTriggers: []byte{0x00, 0x01, 0x02}, // LU-same-VLR, LU-other-VLR, IMSI-Attach
+		MobilityTriggers: []MMCode{MMCodeLocationUpdateInSameVLR, MMCodeLocationUpdateToOtherVLR, MMCodeIMSIAttach},
 		ServiceKey:       42,
 		GsmSCFAddress:    "31633333333",
 		GsmSCFNature:     16, GsmSCFPlan: 1,
@@ -122,7 +122,7 @@ func TestMCSIValidation(t *testing.T) {
 		}
 	})
 	t.Run("tooManyTriggers", func(t *testing.T) {
-		big := make([]byte, 11)
+		big := make([]MMCode, 11) // MMCodeLocationUpdateInSameVLR
 		_, err := strictWire(convertMCSIToWire(&MCSI{MobilityTriggers: big, GsmSCFAddress: "1"}))
 		if !matchesConstraint(err, "mobilityTriggers", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
@@ -130,7 +130,7 @@ func TestMCSIValidation(t *testing.T) {
 	})
 	t.Run("serviceKeyOutOfRange", func(t *testing.T) {
 		_, err := strictWire(convertMCSIToWire(&MCSI{
-			MobilityTriggers: []byte{0x00},
+			MobilityTriggers: []MMCode{MMCodeLocationUpdateInSameVLR},
 			ServiceKey:       -1,
 			GsmSCFAddress:    "1",
 		}))
@@ -139,7 +139,7 @@ func TestMCSIValidation(t *testing.T) {
 		}
 	})
 	t.Run("missingGsmSCF", func(t *testing.T) {
-		_, err := strictWire(convertMCSIToWire(&MCSI{MobilityTriggers: []byte{0x00}}))
+		_, err := strictWire(convertMCSIToWire(&MCSI{MobilityTriggers: []MMCode{MMCodeLocationUpdateInSameVLR}}))
 		if !errors.Is(err, ErrCamelMissingGsmSCFAddress) {
 			t.Errorf("want ErrCamelMissingGsmSCFAddress, got %v", err)
 		}
@@ -358,7 +358,7 @@ func TestVlrCamelSubscriptionInfoFullStressRoundTrip(t *testing.T) {
 		},
 		TifCSI: true,
 		MCSI: &MCSI{
-			MobilityTriggers: []byte{0x00, 0x02},
+			MobilityTriggers: []MMCode{MMCodeLocationUpdateInSameVLR, MMCodeIMSIAttach},
 			ServiceKey:       7,
 			GsmSCFAddress:    "31633333333",
 			GsmSCFNature:     16, GsmSCFPlan: 1,

@@ -192,10 +192,10 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 
 	mt := gsm_map.MobilityTriggers{Values: make([]gsm_map.MMCode, len(m.MobilityTriggers))}
 	for i, c := range m.MobilityTriggers {
-		if len(c) != 1 {
-			return nil, fmt.Errorf("MobilityTriggers[%d]: %w (got %d)", i, ErrMMCodeInvalidSize, len(c))
+		if !isPSMMCode(c) {
+			return nil, fmt.Errorf("MGCSI.MobilityTriggers[%d]=0x%02x: %w", i, byte(c), ErrMGCSIMMCodeInvalid)
 		}
-		mt.Values[i] = gsm_map.MMCode(c)
+		mt.Values[i] = gsm_map.MMCode{byte(c)}
 	}
 	if m.GsmSCFAddress == "" {
 		return nil, fmt.Errorf("MGCSI.GsmSCFAddress: mandatory field must not be empty on encode")
@@ -214,21 +214,20 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 	}, nil
 }
 
+// convertWireToMGCSI decodes an MG-CSI received by the SGSN. It returns nil
+// when the receiver ignores every MM-Code (mmCodesFromWire): an MG-CSI arms
+// its events only through MobilityTriggers, SIZE (1..10), so with none left
+// the receiver holds no MG-CSI.
 func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 	if w == nil {
 		return nil, nil
 	}
-	triggers := w.MobilityTriggers
-	if triggers == nil {
-		triggers = &gsm_map.MobilityTriggers{}
+	mt, err := mmCodesFromWire("MGCSI.MobilityTriggers", w.MobilityTriggers, isPSMMCode)
+	if err != nil {
+		return nil, err
 	}
-
-	mt := make([]HexBytes, len(triggers.Values))
-	for i, c := range triggers.Values {
-		if len(c) != 1 {
-			return nil, fmt.Errorf("MobilityTriggers[%d]: %w (got %d)", i, ErrMMCodeInvalidSize, len(c))
-		}
-		mt[i] = HexBytes(c)
+	if mt == nil {
+		return nil, nil
 	}
 
 	addr, nature, plan, err := decodeAddressField(w.GsmSCFAddress)

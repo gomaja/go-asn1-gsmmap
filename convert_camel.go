@@ -919,6 +919,42 @@ func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 	}, nil
 }
 
+// isCSMMCode reports whether c is a CS domain MM-Code, the events an M-CSI
+// arms at the VLR (3GPP TS 29.002 V19.1.0 §17.7.1 MM-Code).
+func isCSMMCode(c MMCode) bool {
+	return c >= MMCodeLocationUpdateInSameVLR && c <= MMCodeNetworkInitiatedIMSIDetach
+}
+
+// isPSMMCode reports whether c is a PS domain MM-Code, the events an MG-CSI
+// arms at the SGSN (3GPP TS 29.002 V19.1.0 §17.7.1 MM-Code).
+func isPSMMCode(c MMCode) bool {
+	return c >= MMCodeRouteingAreaUpdateInSameSGSN && c <= MMCodeNetworkInitiatedTransferToMSNotReachableForPaging
+}
+
+// mmCodesFromWire decodes the MobilityTriggers of an M-CSI or MG-CSI,
+// keeping the MM-Codes listed for the receiving domain. 3GPP TS 29.002
+// V19.1.0 §17.7.1 MM-Code: "If the MSC receives any other MM-code than the
+// ones listed above for the CS domain, then the MSC shall ignore that
+// MM-code. If the SGSN receives any other MM-code than the ones listed above
+// for the PS domain, then the SGSN shall ignore that MM-code." It returns
+// nil when none is left.
+func mmCodesFromWire(field string, w *gsm_map.MobilityTriggers, listed func(MMCode) bool) ([]MMCode, error) {
+	if w == nil {
+		return nil, nil
+	}
+	var out []MMCode
+	for i, mm := range w.Values {
+		// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+		if len(mm) != 1 {
+			return nil, fmt.Errorf("%s[%d]: %w (got %d)", field, i, ErrMMCodeInvalidSize, len(mm))
+		}
+		if c := MMCode(mm[0]); listed(c) {
+			out = append(out, c)
+		}
+	}
+	return out, nil
+}
+
 func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
 	if m.GsmSCFAddress == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
@@ -928,8 +964,11 @@ func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
 		return nil, fmt.Errorf("encoding M-CSI.GsmSCFAddress: %w", err)
 	}
 	triggers := gsm_map.MobilityTriggers{Values: make([]gsm_map.MMCode, len(m.MobilityTriggers))}
-	for i, b := range m.MobilityTriggers {
-		triggers.Values[i] = gsm_map.MMCode{b}
+	for i, c := range m.MobilityTriggers {
+		if !isCSMMCode(c) {
+			return nil, fmt.Errorf("M-CSI.MobilityTriggers[%d]=0x%02x: %w", i, byte(c), ErrMCSIMMCodeInvalid)
+		}
+		triggers.Values[i] = gsm_map.MMCode{byte(c)}
 	}
 	return &gsm_map.MCSI{
 		MobilityTriggers:  &triggers,
@@ -940,6 +979,10 @@ func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
 	}, nil
 }
 
+// convertWireToMCSI decodes an M-CSI received by the VLR. It returns nil
+// when the receiver ignores every MM-Code: an M-CSI arms its events only
+// through MobilityTriggers, SIZE (1..10), so with none left the receiver
+// holds no M-CSI.
 func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 	sk := w.ServiceKey
 	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
@@ -949,12 +992,12 @@ func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 	if digits == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	triggers := make([]byte, len(w.MobilityTriggers.Values))
-	for i, mm := range w.MobilityTriggers.Values {
-		if len(mm) != 1 {
-			return nil, fmt.Errorf("M-CSI.MobilityTriggers[%d]: %w", i, ErrCamelInvalidMobilityTriggerOctet)
-		}
-		triggers[i] = mm[0]
+	triggers, err := mmCodesFromWire("M-CSI.MobilityTriggers", w.MobilityTriggers, isCSMMCode)
+	if err != nil {
+		return nil, err
+	}
+	if triggers == nil {
+		return nil, nil
 	}
 	return &MCSI{
 		MobilityTriggers:  triggers,

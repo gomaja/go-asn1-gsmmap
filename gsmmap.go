@@ -991,12 +991,45 @@ type SSCSI struct {
 	CsiActive         bool // [1] NULL (ATSI/ATM/NSDC only)
 }
 
+// MMCode is an MM-Code, OCTET STRING (SIZE (1)), naming a Mobility
+// Management event (3GPP TS 29.002 V19.1.0 §17.7.1). "If the MSC receives
+// any other MM-code than the ones listed above for the CS domain, then the
+// MSC shall ignore that MM-code. If the SGSN receives any other MM-code than
+// the ones listed above for the PS domain, then the SGSN shall ignore that
+// MM-code." An M-CSI goes to the VLR and carries the CS domain codes; an
+// MG-CSI goes to the SGSN and carries the PS domain codes. Marshal sends
+// only those (ErrMCSIMMCodeInvalid, ErrMGCSIMMCodeInvalid) and Parse drops
+// any other. The CSI arms its events only through MobilityTriggers, so one
+// left with no MM-Code decodes as absent.
+type MMCode byte
+
+// CS domain MM-Codes, for an M-CSI.
+const (
+	MMCodeLocationUpdateInSameVLR    MMCode = 0x00
+	MMCodeLocationUpdateToOtherVLR   MMCode = 0x01
+	MMCodeIMSIAttach                 MMCode = 0x02
+	MMCodeMSInitiatedIMSIDetach      MMCode = 0x03
+	MMCodeNetworkInitiatedIMSIDetach MMCode = 0x04
+)
+
+// PS domain MM-Codes, for an MG-CSI.
+const (
+	MMCodeRouteingAreaUpdateInSameSGSN                      MMCode = 0x80
+	MMCodeRouteingAreaUpdateToOtherSGSNUpdateFromNewSGSN    MMCode = 0x81
+	MMCodeRouteingAreaUpdateToOtherSGSNDisconnectByDetach   MMCode = 0x82
+	MMCodeGPRSAttach                                        MMCode = 0x83
+	MMCodeMSInitiatedGPRSDetach                             MMCode = 0x84
+	MMCodeNetworkInitiatedGPRSDetach                        MMCode = 0x85
+	MMCodeNetworkInitiatedTransferToMSNotReachableForPaging MMCode = 0x86
+)
+
 // MCSI (M-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2517.
-// Mobility-events CAMEL Subscription Info.
+// Mobility-events CAMEL Subscription Info. MobilityTriggers carries CS domain
+// MM-Codes only (see MMCode).
 type MCSI struct {
-	MobilityTriggers  []byte // mandatory 1..10 MM-Code octets (1 byte each)
-	ServiceKey        int64  // mandatory 0..2147483647
-	GsmSCFAddress     string // [0] mandatory ISDN-AddressString
+	MobilityTriggers  []MMCode // mandatory 1..10 CS domain MM-Codes
+	ServiceKey        int64    // mandatory 0..2147483647
+	GsmSCFAddress     string   // [0] mandatory ISDN-AddressString
 	GsmSCFNature      uint8
 	GsmSCFPlan        uint8
 	NotificationToCSE bool // [2] NULL (ATSI/ATM/NSDC only)
@@ -3433,11 +3466,11 @@ type GPRSCSI struct {
 }
 
 // MGCSI (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2528.
-// MobilityTriggers SIZE 1..10, each entry MM-Code SIZE 1.
+// MobilityTriggers SIZE 1..10, PS domain MM-Codes only (see MMCode).
 type MGCSI struct {
-	MobilityTriggers    []HexBytes // mandatory, 1..10 entries; each MM-Code SIZE 1
-	ServiceKey          int64      // mandatory, 0..2147483647 per CAMEL convention
-	GsmSCFAddress       string     // [0] mandatory ISDN-AddressString digits
+	MobilityTriggers    []MMCode // mandatory, 1..10 PS domain MM-Codes
+	ServiceKey          int64    // mandatory, 0..2147483647 per CAMEL convention
+	GsmSCFAddress       string   // [0] mandatory ISDN-AddressString digits
 	GsmSCFAddressNature uint8
 	GsmSCFAddressPlan   uint8
 	NotificationToCSE   bool // [2] optional NULL — true when present
@@ -3768,9 +3801,7 @@ var (
 	ErrCamelMissingDestinationNumber         = errors.New("camel: DestinationNumberList entry must have non-empty Digits")
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrDestinationNumberInvalidSize = errors.New("camel: each DestinationNumberList entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrCamelInvalidMobilityTriggerOctet     = errors.New("camel: each MobilityTriggers entry must be exactly 1 octet")
+	ErrDestinationNumberInvalidSize         = errors.New("camel: each DestinationNumberList entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
 	ErrCamelInvalidSMSTriggerDetectionPoint = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) in an MO-SMS-CSI and sms-DeliveryRequest(2) in an MT-SMS-CSI or MT-smsCAMELTDP-Criteria; a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidDefaultSMSHandling       = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
 	ErrCamelInvalidMTSMSTPDUType            = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0) or sms-STATUS-REPORT(2); sms-SUBMIT-REPORT(1) is not used in CAMEL phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
@@ -3880,7 +3911,13 @@ var (
 	ErrGPRSTriggerDetectionPointInvalid  = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be attach(1), attachChangeOfPosition(2), pdp-ContextEstablishment(11), pdp-ContextEstablishmentAcknowledgement(12) or pdp-ContextChangeOfPosition(14); a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelCapabilityHandlingOutOfRange = errors.New("camel: CamelCapabilityHandling must be 1..4 (CAMEL phases 1 to 4) when set; the decoder treats received values above 4 as phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrMMCodeInvalidSize = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
+	ErrMMCodeInvalidSize = errors.New("mobilityTriggers: each MM-Code of an M-CSI or MG-CSI must be exactly 1 octet per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	// ErrMCSIMMCodeInvalid and ErrMGCSIMMCodeInvalid: an M-CSI, sent to the
+	// VLR, carries the CS domain MM-Codes and an MG-CSI, sent to the SGSN,
+	// the PS domain ones; the receiver ignores any other (3GPP TS 29.002
+	// V19.1.0 §17.7.1 MM-Code).
+	ErrMCSIMMCodeInvalid  = errors.New("mCSI: MobilityTriggers entry must be a CS domain MM-Code (0x00 to 0x04); the MSC ignores any other per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrMGCSIMMCodeInvalid = errors.New("mgCSI: MobilityTriggers entry must be a PS domain MM-Code (0x80 to 0x86); the SGSN ignores any other per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
 	ErrLocationEstimateTypeInvalid = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (a receiver rejects unknown values: ErrLocationEstimateTypeUnrecognized)")
