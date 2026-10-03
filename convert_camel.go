@@ -836,7 +836,7 @@ func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
 	if s.GsmSCFAddress == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	addr, err := encodeAddressField(s.GsmSCFAddress, s.GsmSCFNature, s.GsmSCFPlan)
+	addr, err := encodeAddressField(s.GsmSCFAddress, s.GsmSCFAddressNature, s.GsmSCFAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding SS-CSI.GsmSCFAddress: %w", err)
 	}
@@ -873,12 +873,12 @@ func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 		ssList[i] = SsCode(b[0])
 	}
 	return &SSCSI{
-		SsEventList:       ssList,
-		GsmSCFAddress:     digits,
-		GsmSCFNature:      nat,
-		GsmSCFPlan:        plan,
-		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
-		CsiActive:         nullPtrToBool(w.CsiActive),
+		SsEventList:         ssList,
+		GsmSCFAddress:       digits,
+		GsmSCFAddressNature: nat,
+		GsmSCFAddressPlan:   plan,
+		NotificationToCSE:   nullPtrToBool(w.NotificationToCSE),
+		CsiActive:           nullPtrToBool(w.CsiActive),
 	}, nil
 }
 
@@ -886,7 +886,7 @@ func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
 	if m.GsmSCFAddress == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	addr, err := encodeAddressField(m.GsmSCFAddress, m.GsmSCFNature, m.GsmSCFPlan)
+	addr, err := encodeAddressField(m.GsmSCFAddress, m.GsmSCFAddressNature, m.GsmSCFAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding M-CSI.GsmSCFAddress: %w", err)
 	}
@@ -920,13 +920,13 @@ func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 		triggers[i] = mm[0]
 	}
 	return &MCSI{
-		MobilityTriggers:  triggers,
-		ServiceKey:        sk,
-		GsmSCFAddress:     digits,
-		GsmSCFNature:      nat,
-		GsmSCFPlan:        plan,
-		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
-		CsiActive:         nullPtrToBool(w.CsiActive),
+		MobilityTriggers:    triggers,
+		ServiceKey:          sk,
+		GsmSCFAddress:       digits,
+		GsmSCFAddressNature: nat,
+		GsmSCFAddressPlan:   plan,
+		NotificationToCSE:   nullPtrToBool(w.NotificationToCSE),
+		CsiActive:           nullPtrToBool(w.CsiActive),
 	}, nil
 }
 
@@ -996,7 +996,7 @@ func convertSMSCAMELTDPDataToWire(d *SMSCAMELTDPData, tdp SMSTriggerDetectionPoi
 	if !isValidDefaultSMSHandling(d.DefaultSMSHandling) {
 		return gsm_map.SMSCAMELTDPData{}, ErrCamelInvalidDefaultSMSHandling
 	}
-	addr, err := encodeAddressField(d.GsmSCFAddress, d.GsmSCFNature, d.GsmSCFPlan)
+	addr, err := encodeAddressField(d.GsmSCFAddress, d.GsmSCFAddressNature, d.GsmSCFAddressPlan)
 	if err != nil {
 		return gsm_map.SMSCAMELTDPData{}, fmt.Errorf("encoding SMS-CAMEL-TDP-Data.GsmSCFAddress: %w", err)
 	}
@@ -1043,8 +1043,8 @@ func convertWireToSMSCAMELTDPData(w *gsm_map.SMSCAMELTDPData, tdp SMSTriggerDete
 		SmsTriggerDetectionPoint: w.SmsTriggerDetectionPoint,
 		ServiceKey:               sk,
 		GsmSCFAddress:            digits,
-		GsmSCFNature:             nat,
-		GsmSCFPlan:               plan,
+		GsmSCFAddressNature:      nat,
+		GsmSCFAddressPlan:        plan,
 		DefaultSMSHandling:       dsh,
 	}, nil
 }

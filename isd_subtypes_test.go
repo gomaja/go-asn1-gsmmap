@@ -87,8 +87,8 @@ func TestMCSSInfo_DecodeRejectsMissingSsCode(t *testing.T) {
 
 func makeCSGEntry() CSGSubscriptionData {
 	return CSGSubscriptionData{
-		CsgId:          HexBytes{0x12, 0x34, 0x56, 0x60}, // 27-bit BIT STRING (4 octets)
-		CsgIdBitLength: 27,
+		CsgID:          HexBytes{0x12, 0x34, 0x56, 0x60}, // 27-bit BIT STRING (4 octets)
+		CsgIDBits:      27,
 		ExpirationDate: HexBytes{0x17, 0x0a, 0x01, 0x00}, // Time is SIZE (4), TS 29.002 V19.1.0 §17.7.8
 		LipaAllowedAPNList: []HexBytes{
 			{'a', 'p', 'n'}, // 3 octets, in 2..63 range
@@ -112,30 +112,23 @@ func TestCSGSubscriptionData_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestCSGSubscriptionData_BitLengthZeroRejected(t *testing.T) {
-	// Fix 5: silent coercion of CsgIdBitLength=0 → 27 has been removed
-	// because it caused encode/decode round-trip mutation.
-	in := makeCSGEntry()
-	in.CsgIdBitLength = 0
-	_, err := convertCSGSubscriptionDataToWire(&in)
-	if !errors.Is(err, ErrCSGIdInvalidSize) {
-		t.Fatalf("want ErrCSGIdInvalidSize for BitLength=0, got %v", err)
-	}
-}
-
-func TestCSGSubscriptionData_BadCsgId(t *testing.T) {
+func TestCSGSubscriptionData_BadCsgID(t *testing.T) {
 	cases := []struct {
 		name string
 		in   CSGSubscriptionData
 	}{
-		{"wrong octets", CSGSubscriptionData{CsgId: HexBytes{0x01, 0x02}, CsgIdBitLength: 27}},
-		{"wrong bits", CSGSubscriptionData{CsgId: HexBytes{0x01, 0x02, 0x03, 0x04}, CsgIdBitLength: 32}},
+		{"wrong octets", CSGSubscriptionData{CsgID: HexBytes{0x01, 0x02}, CsgIDBits: 27}},
+		{"wrong bits", CSGSubscriptionData{CsgID: HexBytes{0x01, 0x02, 0x03, 0x04}, CsgIDBits: 32}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := convertCSGSubscriptionDataToWire(&tc.in)
-			if !errors.Is(err, ErrCSGIdInvalidSize) {
-				t.Fatalf("want ErrCSGIdInvalidSize, got %v", err)
+			_, err := (&InsertSubscriberDataArg{CsgSubscriptionDataList: CSGSubscriptionDataList{tc.in}}).Marshal()
+			if tc.name == "wrong octets" {
+				if !errors.Is(err, ErrBitStringOctetsMismatch) {
+					t.Fatalf("want octet mismatch, got %v", err)
+				}
+			} else {
+				wantConstraintError(t, err, "csg-Id", "SIZE (27)")
 			}
 		})
 	}

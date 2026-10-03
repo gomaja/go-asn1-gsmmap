@@ -10,16 +10,13 @@ import (
 // --- UpdateLocation ---
 
 func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, error) {
-	// imsi, msc-Number, vlr-Number are all non-OPTIONAL in
-	// UpdateLocationArg per MAP-MS-DataTypes.asn:256-259. Reject empty
-	// caller input explicitly so malformed wire bytes never reach the peer.
-	if u.IMSI == "" {
-		return nil, ErrUpdateLocationMissingIMSI
-	}
-	if u.MSCNumber == "" {
+	// imsi, msc-Number and vlr-Number are mandatory in UpdateLocationArg
+	// (3GPP TS 29.002 V19.1.0 §17.7.1). An empty IMSI fails in
+	// encodeIdentityDigits with ErrIdentityEmpty.
+	if u.MscNumber == "" {
 		return nil, ErrUpdateLocationMissingMSCNumber
 	}
-	if u.VLRNumber == "" {
+	if u.VlrNumber == "" {
 		return nil, ErrUpdateLocationMissingVLRNumber
 	}
 
@@ -28,14 +25,14 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
 
-	mscNumber, err := encodeAddressField(u.MSCNumber, u.MSCNature, u.MSCPlan)
+	mscNumber, err := encodeAddressField(u.MscNumber, u.MscNumberNature, u.MscNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding MSCNumber: %w", err)
+		return nil, fmt.Errorf("encoding MscNumber: %w", err)
 	}
 
-	vlrNumber, err := encodeAddressField(u.VLRNumber, u.VLRNature, u.VLRPlan)
+	vlrNumber, err := encodeAddressField(u.VlrNumber, u.VlrNumberNature, u.VlrNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding VLRNumber: %w", err)
+		return nil, fmt.Errorf("encoding VlrNumber: %w", err)
 	}
 
 	arg := &gsm_map.UpdateLocationArg{
@@ -165,22 +162,22 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 	msc, mscNature, mscPlan, err := decodeAddressWithDigits(arg.MscNumber, ErrUpdateLocationMissingMSCNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding MSCNumber: %w", err)
+		return nil, fmt.Errorf("decoding MscNumber: %w", err)
 	}
 
 	vlr, vlrNature, vlrPlan, err := decodeAddressWithDigits(arg.VlrNumber, ErrUpdateLocationMissingVLRNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding VLRNumber: %w", err)
+		return nil, fmt.Errorf("decoding VlrNumber: %w", err)
 	}
 
 	u := &UpdateLocation{
-		IMSI:      imsi,
-		MSCNumber: msc,
-		MSCNature: mscNature,
-		MSCPlan:   mscPlan,
-		VLRNumber: vlr,
-		VLRNature: vlrNature,
-		VLRPlan:   vlrPlan,
+		IMSI:            imsi,
+		MscNumber:       msc,
+		MscNumberNature: mscNature,
+		MscNumberPlan:   mscPlan,
+		VlrNumber:       vlr,
+		VlrNumberNature: vlrNature,
+		VlrNumberPlan:   vlrPlan,
 	}
 
 	if arg.VlrCapability != nil {

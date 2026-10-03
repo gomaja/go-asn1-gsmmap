@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1/runtime"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -49,14 +48,14 @@ func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubsc
 	if c == nil {
 		return nil, nil
 	}
-	// CSG-Id is exactly 27 bits → ceil(27/8) = 4 octets. Caller must set
-	// the bit length explicitly; silent coercion of 0 has been removed
-	// to prevent encode/decode round-trip mutation (0 → 27).
-	if c.CsgIdBitLength != CSGIdBitLength || len(c.CsgId) != (CSGIdBitLength+7)/8 {
-		return nil, fmt.Errorf("%w (got %d octets, %d bits)", ErrCSGIdInvalidSize, len(c.CsgId), c.CsgIdBitLength)
+	// CSG-Id SIZE (27) is checked by the BER codec; bitStringToWire also
+	// enforces the octet count (3GPP TS 29.002 V19.1.0 §17.7.8, X.690 §8.6.2).
+	csgID, err := bitStringToWire("CSGSubscriptionData.CsgID", c.CsgID, c.CsgIDBits)
+	if err != nil {
+		return nil, err
 	}
 	out := &gsm_map.CSGSubscriptionData{
-		CsgId: runtime.BitString{Bytes: append([]byte(nil), c.CsgId...), BitLength: CSGIdBitLength},
+		CsgId: csgID,
 	}
 	if len(c.ExpirationDate) > 0 {
 		t := gsm_map.Time(c.ExpirationDate)
@@ -84,8 +83,8 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubsc
 	}
 
 	out := &CSGSubscriptionData{
-		CsgId:          HexBytes(append([]byte(nil), w.CsgId.Bytes...)),
-		CsgIdBitLength: w.CsgId.BitLength,
+		CsgID:     HexBytes(append([]byte(nil), w.CsgId.Bytes...)),
+		CsgIDBits: w.CsgId.BitLength,
 	}
 	if w.ExpirationDate != nil {
 		out.ExpirationDate = HexBytes(*w.ExpirationDate)
@@ -370,7 +369,7 @@ func convertResetIdListToWire(list ResetIdList) (*gsm_map.ResetIdList, error) {
 
 	out := gsm_map.ResetIdList{Values: make([]gsm_map.ResetId, len(list))}
 	for i, r := range list {
-		if len(r) < 1 || len(r) > MaxResetIdOctets {
+		if len(r) < 1 || len(r) > 4 {
 			return nil, fmt.Errorf("ResetIdList[%d]: %w (got %d)", i, ErrResetIdInvalidSize, len(r))
 		}
 		out.Values[i] = gsm_map.ResetId(r)
@@ -385,7 +384,7 @@ func convertWireToResetIdList(w *gsm_map.ResetIdList) (ResetIdList, error) {
 
 	out := make(ResetIdList, len(w.Values))
 	for i, r := range w.Values {
-		if len(r) < 1 || len(r) > MaxResetIdOctets {
+		if len(r) < 1 || len(r) > 4 {
 			return nil, fmt.Errorf("ResetIdList[%d]: %w (got %d)", i, ErrResetIdInvalidSize, len(r))
 		}
 		out[i] = HexBytes(r)

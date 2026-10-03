@@ -115,9 +115,9 @@ func TestMtFsmSmRpOaNaturePlanLossless(t *testing.T) {
 			if got.SmRpOa.ServiceCentreAddressOA == "" {
 				t.Fatalf("serviceCentreAddressOA not decoded: %+v", got.SmRpOa)
 			}
-			if got.SmRpOa.SCAOANature != c.nature || got.SmRpOa.SCAOAPlan != c.plan {
+			if got.SmRpOa.ServiceCentreAddressOANature != c.nature || got.SmRpOa.ServiceCentreAddressOAPlan != c.plan {
 				t.Errorf("got nature=0x%02X plan=0x%02X, want 0x%02X 0x%02X",
-					got.SmRpOa.SCAOANature, got.SmRpOa.SCAOAPlan, c.nature, c.plan)
+					got.SmRpOa.ServiceCentreAddressOANature, got.SmRpOa.ServiceCentreAddressOAPlan, c.nature, c.plan)
 			}
 			assertMarshalReproduces(t, wire, got.Marshal)
 		})
@@ -140,8 +140,8 @@ func TestSriSmNaturePlanLossless(t *testing.T) {
 			if got.MSISDNNature != c.nature || got.MSISDNPlan != c.plan {
 				t.Errorf("MSISDN nature=0x%02X plan=0x%02X, want 0x%02X 0x%02X", got.MSISDNNature, got.MSISDNPlan, c.nature, c.plan)
 			}
-			if got.SCANature != c.nature || got.SCAPlan != c.plan {
-				t.Errorf("SCA nature=0x%02X plan=0x%02X, want 0x%02X 0x%02X", got.SCANature, got.SCAPlan, c.nature, c.plan)
+			if got.ServiceCentreAddressNature != c.nature || got.ServiceCentreAddressPlan != c.plan {
+				t.Errorf("SCA nature=0x%02X plan=0x%02X, want 0x%02X 0x%02X", got.ServiceCentreAddressNature, got.ServiceCentreAddressPlan, c.nature, c.plan)
 			}
 			assertMarshalReproduces(t, wire, got.Marshal)
 		})

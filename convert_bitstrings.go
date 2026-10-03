@@ -420,11 +420,16 @@ func convertSupportedFeaturesToBitString(s *SupportedFeatures) runtime.BitString
 		s.GddInSGSN, s.SgsnCAMELCapability, s.PcscfRestoration, s.DedicatedCoreNetworks,
 		s.NonIPPDNTypeAPNs, s.NonIPPDPTypeAPNs, s.NrAsSecondaryRAT,
 	}
-	return packBits(bits, 26)
+	bs := packBits(bits, 26)
+	if s.BitLength > bs.BitLength {
+		bs.BitLength = s.BitLength
+		bs.Bytes = append(bs.Bytes, make([]byte, (s.BitLength+7)/8-len(bs.Bytes))...)
+	}
+	return bs
 }
 
 func convertBitStringToSupportedFeatures(bs runtime.BitString) *SupportedFeatures {
-	return &SupportedFeatures{
+	out := &SupportedFeatures{
 		OdbAllApn:                           bs.Has(0),
 		OdbHPLMNApn:                         bs.Has(1),
 		OdbVPLMNApn:                         bs.Has(2),
@@ -466,18 +471,49 @@ func convertBitStringToSupportedFeatures(bs runtime.BitString) *SupportedFeature
 		NonIPPDPTypeAPNs:                  bs.Has(38),
 		NrAsSecondaryRAT:                  bs.Has(39),
 	}
+	if bs.BitLength > convertSupportedFeaturesToBitString(out).BitLength {
+		out.BitLength = bs.BitLength
+	}
+	return out
 }
 
-// ExtSupportedFeatures: 1 named bit (SIZE 1..40) per MAP-MS-DataTypes.asn:687.
+// ExtSupportedFeatures: bit 0 is named; positions 1..39 are currently
+// unnamed but valid (3GPP TS 29.002 V19.1.0 §17.7.1, SIZE (1..40)).
 func convertExtSupportedFeaturesToBitString(e *ExtSupportedFeatures) runtime.BitString {
-	bits := []bool{e.UnlicensedSpectrumAsSecondaryRAT}
-	return packBits(bits, 1)
+	bits := make([]bool, len(e.UnknownBits)*8)
+	if len(bits) == 0 {
+		bits = make([]bool, 1)
+	}
+	bits[0] = e.UnlicensedSpectrumAsSecondaryRAT
+	for i := 1; i < len(bits); i++ {
+		bits[i] = e.UnknownBits[i/8]&(0x80>>uint(i%8)) != 0
+	}
+	bs := packBits(bits, 1)
+	if e.BitLength > bs.BitLength {
+		bs.BitLength = e.BitLength
+		bs.Bytes = append(bs.Bytes, make([]byte, (e.BitLength+7)/8-len(bs.Bytes))...)
+	}
+	return bs
 }
 
 func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedFeatures {
-	return &ExtSupportedFeatures{
+	out := &ExtSupportedFeatures{
 		UnlicensedSpectrumAsSecondaryRAT: bs.Has(0),
 	}
+	if len(bs.Bytes) > 0 {
+		out.UnknownBits = append(HexBytes(nil), bs.Bytes...)
+		out.UnknownBits[0] &^= 0x80
+		for len(out.UnknownBits) > 0 && out.UnknownBits[len(out.UnknownBits)-1] == 0 {
+			out.UnknownBits = out.UnknownBits[:len(out.UnknownBits)-1]
+		}
+		if len(out.UnknownBits) == 0 {
+			out.UnknownBits = nil
+		}
+	}
+	if bs.BitLength > convertExtSupportedFeaturesToBitString(out).BitLength {
+		out.BitLength = bs.BitLength
+	}
+	return out
 }
 
 // AdditionalSubscriptions: 3 named bits (SIZE 3..8) per MAP-MS-DataTypes.asn:2711.

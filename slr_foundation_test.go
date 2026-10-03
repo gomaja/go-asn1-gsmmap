@@ -87,7 +87,6 @@ func TestSLRSentinelErrors(t *testing.T) {
 	sentinels := []error{
 		ErrLCSEventInvalid,
 		ErrLCSLocationInfoNetworkNodeEmpty,
-		ErrLCSLocationInfoNetworkNodeDecodedEmpty,
 	}
 	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {

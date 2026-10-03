@@ -25,7 +25,7 @@ func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationAr
 		return nil, fmt.Errorf("AnyTimeInterrogation.RequestedInfo: %w", err)
 	}
 
-	scfAddr, err := encodeAddressField(ati.GsmSCFAddress, ati.GsmSCFNature, ati.GsmSCFPlan)
+	scfAddr, err := encodeAddressField(ati.GsmSCFAddress, ati.GsmSCFAddressNature, ati.GsmSCFAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding GsmSCFAddress: %w", err)
 	}
@@ -109,8 +109,8 @@ func convertArgToATI(arg *gsm_map.AnyTimeInterrogationArg) (*AnyTimeInterrogatio
 		return nil, fmt.Errorf("decoding GsmSCFAddress: %w", err)
 	}
 	ati.GsmSCFAddress = scf
-	ati.GsmSCFNature = scfNature
-	ati.GsmSCFPlan = scfPlan
+	ati.GsmSCFAddressNature = scfNature
+	ati.GsmSCFAddressPlan = scfPlan
 
 	return &ati, nil
 }

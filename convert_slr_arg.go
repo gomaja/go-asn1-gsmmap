@@ -118,8 +118,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	// [6] ageOfLocationEstimate
 	if a.AgeOfLocationEstimate != nil {
-		v := *a.AgeOfLocationEstimate
-		out.AgeOfLocationEstimate = &v
+		out.AgeOfLocationEstimate = intPtrTo64(a.AgeOfLocationEstimate)
 	}
 	// [7] slr-ArgExtensionContainer: opaque metadata; not surfaced.
 	// [8] add-LocationEstimate
@@ -345,8 +344,11 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.LocationEstimate = ExtGeographicalInformation(*w.LocationEstimate)
 	}
 	if w.AgeOfLocationEstimate != nil {
-		v := *w.AgeOfLocationEstimate
-		out.AgeOfLocationEstimate = &v
+		v, err := int64PtrTo(w.AgeOfLocationEstimate)
+		if err != nil {
+			return nil, fmt.Errorf("AgeOfLocationEstimate: %w", err)
+		}
+		out.AgeOfLocationEstimate = v
 	}
 	if w.AddLocationEstimate != nil {
 		out.AddLocationEstimate = AddGeographicalInformation(*w.AddLocationEstimate)

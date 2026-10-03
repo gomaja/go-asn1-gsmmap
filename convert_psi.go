@@ -8,19 +8,7 @@ import (
 
 // --- ProvideSubscriberInfo (opCode 70) ---
 
-func validateProvideSubscriberInfo(p *ProvideSubscriberInfo) error {
-	if p.IMSI == "" {
-		return ErrPsiMissingIMSI
-	}
-
-	return nil
-}
-
 func convertProvideSubscriberInfoToArg(p *ProvideSubscriberInfo) (*gsm_map.ProvideSubscriberInfoArg, error) {
-	if err := validateProvideSubscriberInfo(p); err != nil {
-		return nil, err
-	}
-
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, p.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)

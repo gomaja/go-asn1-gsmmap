@@ -232,7 +232,7 @@ func TestParseISTSupportIndicatorNegative(t *testing.T) {
 		}
 
 		uw, err := convertUpdateLocationToArg(&UpdateLocation{
-			IMSI: "001010123456789", MSCNumber: "31612345678", VLRNumber: "31612345678",
+			IMSI: "001010123456789", MscNumber: "31612345678", VlrNumber: "31612345678",
 			VlrCapability: &VlrCapability{},
 		})
 		if err != nil {

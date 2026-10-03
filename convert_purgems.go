@@ -11,10 +11,6 @@ import (
 // convertPurgeMSToArg converts the public PurgeMS into the wire-level
 // gsm_map.PurgeMSArg.
 func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
-	if p.IMSI == "" {
-		return nil, ErrPurgeMSMissingIMSI
-	}
-
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, p.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
@@ -25,20 +21,20 @@ func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
 	}
 
 	// [0] VLR-Number
-	if p.VLRNumber != "" {
-		encoded, err := encodeAddressField(p.VLRNumber, p.VLRNature, p.VLRPlan)
+	if p.VlrNumber != "" {
+		encoded, err := encodeAddressField(p.VlrNumber, p.VlrNumberNature, p.VlrNumberPlan)
 		if err != nil {
-			return nil, fmt.Errorf("encoding VLRNumber: %w", err)
+			return nil, fmt.Errorf("encoding VlrNumber: %w", err)
 		}
 		v := encoded
 		arg.VlrNumber = &v
 	}
 
 	// [1] SGSN-Number
-	if p.SGSNNumber != "" {
-		encoded, err := encodeAddressField(p.SGSNNumber, p.SGSNNature, p.SGSNPlan)
+	if p.SgsnNumber != "" {
+		encoded, err := encodeAddressField(p.SgsnNumber, p.SgsnNumberNature, p.SgsnNumberPlan)
 		if err != nil {
-			return nil, fmt.Errorf("encoding SGSNNumber: %w", err)
+			return nil, fmt.Errorf("encoding SgsnNumber: %w", err)
 		}
 		v := encoded
 		arg.SgsnNumber = &v
@@ -87,21 +83,21 @@ func convertArgToPurgeMS(arg *gsm_map.PurgeMSArg) (*PurgeMS, error) {
 	if arg.VlrNumber != nil {
 		digits, nature, plan, err := decodeAddressWithDigits(*arg.VlrNumber, ErrPurgeMSVLRNumberDecodedEmpty)
 		if err != nil {
-			return nil, fmt.Errorf("decoding VLRNumber: %w", err)
+			return nil, fmt.Errorf("decoding VlrNumber: %w", err)
 		}
-		out.VLRNumber = digits
-		out.VLRNature = nature
-		out.VLRPlan = plan
+		out.VlrNumber = digits
+		out.VlrNumberNature = nature
+		out.VlrNumberPlan = plan
 	}
 
 	if arg.SgsnNumber != nil {
 		digits, nature, plan, err := decodeAddressWithDigits(*arg.SgsnNumber, ErrPurgeMSSGSNNumberDecodedEmpty)
 		if err != nil {
-			return nil, fmt.Errorf("decoding SGSNNumber: %w", err)
+			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
-		out.SGSNNumber = digits
-		out.SGSNNature = nature
-		out.SGSNPlan = plan
+		out.SgsnNumber = digits
+		out.SgsnNumberNature = nature
+		out.SgsnNumberPlan = plan
 	}
 
 	if arg.LocationInformation != nil {

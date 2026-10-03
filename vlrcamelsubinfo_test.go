@@ -33,17 +33,17 @@ func TestSSCSIRoundTrip(t *testing.T) {
 		{
 			name: "minimal",
 			in: &SSCSI{
-				SsEventList:   []SsCode{0x31}, // ect
-				GsmSCFAddress: "31611111111",
-				GsmSCFNature:  16, GsmSCFPlan: 1,
+				SsEventList:         []SsCode{0x31}, // ect
+				GsmSCFAddress:       "31611111111",
+				GsmSCFAddressNature: 16, GsmSCFAddressPlan: 1,
 			},
 		},
 		{
 			name: "multipleEvents",
 			in: &SSCSI{
-				SsEventList:   []SsCode{0x31, 0x51, 0x24, 0x44}, // ect, multiPTY, cd, ccbs
-				GsmSCFAddress: "31622222222",
-				GsmSCFNature:  16, GsmSCFPlan: 1,
+				SsEventList:         []SsCode{0x31, 0x51, 0x24, 0x44}, // ect, multiPTY, cd, ccbs
+				GsmSCFAddress:       "31622222222",
+				GsmSCFAddressNature: 16, GsmSCFAddressPlan: 1,
 				NotificationToCSE: true,
 				CsiActive:         true,
 			},
@@ -92,10 +92,10 @@ func TestSSCSIValidation(t *testing.T) {
 
 func TestMCSIRoundTrip(t *testing.T) {
 	in := &MCSI{
-		MobilityTriggers: []byte{0x00, 0x01, 0x02}, // LU-same-VLR, LU-other-VLR, IMSI-Attach
-		ServiceKey:       42,
-		GsmSCFAddress:    "31633333333",
-		GsmSCFNature:     16, GsmSCFPlan: 1,
+		MobilityTriggers:    []byte{0x00, 0x01, 0x02}, // LU-same-VLR, LU-other-VLR, IMSI-Attach
+		ServiceKey:          42,
+		GsmSCFAddress:       "31633333333",
+		GsmSCFAddressNature: 16, GsmSCFAddressPlan: 1,
 		NotificationToCSE: true,
 	}
 	wire, err := convertMCSIToWire(in)
@@ -154,7 +154,7 @@ func TestSMSCSIRoundTrip(t *testing.T) {
 					SmsTriggerDetectionPoint: tdp,
 					ServiceKey:               100,
 					GsmSCFAddress:            "31644444444",
-					GsmSCFNature:             16, GsmSCFPlan: 1,
+					GsmSCFAddressNature:      16, GsmSCFAddressPlan: 1,
 					DefaultSMSHandling: DefaultSMSHandlingContinueTransaction,
 				},
 			},
@@ -349,23 +349,23 @@ func TestVlrCamelSubscriptionInfoFullStressRoundTrip(t *testing.T) {
 			CamelCapabilityHandling: &cch,
 		},
 		SsCSI: &SSCSI{
-			SsEventList:   []SsCode{0x31},
-			GsmSCFAddress: "31622222222",
-			GsmSCFNature:  16, GsmSCFPlan: 1,
+			SsEventList:         []SsCode{0x31},
+			GsmSCFAddress:       "31622222222",
+			GsmSCFAddressNature: 16, GsmSCFAddressPlan: 1,
 		},
 		TifCSI: true,
 		MCSI: &MCSI{
-			MobilityTriggers: []byte{0x00, 0x02},
-			ServiceKey:       7,
-			GsmSCFAddress:    "31633333333",
-			GsmSCFNature:     16, GsmSCFPlan: 1,
+			MobilityTriggers:    []byte{0x00, 0x02},
+			ServiceKey:          7,
+			GsmSCFAddress:       "31633333333",
+			GsmSCFAddressNature: 16, GsmSCFAddressPlan: 1,
 		},
 		MoSmsCSI: &SMSCSI{
 			SmsCAMELTDPDataList: []SMSCAMELTDPData{{
 				SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsCollectedInfo,
 				ServiceKey:               11,
 				GsmSCFAddress:            "31644444444",
-				GsmSCFNature:             16, GsmSCFPlan: 1,
+				GsmSCFAddressNature:      16, GsmSCFAddressPlan: 1,
 				DefaultSMSHandling: DefaultSMSHandlingContinueTransaction,
 			}},
 			CamelCapabilityHandling: &cch,
@@ -385,7 +385,7 @@ func TestVlrCamelSubscriptionInfoFullStressRoundTrip(t *testing.T) {
 				SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest,
 				ServiceKey:               13,
 				GsmSCFAddress:            "31666666666",
-				GsmSCFNature:             16, GsmSCFPlan: 1,
+				GsmSCFAddressNature:      16, GsmSCFAddressPlan: 1,
 				DefaultSMSHandling: DefaultSMSHandlingReleaseTransaction,
 			}},
 			CamelCapabilityHandling: &cch,

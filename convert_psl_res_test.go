@@ -219,7 +219,7 @@ func TestProvideSubscriberLocationResMinimalRoundTrip(t *testing.T) {
 }
 
 func TestProvideSubscriberLocationResFullPopulationRoundTrip(t *testing.T) {
-	age := int64(5)
+	age := 5
 	acc := AccuracyFulfilmentRequestedAccuracyFulfilled
 	baro := UtranBaroPressureMeas(101325)
 	in := &ProvideSubscriberLocationRes{

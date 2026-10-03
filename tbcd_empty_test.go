@@ -102,11 +102,11 @@ func TestIdentityEmptyNilAndEmpty(t *testing.T) {
 // An all-filler GroupId is valid only together with a LongGroupId.
 func TestWireGroupIdAllFiller(t *testing.T) {
 	fill := gsm_map.GroupId{0xff, 0xff, 0xff}
-	if _, err := convertWireToVoiceBroadcastData(&gsm_map.VoiceBroadcastData{Groupid: fill}); !errors.Is(err, ErrGroupIdDecodedEmpty) {
-		t.Errorf("VBS: err = %v, want ErrGroupIdDecodedEmpty", err)
+	if _, err := convertWireToVoiceBroadcastData(&gsm_map.VoiceBroadcastData{Groupid: fill}); !errors.Is(err, ErrGroupIdMissingWithoutLong) {
+		t.Errorf("VBS: err = %v, want ErrGroupIdMissingWithoutLong", err)
 	}
-	if _, err := convertWireToVoiceGroupCallData(&gsm_map.VoiceGroupCallData{GroupId: fill}); !errors.Is(err, ErrGroupIdDecodedEmpty) {
-		t.Errorf("VGCS: err = %v, want ErrGroupIdDecodedEmpty", err)
+	if _, err := convertWireToVoiceGroupCallData(&gsm_map.VoiceGroupCallData{GroupId: fill}); !errors.Is(err, ErrGroupIdMissingWithoutLong) {
+		t.Errorf("VGCS: err = %v, want ErrGroupIdMissingWithoutLong", err)
 	}
 	lg := gsm_map.LongGroupId{0x21, 0x43, 0x65, 0xf7}
 	v, err := convertWireToVoiceBroadcastData(&gsm_map.VoiceBroadcastData{Groupid: fill, LongGroupId: &lg})

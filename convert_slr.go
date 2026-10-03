@@ -82,7 +82,7 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 		return nil, fmt.Errorf("decoding LCSLocationInfo.NetworkNodeNumber: %w", err)
 	}
 	if node == "" {
-		return nil, ErrLCSLocationInfoNetworkNodeDecodedEmpty
+		return nil, ErrLCSLocationInfoNetworkNodeEmpty
 	}
 
 	out := &LCSLocationInfo{

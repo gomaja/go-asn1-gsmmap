@@ -18,12 +18,12 @@ import (
 func TestSriSmMSISDNStarHashRoundTrip(t *testing.T) {
 	for _, msisdn := range []string{"*#12", "*123#", "#31#491711", "12abc", "**21*4917#", "0123456789*#abc"} {
 		in := &SriSm{
-			MSISDN:               msisdn,
-			MSISDNNature:         address.NatureUnknown,
-			MSISDNPlan:           address.PlanISDN,
-			ServiceCentreAddress: "491234",
-			SCANature:            address.NatureInternational,
-			SCAPlan:              address.PlanISDN,
+			MSISDN:                     msisdn,
+			MSISDNNature:               address.NatureUnknown,
+			MSISDNPlan:                 address.PlanISDN,
+			ServiceCentreAddress:       "491234",
+			ServiceCentreAddressNature: address.NatureInternational,
+			ServiceCentreAddressPlan:   address.PlanISDN,
 		}
 		data, err := in.Marshal()
 		if err != nil {
@@ -51,7 +51,7 @@ func TestSriSmMSISDNStarHashRoundTrip(t *testing.T) {
 func TestSriSmMSISDNStarHashWireOctets(t *testing.T) {
 	in := &SriSm{
 		MSISDN: "*#12", MSISDNPlan: address.PlanISDN,
-		ServiceCentreAddress: "1", SCAPlan: address.PlanISDN,
+		ServiceCentreAddress: "1", ServiceCentreAddressPlan: address.PlanISDN,
 	}
 	data, err := in.Marshal()
 	if err != nil {

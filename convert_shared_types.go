@@ -234,8 +234,12 @@ func convertForwardingDataToWire(f *ForwardingData) (*gsm_map.ForwardingData, er
 		fo := gsm_map.ForwardingOptions(f.ForwardingOptions)
 		out.ForwardingOptions = &fo
 	}
-	if len(f.LongForwardedToNumber) > 0 {
-		ln := gsm_map.FTNAddressString(f.LongForwardedToNumber)
+	if f.LongForwardedToNumber != "" {
+		enc, err := encodeAddressField(f.LongForwardedToNumber, f.LongForwardedToNumberNature, f.LongForwardedToNumberPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding LongForwardedToNumber: %w", err)
+		}
+		ln := enc
 		out.LongForwardedToNumber = &ln
 	}
 	return out, nil
@@ -259,7 +263,13 @@ func convertWireToForwardingData(w *gsm_map.ForwardingData) (*ForwardingData, er
 		out.ForwardingOptions = HexBytes(*w.ForwardingOptions)
 	}
 	if w.LongForwardedToNumber != nil {
-		out.LongForwardedToNumber = HexBytes(*w.LongForwardedToNumber)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.LongForwardedToNumber, ErrForwardingDataLongForwardedToNumberDecodedEmpty)
+		if err != nil {
+			return nil, fmt.Errorf("decoding LongForwardedToNumber: %w", err)
+		}
+		out.LongForwardedToNumber = digits
+		out.LongForwardedToNumberNature = nat
+		out.LongForwardedToNumberPlan = pl
 	}
 	return out, nil
 }

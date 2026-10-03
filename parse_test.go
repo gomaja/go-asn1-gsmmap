@@ -350,8 +350,8 @@ func TestParseUpdateGprsLocation(t *testing.T) {
 			if updGprsLoc.IMSI != tc.expectedIMSI {
 				t.Errorf("IMSI mismatch: got %s, expected %s", updGprsLoc.IMSI, tc.expectedIMSI)
 			}
-			if updGprsLoc.SGSNNumber != tc.expectedSGSNNumber {
-				t.Errorf("SGSNNumber mismatch: got %s, expected %s", updGprsLoc.SGSNNumber, tc.expectedSGSNNumber)
+			if updGprsLoc.SgsnNumber != tc.expectedSGSNNumber {
+				t.Errorf("SgsnNumber mismatch: got %s, expected %s", updGprsLoc.SgsnNumber, tc.expectedSGSNNumber)
 			}
 			if updGprsLoc.SGSNAddress != tc.expectedSGSNAddress {
 				t.Errorf("SGSNAddress mismatch: got %s, expected %s", updGprsLoc.SGSNAddress, tc.expectedSGSNAddress)
@@ -600,11 +600,11 @@ func TestParseUpdateLocation(t *testing.T) {
 			if updLoc.IMSI != tc.expectedIMSI {
 				t.Errorf("IMSI mismatch: got %s, expected %s", updLoc.IMSI, tc.expectedIMSI)
 			}
-			if updLoc.MSCNumber != tc.expectedMSCNumber {
-				t.Errorf("MSCNumber mismatch: got %s, expected %s", updLoc.MSCNumber, tc.expectedMSCNumber)
+			if updLoc.MscNumber != tc.expectedMSCNumber {
+				t.Errorf("MscNumber mismatch: got %s, expected %s", updLoc.MscNumber, tc.expectedMSCNumber)
 			}
-			if updLoc.VLRNumber != tc.expectedVLRNumber {
-				t.Errorf("VLRNumber mismatch: got %s, expected %s", updLoc.VLRNumber, tc.expectedVLRNumber)
+			if updLoc.VlrNumber != tc.expectedVLRNumber {
+				t.Errorf("VlrNumber mismatch: got %s, expected %s", updLoc.VlrNumber, tc.expectedVLRNumber)
 			}
 
 			if tc.expectedCamelPhases != nil {

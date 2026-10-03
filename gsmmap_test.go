@@ -72,8 +72,8 @@ func TestSriSmRespRoundTrip(t *testing.T) {
 func TestUpdateLocationRoundTrip(t *testing.T) {
 	ul := &UpdateLocation{
 		IMSI:      "607036003958556",
-		MSCNumber: "628160360000",
-		VLRNumber: "628160360000",
+		MscNumber: "628160360000",
+		VlrNumber: "628160360000",
 		VlrCapability: &VlrCapability{
 			SupportedCamelPhases: &SupportedCamelPhases{
 				Phase1: true,
@@ -95,11 +95,11 @@ func TestUpdateLocationRoundTrip(t *testing.T) {
 	if ul.IMSI != parsed.IMSI {
 		t.Errorf("IMSI: got %s, want %s", parsed.IMSI, ul.IMSI)
 	}
-	if ul.MSCNumber != parsed.MSCNumber {
-		t.Errorf("MSCNumber: got %s, want %s", parsed.MSCNumber, ul.MSCNumber)
+	if ul.MscNumber != parsed.MscNumber {
+		t.Errorf("MscNumber: got %s, want %s", parsed.MscNumber, ul.MscNumber)
 	}
-	if ul.VLRNumber != parsed.VLRNumber {
-		t.Errorf("VLRNumber: got %s, want %s", parsed.VLRNumber, ul.VLRNumber)
+	if ul.VlrNumber != parsed.VlrNumber {
+		t.Errorf("VlrNumber: got %s, want %s", parsed.VlrNumber, ul.VlrNumber)
 	}
 
 	if parsed.VlrCapability == nil {
@@ -122,8 +122,8 @@ func TestUpdateLocationRoundTrip(t *testing.T) {
 func TestUpdateLocationWithLCSRoundTrip(t *testing.T) {
 	ul := &UpdateLocation{
 		IMSI:      "234507097995732",
-		MSCNumber: "996772589400",
-		VLRNumber: "996772589400",
+		MscNumber: "996772589400",
+		VlrNumber: "996772589400",
 		VlrCapability: &VlrCapability{
 			SupportedCamelPhases: &SupportedCamelPhases{
 				Phase1: true,
@@ -182,7 +182,7 @@ func TestUpdateLocationResRoundTrip(t *testing.T) {
 func TestUpdateGprsLocationRoundTrip(t *testing.T) {
 	ul := &UpdateGprsLocation{
 		IMSI:        "123456789012345",
-		SGSNNumber:  "628160360000",
+		SgsnNumber:  "628160360000",
 		SGSNAddress: "192.168.1.1",
 		SGSNCapability: &SGSNCapability{
 			GprsEnhancementsSupportIndicator: true,
@@ -202,8 +202,8 @@ func TestUpdateGprsLocationRoundTrip(t *testing.T) {
 	if ul.IMSI != parsed.IMSI {
 		t.Errorf("IMSI: got %s, want %s", parsed.IMSI, ul.IMSI)
 	}
-	if ul.SGSNNumber != parsed.SGSNNumber {
-		t.Errorf("SGSNNumber: got %s, want %s", parsed.SGSNNumber, ul.SGSNNumber)
+	if ul.SgsnNumber != parsed.SgsnNumber {
+		t.Errorf("SgsnNumber: got %s, want %s", parsed.SgsnNumber, ul.SgsnNumber)
 	}
 	if ul.SGSNAddress != parsed.SGSNAddress {
 		t.Errorf("SGSNAddress: got %s, want %s", parsed.SGSNAddress, ul.SGSNAddress)
@@ -219,7 +219,7 @@ func TestUpdateGprsLocationRoundTrip(t *testing.T) {
 func TestUpdateGprsLocationWithLCSRoundTrip(t *testing.T) {
 	ul := &UpdateGprsLocation{
 		IMSI:        "123456789012345",
-		SGSNNumber:  "628160360000",
+		SgsnNumber:  "628160360000",
 		SGSNAddress: "192.168.1.1",
 		SGSNCapability: &SGSNCapability{
 			GprsEnhancementsSupportIndicator: true,
@@ -1320,7 +1320,7 @@ func TestMarshalInvalidInputs(t *testing.T) {
 	// Invalid IP in UpdateGprsLocation
 	ugprs := &UpdateGprsLocation{
 		IMSI:        "1234567890",
-		SGSNNumber:  "12345",
+		SgsnNumber:  "12345",
 		SGSNAddress: "not-an-ip",
 	}
 	if _, err := ugprs.Marshal(); err == nil {
@@ -1568,14 +1568,14 @@ var smRpDaCases = []smRpDaCase{
 	{
 		name: "ServiceCentreAddressDA",
 		in: SmRpDa{
-			ServiceCentreAddressDA: "31612345678",
-			SCADANature:            address.NatureInternational,
-			SCADAPlan:              address.PlanISDN,
+			ServiceCentreAddressDA:       "31612345678",
+			ServiceCentreAddressDANature: address.NatureInternational,
+			ServiceCentreAddressDAPlan:   address.PlanISDN,
 		},
 		want: SmRpDa{
-			ServiceCentreAddressDA: "31612345678",
-			SCADANature:            address.NatureInternational,
-			SCADAPlan:              address.PlanISDN,
+			ServiceCentreAddressDA:       "31612345678",
+			ServiceCentreAddressDANature: address.NatureInternational,
+			ServiceCentreAddressDAPlan:   address.PlanISDN,
 		},
 	},
 	{
@@ -1587,14 +1587,14 @@ var smRpDaCases = []smRpDaCase{
 	{
 		name: "ServiceCentreAddressDA_ExplicitNaturePlan",
 		in: SmRpDa{
-			ServiceCentreAddressDA: "31612345678",
-			SCADANature:            address.NatureNational,
-			SCADAPlan:              address.PlanNational,
+			ServiceCentreAddressDA:       "31612345678",
+			ServiceCentreAddressDANature: address.NatureNational,
+			ServiceCentreAddressDAPlan:   address.PlanNational,
 		},
 		want: SmRpDa{
-			ServiceCentreAddressDA: "31612345678",
-			SCADANature:            address.NatureNational,
-			SCADAPlan:              address.PlanNational,
+			ServiceCentreAddressDA:       "31612345678",
+			ServiceCentreAddressDANature: address.NatureNational,
+			ServiceCentreAddressDAPlan:   address.PlanNational,
 		},
 	},
 	{
@@ -1641,14 +1641,14 @@ var smRpOaCases = []smRpOaCase{
 	{
 		name: "ServiceCentreAddressOA",
 		in: SmRpOa{
-			ServiceCentreAddressOA: "31699887766",
-			SCAOANature:            address.NatureInternational,
-			SCAOAPlan:              address.PlanISDN,
+			ServiceCentreAddressOA:       "31699887766",
+			ServiceCentreAddressOANature: address.NatureInternational,
+			ServiceCentreAddressOAPlan:   address.PlanISDN,
 		},
 		want: SmRpOa{
-			ServiceCentreAddressOA: "31699887766",
-			SCAOANature:            address.NatureInternational,
-			SCAOAPlan:              address.PlanISDN,
+			ServiceCentreAddressOA:       "31699887766",
+			ServiceCentreAddressOANature: address.NatureInternational,
+			ServiceCentreAddressOAPlan:   address.PlanISDN,
 		},
 	},
 	{
@@ -2009,8 +2009,8 @@ func TestUpdateLocationFullStressRoundTrip(t *testing.T) {
 	istVal := 1 // istCommandSupported
 	in := &UpdateLocation{
 		IMSI:      "310260123456789",
-		MSCNumber: "31612345678",
-		VLRNumber: "31699887766",
+		MscNumber: "31612345678",
+		VlrNumber: "31699887766",
 
 		VlrCapability: &VlrCapability{
 			SupportedCamelPhases: &SupportedCamelPhases{
@@ -2113,8 +2113,8 @@ func TestSuperChargerInfoRoundTrip(t *testing.T) {
 	t.Run("SendSubscriberData", func(t *testing.T) {
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
 					SendSubscriberData: true,
@@ -2144,8 +2144,8 @@ func TestSuperChargerInfoRoundTrip(t *testing.T) {
 	t.Run("SubscriberDataStored", func(t *testing.T) {
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
 					SubscriberDataStored: HexBytes{0x01, 0x02, 0x03},
@@ -2175,8 +2175,8 @@ func TestSuperChargerInfoRoundTrip(t *testing.T) {
 	t.Run("BothSet", func(t *testing.T) {
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
 					SendSubscriberData:   true,
@@ -2196,8 +2196,8 @@ func TestSuperChargerInfoRoundTrip(t *testing.T) {
 	t.Run("NoneSet", func(t *testing.T) {
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{},
 			},
@@ -2230,8 +2230,8 @@ func TestSupportedRATTypesRoundTrip(t *testing.T) {
 
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SupportedRATTypesIndicator: rats,
 			},
@@ -2275,7 +2275,7 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 
 	in := &UpdateGprsLocation{
 		IMSI:        "310260311111111",
-		SGSNNumber:  "31631000001",
+		SgsnNumber:  "31631000001",
 		SGSNAddress: "192.168.31.1",
 
 		SGSNCapability: &SGSNCapability{
@@ -2299,16 +2299,14 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 			SupportedRATTypesIndicator: &SupportedRATTypes{
 				UTRAN: true, GERAN: true, GAN: true, IHSPAEvolution: true, EUTRAN: true,
 			},
-			SupportedFeatures:                                  HexBytes{0xA0, 0x00, 0x00, 0x00}, // SIZE (26..40) bits, TS 29.002 §17.7.1.
-			SupportedFeaturesBits:                              26,
+			SupportedFeatures:                                  &SupportedFeatures{OdbAllApn: true, OdbVPLMNApn: true}, // SIZE (26..40) bits, TS 29.002 §17.7.1.
 			TAdsDataRetrieval:                                  true,
 			HomogeneousSupportOfIMSVoiceOverPSSessions:         &truthy,
 			CancellationTypeInitialAttach:                      true,
 			MsisdnLessOperationSupported:                       true,
 			UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions: true,
 			ResetIdsSupported:                                  true,
-			ExtSupportedFeatures:                               HexBytes{0x80},
-			ExtSupportedFeaturesBits:                           2,
+			ExtSupportedFeatures:                               &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true, BitLength: 2},
 		},
 
 		InformPreviousNetworkEntity: true,
@@ -2370,7 +2368,7 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 func TestUpdateGprsLocationEpsInfoIsr(t *testing.T) {
 	in := &UpdateGprsLocation{
 		IMSI:        "310260311111111",
-		SGSNNumber:  "31631000001",
+		SgsnNumber:  "31631000001",
 		SGSNAddress: "192.168.31.1",
 		EpsInfo: &EpsInfo{
 			IsrInformation:     HexBytes{0xC0},
@@ -2405,7 +2403,7 @@ func TestUpdateGprsLocationEpsInfoIsrMinimum(t *testing.T) {
 		t.Run(fmt.Sprint(bits), func(t *testing.T) {
 			in := &UpdateGprsLocation{
 				IMSI:        "310260311111111",
-				SGSNNumber:  "31631000001",
+				SgsnNumber:  "31631000001",
 				SGSNAddress: "192.168.31.1",
 				EpsInfo: &EpsInfo{
 					IsrInformation:     HexBytes{0xC0},
@@ -2444,7 +2442,7 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 	t.Run("NoneSet", func(t *testing.T) {
 		in := &UpdateGprsLocation{
 			IMSI:        "310260311111111",
-			SGSNNumber:  "31631000001",
+			SgsnNumber:  "31631000001",
 			SGSNAddress: "192.168.31.1",
 			EpsInfo:     &EpsInfo{},
 		}
@@ -2461,7 +2459,7 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 		ctxID := 1
 		in := &UpdateGprsLocation{
 			IMSI:        "310260311111111",
-			SGSNNumber:  "31631000001",
+			SgsnNumber:  "31631000001",
 			SGSNAddress: "192.168.31.1",
 			EpsInfo: &EpsInfo{
 				PdnGwUpdate: &PdnGwUpdate{
@@ -2779,8 +2777,8 @@ func TestPurgeMSFullStressRoundTrip(t *testing.T) {
 
 	in := &PurgeMS{
 		IMSI:       "204080012345678",
-		VLRNumber:  "31611111111",
-		SGSNNumber: "31622222222",
+		VlrNumber:  "31611111111",
+		SgsnNumber: "31622222222",
 		LocationInformation: &CSLocationInformation{
 			AgeOfLocationInformation: &csAge,
 			VlrNumber:                "31611111111",
@@ -2862,8 +2860,8 @@ func TestPurgeMSValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrPurgeMSMissingIMSI) {
-			t.Errorf("expected ErrPurgeMSMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 }
@@ -3067,8 +3065,8 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrSaiMissingIMSI) {
-			t.Errorf("expected ErrSaiMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 
@@ -3309,8 +3307,8 @@ func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrPsiMissingIMSI) {
-			t.Errorf("expected ErrPsiMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 
@@ -3558,8 +3556,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty nested IMSI")
 		}
-		if !errors.Is(err, ErrCancelLocIdentityMissingIMSI) {
-			t.Errorf("expected ErrCancelLocIdentityMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 

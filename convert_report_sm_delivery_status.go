@@ -75,7 +75,7 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	if err != nil {
 		return nil, fmt.Errorf("encoding ReportSMDeliveryStatus.MSISDN: %w", err)
 	}
-	sca, err := encodeAddressField(r.ServiceCentreAddress, r.SCANature, r.SCAPlan)
+	sca, err := encodeAddressField(r.ServiceCentreAddress, r.ServiceCentreAddressNature, r.ServiceCentreAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding ReportSMDeliveryStatus.ServiceCentreAddress: %w", err)
 	}
@@ -146,27 +146,27 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 		return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.MSISDN: %w", err)
 	}
 	if msisdn == "" {
-		return nil, ErrReportSMDeliveryStatusMSISDNDecodedEmpty
+		return nil, ErrReportSMDeliveryStatusMSISDNEmpty
 	}
 	sca, scaNature, scaPlan, err := decodeAddressField(w.ServiceCentreAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.ServiceCentreAddress: %w", err)
 	}
 	if sca == "" {
-		return nil, ErrReportSMDeliveryStatusSCADecodedEmpty
+		return nil, ErrReportSMDeliveryStatusSCAEmpty
 	}
 	if err := validateSmDeliveryOutcome(w.SmDeliveryOutcome); err != nil {
 		return nil, fmt.Errorf("ReportSMDeliveryStatus.SmDeliveryOutcome: %w", err)
 	}
 
 	out := &ReportSMDeliveryStatus{
-		MSISDN:               msisdn,
-		MSISDNNature:         mNature,
-		MSISDNPlan:           mPlan,
-		ServiceCentreAddress: sca,
-		SCANature:            scaNature,
-		SCAPlan:              scaPlan,
-		SmDeliveryOutcome:    w.SmDeliveryOutcome,
+		MSISDN:                     msisdn,
+		MSISDNNature:               mNature,
+		MSISDNPlan:                 mPlan,
+		ServiceCentreAddress:       sca,
+		ServiceCentreAddressNature: scaNature,
+		ServiceCentreAddressPlan:   scaPlan,
+		SmDeliveryOutcome:          w.SmDeliveryOutcome,
 	}
 
 	out.AbsentSubscriberDiagnosticSM = absentDiagFromWire(w.AbsentSubscriberDiagnosticSM)

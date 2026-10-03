@@ -23,7 +23,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 	if err != nil {
 		return nil, fmt.Errorf("encoding MSISDN: %w", err)
 	}
-	sca, err := encodeAddressField(a.ServiceCentreAddress, a.SCANature, a.SCAPlan)
+	sca, err := encodeAddressField(a.ServiceCentreAddress, a.ServiceCentreAddressNature, a.ServiceCentreAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding ServiceCentreAddress: %w", err)
 	}
@@ -119,12 +119,12 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	out := &AlertServiceCentre{
-		MSISDN:               msisdn,
-		MSISDNNature:         msisdnNature,
-		MSISDNPlan:           msisdnPlan,
-		ServiceCentreAddress: sca,
-		SCANature:            scaNature,
-		SCAPlan:              scaPlan,
+		MSISDN:                     msisdn,
+		MSISDNNature:               msisdnNature,
+		MSISDNPlan:                 msisdnPlan,
+		ServiceCentreAddress:       sca,
+		ServiceCentreAddressNature: scaNature,
+		ServiceCentreAddressPlan:   scaPlan,
 	}
 
 	if arg.Imsi != nil {

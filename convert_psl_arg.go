@@ -197,7 +197,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.MlcNumber: %w", err)
 	}
 	if mlcStr == "" {
-		return nil, ErrPSLArgMlcNumberDecodedEmpty
+		return nil, ErrPSLArgMlcNumberEmpty
 	}
 
 	out := &ProvideSubscriberLocationArg{

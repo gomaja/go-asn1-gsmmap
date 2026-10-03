@@ -60,7 +60,7 @@ func semIMSICases() []semIdentityCase {
 			}},
 		{"UpdateLocation",
 			func(_ *testing.T, id string) ([]byte, error) {
-				return (&UpdateLocation{IMSI: id, MSCNumber: msisdn, VLRNumber: msisdn}).Marshal()
+				return (&UpdateLocation{IMSI: id, MscNumber: msisdn, VlrNumber: msisdn}).Marshal()
 			},
 			func(d []byte) (string, error) {
 				v, err := ParseUpdateLocation(d)
@@ -68,7 +68,7 @@ func semIMSICases() []semIdentityCase {
 			}},
 		{"UpdateGprsLocation",
 			func(_ *testing.T, id string) ([]byte, error) {
-				return (&UpdateGprsLocation{IMSI: id, SGSNNumber: msisdn, SGSNAddress: "192.168.31.1"}).Marshal()
+				return (&UpdateGprsLocation{IMSI: id, SgsnNumber: msisdn, SGSNAddress: "192.168.31.1"}).Marshal()
 			},
 			func(d []byte) (string, error) {
 				v, err := ParseUpdateGprsLocation(d)
@@ -240,7 +240,7 @@ func semIMEISVCases() []semIdentityCase {
 	return []semIdentityCase{
 		{"UpdateLocation add-Info",
 			func(_ *testing.T, id string) ([]byte, error) {
-				return (&UpdateLocation{IMSI: "001010123456789", MSCNumber: "31612345678", VLRNumber: "31612345678", AddInfo: &AddInfo{IMEISV: id}}).Marshal()
+				return (&UpdateLocation{IMSI: "001010123456789", MscNumber: "31612345678", VlrNumber: "31612345678", AddInfo: &AddInfo{IMEISV: id}}).Marshal()
 			},
 			func(d []byte) (string, error) {
 				v, err := ParseUpdateLocation(d)
@@ -248,7 +248,7 @@ func semIMEISVCases() []semIdentityCase {
 			}},
 		{"UpdateGprsLocation add-Info",
 			func(_ *testing.T, id string) ([]byte, error) {
-				return (&UpdateGprsLocation{IMSI: "001010123456789", SGSNNumber: "31612345678", SGSNAddress: "192.168.31.1", AddInfo: &AddInfo{IMEISV: id}}).Marshal()
+				return (&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "31612345678", SGSNAddress: "192.168.31.1", AddInfo: &AddInfo{IMEISV: id}}).Marshal()
 			},
 			func(d []byte) (string, error) {
 				v, err := ParseUpdateGprsLocation(d)

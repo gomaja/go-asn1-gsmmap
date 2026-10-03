@@ -15,13 +15,13 @@ import (
 
 func minimalReportSMDeliveryStatus() *ReportSMDeliveryStatus {
 	return &ReportSMDeliveryStatus{
-		MSISDN:               "31612345678",
-		MSISDNNature:         0x10,
-		MSISDNPlan:           0x01,
-		ServiceCentreAddress: "31600000000",
-		SCANature:            0x10,
-		SCAPlan:              0x01,
-		SmDeliveryOutcome:    SmDeliveryAbsentSubscriber,
+		MSISDN:                     "31612345678",
+		MSISDNNature:               0x10,
+		MSISDNPlan:                 0x01,
+		ServiceCentreAddress:       "31600000000",
+		ServiceCentreAddressNature: 0x10,
+		ServiceCentreAddressPlan:   0x01,
+		SmDeliveryOutcome:          SmDeliveryAbsentSubscriber,
 	}
 }
 
@@ -42,21 +42,21 @@ func TestReportSMDeliveryStatusRoundTrip(t *testing.T) {
 	}{
 		{"minimal absent-subscriber", minimalReportSMDeliveryStatus()},
 		{"successful transfer (clears waiting)", &ReportSMDeliveryStatus{
-			MSISDN:               "31612345678",
-			MSISDNNature:         0x10,
-			MSISDNPlan:           0x01,
-			ServiceCentreAddress: "31600000000",
-			SCANature:            0x10,
-			SCAPlan:              0x01,
-			SmDeliveryOutcome:    SmDeliverySuccessfulTransfer,
+			MSISDN:                     "31612345678",
+			MSISDNNature:               0x10,
+			MSISDNPlan:                 0x01,
+			ServiceCentreAddress:       "31600000000",
+			ServiceCentreAddressNature: 0x10,
+			ServiceCentreAddressPlan:   0x01,
+			SmDeliveryOutcome:          SmDeliverySuccessfulTransfer,
 		}},
 		{"with diagnostic + GPRS + IMSI", &ReportSMDeliveryStatus{
 			MSISDN:                                 "31612345678",
 			MSISDNNature:                           0x10,
 			MSISDNPlan:                             0x01,
 			ServiceCentreAddress:                   "31600000000",
-			SCANature:                              0x10,
-			SCAPlan:                                0x01,
+			ServiceCentreAddressNature:             0x10,
+			ServiceCentreAddressPlan:               0x01,
 			SmDeliveryOutcome:                      SmDeliveryAbsentSubscriber,
 			AbsentSubscriberDiagnosticSM:           &diag,
 			GprsSupportIndicator:                   true,
@@ -71,8 +71,8 @@ func TestReportSMDeliveryStatusRoundTrip(t *testing.T) {
 			MSISDNNature:                           0x10,
 			MSISDNPlan:                             0x01,
 			ServiceCentreAddress:                   "31600000000",
-			SCANature:                              0x10,
-			SCAPlan:                                0x01,
+			ServiceCentreAddressNature:             0x10,
+			ServiceCentreAddressPlan:               0x01,
 			SmDeliveryOutcome:                      SmDeliveryAbsentSubscriber,
 			AbsentSubscriberDiagnosticSM:           &diag,
 			GprsSupportIndicator:                   true,
@@ -193,8 +193,8 @@ func TestReportSMDeliveryStatusDecodeNegative(t *testing.T) {
 		constraint string
 	}{
 		{"outcome out of range", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.SmDeliveryOutcome = gsm_map.SMDeliveryOutcome(7) }, ErrReportSMDeliveryStatusOutcomeInvalid, "", ""},
-		{"MSISDN present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.Msisdn = emptyAddr() }, ErrReportSMDeliveryStatusMSISDNDecodedEmpty, "", ""},
-		{"SCA present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.ServiceCentreAddress = emptyAddr() }, ErrReportSMDeliveryStatusSCADecodedEmpty, "", ""},
+		{"MSISDN present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.Msisdn = emptyAddr() }, ErrReportSMDeliveryStatusMSISDNEmpty, "", ""},
+		{"SCA present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.ServiceCentreAddress = emptyAddr() }, ErrReportSMDeliveryStatusSCAEmpty, "", ""},
 		{"diagnostic out of range on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.AbsentSubscriberDiagnosticSM = &diag999 }, nil, "absentSubscriberDiagnosticSM", "(0..255)"},
 		{"IMSI invalid size on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { v := imsiShort; w.Imsi = &v }, ErrIMSIInvalidLength, "", ""},
 	}
