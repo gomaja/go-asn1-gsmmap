@@ -275,21 +275,23 @@ func TestSriMandatoryRoundTrip(t *testing.T) {
 
 func TestSriValidationErrors(t *testing.T) {
 	cases := []struct {
-		name string
-		in   *Sri
-		err  error
+		name       string
+		in         *Sri
+		err        error
+		path       string
+		constraint string
 	}{
-		{"missing msisdn", &Sri{GmscOrGsmSCFAddress: "1"}, ErrSriMissingMSISDN},
-		{"missing gmsc", &Sri{MSISDN: "1"}, ErrSriMissingGmsc},
-		{"bad interrogation", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}, ErrSriInvalidInterrogationType},
-		{"bad numberOfForwarding", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", NumberOfForwarding: intPtr(9)}, nil},
-		{"bad orCapability", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", OrCapability: intPtr(200)}, nil},
-		{"bad callref", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", CallReferenceNumber: make(HexBytes, 9)}, nil},
+		{"missing msisdn", &Sri{GmscOrGsmSCFAddress: "1"}, ErrSriMissingMSISDN, "", ""},
+		{"missing gmsc", &Sri{MSISDN: "1"}, ErrSriMissingGmsc, "", ""},
+		{"bad interrogation", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}, ErrSriInvalidInterrogationType, "", ""},
+		{"bad numberOfForwarding", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", NumberOfForwarding: intPtr(9)}, nil, "numberOfForwarding", "(1..5)"},
+		{"bad orCapability", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", OrCapability: intPtr(200)}, nil, "or-Capability", "(1..127)"},
+		{"bad callref", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", CallReferenceNumber: make(HexBytes, 9)}, nil, "callReferenceNumber", "SIZE (1..8)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := tc.in.Marshal()
-			if !matchesExpected(err, tc.err) {
+			if !matchesExpected(err, tc.err, tc.path, tc.constraint) {
 				t.Errorf("got %v, want %v", err, tc.err)
 			}
 		})

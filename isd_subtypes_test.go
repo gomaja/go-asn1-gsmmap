@@ -36,7 +36,7 @@ func TestMCSSInfo_NbrSBOutOfRange(t *testing.T) {
 	for _, v := range []int{0, 1, 8, 100} {
 		in := &MCSSInfo{SsStatus: HexBytes{0x01}, NbrSB: v, NbrUser: 1}
 		_, err := strictWire(convertMCSSInfoToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "nbrSB", "(2..7)") {
 			t.Fatalf("NbrSB=%d: want BER constraint error, got %v", v, err)
 		}
 	}
@@ -46,7 +46,7 @@ func TestMCSSInfo_NbrUserOutOfRange(t *testing.T) {
 	for _, v := range []int{0, 8, 100} {
 		in := &MCSSInfo{SsStatus: HexBytes{0x01}, NbrSB: 2, NbrUser: v}
 		_, err := strictWire(convertMCSSInfoToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "nbrUser", "(1..7)") {
 			t.Fatalf("NbrUser=%d: want BER constraint error, got %v", v, err)
 		}
 	}
@@ -55,7 +55,7 @@ func TestMCSSInfo_NbrUserOutOfRange(t *testing.T) {
 func TestMCSSInfo_SsStatusInvalid(t *testing.T) {
 	in := &MCSSInfo{SsStatus: HexBytes{}, NbrSB: 2, NbrUser: 1}
 	_, err := strictWire(convertMCSSInfoToWire(in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "ss-Status", "SIZE (1..5)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
@@ -89,7 +89,7 @@ func makeCSGEntry() CSGSubscriptionData {
 	return CSGSubscriptionData{
 		CsgId:          HexBytes{0x12, 0x34, 0x56, 0x60}, // 27-bit BIT STRING (4 octets)
 		CsgIdBitLength: 27,
-		ExpirationDate: HexBytes{0x17, 0x0a, 0x01}, // opaque
+		ExpirationDate: HexBytes{0x17, 0x0a, 0x01, 0x00}, // Time is SIZE (4), TS 29.002 V19.1.0 §17.7.8
 		LipaAllowedAPNList: []HexBytes{
 			{'a', 'p', 'n'}, // 3 octets, in 2..63 range
 		},
@@ -99,7 +99,7 @@ func makeCSGEntry() CSGSubscriptionData {
 
 func TestCSGSubscriptionData_RoundTrip(t *testing.T) {
 	in := makeCSGEntry()
-	w, err := convertCSGSubscriptionDataToWire(&in)
+	w, err := strictWire(convertCSGSubscriptionDataToWire(&in))
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestCSGSubscriptionData_EmptyAPNList(t *testing.T) {
 	in := makeCSGEntry()
 	in.LipaAllowedAPNList = []HexBytes{} // present but empty → not allowed (use nil)
 	_, err := strictWire(convertCSGSubscriptionDataToWire(&in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "lipa-AllowedAPNList", "SIZE (1..50)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
@@ -167,7 +167,7 @@ func TestCSGSubscriptionData_OverMaxAPNList(t *testing.T) {
 	}
 	in.LipaAllowedAPNList = apns
 	_, err := strictWire(convertCSGSubscriptionDataToWire(&in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "lipa-AllowedAPNList", "SIZE (1..50)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
@@ -176,14 +176,14 @@ func TestCSGSubscriptionData_BadPlmnId(t *testing.T) {
 	in := makeCSGEntry()
 	in.PlmnId = HexBytes{0x01, 0x02} // too short
 	_, err := strictWire(convertCSGSubscriptionDataToWire(&in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "plmn-Id", "SIZE (3)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
 
 func TestCSGSubscriptionDataList_RoundTrip(t *testing.T) {
 	in := CSGSubscriptionDataList{makeCSGEntry(), makeCSGEntry()}
-	w, err := convertCSGSubscriptionDataListToWire(in)
+	w, err := strictWire(convertCSGSubscriptionDataListToWire(in))
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestCSGSubscriptionDataList_RoundTrip(t *testing.T) {
 func TestCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
 	empty := CSGSubscriptionDataList{}
 	_, err := strictWire(convertCSGSubscriptionDataListToWire(empty))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "csg-SubscriptionDataList", "SIZE (1..50)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
 	too := make(CSGSubscriptionDataList, 50+1)
@@ -207,14 +207,14 @@ func TestCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
 		too[i] = makeCSGEntry()
 	}
 	_, err = strictWire(convertCSGSubscriptionDataListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "csg-SubscriptionDataList", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
 }
 
 func TestVPLMNCSGSubscriptionDataList_RoundTrip(t *testing.T) {
 	in := VPLMNCSGSubscriptionDataList{makeCSGEntry()}
-	w, err := convertVPLMNCSGSubscriptionDataListToWire(in)
+	w, err := strictWire(convertVPLMNCSGSubscriptionDataListToWire(in))
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
@@ -229,7 +229,7 @@ func TestVPLMNCSGSubscriptionDataList_RoundTrip(t *testing.T) {
 
 func TestVPLMNCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertVPLMNCSGSubscriptionDataListToWire(VPLMNCSGSubscriptionDataList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "vplmn-Csg-SubscriptionDataList", "SIZE (1..50)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
 	too := make(VPLMNCSGSubscriptionDataList, 50+1)
@@ -237,7 +237,7 @@ func TestVPLMNCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
 		too[i] = makeCSGEntry()
 	}
 	_, err = strictWire(convertVPLMNCSGSubscriptionDataListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "vplmn-Csg-SubscriptionDataList", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
 }
@@ -276,14 +276,14 @@ func TestAdjacentAccessRestrictionData_BadPlmnId(t *testing.T) {
 	in := makeAdjacentEntry()
 	in.PlmnId = HexBytes{0x01}
 	_, err := strictWire(convertAdjacentAccessRestrictionDataToWire(&in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "plmnId", "SIZE (3)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
 
 func TestAdjacentAccessRestrictionDataList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertAdjacentAccessRestrictionDataListToWire(AdjacentAccessRestrictionDataList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "adjacentAccessRestrictionDataList", "SIZE (1..50)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
 	too := make(AdjacentAccessRestrictionDataList, 50+1)
@@ -291,7 +291,7 @@ func TestAdjacentAccessRestrictionDataList_BoundsRejected(t *testing.T) {
 		too[i] = makeAdjacentEntry()
 	}
 	_, err = strictWire(convertAdjacentAccessRestrictionDataListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "adjacentAccessRestrictionDataList", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
 }
@@ -342,7 +342,7 @@ func TestIMSIGroupId_PlmnIdInvalid(t *testing.T) {
 	in := makeIMSIGroupEntry()
 	in.PlmnId = HexBytes{0x01, 0x02}
 	_, err := strictWire(convertIMSIGroupIdToWire(&in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "plmnId", "SIZE (3)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
@@ -351,19 +351,19 @@ func TestIMSIGroupId_LocalGroupIDInvalid(t *testing.T) {
 	in := makeIMSIGroupEntry()
 	in.LocalGroupID = HexBytes{}
 	_, err := strictWire(convertIMSIGroupIdToWire(&in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "local-Group-ID", "SIZE (1..10)") {
 		t.Fatalf("empty: want BER constraint error, got %v", err)
 	}
 	in.LocalGroupID = make(HexBytes, 11)
 	_, err = strictWire(convertIMSIGroupIdToWire(&in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "local-Group-ID", "SIZE (1..10)") {
 		t.Fatalf("over-max: want BER constraint error, got %v", err)
 	}
 }
 
 func TestIMSIGroupIdList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertIMSIGroupIdListToWire(IMSIGroupIdList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "imsi-Group-Id-List", "SIZE (1..50)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
 	too := make(IMSIGroupIdList, 50+1)
@@ -371,7 +371,7 @@ func TestIMSIGroupIdList_BoundsRejected(t *testing.T) {
 		too[i] = makeIMSIGroupEntry()
 	}
 	_, err = strictWire(convertIMSIGroupIdListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "imsi-Group-Id-List", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
 }
@@ -418,7 +418,7 @@ func TestEDRXCycleLength_ValueWrongSize(t *testing.T) {
 	for _, v := range cases {
 		in := &EDRXCycleLength{RatType: UsedRatNBIOT, EDRXCycleLengthValue: v}
 		_, err := strictWire(convertEDRXCycleLengthToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "eDRX-Cycle-Length-Value", "SIZE (1)") {
 			t.Fatalf("len=%d: want BER constraint error, got %v", len(v), err)
 		}
 	}
@@ -442,7 +442,7 @@ func TestEDRXCycleLength_PreservesUnknownRAT(t *testing.T) {
 
 func TestEDRXCycleLengthList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertEDRXCycleLengthListToWire(EDRXCycleLengthList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "eDRX-Cycle-Length-List", "SIZE (1..8)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
 	too := make(EDRXCycleLengthList, 8+1)
@@ -450,7 +450,7 @@ func TestEDRXCycleLengthList_BoundsRejected(t *testing.T) {
 		too[i] = EDRXCycleLength{RatType: UsedRatEUTRAN, EDRXCycleLengthValue: HexBytes{0x09}}
 	}
 	_, err = strictWire(convertEDRXCycleLengthListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "eDRX-Cycle-Length-List", "SIZE (1..8)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
 }
@@ -497,7 +497,7 @@ func TestResetIdList_RoundTrip(t *testing.T) {
 
 func TestResetIdList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertResetIdListToWire(ResetIdList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "reset-Id-List", "SIZE (1..50)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
 	too := make(ResetIdList, 50+1)
@@ -505,7 +505,7 @@ func TestResetIdList_BoundsRejected(t *testing.T) {
 		too[i] = HexBytes{0x01}
 	}
 	_, err = strictWire(convertResetIdListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "reset-Id-List", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
 }

@@ -324,9 +324,11 @@ func TestInsertSubscriberDataRes_NilRejected(t *testing.T) {
 
 func TestInsertSubscriberDataArg_ListCardinalityRejected(t *testing.T) {
 	cases := []struct {
-		name string
-		mut  func(*InsertSubscriberDataArg)
-		want error
+		name       string
+		mut        func(*InsertSubscriberDataArg)
+		want       error
+		path       string
+		constraint string
 	}{
 		{"BearerServiceList over-max", func(a *InsertSubscriberDataArg) {
 			too := make([]HexBytes, 51)
@@ -334,30 +336,30 @@ func TestInsertSubscriberDataArg_ListCardinalityRejected(t *testing.T) {
 				too[i] = HexBytes{0x10}
 			}
 			a.BearerServiceList = too
-		}, nil},
+		}, nil, "bearerServiceList", "SIZE (1..50)"},
 		{"BearerServiceList empty", func(a *InsertSubscriberDataArg) {
 			a.BearerServiceList = []HexBytes{}
-		}, nil},
+		}, nil, "bearerServiceList", "SIZE (1..50)"},
 		{"TeleserviceList over-max", func(a *InsertSubscriberDataArg) {
 			too := make([]HexBytes, 21)
 			for i := range too {
 				too[i] = HexBytes{0x11}
 			}
 			a.TeleserviceList = too
-		}, nil},
+		}, nil, "teleserviceList", "SIZE (1..20)"},
 		{"TeleserviceList empty", func(a *InsertSubscriberDataArg) {
 			a.TeleserviceList = []HexBytes{}
-		}, nil},
+		}, nil, "teleserviceList", "SIZE (1..20)"},
 		{"ProvisionedSS empty", func(a *InsertSubscriberDataArg) {
 			a.ProvisionedSS = []ExtSSInfo{}
-		}, nil},
+		}, nil, "provisionedSS", "SIZE (1..30)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := &InsertSubscriberDataArg{IMSI: HexBytes{0x12, 0x34, 0x56}}
 			tc.mut(in)
 			_, err := in.Marshal()
-			if !matchesExpected(err, tc.want) {
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Fatalf("want %v, got %v", tc.want, err)
 			}
 		})
@@ -368,7 +370,7 @@ func TestInsertSubscriberDataArg_IMSISizeRejected(t *testing.T) {
 	for _, size := range []int{1, 2, 9, 12} {
 		in := &InsertSubscriberDataArg{IMSI: make(HexBytes, size)}
 		_, err := in.Marshal()
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "imsi", "SIZE (3..8)") {
 			t.Fatalf("size=%d: want BER constraint error, got %v", size, err)
 		}
 	}
@@ -380,7 +382,7 @@ func TestInsertSubscriberDataArg_MmeNameFQDNValidation(t *testing.T) {
 		MmeName: HexBytes("short"), // < 9 octets
 	}
 	_, err := in.Marshal()
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "mme-Name", "SIZE (9..255)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
@@ -400,23 +402,25 @@ func TestInsertSubscriberDataArg_NilSentinel(t *testing.T) {
 
 func TestInsertSubscriberDataArg_BadFieldSizes(t *testing.T) {
 	cases := []struct {
-		name string
-		mut  func(*InsertSubscriberDataArg)
-		want error
+		name       string
+		mut        func(*InsertSubscriberDataArg)
+		want       error
+		path       string
+		constraint string
 	}{
-		{"Category wrong size", func(a *InsertSubscriberDataArg) { a.Category = HexBytes{0x01, 0x02} }, nil},
-		{"ChargingChars wrong size", func(a *InsertSubscriberDataArg) { a.ChargingCharacteristics = HexBytes{0x01} }, nil},
-		{"CsAllocationRetentionPriority wrong", func(a *InsertSubscriberDataArg) { a.CsAllocationRetentionPriority = HexBytes{0x01, 0x02} }, nil},
-		{"AgeIndicator over-max", func(a *InsertSubscriberDataArg) { a.SuperChargerSupportedInHLR = make(HexBytes, 7) }, nil},
-		{"BearerServiceList entry too long", func(a *InsertSubscriberDataArg) { a.BearerServiceList = []HexBytes{make(HexBytes, 6)} }, ErrIsdBearerServiceCodeSize},
-		{"TeleserviceList entry empty", func(a *InsertSubscriberDataArg) { a.TeleserviceList = []HexBytes{{}} }, ErrIsdTeleserviceCodeSize},
+		{"Category wrong size", func(a *InsertSubscriberDataArg) { a.Category = HexBytes{0x01, 0x02} }, nil, "category", "SIZE (1)"},
+		{"ChargingChars wrong size", func(a *InsertSubscriberDataArg) { a.ChargingCharacteristics = HexBytes{0x01} }, nil, "chargingCharacteristics", "SIZE (2)"},
+		{"CsAllocationRetentionPriority wrong", func(a *InsertSubscriberDataArg) { a.CsAllocationRetentionPriority = HexBytes{0x01, 0x02} }, nil, "cs-AllocationRetentionPriority", "SIZE (1)"},
+		{"AgeIndicator over-max", func(a *InsertSubscriberDataArg) { a.SuperChargerSupportedInHLR = make(HexBytes, 7) }, nil, "superChargerSupportedInHLR", "SIZE (1..6)"},
+		{"BearerServiceList entry too long", func(a *InsertSubscriberDataArg) { a.BearerServiceList = []HexBytes{make(HexBytes, 6)} }, ErrIsdBearerServiceCodeSize, "", ""},
+		{"TeleserviceList entry empty", func(a *InsertSubscriberDataArg) { a.TeleserviceList = []HexBytes{{}} }, ErrIsdTeleserviceCodeSize, "", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := &InsertSubscriberDataArg{IMSI: HexBytes{0x12, 0x34, 0x56}}
 			tc.mut(in)
 			_, err := in.Marshal()
-			if !matchesExpected(err, tc.want) {
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Fatalf("want %v, got %v", tc.want, err)
 			}
 		})

@@ -100,7 +100,7 @@ func TestServingNodeAddressMultipleAlternativesRejected(t *testing.T) {
 func TestServingNodeAddressMmeNumberSizeValidation(t *testing.T) {
 	short := &ServingNodeAddress{MmeNumber: HexBytes("short")} // 5 octets — under min 9
 	_, err := strictWire(convertServingNodeAddressToWire(short))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "mme-Number", "SIZE (9..255)") {
 		t.Errorf("encode 5 octets: want BER constraint error, got %v", err)
 	}
 }
@@ -303,7 +303,7 @@ func TestProvideSubscriberLocationResNilRejected(t *testing.T) {
 
 func TestProvideSubscriberLocationResMissingLocationEstimateRejected(t *testing.T) {
 	_, err := strictWire(convertProvideSubscriberLocationResToWire(&ProvideSubscriberLocationRes{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "locationEstimate", "SIZE (1..20)") {
 		t.Errorf("encode empty LocationEstimate: want BER constraint error, got %v", err)
 	}
 }
@@ -326,7 +326,7 @@ func TestProvideSubscriberLocationResCellGlobalIdSizeValidation(t *testing.T) {
 		CellGlobalId:     HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be 7
 	}
 	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "cellGlobalIdOrServiceAreaIdFixedLength", "SIZE (7)") {
 		t.Errorf("encode CGI=3: want BER constraint error, got %v", err)
 	}
 }
@@ -337,7 +337,7 @@ func TestProvideSubscriberLocationResLAISizeValidation(t *testing.T) {
 		LAI:              HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be 5
 	}
 	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "laiFixedLength", "SIZE (5)") {
 		t.Errorf("encode LAI=3: want BER constraint error, got %v", err)
 	}
 }
@@ -349,7 +349,7 @@ func TestProvideSubscriberLocationResUtranBaroPressureRangeValidation(t *testing
 		UtranBaroPressureMeas: &low,
 	}
 	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "utranBaroPressureMeas", "(30000..115000)") {
 		t.Errorf("encode baro=29999: want BER constraint error, got %v", err)
 	}
 }

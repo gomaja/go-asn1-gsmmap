@@ -69,7 +69,7 @@ func TestLCSClientNameEmptyNameStringRejected(t *testing.T) {
 		DataCodingScheme: 0x0f,
 		NameString:       HexBytes{},
 	}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "nameString", "SIZE (1..63)") {
 		t.Errorf("want BER constraint error on encode, got %v", err)
 	}
 }
@@ -80,7 +80,7 @@ func TestLCSClientNameOversizedNameStringRejected(t *testing.T) {
 		DataCodingScheme: 0x0f,
 		NameString:       tooBig,
 	}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "nameString", "SIZE (1..63)") {
 		t.Errorf("want BER constraint error on encode, got %v", err)
 	}
 }
@@ -91,7 +91,7 @@ func TestLCSClientNameWireDataCodingSchemeMustBeOneOctet(t *testing.T) {
 		NameString:       gsm_map.NameString{0x41},
 	}
 	err := strictDecodeWire(w)
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "dataCodingScheme", "SIZE (1)") {
 		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
@@ -153,7 +153,7 @@ func TestLCSRequestorIDEmptyStringRejected(t *testing.T) {
 		DataCodingScheme:  0x0f,
 		RequestorIDString: HexBytes{},
 	}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "requestorIDString", "SIZE (1..63)") {
 		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
@@ -164,7 +164,7 @@ func TestLCSRequestorIDOversizedStringRejected(t *testing.T) {
 		DataCodingScheme:  0x0f,
 		RequestorIDString: tooBig,
 	}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "requestorIDString", "SIZE (1..63)") {
 		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
@@ -175,7 +175,7 @@ func TestLCSRequestorIDWireDataCodingSchemeMustBeOneOctet(t *testing.T) {
 		RequestorIDString: gsm_map.RequestorIDString{0x41},
 	}
 	err := strictDecodeWire(w)
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "dataCodingScheme", "SIZE (1)") {
 		t.Errorf("want BER constraint error, got %v", err)
 	}
 }

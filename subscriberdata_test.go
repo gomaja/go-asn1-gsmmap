@@ -100,7 +100,7 @@ func TestZoneCodeListDecoderEnforcesBounds(t *testing.T) {
 
 func TestZoneCodeListValidation(t *testing.T) {
 	t.Run("emptyList", func(t *testing.T) {
-		if _, err := strictWire(convertZoneCodeListToWire(nil)); !isConstraint(err) {
+		if _, err := strictWire(convertZoneCodeListToWire(nil)); !matchesConstraint(err, "regionalSubscriptionData", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -109,7 +109,7 @@ func TestZoneCodeListValidation(t *testing.T) {
 		for i := range big {
 			big[i] = ZoneCode{0, 0}
 		}
-		if _, err := strictWire(convertZoneCodeListToWire(big)); !isConstraint(err) {
+		if _, err := strictWire(convertZoneCodeListToWire(big)); !matchesConstraint(err, "regionalSubscriptionData", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -194,7 +194,7 @@ func TestVoiceBroadcastDataValidation(t *testing.T) {
 	t.Run("wrongLengthGroupId", func(t *testing.T) {
 		// 7 digits = 4 TBCD octets, but GroupId is TBCD-STRING (SIZE (3)).
 		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{GroupId: "1234567"}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "groupid", "SIZE (3)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -203,7 +203,7 @@ func TestVoiceBroadcastDataValidation(t *testing.T) {
 		_, err := strictWire(convertVoiceBroadcastDataToWire(&VoiceBroadcastData{
 			LongGroupId: "123456789",
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "longGroupId", "SIZE (4)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -279,7 +279,7 @@ func TestVoiceGroupCallDataValidation(t *testing.T) {
 			GroupId:        "123456",
 			AdditionalInfo: big,
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "additionalInfo", "SIZE (1..136)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -298,7 +298,7 @@ func TestVoiceGroupCallDataValidation(t *testing.T) {
 		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
 			LongGroupId: "123456789", // 5 octets, at most 4
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "longGroupId", "SIZE (4)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -368,7 +368,7 @@ func TestVBSDataListRoundTrip(t *testing.T) {
 
 func TestVBSDataListValidation(t *testing.T) {
 	t.Run("emptyList", func(t *testing.T) {
-		if _, err := strictWire(convertVBSDataListToWire(nil)); !isConstraint(err) {
+		if _, err := strictWire(convertVBSDataListToWire(nil)); !matchesConstraint(err, "vbsSubscriptionData", "SIZE (1..50)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -377,7 +377,7 @@ func TestVBSDataListValidation(t *testing.T) {
 		for i := range big {
 			big[i] = VoiceBroadcastData{GroupId: "123456"}
 		}
-		if _, err := strictWire(convertVBSDataListToWire(big)); !isConstraint(err) {
+		if _, err := strictWire(convertVBSDataListToWire(big)); !matchesConstraint(err, "vbsSubscriptionData", "SIZE (1..50)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -459,7 +459,7 @@ func TestVGCSDataListRoundTrip(t *testing.T) {
 
 func TestVGCSDataListValidation(t *testing.T) {
 	t.Run("emptyList", func(t *testing.T) {
-		if _, err := strictWire(convertVGCSDataListToWire(nil)); !isConstraint(err) {
+		if _, err := strictWire(convertVGCSDataListToWire(nil)); !matchesConstraint(err, "vgcsSubscriptionData", "SIZE (1..50)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -468,7 +468,7 @@ func TestVGCSDataListValidation(t *testing.T) {
 		for i := range big {
 			big[i] = VoiceGroupCallData{GroupId: "123456"}
 		}
-		if _, err := strictWire(convertVGCSDataListToWire(big)); !isConstraint(err) {
+		if _, err := strictWire(convertVGCSDataListToWire(big)); !matchesConstraint(err, "vgcsSubscriptionData", "SIZE (1..50)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})

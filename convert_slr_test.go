@@ -133,7 +133,7 @@ func TestLCSLocationInfoLMSISizeRejected(t *testing.T) {
 		NetworkNodeNumberPlan:   0x01,
 		LMSI:                    HexBytes{0x01, 0x02, 0x03}, // 3 octets, must be 4
 	}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "lmsi", "SIZE (4)") {
 		t.Errorf("encode LMSI=3: want BER constraint error, got %v", err)
 	}
 }
@@ -147,21 +147,23 @@ func TestLCSLocationInfoDiameterIdentitySizeRejected(t *testing.T) {
 		}
 	}
 	cases := []struct {
-		name    string
-		mutate  func(*LCSLocationInfo)
-		wantErr error
+		name       string
+		mutate     func(*LCSLocationInfo)
+		wantErr    error
+		path       string
+		constraint string
 	}{
-		{"MmeName too short", func(l *LCSLocationInfo) { l.MmeName = HexBytes("short") }, nil},
-		{"AaaServerName too short", func(l *LCSLocationInfo) { l.AaaServerName = HexBytes("short") }, nil},
-		{"SgsnName too short", func(l *LCSLocationInfo) { l.SgsnName = HexBytes("short") }, nil},
-		{"SgsnRealm too short", func(l *LCSLocationInfo) { l.SgsnRealm = HexBytes("short") }, nil},
+		{"MmeName too short", func(l *LCSLocationInfo) { l.MmeName = HexBytes("short") }, nil, "mme-Name", "SIZE (9..255)"},
+		{"AaaServerName too short", func(l *LCSLocationInfo) { l.AaaServerName = HexBytes("short") }, nil, "aaa-Server-Name", "SIZE (9..255)"},
+		{"SgsnName too short", func(l *LCSLocationInfo) { l.SgsnName = HexBytes("short") }, nil, "sgsn-Name", "SIZE (9..255)"},
+		{"SgsnRealm too short", func(l *LCSLocationInfo) { l.SgsnRealm = HexBytes("short") }, nil, "sgsn-Realm", "SIZE (9..255)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := base()
 			tc.mutate(in)
 			_, err := strictWire(convertLCSLocationInfoToWire(in))
-			if !matchesExpected(err, tc.wantErr) {
+			if !matchesExpected(err, tc.wantErr, tc.path, tc.constraint) {
 				t.Errorf("want %v, got %v", tc.wantErr, err)
 			}
 		})

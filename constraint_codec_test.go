@@ -91,14 +91,20 @@ func strictWire[T any](wire T, err error) (T, error) {
 	return wire, err
 }
 
-func isConstraint(err error) bool {
-	var constraint *ber.ConstraintError
-	return errors.As(err, &constraint) && constraint.Path != "" && constraint.Constraint != ""
+func matchesConstraint(err error, path, constraint string) bool {
+	if path == "" || constraint == "" {
+		return false
+	}
+	var ce *ber.ConstraintError
+	return errors.As(err, &ce) && ce.Path == path && ce.Constraint == constraint
 }
 
-func matchesExpected(err, want error) bool {
+func matchesExpected(err, want error, path, constraint string) bool {
 	if want == nil {
-		return isConstraint(err)
+		if path == "" || constraint == "" {
+			return false
+		}
+		return matchesConstraint(err, path, constraint)
 	}
 	return errors.Is(err, want)
 }

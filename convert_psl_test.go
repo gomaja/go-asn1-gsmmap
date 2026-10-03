@@ -79,16 +79,26 @@ func TestDeferredLocationEventTypeBitMappingFromWire(t *testing.T) {
 }
 
 func TestDeferredLocationEventTypeOversizedRejected(t *testing.T) {
+	// The public flags only produce valid bit lengths; mutate the converted
+	// wire value to exercise the BER bound.
 	bs := runtime.BitString{Bytes: []byte{0x00, 0x00, 0x00}, BitLength: 17}
-	wire := &gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation, DeferredLocationEventType: &bs}
-	_, err := wire.MarshalBER()
+	wire, err := convertLocationTypeToWire(&LocationType{LocationEstimateType: LocationEstimateCurrentLocation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire.DeferredLocationEventType = &bs
+	_, err = strictWire(wire, nil)
 	wantConstraintError(t, err, "deferredLocationEventType", "SIZE (1..16)")
 }
 
 func TestDeferredLocationEventTypeZeroBitsRejected(t *testing.T) {
 	bs := runtime.BitString{Bytes: []byte{}, BitLength: 0}
-	wire := &gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation, DeferredLocationEventType: &bs}
-	_, err := wire.MarshalBER()
+	wire, err := convertLocationTypeToWire(&LocationType{LocationEstimateType: LocationEstimateCurrentLocation})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire.DeferredLocationEventType = &bs
+	_, err = strictWire(wire, nil)
 	wantConstraintError(t, err, "deferredLocationEventType", "SIZE (1..16)")
 }
 
@@ -159,15 +169,27 @@ func TestSupportedGADShapesBitMappingFromWire(t *testing.T) {
 
 func TestSupportedGADShapesUndersizedRejected(t *testing.T) {
 	bs := runtime.BitString{Bytes: []byte{0x80}, BitLength: 6}
-	wire := &gsm_map.ProvideSubscriberLocationArg{LocationType: gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation}, MlcNumber: gsm_map.ISDNAddressString{0x91}, SupportedGADShapes: &bs}
-	_, err := wire.MarshalBER()
+	wire, err := convertProvideSubscriberLocationArgToWire(&ProvideSubscriberLocationArg{
+		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation}, MlcNumber: "1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire.SupportedGADShapes = &bs
+	_, err = strictWire(wire, nil)
 	wantConstraintError(t, err, "supportedGADShapes", "SIZE (7..16)")
 }
 
 func TestSupportedGADShapesOversizedRejected(t *testing.T) {
 	bs := runtime.BitString{Bytes: []byte{0xff, 0xff, 0xff}, BitLength: 17}
-	wire := &gsm_map.ProvideSubscriberLocationArg{LocationType: gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation}, MlcNumber: gsm_map.ISDNAddressString{0x91}, SupportedGADShapes: &bs}
-	_, err := wire.MarshalBER()
+	wire, err := convertProvideSubscriberLocationArgToWire(&ProvideSubscriberLocationArg{
+		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation}, MlcNumber: "1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire.SupportedGADShapes = &bs
+	_, err = strictWire(wire, nil)
 	wantConstraintError(t, err, "supportedGADShapes", "SIZE (7..16)")
 }
 
@@ -251,7 +273,7 @@ func TestLCSCodewordEmptyStringRejected(t *testing.T) {
 		DataCodingScheme:  0x0f,
 		LcsCodewordString: HexBytes{},
 	}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "lcsCodewordString", "SIZE (1..20)") {
 		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
@@ -262,7 +284,7 @@ func TestLCSCodewordOversizedStringRejected(t *testing.T) {
 		DataCodingScheme:  0x0f,
 		LcsCodewordString: tooBig,
 	}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "lcsCodewordString", "SIZE (1..20)") {
 		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
@@ -273,7 +295,7 @@ func TestLCSCodewordWireDataCodingSchemeMustBeOneOctet(t *testing.T) {
 		LcsCodewordString: gsm_map.LCSCodewordString{0x01},
 	}
 	err := strictDecodeWire(w)
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "dataCodingScheme", "SIZE (1)") {
 		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
@@ -413,24 +435,24 @@ func TestLCSQoSRoundTrip(t *testing.T) {
 
 func TestLCSQoSHorizontalAccuracyMustBeOneOctet(t *testing.T) {
 	_, err := strictWire(convertLCSQoSToWire(&LCSQoS{HorizontalAccuracy: HexBytes{0x01, 0x02}}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "horizontal-accuracy", "SIZE (1)") {
 		t.Errorf("want BER constraint error on encode, got %v", err)
 	}
 	w := &gsm_map.LCSQoS{HorizontalAccuracy: &gsm_map.HorizontalAccuracy{0x01, 0x02}}
 	err = strictDecodeWire(w)
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "horizontal-accuracy", "SIZE (1)") {
 		t.Errorf("want BER constraint error on decode, got %v", err)
 	}
 }
 
 func TestLCSQoSVerticalAccuracyMustBeOneOctet(t *testing.T) {
 	_, err := strictWire(convertLCSQoSToWire(&LCSQoS{VerticalAccuracy: HexBytes{0x01, 0x02}}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "vertical-accuracy", "SIZE (1)") {
 		t.Errorf("want BER constraint error on encode, got %v", err)
 	}
 	w := &gsm_map.LCSQoS{VerticalAccuracy: &gsm_map.VerticalAccuracy{0x01, 0x02}}
 	err = strictDecodeWire(w)
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "vertical-accuracy", "SIZE (1)") {
 		t.Errorf("want BER constraint error on decode, got %v", err)
 	}
 }

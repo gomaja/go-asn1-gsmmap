@@ -22,6 +22,18 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 			t.Errorf("err = %v, want ErrIdentityEmpty", err)
 		}
 	})
+	t.Run("CancelLocation imsi-WithLMSI", func(t *testing.T) {
+		arg := gsm_map.CancelLocationArg{Identity: gsm_map.NewIdentityImsiWithLMSI(gsm_map.IMSIWithLMSI{
+			Imsi: gsm_map.IMSI(fill), Lmsi: gsm_map.LMSI{0x01, 0x02, 0x03, 0x04},
+		})}
+		data, err := arg.MarshalBER()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ParseCancelLocation(data); !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("err = %v, want ErrIdentityEmpty", err)
+		}
+	})
 	t.Run("MoFsm SM-RP-DA imsi", func(t *testing.T) {
 		golden, err := hex.DecodeString(forwardSMFuzzSeeds[0])
 		if err != nil {
@@ -37,6 +49,24 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 			t.Fatal(err)
 		}
 		if _, err := ParseMoFsm(data); !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("err = %v, want ErrIdentityEmpty", err)
+		}
+	})
+	t.Run("MtFsm SM-RP-DA imsi", func(t *testing.T) {
+		golden, err := hex.DecodeString(forwardSMFuzzSeeds[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var mo gsm_map.MOForwardSMArg
+		if err := mo.UnmarshalBER(golden); err != nil {
+			t.Fatal(err)
+		}
+		arg := gsm_map.MTForwardSMArg{SmRPDA: gsm_map.NewSMRPDAImsi(gsm_map.IMSI(fill)), SmRPOA: mo.SmRPOA, SmRPUI: mo.SmRPUI}
+		data, err := arg.MarshalBER()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ParseMtFsm(data); !errors.Is(err, ErrIdentityEmpty) {
 			t.Errorf("err = %v, want ErrIdentityEmpty", err)
 		}
 	})

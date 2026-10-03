@@ -59,7 +59,7 @@ func TestEPSQoSSubscribed_QCIOutOfRange(t *testing.T) {
 	for _, qci := range []int{0, 10, 100} {
 		in := &EPSQoSSubscribed{QosClassIdentifier: qci}
 		_, err := strictWire(convertEPSQoSSubscribedToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "qos-Class-Identifier", "(1..9)") {
 			t.Fatalf("qci=%d: want BER constraint error, got %v", qci, err)
 		}
 	}
@@ -97,7 +97,7 @@ func TestSpecificAPNInfoList_RoundTrip(t *testing.T) {
 
 func TestSpecificAPNInfoList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertSpecificAPNInfoListToWire(SpecificAPNInfoList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "specificAPNInfoList", "SIZE (1..50)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(SpecificAPNInfoList, 51)
@@ -105,7 +105,7 @@ func TestSpecificAPNInfoList_BoundsRejected(t *testing.T) {
 		too[i] = makeSpecificAPNInfo()
 	}
 	_, err = strictWire(convertSpecificAPNInfoListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "specificAPNInfoList", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -231,24 +231,26 @@ func TestAPNConfiguration_MinimalRoundTrip(t *testing.T) {
 
 func TestAPNConfiguration_FieldSizeViolations(t *testing.T) {
 	cases := []struct {
-		name string
-		mut  func(*APNConfiguration)
-		want error
+		name       string
+		mut        func(*APNConfiguration)
+		want       error
+		path       string
+		constraint string
 	}{
-		{"ContextId out of range", func(a *APNConfiguration) { a.ContextId = 51 }, nil},
-		{"PdnType wrong size", func(a *APNConfiguration) { a.PdnType = HexBytes{0x01, 0x02} }, nil},
-		{"Apn too short", func(a *APNConfiguration) { a.Apn = HexBytes{'a'} }, nil},
-		{"ChargingCharacteristics wrong", func(a *APNConfiguration) { a.ChargingCharacteristics = HexBytes{0x01} }, nil},
-		{"ApnOiReplacement too short", func(a *APNConfiguration) { a.ApnOiReplacement = HexBytes("short") }, nil},
-		{"RestorationPriority wrong", func(a *APNConfiguration) { a.RestorationPriority = HexBytes{0x01, 0x02} }, nil},
-		{"SCEFID too short", func(a *APNConfiguration) { a.SCEFID = HexBytes("short") }, nil},
+		{"ContextId out of range", func(a *APNConfiguration) { a.ContextId = 51 }, nil, "contextId", "(1..50)"},
+		{"PdnType wrong size", func(a *APNConfiguration) { a.PdnType = HexBytes{0x01, 0x02} }, nil, "pdn-Type", "SIZE (1)"},
+		{"Apn too short", func(a *APNConfiguration) { a.Apn = HexBytes{'a'} }, nil, "apn", "SIZE (2..63)"},
+		{"ChargingCharacteristics wrong", func(a *APNConfiguration) { a.ChargingCharacteristics = HexBytes{0x01} }, nil, "chargingCharacteristics", "SIZE (2)"},
+		{"ApnOiReplacement too short", func(a *APNConfiguration) { a.ApnOiReplacement = HexBytes("short") }, nil, "apn-oi-Replacement", "SIZE (9..100)"},
+		{"RestorationPriority wrong", func(a *APNConfiguration) { a.RestorationPriority = HexBytes{0x01, 0x02} }, nil, "restoration-Priority", "SIZE (1)"},
+		{"SCEFID too short", func(a *APNConfiguration) { a.SCEFID = HexBytes("short") }, nil, "sCEF-ID", "SIZE (9..255)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := makeAPNConfiguration()
 			tc.mut(&in)
 			_, err := strictWire(convertAPNConfigurationToWire(&in))
-			if !matchesExpected(err, tc.want) {
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Fatalf("want %v, got %v", tc.want, err)
 			}
 		})
@@ -275,7 +277,7 @@ func TestAPNConfiguration_EnumOutOfRange(t *testing.T) {
 			in := makeAPNConfiguration()
 			tc.mut(&in)
 			_, err := convertAPNConfigurationToWire(&in)
-			if !matchesExpected(err, tc.want) {
+			if !errors.Is(err, tc.want) {
 				t.Fatalf("want %v, got %v", tc.want, err)
 			}
 		})
@@ -288,7 +290,7 @@ func TestAPNConfiguration_EnumOutOfRange(t *testing.T) {
 
 func TestEPSDataList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertEPSDataListToWire(EPSDataList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "epsDataList", "SIZE (1..50)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(EPSDataList, 51)
@@ -298,7 +300,7 @@ func TestEPSDataList_BoundsRejected(t *testing.T) {
 		too[i] = c
 	}
 	_, err = strictWire(convertEPSDataListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "epsDataList", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -335,7 +337,7 @@ func TestAPNConfigurationProfile_MissingList(t *testing.T) {
 func TestAPNConfigurationProfile_DefaultContextOutOfRange(t *testing.T) {
 	in := &APNConfigurationProfile{DefaultContext: 0, EpsDataList: EPSDataList{makeAPNConfiguration()}}
 	_, err := strictWire(convertAPNConfigurationProfileToWire(in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "defaultContext", "(1..50)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
@@ -407,7 +409,7 @@ func TestEPSSubscriptionData_RFSPOutOfRange(t *testing.T) {
 	for _, v := range []int{0, 257, 1000} {
 		in := &EPSSubscriptionData{RfspId: &v}
 		_, err := strictWire(convertEPSSubscriptionDataToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "rfsp-id", "(1..256)") {
 			t.Fatalf("rfsp=%d: want BER constraint error, got %v", v, err)
 		}
 	}

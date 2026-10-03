@@ -121,19 +121,21 @@ func TestSLRResBERRoundTrip(t *testing.T) {
 
 func TestSLRResEncodeNegative(t *testing.T) {
 	cases := []struct {
-		name string
-		in   *SubscriberLocationReportRes
-		want error
+		name       string
+		in         *SubscriberLocationReportRes
+		want       error
+		path       string
+		constraint string
 	}{
-		{"nil res", nil, ErrSLRResNil},
+		{"nil res", nil, ErrSLRResNil, "", ""},
 		{"LcsReferenceNumber wrong size", &SubscriberLocationReportRes{
 			LcsReferenceNumber: HexBytes{0x01, 0x02},
-		}, nil},
+		}, nil, "lcs-ReferenceNumber", "SIZE (1)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := strictWire(convertSubscriberLocationReportResToWire(tc.in))
-			if !matchesExpected(err, tc.want) {
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Errorf("want errors.Is(_, %v), got %v", tc.want, err)
 			}
 		})

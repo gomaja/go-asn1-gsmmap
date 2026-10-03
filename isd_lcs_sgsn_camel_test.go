@@ -107,14 +107,14 @@ func TestExternalClientList_OverMax(t *testing.T) {
 		too[i] = makeExternalClient()
 	}
 	_, err := strictWire(convertExternalClientListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "externalClientList", "SIZE (0..5)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
 
 func TestExtExternalClientList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertExtExternalClientListToWire(ExtExternalClientList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "ext-externalClientList", "SIZE (1..35)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(ExtExternalClientList, 36)
@@ -122,7 +122,7 @@ func TestExtExternalClientList_BoundsRejected(t *testing.T) {
 		too[i] = makeExternalClient()
 	}
 	_, err = strictWire(convertExtExternalClientListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "ext-externalClientList", "SIZE (1..35)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -144,12 +144,12 @@ func TestPLMNClientList_RoundTrip(t *testing.T) {
 
 func TestPLMNClientList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertPLMNClientListToWire(PLMNClientList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "plmnClientList", "SIZE (1..5)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(PLMNClientList, 6)
 	_, err = strictWire(convertPLMNClientListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "plmnClientList", "SIZE (1..5)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -183,7 +183,7 @@ func TestServiceType_RoundTrip(t *testing.T) {
 
 func TestServiceTypeList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertServiceTypeListToWire(ServiceTypeList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "serviceTypeList", "SIZE (1..32)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(ServiceTypeList, 33)
@@ -191,7 +191,7 @@ func TestServiceTypeList_BoundsRejected(t *testing.T) {
 		too[i] = ServiceType{ServiceTypeIdentity: int64(i)}
 	}
 	_, err = strictWire(convertServiceTypeListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "serviceTypeList", "SIZE (1..32)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -231,14 +231,14 @@ func TestLCSPrivacyClass_SsStatusInvalid(t *testing.T) {
 	in := makeLCSPrivacyClass()
 	in.SsStatus = HexBytes{}
 	_, err := strictWire(convertLCSPrivacyClassToWire(&in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "ss-Status", "SIZE (1..5)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
 
 func TestLCSPrivacyExceptionList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertLCSPrivacyExceptionListToWire(LCSPrivacyExceptionList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "lcs-PrivacyExceptionList", "SIZE (1..4)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(LCSPrivacyExceptionList, 5)
@@ -246,7 +246,7 @@ func TestLCSPrivacyExceptionList_BoundsRejected(t *testing.T) {
 		too[i] = makeLCSPrivacyClass()
 	}
 	_, err = strictWire(convertLCSPrivacyExceptionListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "lcs-PrivacyExceptionList", "SIZE (1..4)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -272,7 +272,7 @@ func TestMOLRClass_RoundTrip(t *testing.T) {
 
 func TestMOLRList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertMOLRListToWire(MOLRList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "molr-List", "SIZE (1..3)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(MOLRList, 4)
@@ -280,7 +280,7 @@ func TestMOLRList_BoundsRejected(t *testing.T) {
 		too[i] = MOLRClass{SsCode: SsCode(byte(i)), SsStatus: HexBytes{0x01}}
 	}
 	_, err = strictWire(convertMOLRListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "molr-List", "SIZE (1..3)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -309,7 +309,7 @@ func TestGMLCList_RoundTrip(t *testing.T) {
 
 func TestGMLCList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertGMLCListToWire(GMLCList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "gmlc-List", "SIZE (1..5)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(GMLCList, 6)
@@ -317,7 +317,7 @@ func TestGMLCList_BoundsRejected(t *testing.T) {
 		too[i] = GMLCAddress{Address: "31611111111", Nature: 0x10, Plan: 0x01}
 	}
 	_, err = strictWire(convertGMLCListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "gmlc-List", "SIZE (1..5)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -427,7 +427,7 @@ func TestGPRSCamelTDPData_ServiceKeyRange(t *testing.T) {
 		in := makeGPRSCamelTDPData()
 		in.ServiceKey = sk
 		_, err := strictWire(convertGPRSCamelTDPDataToWire(&in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "serviceKey", "(0..2147483647)") {
 			t.Fatalf("encode sk=%d: want BER constraint error, got %v", sk, err)
 		}
 	}
@@ -447,7 +447,7 @@ func TestMGCSI_ServiceKeyRange(t *testing.T) {
 		in := makeMGCSI()
 		in.ServiceKey = sk
 		_, err := strictWire(convertMGCSIToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "serviceKey", "(0..2147483647)") {
 			t.Fatalf("encode sk=%d: want BER constraint error, got %v", sk, err)
 		}
 	}
@@ -487,7 +487,7 @@ func TestSGSNCAMELSubscriptionInfo_MtSmsCAMELTDPCriteriaListSize(t *testing.T) {
 		MtSmsCAMELTDPCriteriaList: []MTSmsCAMELTDPCriteria{},
 	}
 	_, err := strictWire(convertSGSNCAMELSubscriptionInfoToWire(in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "mt-smsCAMELTDP-CriteriaList", "SIZE (1..10)") {
 		t.Fatalf("empty: want BER constraint error, got %v", err)
 	}
 	too := make([]MTSmsCAMELTDPCriteria, 11)
@@ -496,14 +496,14 @@ func TestSGSNCAMELSubscriptionInfo_MtSmsCAMELTDPCriteriaListSize(t *testing.T) {
 	}
 	in.MtSmsCAMELTDPCriteriaList = too
 	_, err = strictWire(convertSGSNCAMELSubscriptionInfoToWire(in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "mt-smsCAMELTDP-CriteriaList", "SIZE (1..10)") {
 		t.Fatalf("over-max: want BER constraint error, got %v", err)
 	}
 }
 
 func TestGPRSCamelTDPDataList_BoundsRejected(t *testing.T) {
 	_, err := strictWire(convertGPRSCamelTDPDataListToWire(GPRSCamelTDPDataList{}))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "gprs-CamelTDPDataList", "SIZE (1..10)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(GPRSCamelTDPDataList, 11)
@@ -511,7 +511,7 @@ func TestGPRSCamelTDPDataList_BoundsRejected(t *testing.T) {
 		too[i] = makeGPRSCamelTDPData()
 	}
 	_, err = strictWire(convertGPRSCamelTDPDataListToWire(too))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "gprs-CamelTDPDataList", "SIZE (1..10)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -608,7 +608,7 @@ func TestMGCSI_MobilityTriggersBoundsRejected(t *testing.T) {
 	in := makeMGCSI()
 	in.MobilityTriggers = []HexBytes{}
 	_, err := strictWire(convertMGCSIToWire(in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "mobilityTriggers", "SIZE (1..10)") {
 		t.Fatalf("empty: want BER constraint error, got %v", err)
 	}
 	in.MobilityTriggers = make([]HexBytes, 11)
@@ -616,7 +616,7 @@ func TestMGCSI_MobilityTriggersBoundsRejected(t *testing.T) {
 		in.MobilityTriggers[i] = HexBytes{byte(i)}
 	}
 	_, err = strictWire(convertMGCSIToWire(in))
-	if !isConstraint(err) {
+	if !matchesConstraint(err, "mobilityTriggers", "SIZE (1..10)") {
 		t.Fatalf("over-max: want BER constraint error, got %v", err)
 	}
 }

@@ -1299,7 +1299,7 @@ func TestPsSubscriberStateChoiceValidation(t *testing.T) {
 				SubscriberInfo: SubscriberInfo{PsSubscriberState: tc.in},
 			}
 			_, err := res.Marshal()
-			if !matchesExpected(err, tc.wantErr) {
+			if !errors.Is(err, tc.wantErr) {
 				t.Errorf("got err=%v, want %v", err, tc.wantErr)
 			}
 		})
@@ -1886,7 +1886,7 @@ func TestMtFsmDeliveryTimerValidation(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected error for invalid SmDeliveryTimer")
 			}
-			if !isConstraint(err) {
+			if !matchesConstraint(err, "smDeliveryTimer", "(30..600)") {
 				t.Errorf("expected BER constraint error, got: %v", err)
 			}
 		})
@@ -2580,8 +2580,10 @@ func TestMwStatusBitStringRoundTrip(t *testing.T) {
 
 func TestInformServiceCentreValidationErrors(t *testing.T) {
 	tests := []struct {
-		name    string
-		mutator func(i *InformServiceCentre)
+		name       string
+		mutator    func(i *InformServiceCentre)
+		path       string
+		constraint string
 	}{
 		{
 			name: "AbsentSubscriberDiagnosticSM_negative",
@@ -2589,6 +2591,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := -1
 				i.AbsentSubscriberDiagnosticSM = &v
 			},
+			path: "absentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 		{
 			name: "AbsentSubscriberDiagnosticSM_overflow",
@@ -2596,6 +2599,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := 256
 				i.AbsentSubscriberDiagnosticSM = &v
 			},
+			path: "absentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 		{
 			name: "AdditionalAbsentSubscriberDiagnosticSM_overflow",
@@ -2603,6 +2607,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := 1000
 				i.AdditionalAbsentSubscriberDiagnosticSM = &v
 			},
+			path: "additionalAbsentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 		{
 			name: "Smsf3gppAbsentSubscriberDiagnosticSM_negative",
@@ -2610,6 +2615,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := -100
 				i.Smsf3gppAbsentSubscriberDiagnosticSM = &v
 			},
+			path: "smsf3gppAbsentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 		{
 			name: "SmsfNon3gppAbsentSubscriberDiagnosticSM_overflow",
@@ -2617,6 +2623,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := math.MaxInt32
 				i.SmsfNon3gppAbsentSubscriberDiagnosticSM = &v
 			},
+			path: "smsfNon3gppAbsentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 	}
 
@@ -2630,7 +2637,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected validation error, got nil")
 			}
-			if !isConstraint(err) {
+			if !matchesConstraint(err, tc.path, tc.constraint) {
 				t.Errorf("expected BER constraint error, got: %v", err)
 			}
 		})
@@ -3071,7 +3078,7 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for NumberOfRequestedVectors=0")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "numberOfRequestedVectors", "(1..5)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3082,7 +3089,7 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for NumberOfRequestedVectors=6")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "numberOfRequestedVectors", "(1..5)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3098,7 +3105,7 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for NumberOfRequestedAdditionalVectors=10")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "numberOfRequestedAdditional-Vectors", "(1..5)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3113,7 +3120,7 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid PLMN-Id length")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "requestingPLMN-Id", "SIZE (3)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3126,7 +3133,7 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid UeUsageType length")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "ueUsageType", "SIZE (4)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3162,7 +3169,7 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for EpsAuthenticationSetList with 6 entries")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "eps-AuthenticationSetList", "SIZE (1..5)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3317,7 +3324,7 @@ func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid LMSI length")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "lmsi", "SIZE (4)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3333,7 +3340,7 @@ func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for CallPriority=16")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "callPriority", "(0..15)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3569,7 +3576,7 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for wrong LMSI length")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "lmsi", "SIZE (4)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3662,7 +3669,7 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid NewLMSI length")
 		}
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "new-lmsi", "SIZE (4)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3979,7 +3986,7 @@ func TestCamelValidationErrors(t *testing.T) {
 			},
 		}
 		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "serviceKey", "(0..2147483647)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -4008,7 +4015,7 @@ func TestCamelValidationErrors(t *testing.T) {
 	t.Run("InvalidTDPDataListSize_Empty", func(t *testing.T) {
 		in := &GmscCamelSubscriptionInfo{OCSI: &OCSI{}}
 		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "o-BcsmCamelTDPDataList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -4077,7 +4084,7 @@ func TestCamelValidationErrors(t *testing.T) {
 			},
 		}
 		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "element[0]", "(1..15)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -4143,7 +4150,7 @@ func TestCamelValidationErrors(t *testing.T) {
 			},
 		}
 		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "o-CauseValueCriteria", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -4155,7 +4162,7 @@ func TestCamelValidationErrors(t *testing.T) {
 		}
 		in := &GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
 		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "o-BcsmCamelTDP-CriteriaList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})

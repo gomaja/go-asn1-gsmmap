@@ -128,7 +128,7 @@ func TestExtForwInfoRoundTrip(t *testing.T) {
 func TestExtForwInfoValidation(t *testing.T) {
 	t.Run("emptyFeatureList", func(t *testing.T) {
 		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{SsCode: 0x21}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "forwardingFeatureList", "SIZE (1..32)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -138,7 +138,7 @@ func TestExtForwInfoValidation(t *testing.T) {
 			big[i] = ExtForwFeature{SsStatus: HexBytes{0x05}}
 		}
 		_, err := strictWire(convertExtForwInfoToWire(&ExtForwInfo{SsCode: 0x21, ForwardingFeatureList: big}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "forwardingFeatureList", "SIZE (1..32)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -147,7 +147,7 @@ func TestExtForwInfoValidation(t *testing.T) {
 			SsCode:                0x21,
 			ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{}}},
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "ss-Status", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -156,7 +156,7 @@ func TestExtForwInfoValidation(t *testing.T) {
 			SsCode:                0x21,
 			ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{1, 2, 3, 4, 5, 6}}},
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "ss-Status", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -168,7 +168,7 @@ func TestExtForwInfoValidation(t *testing.T) {
 				ForwardingOptions: HexBytes{1, 2, 3, 4, 5, 6}, // 6 octets, max is 5
 			}},
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "forwardingOptions", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -181,7 +181,7 @@ func TestExtForwInfoValidation(t *testing.T) {
 				NoReplyConditionTime: &bad,
 			}},
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "noReplyConditionTime", "(1..100)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -225,7 +225,7 @@ func TestExtForwFeatureNilVsEmptyDiscipline(t *testing.T) {
 				ForwardedToSubaddress: HexBytes{}, // non-nil, empty
 			}},
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "forwardedToSubaddress", "SIZE (1..21)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -237,7 +237,7 @@ func TestExtForwFeatureNilVsEmptyDiscipline(t *testing.T) {
 				ForwardedToSubaddress: make(HexBytes, 22), // 22 octets, max is 21
 			}},
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "forwardedToSubaddress", "SIZE (1..21)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -249,7 +249,7 @@ func TestExtForwFeatureNilVsEmptyDiscipline(t *testing.T) {
 				ForwardingOptions: HexBytes{}, // non-nil, empty
 			}},
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "forwardingOptions", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -332,7 +332,7 @@ func TestExtCallBarInfoRoundTrip(t *testing.T) {
 func TestExtCallBarInfoValidation(t *testing.T) {
 	t.Run("emptyList", func(t *testing.T) {
 		_, err := strictWire(convertExtCallBarInfoToWire(&ExtCallBarInfo{SsCode: 0x91}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "callBarringFeatureList", "SIZE (1..32)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -413,7 +413,7 @@ func TestCUGInfoValidation(t *testing.T) {
 			}
 		}
 		_, err := strictWire(convertCUGInfoToWire(&CUGInfo{CugSubscriptionList: big}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "cug-SubscriptionList", "SIZE (0..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -425,7 +425,7 @@ func TestCUGInfoValidation(t *testing.T) {
 				IntraCUGOptions: IntraCUGNoRestrictions,
 			}},
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "cug-Index", "(0..32767)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -436,7 +436,7 @@ func TestCUGInfoValidation(t *testing.T) {
 				IntraCUGOptions: IntraCUGNoRestrictions,
 			}},
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "cug-Interlock", "SIZE (4)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -456,7 +456,7 @@ func TestCUGInfoValidation(t *testing.T) {
 			CugSubscriptionList: []CUGSubscription{{CugInterlock: HexBytes{0, 0, 0, 0}, IntraCUGOptions: IntraCUGNoRestrictions}},
 			CugFeatureList:      []CUGFeature{}, // non-nil, empty
 		}))
-		if !isConstraint(err) {
+		if !matchesConstraint(err, "cug-FeatureList", "SIZE (1..32)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})

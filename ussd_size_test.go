@@ -102,7 +102,11 @@ func TestUSSDMSISDNSize(t *testing.T) {
 	wantConstraintError(t, err, "msisdn", "SIZE (1..9)")
 
 	head := append(ussdTLV(0x04, []byte{0x0F}), ussdTLV(0x04, []byte{0x31})...)
-	wire := ussdTLV(0x30, append(head, ussdTLV(0x80, append([]byte{0x91}, bytes.Repeat([]byte{0x21}, 9)...))...))
+	wire := ussdTLV(0x30, append(head, ussdTLV(0x80, nil)...))
+	_, err = ParseUSSDArg(wire)
+	wantConstraintError(t, err, "msisdn", "SIZE (1..9)")
+
+	wire = ussdTLV(0x30, append(head, ussdTLV(0x80, append([]byte{0x91}, bytes.Repeat([]byte{0x21}, 9)...))...))
 	_, err = ParseUSSDArg(wire)
 	wantConstraintError(t, err, "msisdn", "SIZE (1..9)")
 }
