@@ -151,10 +151,9 @@ func convertLCSClientIDToWire(c *LCSClientID) (*gsm_map.LCSClientID, error) {
 	}
 	if c.LcsClientInternalID != nil {
 		v := *c.LcsClientInternalID
-		// LCSClientInternalID is a non-extensible enum (0..4) per
-		// TS 29.002 MAP-CommonDataTypes.asn; validate symmetrically
-		// with PLMNClientList's per-entry check
-		// (ErrLCSClientInternalIDInvalid).
+		// LCSClientInternalID (0..4, extensible) per 3GPP TS 29.002 V19.1.0
+		// §17.7.8: the encoder sends only the listed values, as for
+		// PLMNClientList (ErrLCSClientInternalIDInvalid).
 		if int64(v) < 0 || int64(v) > 4 {
 			return nil, fmt.Errorf("LCSClientID.LcsClientInternalID=%d: %w", v, ErrLCSClientInternalIDInvalid)
 		}
@@ -211,10 +210,9 @@ func convertWireToLCSClientID(w *gsm_map.LCSClientID) (*LCSClientID, error) {
 		out.LcsClientDialedByMSPlan = plan
 	}
 	if w.LcsClientInternalID != nil {
+		// Extensible: an unlisted value is kept (3GPP TS 29.002 V19.1.0
+		// §17.1.4); Marshal sends only listed values.
 		v := *w.LcsClientInternalID
-		if int64(v) < 0 || int64(v) > 4 {
-			return nil, fmt.Errorf("LCSClientID.LcsClientInternalID=%d: %w", v, ErrLCSClientInternalIDInvalid)
-		}
 		out.LcsClientInternalID = &v
 	}
 	if w.LcsClientName != nil {

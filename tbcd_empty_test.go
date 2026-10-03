@@ -93,7 +93,7 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 
 func TestIdentityEmptyNilAndEmpty(t *testing.T) {
 	for _, in := range [][]byte{nil, {}, {0xff}} {
-		if _, err := decodeIdentityDigits(in); !errors.Is(err, ErrIdentityEmpty) {
+		if _, err := decodeIdentityDigits(identityIMSI, in); !errors.Is(err, ErrIdentityEmpty) {
 			t.Errorf("decodeIdentityDigits(%#v) err = %v, want ErrIdentityEmpty", in, err)
 		}
 	}

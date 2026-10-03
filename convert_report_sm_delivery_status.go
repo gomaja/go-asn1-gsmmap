@@ -115,13 +115,9 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	out.Smsf3gppDeliveryOutcomeIndicator = boolToNullPtr(r.Smsf3gppDeliveryOutcomeIndicator)
 	out.SmsfNon3gppDeliveryOutcomeIndicator = boolToNullPtr(r.SmsfNon3gppDeliveryOutcomeIndicator)
 
-	// [9] imsi (digit count bounded as elsewhere in the package:
-	// TBCD-STRING SIZE 3..8 octets = 5..15 BCD digits).
+	// [9] imsi
 	if r.IMSI != "" {
-		if len(r.IMSI) < pslIMSIDigitsMin || len(r.IMSI) > pslIMSIDigitsMax {
-			return nil, fmt.Errorf("ReportSMDeliveryStatus.IMSI digits=%d: %w", len(r.IMSI), ErrReportSMDeliveryStatusIMSIInvalidSize)
-		}
-		imsiBytes, err := encodeIdentityDigits(r.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, r.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ReportSMDeliveryStatus.IMSI: %w", err)
 		}
@@ -200,12 +196,9 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 	out.SmsfNon3gppDeliveryOutcomeIndicator = nullPtrToBool(w.SmsfNon3gppDeliveryOutcomeIndicator)
 
 	if w.Imsi != nil {
-		imsi, err := decodeIdentityDigits(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.IMSI: %w", err)
-		}
-		if len(imsi) < pslIMSIDigitsMin || len(imsi) > pslIMSIDigitsMax {
-			return nil, fmt.Errorf("ReportSMDeliveryStatus.IMSI digits=%d: %w", len(imsi), ErrReportSMDeliveryStatusIMSIInvalidSize)
 		}
 		out.IMSI = imsi
 	}

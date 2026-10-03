@@ -186,8 +186,8 @@ func TestSMSCSIValidation(t *testing.T) {
 	t.Run("missingTDPList", func(t *testing.T) {
 		// An empty TDP list violates the BER SIZE (1..10) constraint.
 		_, err := strictWire(convertSMSCSIToWire(&SMSCSI{CamelCapabilityHandling: &cch}, moSMSTriggerDetectionPoint))
-		if !matchesConstraint(err, "sms-CAMEL-TDP-DataList", "SIZE (1..10)") {
-			t.Errorf("want BER constraint error, got %v", err)
+		if !errors.Is(err, ErrCamelSMSCSIMissingTDPData) {
+			t.Errorf("want ErrCamelSMSCSIMissingTDPData, got %v", err)
 		}
 	})
 	t.Run("oversizeTDPList", func(t *testing.T) {

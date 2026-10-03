@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -45,7 +44,7 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 	}
 
 	if s.IMEI != "" {
-		imeiBytes, err := encodeIdentityDigits(s.IMEI)
+		imeiBytes, err := encodeIdentityDigits(identityIMEI, s.IMEI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding IMEI: %w", err)
 		}
@@ -174,7 +173,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	// the wire it must be exactly 8 octets — empty/non-8-octet IMEI is
 	// a spec violation, not "absent".
 	if si.Imei != nil {
-		imei, err := decodeIdentityDigits(*si.Imei)
+		imei, err := decodeIdentityDigits(identityIMEI, *si.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMEI: %w", err)
 		}
@@ -426,7 +425,7 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 	}
 
 	if m.IMSI != "" {
-		b, err := encodeIdentityDigits(m.IMSI)
+		b, err := encodeIdentityDigits(identityIMSI, m.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
@@ -467,7 +466,7 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	}
 
 	if w.Imsi != nil && len(*w.Imsi) > 0 {
-		imsi, err := decodeIdentityDigits(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMSI: %w", err)
 		}
@@ -531,19 +530,11 @@ func convertWireToGprsMSClass(w *gsm_map.GPRSMSClass) *GprsMSClass {
 // --- UserCSGInformation (opCode 71) ---
 
 func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInformation, error) {
-	if len(u.CsgID) > 0 && u.CsgIDBits == 0 {
-		return nil, fmt.Errorf("CsgIDBits must be set when CsgID has bytes (got len %d)", len(u.CsgID))
+	csgID, err := bitStringToWire("UserCSGInformation.CsgID", u.CsgID, u.CsgIDBits)
+	if err != nil {
+		return nil, err
 	}
-	// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
-	if u.CsgIDBits > len(u.CsgID)*8 {
-		return nil, fmt.Errorf("CsgIDBits (%d) exceeds len(CsgID)*8 (%d)", u.CsgIDBits, len(u.CsgID)*8)
-	}
-	out := &gsm_map.UserCSGInformation{
-		CsgId: runtime.BitString{
-			Bytes:     append([]byte(nil), u.CsgID...),
-			BitLength: u.CsgIDBits,
-		},
-	}
+	out := &gsm_map.UserCSGInformation{CsgId: csgID}
 	if u.AccessMode != nil {
 		out.AccessMode = []byte(u.AccessMode)
 	}

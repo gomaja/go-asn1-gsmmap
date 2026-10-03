@@ -351,6 +351,10 @@ func TestParseDefaultCallHandlingMapping(t *testing.T) {
 		{31, DefaultCallHandlingContinueCall},
 		{32, DefaultCallHandlingReleaseCall},
 		{math.MaxInt64, DefaultCallHandlingReleaseCall},
+		// Negative values lie outside both ranges of the clause; the type is
+		// extensible, so they are kept (§17.1.4).
+		{-1, -1},
+		{math.MinInt64, math.MinInt64},
 	}
 	for _, tc := range cases {
 		t.Run(fmt.Sprintf("wire %d", tc.wire), func(t *testing.T) {
@@ -364,16 +368,6 @@ func TestParseDefaultCallHandlingMapping(t *testing.T) {
 				}
 			}
 		})
-	}
-	// Negative values lie outside both ranges of the clause.
-	for name := range defaultCallHandlingFields(camelISD().VlrCamelSubscriptionInfo) {
-		for _, v := range []DefaultCallHandling{-1, math.MinInt64} {
-			w := isdWire(t, camelISD())
-			*wireDefaultCallHandlingFields(w.VlrCamelSubscriptionInfo)[name] = v
-			if _, err := ParseInsertSubscriberData(strictBER(t, w)); !errors.Is(err, ErrCamelInvalidDefaultCallHandling) {
-				t.Errorf("%s wire %d: got %v, want ErrCamelInvalidDefaultCallHandling", name, v, err)
-			}
-		}
 	}
 }
 

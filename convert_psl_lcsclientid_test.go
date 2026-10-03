@@ -344,8 +344,8 @@ func TestLCSClientIDDialedByMSEncodeEmptyWithNaturePlanRejected(t *testing.T) {
 	}
 }
 
-// LcsClientInternalID is a non-extensible enum (0..4); validate
-// symmetrically on encode and decode.
+// LcsClientInternalID (0..4, extensible): the encoder sends only the listed
+// values; the decoder keeps any (semantic_enum_test.go).
 func TestLCSClientIDInternalIDOutOfRangeRejected(t *testing.T) {
 	bad := LCSClientInternalID(99)
 	_, err := convertLCSClientIDToWire(&LCSClientID{
@@ -354,15 +354,6 @@ func TestLCSClientIDInternalIDOutOfRangeRejected(t *testing.T) {
 	})
 	if !errors.Is(err, ErrLCSClientInternalIDInvalid) {
 		t.Errorf("encode: want ErrLCSClientInternalIDInvalid, got %v", err)
-	}
-
-	wireBad := gsm_map.LCSClientInternalID(99)
-	_, err = convertWireToLCSClientID(&gsm_map.LCSClientID{
-		LcsClientType:       gsm_map.LCSClientTypeEmergencyServices,
-		LcsClientInternalID: &wireBad,
-	})
-	if !errors.Is(err, ErrLCSClientInternalIDInvalid) {
-		t.Errorf("decode: want ErrLCSClientInternalIDInvalid, got %v", err)
 	}
 }
 

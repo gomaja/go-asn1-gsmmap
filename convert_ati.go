@@ -12,6 +12,9 @@ func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationAr
 	if ati == nil {
 		return nil, ErrAnyTimeInterrogationNil
 	}
+	if ati.GsmSCFAddress == "" {
+		return nil, ErrAtiMissingGsmSCFAddress
+	}
 	subId, err := convertSubscriberIdentityToWire(ati.SubscriberIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("AnyTimeInterrogation.SubscriberIdentity: %w", err)
@@ -101,7 +104,7 @@ func convertArgToATI(arg *gsm_map.AnyTimeInterrogationArg) (*AnyTimeInterrogatio
 	ati.RequestedInfo = buildRequestedInfoFromWire(&arg.RequestedInfo)
 
 	// GsmSCFAddress
-	scf, scfNature, scfPlan, err := decodeAddressField(arg.GsmSCFAddress)
+	scf, scfNature, scfPlan, err := decodeMandatoryAddressField(arg.GsmSCFAddress, ErrAtiMissingGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GsmSCFAddress: %w", err)
 	}

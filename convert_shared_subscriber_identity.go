@@ -27,7 +27,7 @@ func convertSubscriberIdentityToWire(s SubscriberIdentity) (gsm_map.SubscriberId
 	}
 
 	if imsiSet {
-		imsiBytes, err := encodeIdentityDigits(s.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 		if err != nil {
 			return gsm_map.SubscriberIdentity{}, fmt.Errorf(errEncodingIMSI, err)
 		}
@@ -50,7 +50,7 @@ func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberId
 		if w.Imsi == nil {
 			return out, ErrSubscriberIdentityUnknownChoice
 		}
-		imsi, err := decodeIdentityDigits(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return out, fmt.Errorf("decoding SubscriberIdentity.IMSI: %w", err)
 		}

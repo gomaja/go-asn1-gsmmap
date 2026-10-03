@@ -32,7 +32,7 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		out.AdditionalAbsentSubscriberDiagnosticSM = &v
 	}
 	if w.Imsi != nil {
-		imsi, err := decodeIdentityDigits(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding AbsentSubscriberSMParam.IMSI: %w", err)
 		}
@@ -42,7 +42,7 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		out.RequestedRetransmissionTime = HexBytes(*w.RequestedRetransmissionTime)
 	}
 	if w.UserIdentifierAlert != nil {
-		uid, err := decodeIdentityDigits(*w.UserIdentifierAlert)
+		uid, err := decodeIdentityDigits(identityIMSI, *w.UserIdentifierAlert)
 		if err != nil {
 			return nil, fmt.Errorf("decoding AbsentSubscriberSMParam.UserIdentifierAlert: %w", err)
 		}

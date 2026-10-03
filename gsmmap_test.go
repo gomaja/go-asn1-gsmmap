@@ -181,7 +181,7 @@ func TestUpdateLocationResRoundTrip(t *testing.T) {
 
 func TestUpdateGprsLocationRoundTrip(t *testing.T) {
 	ul := &UpdateGprsLocation{
-		IMSI:        "1234567890123456",
+		IMSI:        "123456789012345",
 		SGSNNumber:  "628160360000",
 		SGSNAddress: "192.168.1.1",
 		SGSNCapability: &SGSNCapability{
@@ -218,7 +218,7 @@ func TestUpdateGprsLocationRoundTrip(t *testing.T) {
 
 func TestUpdateGprsLocationWithLCSRoundTrip(t *testing.T) {
 	ul := &UpdateGprsLocation{
-		IMSI:        "1234567890123456",
+		IMSI:        "123456789012345",
 		SGSNNumber:  "628160360000",
 		SGSNAddress: "192.168.1.1",
 		SGSNCapability: &SGSNCapability{
@@ -3780,8 +3780,9 @@ func TestCamelDCSIRoundTrip(t *testing.T) {
 					DefaultCallHandling: DefaultCallHandlingContinueCall,
 				},
 			},
-			NotificationToCSE: true,
-			CsiActive:         true,
+			CamelCapabilityHandling: intPtr(3),
+			NotificationToCSE:       true,
+			CsiActive:               true,
 		},
 	}
 	got := camelRoundTrip(t, in)
@@ -4114,6 +4115,7 @@ func TestCamelValidationErrors(t *testing.T) {
 						DefaultCallHandling: DefaultCallHandlingContinueCall,
 					},
 				},
+				CamelCapabilityHandling: intPtr(3),
 			},
 		}
 		_, err := strictWire(convertGmscCamelSubInfoToWire(in))

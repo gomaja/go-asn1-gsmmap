@@ -228,12 +228,10 @@ func convertWireToPLMNClientList(w *gsm_map.PLMNClientList) (PLMNClientList, err
 	}
 
 	out := make(PLMNClientList, len(w.Values))
+	// LCSClientInternalID is extensible (3GPP TS 29.002 V19.1.0 §17.7.8), so
+	// an unlisted value is kept (§17.1.4); Marshal sends only listed values.
 	for i, v := range w.Values {
-		lv := LCSClientInternalID(v)
-		if lv < LCSClientBroadcastService || lv > LCSClientTargetMSsubscribedService {
-			return nil, fmt.Errorf("PLMNClientList[%d]: %w (got %d)", i, ErrLCSClientInternalIDInvalid, lv)
-		}
-		out[i] = lv
+		out[i] = LCSClientInternalID(v)
 	}
 	return out, nil
 }

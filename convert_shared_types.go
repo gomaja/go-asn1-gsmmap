@@ -40,7 +40,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		if w.MscNumber == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		num, nature, plan, err := decodeAddressField(*w.MscNumber)
+		num, nature, plan, err := decodeMandatoryAddressField(*w.MscNumber, ErrAdditionalNumberMscNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MscNumber: %w", err)
 		}
@@ -51,7 +51,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		if w.SgsnNumber == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		num, nature, plan, err := decodeAddressField(*w.SgsnNumber)
+		num, nature, plan, err := decodeMandatoryAddressField(*w.SgsnNumber, ErrAdditionalNumberSgsnNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
@@ -165,7 +165,7 @@ func convertWireToSuperChargerInfo(w *gsm_map.SuperChargerInfo) (*SuperChargerIn
 }
 
 func convertAddInfoToWire(a *AddInfo) (*gsm_map.ADDInfo, error) {
-	imeisvBytes, err := encodeIdentityDigits(a.IMEISV)
+	imeisvBytes, err := encodeIdentityDigits(identityIMEISV, a.IMEISV)
 	if err != nil {
 		return nil, fmt.Errorf("encoding IMEISV: %w", err)
 	}
@@ -177,7 +177,7 @@ func convertAddInfoToWire(a *AddInfo) (*gsm_map.ADDInfo, error) {
 }
 
 func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
-	imeisv, err := decodeIdentityDigits(w.Imeisv)
+	imeisv, err := decodeIdentityDigits(identityIMEISV, w.Imeisv)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMEISV: %w", err)
 	}
@@ -185,6 +185,21 @@ func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
 		IMEISV:                   imeisv,
 		SkipSubscriberDataUpdate: nullPtrToBool(w.SkipSubscriberDataUpdate),
 	}, nil
+}
+
+// istSupportIndicatorFromWire decodes an IST-SupportIndicator (SendRoutingInfo
+// and UpdateLocation VLR-Capability). 3GPP TS 29.002 V19.1.0 §17.7.1:
+// "reception of values > 1 shall be mapped to ' istCommandSupported '". The
+// mapping runs on the int64 wire value so a value beyond a 32-bit int still
+// maps. A negative value lies outside the rule; the type is extensible, so
+// it is kept (§17.1.4). Only a value the platform int cannot hold is an
+// error.
+func istSupportIndicatorFromWire(w gsm_map.ISTSupportIndicator) (int, error) {
+	v := int64(w)
+	if v > 1 {
+		v = 1
+	}
+	return narrowInt64(v)
 }
 
 // --- SRI nested SEQUENCE helpers ---
@@ -332,7 +347,7 @@ func convertWireToRoutingInfo(w *gsm_map.RoutingInfo) (*RoutingInfo, error) {
 		if w.RoamingNumber == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		digits, nat, pl, err := decodeAddressField(*w.RoamingNumber)
+		digits, nat, pl, err := decodeMandatoryAddressField(*w.RoamingNumber, ErrRoutingInfoRoamingNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding RoamingNumber: %w", err)
 		}

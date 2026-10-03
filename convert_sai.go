@@ -161,7 +161,7 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 		return nil, ErrSaiMissingIMSI
 	}
 
-	imsiBytes, err := encodeIdentityDigits(s.IMSI)
+	imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -203,7 +203,7 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 // convertArgToSendAuthenticationInfo converts a wire-level
 // gsm_map.SendAuthenticationInfoArg back into the public SendAuthenticationInfo.
 func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) (*SendAuthenticationInfo, error) {
-	imsi, err := decodeIdentityDigits(arg.Imsi)
+	imsi, err := decodeIdentityDigits(identityIMSI, arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
@@ -231,17 +231,16 @@ func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) 
 	// Apply the mapping in int64 space first so wire values that exceed
 	// platform int still satisfy the spec mandate on 32-bit builds.
 	if arg.RequestingNodeType != nil {
+		// A negative value lies outside both rules; the type is extensible,
+		// so it is kept (3GPP TS 29.002 V19.1.0 §17.1.4).
 		raw64 := int64(*arg.RequestingNodeType)
-		if raw64 < 0 {
-			return nil, fmt.Errorf("RequestingNodeType cannot be negative: %d", raw64)
-		}
 		switch {
 		case raw64 >= 6 && raw64 <= 15:
 			raw64 = int64(RequestingNodeVlr)
 		case raw64 > 17:
 			raw64 = int64(RequestingNodeSgsn)
 		}
-		v := RequestingNodeType(raw64) // post-mapping value is always within spec set
+		v := RequestingNodeType(raw64)
 		out.RequestingNodeType = &v
 	}
 	if arg.RequestingPLMNId != nil {

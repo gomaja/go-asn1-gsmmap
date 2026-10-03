@@ -15,17 +15,6 @@ import (
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
 )
 
-const (
-
-	// IMSI digit-count bounds per TS 29.002 MAP-CommonDataTypes.asn
-	// (TBCD-STRING SIZE 3..8 octets = 5..15 BCD digits per ITU E.212).
-	pslIMSIDigitsMin = 5
-	pslIMSIDigitsMax = 15
-
-	// IMEI is 15 digits per 3GPP TS 23.003 (8 octets, last nibble is filler).
-	pslIMEIDigits = 15
-)
-
 // convertProvideSubscriberLocationArgToWire builds the wire-form
 // gsm_map.ProvideSubscriberLocationArg from the public type. Validates
 // every field; the first error is returned with field context wrapped
@@ -66,10 +55,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 	out.PrivacyOverride = boolToNullPtr(a.PrivacyOverride)
 
 	if a.IMSI != "" {
-		if len(a.IMSI) < pslIMSIDigitsMin || len(a.IMSI) > pslIMSIDigitsMax {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMSI digits=%d: %w", len(a.IMSI), ErrPSLArgIMSIInvalidSize)
-		}
-		imsiBytes, err := encodeIdentityDigits(a.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, a.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMSI: %w", err)
 		}
@@ -89,10 +75,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		out.Lmsi = &v
 	}
 	if a.IMEI != "" {
-		if len(a.IMEI) != pslIMEIDigits {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMEI digits=%d: %w", len(a.IMEI), ErrPSLArgIMEIInvalidSize)
-		}
-		imeiBytes, err := encodeIdentityDigits(a.IMEI)
+		imeiBytes, err := encodeIdentityDigits(identityIMEI, a.IMEI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMEI: %w", err)
 		}
@@ -217,12 +200,9 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 	out.PrivacyOverride = nullPtrToBool(w.PrivacyOverride)
 
 	if w.Imsi != nil {
-		imsi, err := decodeIdentityDigits(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.IMSI: %w", err)
-		}
-		if len(imsi) < pslIMSIDigitsMin || len(imsi) > pslIMSIDigitsMax {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMSI digits=%d: %w", len(imsi), ErrPSLArgIMSIInvalidSize)
 		}
 		out.IMSI = imsi
 	}
@@ -242,12 +222,9 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.LMSI = HexBytes(*w.Lmsi)
 	}
 	if w.Imei != nil {
-		imei, err := decodeIdentityDigits(*w.Imei)
+		imei, err := decodeIdentityDigits(identityIMEI, *w.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.IMEI: %w", err)
-		}
-		if len(imei) != pslIMEIDigits {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.IMEI digits=%d: %w", len(imei), ErrPSLArgIMEIInvalidSize)
 		}
 		out.IMEI = imei
 	}

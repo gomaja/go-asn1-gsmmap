@@ -53,15 +53,6 @@ func TestSriDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) {
 	}
 }
 
-func TestSriDecodeIstSupportIndicator_RejectsNegative(t *testing.T) {
-	arg := newSriArg()
-	v := gsm_map.ISTSupportIndicator(-1)
-	arg.IstSupportIndicator = &v
-	if _, err := convertArgToSri(arg); err == nil {
-		t.Error("IstSupportIndicator=-1: expected error, got nil")
-	}
-}
-
 func TestUpdateLocationDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) {
 	cases := []struct {
 		name string
@@ -213,15 +204,6 @@ func TestSriRespDecodeUnavailabilityCause_AcceptsUnknown(t *testing.T) {
 	}
 }
 
-func TestSriRespDecodeUnavailabilityCause_RejectsNegative(t *testing.T) {
-	res := newSriRes()
-	v := gsm_map.UnavailabilityCause(-1)
-	res.UnavailabilityCause = &v
-	if _, err := convertResToSriResp(res); err == nil {
-		t.Error("UnavailabilityCause=-1: expected error, got nil")
-	}
-}
-
 // RequestingNodeType: ENUMERATED { vlr(0), sgsn(1), s-cscf(2), bsf(3),
 // gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17) }. Spec:
 //
@@ -265,15 +247,6 @@ func TestSaiDecodeRequestingNodeType_AppliesSpecMapping(t *testing.T) {
 				t.Errorf("RequestingNodeType: got %d, want %d", *s.RequestingNodeType, tc.want)
 			}
 		})
-	}
-}
-
-func TestSaiDecodeRequestingNodeType_RejectsNegative(t *testing.T) {
-	arg := newSaiArg()
-	v := gsm_map.RequestingNodeType(-1)
-	arg.RequestingNodeType = &v
-	if _, err := convertArgToSendAuthenticationInfo(arg); err == nil {
-		t.Error("RequestingNodeType=-1: expected error, got nil")
 	}
 }
 
