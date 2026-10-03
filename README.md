@@ -96,11 +96,27 @@ What that means for a consumer:
   hexadecimal; IMSI, IMEI and IMEISV must be decimal digits. `GroupId` and
   `LongGroupId` are TBCD digit strings, padded with filler to their field
   size on the wire.
+- Identity digit counts follow TS 23.003 V20.1.0 on `Marshal` and `Parse`:
+  an IMSI or HLR-Id has 6 to 15 digits, an IMEI has 15 digits ending in the
+  spare digit 0 or 16 with the SVN, and an IMEISV has 16. `Parse` accepts
+  any 15th IMEI digit, because some peers send the check digit there.
+- An address holding only its nature/plan octet, or only filler, fails to
+  `Parse`: a mandatory one with the error `Marshal` returns for the missing
+  field, an optional one with its `Err*DecodedEmpty` sentinel.
 - The decoders apply the receiver rules of TS 29.002 V19.1.0: values the
   specification maps are mapped (e.g. CAMEL capability handling above 4 is
   phase 4, DefaultCallHandling 2-31 is continueCall), and elements the
   specification says to ignore are dropped instead of failing the message.
-  The encoders accept only the values a sender may send.
+  An unknown value of an extensible ENUMERATED is kept (§17.1.4) unless the
+  specification says to reject it.
+- The encoders accept only the values a sender may send, for example
+  NoReplyConditionTime 5 to 30, and one CAMEL TDP data entry per trigger
+  detection point in an O-CSI, T-CSI, SMS-CSI or GPRS-CSI.
+- A CSI and a SendRoutingInfoRes may be segmented over several messages
+  (TS 29.002 §17.7.1, §17.7.3). `Marshal` and `Parse` handle one message,
+  so a presence rule that depends on the segment, such as the SMS-CSI TDP
+  list in the first segment or the IMSI in one SendRoutingInfoRes segment,
+  is checked by the caller.
 - The `DataCodingScheme` of `LCSClientName`, `LCSRequestorID` and
   `LCSCodeword` is a `USSDDataCodingScheme`, the type of every
   USSD-DataCodingScheme, so their strings decode with
