@@ -150,9 +150,6 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		out.UtranPositioningData = &v
 	}
 	// [13] cellIdOrSai (CHOICE CGI/SAI vs LAI)
-	if len(a.CellGlobalId) > 0 && len(a.LAI) > 0 {
-		return nil, fmt.Errorf("SubscriberLocationReportArg.CellIdOrSai: %w", ErrSLRArgCellGlobalIdAndLAIMutex)
-	}
 	cellChoice, err := convertCellIdOrSaiToWire(a.CellGlobalId, a.LAI)
 	if err != nil {
 		return nil, fmt.Errorf("SubscriberLocationReportArg.CellIdOrSai: %w", err)

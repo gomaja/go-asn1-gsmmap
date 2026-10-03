@@ -286,8 +286,8 @@ func TestProvideSubscriberLocationResCellIdOrSaiMutex(t *testing.T) {
 		LAI:              HexBytes{0x32, 0xf4, 0x10, 0x12, 0x34},
 	}
 	_, err := convertProvideSubscriberLocationResToWire(in)
-	if !errors.Is(err, ErrPSLResCellGlobalIdAndLAIMutex) {
-		t.Errorf("encode both CGI+LAI: want ErrPSLResCellGlobalIdAndLAIMutex, got %v", err)
+	if !errors.Is(err, ErrCellGlobalIdOrServiceAreaIdOrLAIMultipleAlternatives) {
+		t.Errorf("encode both CGI+LAI: want ErrCellGlobalIdOrServiceAreaIdOrLAIMultipleAlternatives, got %v", err)
 	}
 }
 

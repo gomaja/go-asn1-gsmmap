@@ -20,16 +20,22 @@ func bitStringToWire(field string, octets []byte, bits int) (runtime.BitString, 
 	if bits < 0 || len(octets) != (bits+7)/8 {
 		return runtime.BitString{}, fmt.Errorf("%s: %d octets for %d bits: %w", field, len(octets), bits, ErrBitStringOctetsMismatch)
 	}
-	return runtime.BitString{Bytes: append([]byte(nil), octets...), BitLength: bits}, nil
+	return runtime.BitString{Bytes: clearPaddingBits(octets, bits), BitLength: bits}, nil
 }
 
 // bitStringFromWire copies the octets of a decoded BIT STRING with the
-// unused bits of the last octet cleared. BER leaves them unconstrained
-// (ITU-T X.690 §11.2.1 requires them to be zero only in DER and CER), so
-// they carry no value.
+// unused bits of the last octet cleared.
 func bitStringFromWire(bs runtime.BitString) HexBytes {
-	out := append(HexBytes(nil), bs.Bytes...)
-	if r := bs.BitLength % 8; r != 0 && len(out) > 0 {
+	return clearPaddingBits(bs.Bytes, bs.BitLength)
+}
+
+// clearPaddingBits copies the octets of a bits-long BIT STRING and clears
+// the unused bits of the last octet. BER leaves them unconstrained on
+// receipt (ITU-T X.690 §11.2.1 requires them to be zero only in DER and
+// CER), so they carry no value and are sent as zero.
+func clearPaddingBits(octets []byte, bits int) HexBytes {
+	out := append(HexBytes(nil), octets...)
+	if r := bits % 8; r != 0 && len(out) > 0 {
 		out[len(out)-1] &= 0xFF << uint(8-r)
 	}
 	return out

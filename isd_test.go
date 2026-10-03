@@ -340,7 +340,7 @@ func TestISDBitStrings_DecodesShortInput(t *testing.T) {
 
 // BitLength must satisfy each BIT STRING's spec-min when encoding an
 // all-zeros value — a receiver checking the encoded size needs to see
-// at least the minimum. Uses the spec bounds from MAP-MS-DataTypes.asn.
+// at least the minimum. Uses the bounds of 3GPP TS 29.002 V19.1.0 §17.7.1.
 func TestISDBitStrings_MinLength(t *testing.T) {
 	cases := []struct {
 		name   string

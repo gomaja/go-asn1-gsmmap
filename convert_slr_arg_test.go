@@ -194,7 +194,7 @@ func TestSLRArgEncodeNegative(t *testing.T) {
 		{"CGI and LAI both set", func(a *SubscriberLocationReportArg) {
 			a.CellGlobalId = make(HexBytes, 7)
 			a.LAI = make(HexBytes, 5)
-		}, ErrSLRArgCellGlobalIdAndLAIMutex, "", ""},
+		}, ErrCellGlobalIdOrServiceAreaIdOrLAIMultipleAlternatives, "", ""},
 		{"LcsServiceTypeID out of range", func(a *SubscriberLocationReportArg) { v := int64(128); a.LcsServiceTypeID = &v }, nil, "lcsServiceTypeID", "(0..127)"},
 		{"AccuracyFulfilmentIndicator out of range", func(a *SubscriberLocationReportArg) {
 			v := AccuracyFulfilmentIndicator(9)

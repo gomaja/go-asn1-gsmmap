@@ -1534,8 +1534,9 @@ type InformServiceCentre struct {
 }
 
 // PurgeMS represents a PurgeMS request (opCode 67) per 3GPP TS 29.002.
-// It is sent by the HLR to the VLR/SGSN to purge subscriber data when the
-// subscriber has been deactivated or is permanently unreachable.
+// The VLR or SGSN sends it to the HLR when it deletes the subscriber
+// record, so that the HLR treats the MS as not reachable (3GPP TS 29.002
+// V19.1.0 §8.1.6.1).
 type PurgeMS struct {
 	IMSI string // mandatory (TBCD)
 
@@ -1554,8 +1555,8 @@ type PurgeMS struct {
 }
 
 // PurgeMSRes represents a PurgeMS response (opCode 67) per 3GPP TS 29.002.
-// The VLR/SGSN may reply with freeze-TMSI flags indicating which TMSIs the
-// HLR should block.
+// The HLR may reply with flags telling the VLR, SGSN or MME to freeze the
+// TMSI, P-TMSI or M-TMSI (3GPP TS 29.002 V19.1.0 §8.1.6.3).
 type PurgeMSRes struct {
 	FreezeTMSI  bool // [0] NULL
 	FreezePTMSI bool // [1] NULL
@@ -3668,30 +3669,31 @@ var (
 	ErrCallBarringCauseInvalid                    = errors.New("CallBarringCause must be 0..1")
 	ErrRoamingNotAllowedCauseInvalid              = errors.New("RoamingNotAllowedCause must be 0 or 3")
 
-	ErrAdditionalNumberUnknownAlternative                 = errors.New("additionalNumber: unknown CHOICE alternative")
-	ErrExtBasicServiceCodeUnknownAlternative              = errors.New("extBasicServiceCode: unknown CHOICE alternative")
-	ErrRoutingInfoUnknownAlternative                      = errors.New("routingInfo: unknown CHOICE alternative")
-	ErrExtendedRoutingInfoUnknownAlternative              = errors.New("extendedRoutingInfo: unknown CHOICE alternative")
-	ErrEpsInfoUnknownAlternative                          = errors.New("epsInfo: unknown CHOICE alternative")
-	ErrServingNodeAddressUnknownAlternative               = errors.New("servingNodeAddress: unknown CHOICE alternative")
-	ErrSSSubscriptionOptionUnknownAlternative             = errors.New("ssSubscriptionOption: unknown CHOICE alternative")
-	ErrExtSSInfoUnknownAlternative                        = errors.New("extSSInfo: unknown CHOICE alternative")
-	ErrCancelLocationIdentityUnknownAlternative           = errors.New("cancelLocationIdentity: unknown CHOICE alternative")
-	ErrAdditionalNumberNoAlternative                      = errors.New("additionalNumber: CHOICE has no alternative set")
-	ErrAdditionalNumberMultipleAlternatives               = errors.New("additionalNumber: CHOICE has multiple alternatives set")
-	ErrExtBasicServiceCodeNoAlternative                   = errors.New("extBasicServiceCode: CHOICE has no alternative set")
-	ErrExtBasicServiceCodeMultipleAlternatives            = errors.New("extBasicServiceCode: CHOICE has multiple alternatives set")
-	ErrRoutingInfoNoAlternative                           = errors.New("routingInfo: CHOICE has no alternative set")
-	ErrRoutingInfoMultipleAlternatives                    = errors.New("routingInfo: CHOICE has multiple alternatives set")
-	ErrExtendedRoutingInfoNoAlternative                   = errors.New("extendedRoutingInfo: CHOICE has no alternative set")
-	ErrExtendedRoutingInfoMultipleAlternatives            = errors.New("extendedRoutingInfo: CHOICE has multiple alternatives set")
-	ErrEpsInfoNoAlternative                               = errors.New("epsInfo: CHOICE has no alternative set")
-	ErrEpsInfoMultipleAlternatives                        = errors.New("epsInfo: CHOICE has multiple alternatives set")
-	ErrSmRpDaNoAlternative                                = errors.New("smRpDa: CHOICE has no alternative set")
-	ErrSmRpDaMultipleAlternatives                         = errors.New("smRpDa: CHOICE has multiple alternatives set")
-	ErrSmRpOaNoAlternative                                = errors.New("smRpOa: CHOICE has no alternative set")
-	ErrSmRpOaMultipleAlternatives                         = errors.New("smRpOa: CHOICE has multiple alternatives set")
-	ErrCellGlobalIdOrServiceAreaIdOrLAIUnknownAlternative = errors.New("cellGlobalIdOrServiceAreaIdOrLAI: unknown CHOICE alternative")
+	ErrAdditionalNumberUnknownAlternative                   = errors.New("additionalNumber: unknown CHOICE alternative")
+	ErrExtBasicServiceCodeUnknownAlternative                = errors.New("extBasicServiceCode: unknown CHOICE alternative")
+	ErrRoutingInfoUnknownAlternative                        = errors.New("routingInfo: unknown CHOICE alternative")
+	ErrExtendedRoutingInfoUnknownAlternative                = errors.New("extendedRoutingInfo: unknown CHOICE alternative")
+	ErrEpsInfoUnknownAlternative                            = errors.New("epsInfo: unknown CHOICE alternative")
+	ErrServingNodeAddressUnknownAlternative                 = errors.New("servingNodeAddress: unknown CHOICE alternative")
+	ErrSSSubscriptionOptionUnknownAlternative               = errors.New("ssSubscriptionOption: unknown CHOICE alternative")
+	ErrExtSSInfoUnknownAlternative                          = errors.New("extSSInfo: unknown CHOICE alternative")
+	ErrCancelLocationIdentityUnknownAlternative             = errors.New("cancelLocationIdentity: unknown CHOICE alternative")
+	ErrAdditionalNumberNoAlternative                        = errors.New("additionalNumber: CHOICE has no alternative set")
+	ErrAdditionalNumberMultipleAlternatives                 = errors.New("additionalNumber: CHOICE has multiple alternatives set")
+	ErrExtBasicServiceCodeNoAlternative                     = errors.New("extBasicServiceCode: CHOICE has no alternative set")
+	ErrExtBasicServiceCodeMultipleAlternatives              = errors.New("extBasicServiceCode: CHOICE has multiple alternatives set")
+	ErrRoutingInfoNoAlternative                             = errors.New("routingInfo: CHOICE has no alternative set")
+	ErrRoutingInfoMultipleAlternatives                      = errors.New("routingInfo: CHOICE has multiple alternatives set")
+	ErrExtendedRoutingInfoNoAlternative                     = errors.New("extendedRoutingInfo: CHOICE has no alternative set")
+	ErrExtendedRoutingInfoMultipleAlternatives              = errors.New("extendedRoutingInfo: CHOICE has multiple alternatives set")
+	ErrEpsInfoNoAlternative                                 = errors.New("epsInfo: CHOICE has no alternative set")
+	ErrEpsInfoMultipleAlternatives                          = errors.New("epsInfo: CHOICE has multiple alternatives set")
+	ErrSmRpDaNoAlternative                                  = errors.New("smRpDa: CHOICE has no alternative set")
+	ErrSmRpDaMultipleAlternatives                           = errors.New("smRpDa: CHOICE has multiple alternatives set")
+	ErrSmRpOaNoAlternative                                  = errors.New("smRpOa: CHOICE has no alternative set")
+	ErrSmRpOaMultipleAlternatives                           = errors.New("smRpOa: CHOICE has multiple alternatives set")
+	ErrCellGlobalIdOrServiceAreaIdOrLAIUnknownAlternative   = errors.New("cellGlobalIdOrServiceAreaIdOrLAI: unknown CHOICE alternative")
+	ErrCellGlobalIdOrServiceAreaIdOrLAIMultipleAlternatives = errors.New("cellGlobalIdOrServiceAreaIdOrLAI: CellGlobalId and LAI are alternatives of one CHOICE; set at most one")
 
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
 	ErrSriMissingGmscOrGsmSCFAddress = errors.New("sri: GmscOrGsmSCFAddress is empty")
@@ -3899,11 +3901,11 @@ var (
 	ErrExtSSInfoNoAlternative        = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
 	ErrExtSSInfoMultipleAlternatives = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrIntraCUGOptionsInvalidValue              = errors.New("extSSInfo: IntraCUGOptions must be noCUG-Restrictions(0), cugIC-CallBarred(1), or cugOG-CallBarred(2)")
+	ErrIntraCUGOptionsInvalidValue              = errors.New("cugSubscription: IntraCUGOptions must be noCUG-Restrictions(0), cugIC-CallBarred(1), or cugOG-CallBarred(2)")
 	ErrSSSubscriptionOptionNoAlternative        = errors.New("ssSubscriptionOption: CHOICE requires exactly one of CliRestriction or Override")
 	ErrSSSubscriptionOptionMultipleAlternatives = errors.New("ssSubscriptionOption: CHOICE may only have one of CliRestriction or Override set")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrCliRestrictionOptionInvalidValue = errors.New("extSSInfo: CliRestrictionOption must be permanent(0), temporaryDefaultRestricted(1), or temporaryDefaultAllowed(2)")
+	ErrCliRestrictionOptionInvalidValue = errors.New("ssSubscriptionOption: CliRestrictionOption must be permanent(0), temporaryDefaultRestricted(1), or temporaryDefaultAllowed(2)")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrOverrideCategoryInvalidValue = errors.New("extSSInfo: OverrideCategory must be overrideEnabled(0) or overrideDisabled(1)")
 	ErrEMLPPPriorityOutOfRange      = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
@@ -4068,8 +4070,7 @@ var (
 	ErrPSLArgMlcNumberEmpty     = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory on encode and decode")
 	ErrPSLArgMSISDNDecodedEmpty = errors.New("provideSubscriberLocationArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 
-	ErrPSLResNil                     = errors.New("provideSubscriberLocationRes: argument must not be nil")
-	ErrPSLResCellGlobalIdAndLAIMutex = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
+	ErrPSLResNil = errors.New("provideSubscriberLocationRes: argument must not be nil")
 
 	// Encoder accepts only defined LCS-Event values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
 	ErrLCSEventInvalid = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per 3GPP TS 29.002 V19.1.0 §17.7.13 (a receiver rejects unknown values: ErrLCSEventUnrecognized)")
@@ -4081,11 +4082,10 @@ var (
 	ErrLCSLocationInfoNetworkNodeNumberEmpty = errors.New("lcsLocationInfo: NetworkNodeNumber digits are mandatory on encode and decode")
 
 	// SubscriberLocationReportArg top-level (3GPP TS 29.002 V19.1.0 §17.7.13).
-	ErrSLRArgNil                     = errors.New("subscriberLocationReportArg: nil argument is not permitted")
-	ErrSLRArgMSISDNDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSLRArgNaESRDDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSLRArgNaESRKDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSLRArgCellGlobalIdAndLAIMutex = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
+	ErrSLRArgNil                = errors.New("subscriberLocationReportArg: nil argument is not permitted")
+	ErrSLRArgMSISDNDecodedEmpty = errors.New("subscriberLocationReportArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgNaESRDDecodedEmpty = errors.New("subscriberLocationReportArg: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSLRArgNaESRKDecodedEmpty = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
 
 	// SubscriberLocationReportRes top-level (3GPP TS 29.002 V19.1.0 §17.7.13).
 	ErrSLRResNil                = errors.New("subscriberLocationReportRes: nil argument is not permitted")
@@ -4103,7 +4103,7 @@ var (
 	ErrSriLcsMlcNumberEmpty = errors.New("sriLcs: MlcNumber digits are mandatory on encode and decode")
 	ErrSriLcsRespNil        = errors.New("sriLcsResp: nil argument is not permitted")
 
-	// AnyTimeInterrogation top-level (TS 29.002 §17.7.3).
+	// AnyTimeInterrogation top-level (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrAnyTimeInterrogationNil = errors.New("anyTimeInterrogation: nil argument is not permitted")
 	ErrAtiMissingGsmSCFAddress = errors.New("anyTimeInterrogation: GsmSCFAddress is empty")
 

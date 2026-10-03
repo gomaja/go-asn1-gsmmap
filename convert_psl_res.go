@@ -117,7 +117,7 @@ func convertCellIdOrSaiToWire(cgi, lai HexBytes) (*gsm_map.CellGlobalIdOrService
 	cgiSet := len(cgi) > 0
 	laiSet := len(lai) > 0
 	if cgiSet && laiSet {
-		return nil, ErrPSLResCellGlobalIdAndLAIMutex
+		return nil, ErrCellGlobalIdOrServiceAreaIdOrLAIMultipleAlternatives
 	}
 	if !cgiSet && !laiSet {
 		return nil, nil

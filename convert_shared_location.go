@@ -48,17 +48,11 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 		li.GeodeticInformation = &gd
 	}
 
-	if loc.CellGlobalId != nil {
-		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
-			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId),
-		)
-		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
-	} else if loc.LAI != nil {
-		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAILaiFixedLength(
-			gsm_map.LAIFixedLength(loc.LAI),
-		)
-		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
+	cell, err := convertCellIdOrSaiToWire(loc.CellGlobalId, loc.LAI)
+	if err != nil {
+		return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: %w", err)
 	}
+	li.CellGlobalIdOrServiceAreaIdOrLAI = cell
 
 	if loc.LocationNumber != nil {
 		ln := gsm_map.LocationNumber(loc.LocationNumber)
@@ -318,17 +312,11 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 		li.AgeOfLocationInformation = &age
 	}
 
-	if loc.CellGlobalId != nil {
-		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
-			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(loc.CellGlobalId),
-		)
-		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
-	} else if loc.LAI != nil {
-		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAILaiFixedLength(
-			gsm_map.LAIFixedLength(loc.LAI),
-		)
-		li.CellGlobalIdOrServiceAreaIdOrLAI = &v
+	cell, err := convertCellIdOrSaiToWire(loc.CellGlobalId, loc.LAI)
+	if err != nil {
+		return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: %w", err)
 	}
+	li.CellGlobalIdOrServiceAreaIdOrLAI = cell
 
 	if loc.RouteingAreaIdentity != nil {
 		ra := gsm_map.RAIdentity(loc.RouteingAreaIdentity)

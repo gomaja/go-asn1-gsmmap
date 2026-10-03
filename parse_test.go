@@ -220,7 +220,7 @@ func TestParseMoFsmRejectsCapturedMtForwardSMV2(t *testing.T) {
 	// Captured from temp_wireshark/issue-2.pcapng frame 33:
 	// TCAP forwardSM(46) in shortMsgMT-RelayContext-v2 carries
 	// MT-ForwardSM-Arg with an SMS-DELIVER TPDU. Per 3GPP TS 29.002
-	// v19.1.0 MAP-SM-DataTypes.asn, MO-ForwardSM-Arg and MT-ForwardSM-Arg
+	// V19.1.0 §17.7.6, MO-ForwardSM-Arg and MT-ForwardSM-Arg
 	// share the same leading fields; TS 23.040 v19.0.0 clause 9.2.2
 	// makes the TPDU direction the discriminator here.
 	data, err := hex.DecodeString("3056800822589172230006f7840891328490000033f00440040d91328471112898f3000062805011948422324f2228e90c42a153500c34a3e1643010cd06a2c570391cc8268bd960a0a213548bc16020015990a6cb62b61a")

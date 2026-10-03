@@ -301,3 +301,52 @@ func TestBitStringPaddingBitsCleared(t *testing.T) {
 		t.Errorf("EpsInfo.IsrInformation = %x (%d bits), want a0 (3 bits)", eps.IsrInformation, eps.IsrInformationBits)
 	}
 }
+
+// CellGlobalIdOrServiceAreaIdOrLAI is a CHOICE: a location with both a cell
+// identity and an LAI cannot be encoded, and none of them is dropped.
+func TestLocationCellIdAndLAIBothSet(t *testing.T) {
+	cgi := HexBytes{0x00, 0xf1, 0x10, 0x00, 0x01, 0x00, 0x02}
+	lai := HexBytes{0x00, 0xf1, 0x10, 0x00, 0x01}
+	for _, tc := range []struct {
+		name string
+		info SubscriberInfo
+	}{
+		{"CS", SubscriberInfo{LocationInformation: &CSLocationInformation{CellGlobalId: cgi, LAI: lai}}},
+		{"GPRS", SubscriberInfo{LocationInformationGPRS: &GPRSLocationInformation{CellGlobalId: cgi, LAI: lai}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := (&AnyTimeInterrogationRes{SubscriberInfo: tc.info}).Marshal()
+			if !errors.Is(err, ErrCellGlobalIdOrServiceAreaIdOrLAIMultipleAlternatives) {
+				t.Fatalf("Marshal: err = %v, want ErrCellGlobalIdOrServiceAreaIdOrLAIMultipleAlternatives", err)
+			}
+		})
+	}
+}
+
+// Marshal sends zero padding bits whatever the caller's octets hold, so a
+// value marshals to the same octets before and after a round trip.
+func TestBitStringToWireClearsPaddingBits(t *testing.T) {
+	bs, err := bitStringToWire("AdditionalInfo", []byte{0xAB, 0xFF}, 9)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(bs.Bytes, []byte{0xAB, 0x80}) || bs.BitLength != 9 {
+		t.Errorf("bitStringToWire = %x (%d bits), want ab80 (9 bits)", bs.Bytes, bs.BitLength)
+	}
+	in := &InsertSubscriberDataArg{VgcsSubscriptionData: VGCSDataList{{GroupId: "123456", AdditionalInfo: HexBytes{0xFF}, AdditionalInfoBits: 1}}}
+	first, err := in.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := ParseInsertSubscriberData(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := parsed.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first, second) {
+		t.Errorf("Marshal → Parse → Marshal changed the octets: %x, then %x", first, second)
+	}
+}
