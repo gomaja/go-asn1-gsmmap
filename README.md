@@ -125,6 +125,10 @@ What that means for a consumer:
 - `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` are `[]MMCode` (were
   `[]byte` and `[]HexBytes`), with `MMCode*` constants for the CS and PS
   domain events.
+- The CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`,
+  `GPRSCSI`, `MGCSI`) no longer have `NotificationToCSE` and `CsiActive`:
+  TS 29.002 §17.7.1 allows them only in ATSI, ATM ack and NSDC messages,
+  which this package does not implement. `Parse` drops them.
 
 ## Usage
 

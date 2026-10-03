@@ -874,11 +874,17 @@ type OBcsmCamelTDPData struct {
 // A received O-CSI whose every OBcsmCamelTDPData is ignored decodes as
 // absent. A received CamelCapabilityHandling above 4 decodes as 4
 // (3GPP TS 29.002 V19.1.0 §17.7.1); the same holds for every CSI below.
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationtoCSE and csiActive shall not
+// be present when O-CSI is sent to VLR/GMSC.
+// They may only be included in ATSI/ATM ack/NSDC message." No implemented
+// message is an AnyTimeSubscriptionInterrogation, AnyTimeModification ack or
+// NoteSubscriberDataModified, so the type has no field for the two flags.
+// Parse drops them: the clause gives the receiver no rule, and they mean
+// nothing to the node the CSI is sent to.
 type OCSI struct {
 	OBcsmCamelTDPDataList   []OBcsmCamelTDPData // mandatory, 1..10 entries
 	CamelCapabilityHandling *int                // [0] phase (1..4); nil if absent
-	NotificationToCSE       bool                // [1] NULL
-	CsiActive               bool                // [2] NULL
 }
 
 // OBcsmCamelTDPCriteria per 3GPP TS 29.002. Selection criteria for an
@@ -904,11 +910,17 @@ type TBcsmCamelTDPData struct {
 // TCSI (T-CSI) per 3GPP TS 29.002. Terminating CAMEL Subscription Info.
 // A received T-CSI whose every TBcsmCamelTDPData is ignored decodes as
 // absent.
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationToCSE and csi-Active shall
+// not be present when VT-CSI/T-CSI is sent to VLR/GMSC.
+// They may only be included in ATSI/ATM ack/NSDC message." No implemented
+// message is an AnyTimeSubscriptionInterrogation, AnyTimeModification ack or
+// NoteSubscriberDataModified, so the type has no field for the two flags.
+// Parse drops them: the clause gives the receiver no rule, and they mean
+// nothing to the node the CSI is sent to.
 type TCSI struct {
 	TBcsmCamelTDPDataList   []TBcsmCamelTDPData // mandatory, 1..10 entries
 	CamelCapabilityHandling *int                // [0] phase (1..4); nil if absent
-	NotificationToCSE       bool                // [1] NULL
-	CsiActive               bool                // [2] NULL
 }
 
 // TBcsmCamelTDPCriteria per 3GPP TS 29.002. Selection criteria for a
@@ -946,11 +958,17 @@ type DPAnalysedInfoCriterium struct {
 // both carry the list, so Marshal and Parse reject a D-CSI with
 // CamelCapabilityHandling and no list
 // (ErrCamelDCSICapabilityHandlingWithoutList).
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationToCSE and csi-Active shall
+// not be present when D-CSI is sent to VLR/GMSC.
+// They may only be included in ATSI/ATM ack/NSDC message." No implemented
+// message is an AnyTimeSubscriptionInterrogation, AnyTimeModification ack or
+// NoteSubscriberDataModified, so the type has no field for the two flags.
+// Parse drops them: the clause gives the receiver no rule, and they mean
+// nothing to the node the CSI is sent to.
 type DCSI struct {
 	DPAnalysedInfoCriteriaList []DPAnalysedInfoCriterium // [0] 1..10 entries; nil = absent
 	CamelCapabilityHandling    *int                      // [1] phase (1..4); nil = absent
-	NotificationToCSE          bool                      // [3] NULL
-	CsiActive                  bool                      // [4] NULL
 }
 
 // GmscCamelSubscriptionInfo per 3GPP TS 29.002. Carries the CAMEL
@@ -979,16 +997,18 @@ type GmscCamelSubscriptionInfo struct {
 // and Parse drops every other code. An SS-CSI arms its events only through
 // SsEventList, so one left with no code decodes as absent.
 //
-// NotificationToCSE and CsiActive are spec-forbidden in messages sent
-// toward the VLR; they're only legal in ATSI/ATM-ack/NSDC messages.
-// The public API exposes them as bools for those cases.
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationToCSE and csi-Active shall
+// not be present when SS-CSI is sent to VLR.
+// They may only be included in ATSI/ATM ack/NSDC message." No implemented
+// message is an AnyTimeSubscriptionInterrogation, AnyTimeModification ack or
+// NoteSubscriberDataModified, so the type has no field for the two flags.
+// Parse drops them: the clause gives the receiver no rule, and they mean
+// nothing to the node the CSI is sent to.
 type SSCSI struct {
-	SsEventList       []SsCode // mandatory, 1..10 entries
-	GsmSCFAddress     string   // mandatory ISDN-AddressString
-	GsmSCFNature      uint8
-	GsmSCFPlan        uint8
-	NotificationToCSE bool // [0] NULL (ATSI/ATM/NSDC only)
-	CsiActive         bool // [1] NULL (ATSI/ATM/NSDC only)
+	SsEventList   []SsCode // mandatory, 1..10 entries
+	GsmSCFAddress string   // mandatory ISDN-AddressString
+	GsmSCFNature  uint8
+	GsmSCFPlan    uint8
 }
 
 // MMCode is an MM-Code, OCTET STRING (SIZE (1)), naming a Mobility
@@ -1026,14 +1046,20 @@ const (
 // MCSI (M-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2517.
 // Mobility-events CAMEL Subscription Info. MobilityTriggers carries CS domain
 // MM-Codes only (see MMCode).
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationToCSE and csi-Active shall
+// not be present when M-CSI is sent to VLR.
+// They may only be included in ATSI/ATM ack/NSDC message." No implemented
+// message is an AnyTimeSubscriptionInterrogation, AnyTimeModification ack or
+// NoteSubscriberDataModified, so the type has no field for the two flags.
+// Parse drops them: the clause gives the receiver no rule, and they mean
+// nothing to the node the CSI is sent to.
 type MCSI struct {
-	MobilityTriggers  []MMCode // mandatory 1..10 CS domain MM-Codes
-	ServiceKey        int64    // mandatory 0..2147483647
-	GsmSCFAddress     string   // [0] mandatory ISDN-AddressString
-	GsmSCFNature      uint8
-	GsmSCFPlan        uint8
-	NotificationToCSE bool // [2] NULL (ATSI/ATM/NSDC only)
-	CsiActive         bool // [3] NULL (ATSI/ATM/NSDC only)
+	MobilityTriggers []MMCode // mandatory 1..10 CS domain MM-Codes
+	ServiceKey       int64    // mandatory 0..2147483647
+	GsmSCFAddress    string   // [0] mandatory ISDN-AddressString
+	GsmSCFNature     uint8
+	GsmSCFPlan       uint8
 }
 
 // DefaultSMSHandling per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2509.
@@ -1086,11 +1112,17 @@ type SMSCAMELTDPData struct {
 // rules apply to the reassembled SMS-CSI and are the caller's to check. A
 // received entry the receiver ignores (see SMSTriggerDetectionPoint) is
 // dropped from the list.
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationToCSE and csi-Active shall
+// not be present when MO-SMS-CSI or MT-SMS-CSI is sent to VLR or SGSN.
+// They may only be included in ATSI/ATM ack/NSDC message." No implemented
+// message is an AnyTimeSubscriptionInterrogation, AnyTimeModification ack or
+// NoteSubscriberDataModified, so the type has no field for the two flags.
+// Parse drops them: the clause gives the receiver no rule, and they mean
+// nothing to the node the CSI is sent to.
 type SMSCSI struct {
 	SmsCAMELTDPDataList     []SMSCAMELTDPData // [0] 1..10 entries; nil = absent
 	CamelCapabilityHandling *int              // [1] phase (1..4); nil = absent
-	NotificationToCSE       bool              // [3] NULL (ATSI/ATM/NSDC only)
-	CsiActive               bool              // [4] NULL (ATSI/ATM/NSDC only)
 }
 
 // MTSMSTPDUType per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2213.
@@ -3460,23 +3492,35 @@ type GPRSCamelTDPDataList []GPRSCamelTDPData
 // rules apply to the reassembled GPRS-CSI and are the caller's to check. A
 // received entry the receiver ignores (see GPRSTriggerDetectionPoint) is
 // dropped from the list.
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationToCSE and csi-Active shall
+// not be present when GPRS-CSI is sent to SGSN.
+// They may only be included in ATSI/ATM ack/NSDC message." No implemented
+// message is an AnyTimeSubscriptionInterrogation, AnyTimeModification ack or
+// NoteSubscriberDataModified, so the type has no field for the two flags.
+// Parse drops them: the clause gives the receiver no rule, and they mean
+// nothing to the node the CSI is sent to.
 type GPRSCSI struct {
 	GprsCamelTDPDataList    GPRSCamelTDPDataList // [0] 1..10 entries; nil = absent
 	CamelCapabilityHandling *int                 // [1] CAMEL phase 1..4; nil = absent
-	NotificationToCSE       bool                 // [3] optional NULL — true when present
-	CsiActive               bool                 // [4] optional NULL — true when present
 }
 
 // MGCSI (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2528.
 // MobilityTriggers SIZE 1..10, PS domain MM-Codes only (see MMCode).
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationToCSE and csi-Active shall
+// not be present when MG-CSI is sent to SGSN.
+// They may only be included in ATSI/ATM ack/NSDC message." No implemented
+// message is an AnyTimeSubscriptionInterrogation, AnyTimeModification ack or
+// NoteSubscriberDataModified, so the type has no field for the two flags.
+// Parse drops them: the clause gives the receiver no rule, and they mean
+// nothing to the node the CSI is sent to.
 type MGCSI struct {
 	MobilityTriggers    []MMCode // mandatory, 1..10 PS domain MM-Codes
 	ServiceKey          int64    // mandatory, 0..2147483647 per CAMEL convention
 	GsmSCFAddress       string   // [0] mandatory ISDN-AddressString digits
 	GsmSCFAddressNature uint8
 	GsmSCFAddressPlan   uint8
-	NotificationToCSE   bool // [2] optional NULL — true when present
-	CsiActive           bool // [3] optional NULL — true when present
 }
 
 // SGSNCAMELSubscriptionInfo (SEQUENCE) per TS 29.002

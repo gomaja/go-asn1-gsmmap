@@ -516,8 +516,6 @@ func TestGPRSCSI_RoundTrip(t *testing.T) {
 	in := &GPRSCSI{
 		GprsCamelTDPDataList:    GPRSCamelTDPDataList{makeGPRSCamelTDPData()},
 		CamelCapabilityHandling: &phase,
-		NotificationToCSE:       true,
-		CsiActive:               true,
 	}
 	w, err := convertGPRSCSIToWire(in)
 	if err != nil {
@@ -557,7 +555,6 @@ func makeMGCSI() *MGCSI {
 		GsmSCFAddress:       "31633333333",
 		GsmSCFAddressNature: 0x10,
 		GsmSCFAddressPlan:   0x01,
-		NotificationToCSE:   true,
 	}
 }
 

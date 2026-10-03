@@ -140,10 +140,7 @@ func convertGPRSCSIToWire(g *GPRSCSI) (*gsm_map.GPRSCSI, error) {
 	if err := validateCamelCapabilityHandling(g.CamelCapabilityHandling); err != nil {
 		return nil, err
 	}
-	out := &gsm_map.GPRSCSI{
-		NotificationToCSE: boolToNullPtr(g.NotificationToCSE),
-		CsiActive:         boolToNullPtr(g.CsiActive),
-	}
+	out := &gsm_map.GPRSCSI{}
 	if len(g.GprsCamelTDPDataList) > 0 {
 		dl, err := convertGPRSCamelTDPDataListToWire(g.GprsCamelTDPDataList)
 		if err != nil {
@@ -172,8 +169,6 @@ func convertWireToGPRSCSI(w *gsm_map.GPRSCSI) (*GPRSCSI, error) {
 	}
 	out := &GPRSCSI{
 		GprsCamelTDPDataList: dl,
-		NotificationToCSE:    nullPtrToBool(w.NotificationToCSE),
-		CsiActive:            nullPtrToBool(w.CsiActive),
 	}
 	if w.CamelCapabilityHandling != nil {
 		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
@@ -206,11 +201,9 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 		return nil, fmt.Errorf("encoding MGCSI.GsmSCFAddress: %w", err)
 	}
 	return &gsm_map.MGCSI{
-		MobilityTriggers:  &mt,
-		ServiceKey:        m.ServiceKey,
-		GsmSCFAddress:     addr,
-		NotificationToCSE: boolToNullPtr(m.NotificationToCSE),
-		CsiActive:         boolToNullPtr(m.CsiActive),
+		MobilityTriggers: &mt,
+		ServiceKey:       m.ServiceKey,
+		GsmSCFAddress:    addr,
 	}, nil
 }
 
@@ -245,8 +238,6 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 		GsmSCFAddress:       addr,
 		GsmSCFAddressNature: nature,
 		GsmSCFAddressPlan:   plan,
-		NotificationToCSE:   nullPtrToBool(w.NotificationToCSE),
-		CsiActive:           nullPtrToBool(w.CsiActive),
 	}, nil
 }
 

@@ -44,8 +44,6 @@ func TestSSCSIRoundTrip(t *testing.T) {
 				SsEventList:   []SsCode{SsCodeECT, SsCodeMultiPTY, SsCodeCD}, // no ccbs to the VLR
 				GsmSCFAddress: "31622222222",
 				GsmSCFNature:  16, GsmSCFPlan: 1,
-				NotificationToCSE: true,
-				CsiActive:         true,
 			},
 		},
 	}
@@ -99,7 +97,6 @@ func TestMCSIRoundTrip(t *testing.T) {
 		ServiceKey:       42,
 		GsmSCFAddress:    "31633333333",
 		GsmSCFNature:     16, GsmSCFPlan: 1,
-		NotificationToCSE: true,
 	}
 	wire, err := convertMCSIToWire(in)
 	if err != nil {
