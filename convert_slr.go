@@ -103,10 +103,7 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 		}
 		out.AdditionalNumber = an
 	}
-	// Guard with BitLength > 0 so a present-but-empty BIT STRING is
-	// treated as absent — a zero-length wire value can't round-trip
-	// through the struct-of-bools surrogate. Matches the existing
-	// pattern in convert_updateloc.go / convert_updategprsloc.go.
+	// The capability sets are represented by named bits in the public type.
 	if w.SupportedLCSCapabilitySets != nil && w.SupportedLCSCapabilitySets.BitLength > 0 {
 		out.SupportedLCSCapabilitySets = convertBitStringToLCSCaps(*w.SupportedLCSCapabilitySets)
 	}
@@ -182,10 +179,7 @@ func convertWireToDeferredmtLrData(w *gsm_map.DeferredmtLrData) (*DeferredmtLrDa
 	if w == nil {
 		return nil, nil
 	}
-	det, err := convertBitStringToDeferredLocationEventType(w.DeferredLocationEventType)
-	if err != nil {
-		return nil, fmt.Errorf("DeferredmtLrData.DeferredLocationEventType: %w", err)
-	}
+	det := convertBitStringToDeferredLocationEventType(w.DeferredLocationEventType)
 	out := &DeferredmtLrData{
 		DeferredLocationEventType: *det,
 	}

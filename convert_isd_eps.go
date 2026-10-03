@@ -80,8 +80,8 @@ func convertWireToEPSQoSSubscribed(w *gsm_map.EPSQoSSubscribed) (*EPSQoSSubscrib
 // SpecificAPNInfo / SpecificAPNInfoList — TS 29.002 MAP-MS-DataTypes.asn:1398-1408
 // PdnGwIdentity is the pre-existing public type (gsmmap.go:366) shared with
 // UpdateGprsLocation; convertPdnGwIdentityToWire / convertWireToPdnGwIdentity
-// in convert_updategprsloc.go enforce the "at least one of IPv4Address,
-// IPv6Address, or Name" rule.
+// in convert_updategprsloc.go enforce IPv4=4 octets, IPv6=16 octets,
+// and the "at least one of IPv4Address, IPv6Address, or Name" rule.
 // ============================================================================
 
 func convertSpecificAPNInfoToWire(s *SpecificAPNInfo) (*gsm_map.SpecificAPNInfo, error) {

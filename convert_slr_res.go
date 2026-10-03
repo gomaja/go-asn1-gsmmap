@@ -118,11 +118,7 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 	}
 	out.MoLrShortCircuitIndicator = nullPtrToBool(w.MoLrShortCircuitIndicator)
 	if w.ReportingPLMNList != nil {
-		v, err := convertWireToReportingPLMNList(w.ReportingPLMNList)
-		if err != nil {
-			return nil, fmt.Errorf("SubscriberLocationReportRes.ReportingPLMNList: %w", err)
-		}
-		out.ReportingPLMNList = v
+		out.ReportingPLMNList = convertWireToReportingPLMNList(w.ReportingPLMNList)
 	}
 	if w.LcsReferenceNumber != nil {
 		out.LcsReferenceNumber = LCSReferenceNumber(*w.LcsReferenceNumber)

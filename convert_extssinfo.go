@@ -21,8 +21,6 @@ import (
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// --- Ext-SS-Status helpers (OCTET STRING SIZE 1..5) ---
-
 // --- SSSubscriptionOption (CHOICE) ---
 
 func convertSSSubscriptionOptionToWire(o *SSSubscriptionOption) (*gsm_map.SSSubscriptionOption, error) {
@@ -149,15 +147,10 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 		out.ForwardedToNumber = &v
 	}
 	if f.ForwardedToSubaddress != nil {
-		// ISDN-SubaddressString SIZE(1..21) per TS 29.002. Reject a non-nil
-		// empty slice rather than silently omitting it.
-
 		v := gsm_map.ISDNSubaddressString(f.ForwardedToSubaddress)
 		out.ForwardedToSubaddress = &v
 	}
 	if f.ForwardingOptions != nil {
-		// Ext-ForwOptions OCTET STRING (SIZE 1..5) per TS 29.002.
-
 		v := gsm_map.ExtForwOptions(f.ForwardingOptions)
 		out.ForwardingOptions = &v
 	}
@@ -357,11 +350,6 @@ func convertCUGSubscriptionToWire(s *CUGSubscription) (gsm_map.CUGSubscription, 
 }
 
 func convertWireToCUGSubscription(w *gsm_map.CUGSubscription) (CUGSubscription, error) {
-	idxRaw, err := narrowInt64(int64(w.CugIndex))
-	if err != nil {
-		return CUGSubscription{}, fmt.Errorf("CugIndex: %w", err)
-	}
-
 	optRaw, err := narrowInt64(int64(w.IntraCUGOptions))
 	if err != nil {
 		return CUGSubscription{}, fmt.Errorf("IntraCUGOptions: %w", err)
@@ -371,7 +359,7 @@ func convertWireToCUGSubscription(w *gsm_map.CUGSubscription) (CUGSubscription, 
 		return CUGSubscription{}, ErrIntraCUGOptionsInvalidValue
 	}
 	out := CUGSubscription{
-		CugIndex:        idxRaw,
+		CugIndex:        int(w.CugIndex),
 		CugInterlock:    HexBytes(w.CugInterlock),
 		IntraCUGOptions: opt,
 	}
@@ -398,7 +386,6 @@ func convertCUGFeatureToWire(f *CUGFeature) (gsm_map.CUGFeature, error) {
 	}
 	if f.PreferentialCUGIndex != nil {
 		v := *f.PreferentialCUGIndex
-
 		idx := gsm_map.CUGIndex(int64(v))
 		out.PreferentialCUGIndicator = &idx
 	}
@@ -415,11 +402,7 @@ func convertWireToCUGFeature(w *gsm_map.CUGFeature) (CUGFeature, error) {
 		out.BasicService = bs
 	}
 	if w.PreferentialCUGIndicator != nil {
-		idx, err := narrowInt64(int64(*w.PreferentialCUGIndicator))
-		if err != nil {
-			return CUGFeature{}, fmt.Errorf("PreferentialCUGIndicator: %w", err)
-		}
-
+		idx := int(*w.PreferentialCUGIndicator)
 		out.PreferentialCUGIndex = &idx
 	}
 	return out, nil
@@ -552,21 +535,14 @@ func convertEMLPPInfoToWire(e *EMLPPInfo) (*gsm_map.EMLPPInfo, error) {
 
 func convertWireToEMLPPInfo(w *gsm_map.EMLPPInfo) (*EMLPPInfo, error) {
 	// Lenient decode per TS 29.002: 7..15 → 4. Apply in int64 space.
-	mapPriority := func(field string, v int64) (int, error) {
+	mapPriority := func(v int64) int {
 		if v >= 7 && v <= 15 {
-			return 4, nil
+			return 4
 		}
-
-		return int(v), nil
+		return int(v)
 	}
-	maxP, err := mapPriority("MaximumEntitledPriority", int64(w.MaximumentitledPriority))
-	if err != nil {
-		return nil, err
-	}
-	defP, err := mapPriority("DefaultPriority", int64(w.DefaultPriority))
-	if err != nil {
-		return nil, err
-	}
+	maxP := mapPriority(w.MaximumentitledPriority)
+	defP := mapPriority(w.DefaultPriority)
 	return &EMLPPInfo{MaximumEntitledPriority: maxP, DefaultPriority: defP}, nil
 }
 

@@ -85,13 +85,8 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 	}
 }
 
-// validateCancelLocation enforces every field-level and cross-field
-// constraint on a CancelLocation: the Identity CHOICE (exactly-one
-// alternative, non-empty nested IMSI, 4-octet LMSI), enum ranges, the
-// TypeOfUpdate applicability rule (only with updateProcedure or
-// initialAttachProcedure, per 3GPP TS 29.002), the MTRF mutex, and the
-// new-lmsi length. All identity-related errors funnel through the
-// CHOICE-specific sentinels for a consistent API.
+// validateCancelLocation checks the Identity CHOICE, sender ENUMERATED
+// values, TypeOfUpdate applicability, and mutually exclusive MTRF flags.
 func validateCancelLocation(c *CancelLocation) error {
 	imsiSet := c.Identity.IMSI != ""
 	withLmsiSet := c.Identity.IMSIWithLMSI != nil
@@ -196,11 +191,8 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 	out := &CancelLocation{Identity: id}
 
 	// CancellationType and TypeOfUpdate are extensible ENUMERATEDs (3GPP TS
-	// 29.002 V19.1.0 §17.7.1) without exception handling, so an unlisted
-	// value is kept: "An entity supporting a version greater than 1 shall
-	// not reject an unsupported extension following "..." of that SEQUENCE
-	// or ENUMERATED data type." (§17.1.4). Marshal still sends only the
-	// listed values.
+	// 29.002 V19.1.0 §17.7.1). Unknown values are copied unless the
+	// TypeOfUpdate applicability rule below rejects the combination.
 	if arg.CancellationType != nil {
 		ct := *arg.CancellationType
 		out.CancellationType = &ct

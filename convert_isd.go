@@ -7,9 +7,8 @@ import (
 )
 
 // convertExtSSInfoListToWire / convertWireToExtSSInfoList — list helpers
-// for the ProvisionedSS field. Per TS 29.002 the list size is bounded by
-// the spec but the package convention is to validate the underlying
-// per-entry constraints.
+// for the ProvisionedSS field. The strict codec checks the list bound;
+// entry converters check semantic sender rules.
 
 func convertExtSSInfoListToWire(list []ExtSSInfo) (*gsm_map.ExtSSInfoList, error) {
 	if list == nil {

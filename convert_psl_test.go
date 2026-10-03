@@ -39,10 +39,7 @@ func TestDeferredLocationEventTypeRoundTrip(t *testing.T) {
 			if bs.BitLength != tc.bits {
 				t.Errorf("BitLength: want %d, got %d", tc.bits, bs.BitLength)
 			}
-			out, err := convertBitStringToDeferredLocationEventType(bs)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertBitStringToDeferredLocationEventType(bs)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch: in=%+v out=%+v", tc.in, out)
 			}
@@ -67,10 +64,7 @@ func TestDeferredLocationEventTypeBitMappingFromWire(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := convertBitStringToDeferredLocationEventType(tc.bs)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			got := convertBitStringToDeferredLocationEventType(tc.bs)
 			if !reflect.DeepEqual(tc.want, got) {
 				t.Errorf("bit mapping: want %+v, got %+v", tc.want, got)
 			}
@@ -128,10 +122,7 @@ func TestSupportedGADShapesRoundTrip(t *testing.T) {
 			if bs.BitLength != 7 {
 				t.Errorf("BitLength: want 7 (spec minimum), got %d", bs.BitLength)
 			}
-			out, err := convertBitStringToSupportedGADShapes(bs)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertBitStringToSupportedGADShapes(bs)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch: in=%+v out=%+v", tc.in, out)
 			}
@@ -156,10 +147,7 @@ func TestSupportedGADShapesBitMappingFromWire(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := convertBitStringToSupportedGADShapes(tc.bs)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			got := convertBitStringToSupportedGADShapes(tc.bs)
 			if !reflect.DeepEqual(tc.want, got) {
 				t.Errorf("bit mapping: want %+v, got %+v", tc.want, got)
 			}
@@ -217,10 +205,7 @@ func TestLocationTypeRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToLocationType(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToLocationType(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch: in=%+v out=%+v", tc.in, out)
 			}
@@ -233,9 +218,9 @@ func TestLocationTypeNilPassesThrough(t *testing.T) {
 	if err != nil || wire != nil {
 		t.Errorf("nil → nil expected, got wire=%v err=%v", wire, err)
 	}
-	out, err := convertWireToLocationType(nil)
-	if err != nil || out != nil {
-		t.Errorf("nil → nil expected, got out=%v err=%v", out, err)
+	out := convertWireToLocationType(nil)
+	if out != nil {
+		t.Errorf("nil → nil expected, got out=%v", out)
 	}
 }
 
@@ -255,14 +240,8 @@ func TestLCSCodewordRoundTrip(t *testing.T) {
 		DataCodingScheme:  0x0f,
 		LcsCodewordString: HexBytes{0x01, 0x02, 0x03, 0x04, 0x05},
 	}
-	wire, err := convertLCSCodewordToWire(in)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
-	}
-	out, err := convertWireToLCSCodeword(wire)
-	if err != nil {
-		t.Fatalf("decode: %v", err)
-	}
+	wire := convertLCSCodewordToWire(in)
+	out := convertWireToLCSCodeword(wire)
 	if !reflect.DeepEqual(in, out) {
 		t.Errorf("round-trip mismatch: in=%+v out=%+v", in, out)
 	}
@@ -272,7 +251,7 @@ func TestLCSCodewordEmptyStringRejected(t *testing.T) {
 	_, err := strictWire(convertLCSCodewordToWire(&LCSCodeword{
 		DataCodingScheme:  0x0f,
 		LcsCodewordString: HexBytes{},
-	}))
+	}), nil)
 	if !matchesConstraint(err, "lcsCodewordString", "SIZE (1..20)") {
 		t.Errorf("want BER constraint error, got %v", err)
 	}
@@ -283,7 +262,7 @@ func TestLCSCodewordOversizedStringRejected(t *testing.T) {
 	_, err := strictWire(convertLCSCodewordToWire(&LCSCodeword{
 		DataCodingScheme:  0x0f,
 		LcsCodewordString: tooBig,
-	}))
+	}), nil)
 	if !matchesConstraint(err, "lcsCodewordString", "SIZE (1..20)") {
 		t.Errorf("want BER constraint error, got %v", err)
 	}
@@ -365,10 +344,7 @@ func TestResponseTimeRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatalf("encode %v: %v", cat, err)
 		}
-		out, err := convertWireToResponseTime(wire)
-		if err != nil {
-			t.Fatalf("decode %v: %v", cat, err)
-		}
+		out := convertWireToResponseTime(wire)
 		if !reflect.DeepEqual(in, out) {
 			t.Errorf("round-trip mismatch for %v: in=%+v out=%+v", cat, in, out)
 		}
@@ -386,10 +362,7 @@ func TestResponseTimeDecoderAppliesSpecExceptionClause(t *testing.T) {
 	// Per TS 29.002 MAP-LCS-DataTypes.asn:270-271, an unrecognized value
 	// shall be treated the same as delaytolerant(1) on decode.
 	w := &gsm_map.ResponseTime{ResponseTimeCategory: 5}
-	out, err := convertWireToResponseTime(w)
-	if err != nil {
-		t.Fatalf("decode unexpected error: %v", err)
-	}
+	out := convertWireToResponseTime(w)
 	if out.ResponseTimeCategory != ResponseTimeDelaytolerant {
 		t.Errorf("spec exception: want delaytolerant(1), got %d", out.ResponseTimeCategory)
 	}

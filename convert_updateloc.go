@@ -60,7 +60,7 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		vlrCap.SolsaSupportIndicator = boolToNullPtr(u.VlrCapability.SolsaSupportIndicator)
 
 		if u.VlrCapability.IstSupportIndicator != nil {
-			// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+			// Sender accepts defined values; receivers map values above 1 to istCommandSupported (3GPP TS 29.002 V19.1.0 §17.7.1).
 			if *u.VlrCapability.IstSupportIndicator < 0 || *u.VlrCapability.IstSupportIndicator > 1 {
 				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *u.VlrCapability.IstSupportIndicator)
 			}

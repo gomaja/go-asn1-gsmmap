@@ -407,8 +407,6 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 	}
 
 	if w.SupportedFeatures != nil && w.SupportedFeatures.BitLength > 0 {
-		// BitString capacity must be consistent with Bytes length.
-
 		out.SupportedFeatures = HexBytes(append([]byte(nil), w.SupportedFeatures.Bytes...))
 		out.SupportedFeaturesBits = w.SupportedFeatures.BitLength
 	}
@@ -476,9 +474,7 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 		if w.IsrInformation == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		// IsrInformation is BIT STRING (SIZE(3..8)) per TS 29.002 §17.7.1.
 		bits := w.IsrInformation.BitLength
-
 		return &EpsInfo{
 			IsrInformation:     HexBytes(append([]byte(nil), w.IsrInformation.Bytes...)),
 			IsrInformationBits: bits,
@@ -508,8 +504,8 @@ func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 	return out, nil
 }
 
-// convertWireToPdnGwUpdate decodes a wire PDNGWUpdate, validating
-// ContextId per TS 29.272 (1..50 context range).
+// convertWireToPdnGwUpdate copies a wire PDNGWUpdate. ContextId has
+// range 1..50 in 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) (*PdnGwUpdate, error) {
 	out := &PdnGwUpdate{}
 	if w.Apn != nil {
