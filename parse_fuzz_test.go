@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -123,8 +124,52 @@ func berSeeds(tb testing.TB) [][]byte {
 	return seeds
 }
 
-// FuzzParse drives every Parse function. None may panic, and a value that
-// parses and marshals again parses back to the same value.
+// strictEncodeErrors are the only errors Marshal may return for a value a
+// Parse function returned. Each marks a value the package decodes
+// leniently, as 3GPP TS 29.002 V19.1.0 tells a receiver to, but never sends:
+var strictEncodeErrors = []error{
+	// A reserved AlertingPattern (§17.7.8) is decoded and not sent.
+	ErrAlertingPatternReserved,
+	// A 15-digit IMEI whose last digit is a peer's Check Digit instead of
+	// the spare digit 0 (§17.7.8 IMEI, TS 23.003 §6.2.1).
+	ErrIMEISpareDigitNotZero,
+	// Unknown values of extensible ENUMERATEDs are kept (§17.1.4); negative
+	// values lie outside the ranges the exception handling maps.
+	ErrCancelLocInvalidCancellationType,
+	ErrCancelLocInvalidTypeOfUpdate,
+	ErrCamelInvalidTTriggerPoint,
+	ErrCamelInvalidDefaultCallHandling,
+	ErrCamelInvalidDefaultSMSHandling,
+	ErrDefaultGPRSHandlingInvalid,
+	ErrSaiInvalidRequestingNodeType,
+	ErrRequestedDomainInvalid,
+	ErrISTSupportIndicatorInvalid,
+	ErrUnavailabilityCauseInvalid,
+	ErrLCSClientInternalIDInvalid,
+	ErrLocationEstimateTypeInvalid,
+	ErrLCSClientTypeInvalid,
+	ErrLCSFormatIndicatorInvalid,
+	ErrPrivacyCheckRelatedActionInvalid,
+	ErrAccuracyFulfilmentIndicatorInvalid,
+	ErrAreaTypeInvalid,
+	ErrOccurrenceInfoInvalid,
+	ErrRANTechnologyInvalid,
+	ErrLCSEventInvalid,
+}
+
+// isStrictEncodeError reports whether err is one of strictEncodeErrors.
+func isStrictEncodeError(err error) bool {
+	for _, e := range strictEncodeErrors {
+		if errors.Is(err, e) {
+			return true
+		}
+	}
+	return false
+}
+
+// FuzzParse drives every Parse function. None may panic, a value that
+// parses marshals again unless Marshal reports one of strictEncodeErrors,
+// and the marshalled value parses back to the same value.
 func FuzzParse(f *testing.F) {
 	for _, s := range berSeeds(f) {
 		for i := range parsers {
@@ -133,28 +178,42 @@ func FuzzParse(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, which uint8, data []byte) {
 		p := parsers[int(which)%len(parsers)]
-		v, err := p.parse(data)
-		if err != nil {
-			if v != nil {
-				t.Fatalf("%s: error %v came with a value", p.name, err)
-			}
-			return
-		}
-		enc, err := v.Marshal()
-		if err != nil {
-			return
-		}
-		again, err := p.parse(enc)
-		if err != nil {
-			t.Fatalf("%s: re-parsing marshalled value: %v\nwire %x", p.name, err, enc)
-		}
-		if diff := cmp.Diff(v, again, equateTPDU, cmpopts.EquateEmpty()); diff != "" {
-			t.Fatalf("%s round trip (-first +second):\n%s\nwire %x", p.name, diff, data)
-		}
-		if reflect.TypeOf(v) != reflect.TypeOf(again) {
-			t.Fatalf("%s: type changed", p.name)
+		if err := checkParseRoundTrip(p.name, p.parse, data); err != nil {
+			t.Fatal(err)
 		}
 	})
+}
+
+// checkParseRoundTrip applies the FuzzParse property to data and parse:
+// an error comes without a value; a parsed value marshals, unless Marshal
+// reports one of strictEncodeErrors; and the marshalled octets parse back
+// to an equal value of the same type.
+func checkParseRoundTrip(name string, parse func([]byte) (marshaler, error), data []byte) error {
+	v, err := parse(data)
+	if err != nil {
+		if v != nil {
+			return fmt.Errorf("%s: error %v came with a value", name, err)
+		}
+		return nil
+	}
+	enc, err := v.Marshal()
+	if err != nil {
+		if isStrictEncodeError(err) {
+			return nil
+		}
+		return fmt.Errorf("%s: parsed value does not marshal: %w\nwire %x", name, err, data)
+	}
+	again, err := parse(enc)
+	if err != nil {
+		return fmt.Errorf("%s: re-parsing marshalled value: %w\nwire %x", name, err, enc)
+	}
+	if diff := cmp.Diff(v, again, equateTPDU, cmpopts.EquateEmpty()); diff != "" {
+		return fmt.Errorf("%s round trip (-first +second):\n%s\nwire %x", name, diff, data)
+	}
+	if reflect.TypeOf(v) != reflect.TypeOf(again) {
+		return fmt.Errorf("%s: type changed", name)
+	}
+	return nil
 }
 
 // A wire storedMSISDN that holds only its nature/plan octet has no digits;

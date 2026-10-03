@@ -62,7 +62,7 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		if u.VlrCapability.IstSupportIndicator != nil {
 			// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 			if *u.VlrCapability.IstSupportIndicator < 0 || *u.VlrCapability.IstSupportIndicator > 1 {
-				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator out of range 0..1: %d", *u.VlrCapability.IstSupportIndicator)
+				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *u.VlrCapability.IstSupportIndicator)
 			}
 			v := gsm_map.ISTSupportIndicator(int64(*u.VlrCapability.IstSupportIndicator))
 			vlrCap.IstSupportIndicator = &v

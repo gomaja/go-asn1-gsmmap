@@ -1271,6 +1271,10 @@ type Sri struct {
 }
 
 // SriResp represents a SendRoutingInfo response.
+//
+// IMSI is OPTIONAL in the ASN.1 and "must be present if SendRoutingInfoRes
+// is not segmented" (3GPP TS 29.002 V19.1.0 §17.7.3); a segment may lack it,
+// so Marshal and Parse treat "" as absent and the rule is the caller's.
 type SriResp struct {
 	IMSI                            string
 	ExtendedRoutingInfo             *ExtendedRoutingInfo
@@ -3512,6 +3516,11 @@ var (
 	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
 	ErrSriChoiceNoAlternative        = errors.New("sri: CHOICE has no alternative set")
 	ErrSriInvalidSupportedCCBSPhase  = errors.New("sri: SupportedCCBSPhase must be 1; 3GPP TS 29.002 V19.1.0 §17.7.3 reserves 2..127, which a receiver maps to 1")
+	// ErrISTSupportIndicatorInvalid and ErrUnavailabilityCauseInvalid: the
+	// encoder sends only the listed values; the decoder keeps any other
+	// (both types are extensible, 3GPP TS 29.002 V19.1.0 §17.1.4).
+	ErrISTSupportIndicatorInvalid = errors.New("istSupportIndicator: must be basicISTSupported(0) or istCommandSupported(1); a receiver maps values above 1 to istCommandSupported per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrUnavailabilityCauseInvalid = errors.New("unavailabilityCause: must be 1..6 per 3GPP TS 29.002 V19.1.0 §17.7.3 (extensible enum: unknown values preserved on decode)")
 
 	// A selected CHOICE alternative whose address carries no digits would
 	// select nothing in the public type.
