@@ -92,7 +92,7 @@ func notificationToMSUserFromWire(w *gsm_map.NotificationToMSUser) *Notification
 
 // ============================================================================
 // ExternalClient / ExternalClientList / ExtExternalClientList
-// — TS 29.002 MAP-MS-DataTypes.asn:2003-2018
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertExternalClientToWire(c *ExternalClient) (*gsm_map.ExternalClient, error) {
@@ -201,7 +201,7 @@ func convertWireToExtExternalClientList(w *gsm_map.ExtExternalClientList) (ExtEx
 }
 
 // ============================================================================
-// PLMNClientList — TS 29.002 MAP-MS-DataTypes.asn:2008
+// PLMNClientList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertPLMNClientListToWire(list PLMNClientList) (*gsm_map.PLMNClientList, error) {
@@ -232,7 +232,7 @@ func convertWireToPLMNClientList(w *gsm_map.PLMNClientList) PLMNClientList {
 }
 
 // ============================================================================
-// ServiceType / ServiceTypeList — TS 29.002 MAP-MS-DataTypes.asn:2045-2056
+// ServiceType / ServiceTypeList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertServiceTypeToWire(s *ServiceType) (*gsm_map.ServiceType, error) {
@@ -300,7 +300,7 @@ func convertWireToServiceTypeList(w *gsm_map.ServiceTypeList) ServiceTypeList {
 
 // ============================================================================
 // LCSPrivacyClass / LCSPrivacyExceptionList
-// — TS 29.002 MAP-MS-DataTypes.asn:1971-1996
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertLCSPrivacyClassToWire(c *LCSPrivacyClass) (*gsm_map.LCSPrivacyClass, error) {
@@ -416,7 +416,7 @@ func convertWireToLCSPrivacyExceptionList(w *gsm_map.LCSPrivacyExceptionList) (L
 }
 
 // ============================================================================
-// MOLRClass / MOLRList — TS 29.002 MAP-MS-DataTypes.asn:2059-2068
+// MOLRClass / MOLRList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertMOLRClassToWire(c *MOLRClass) *gsm_map.MOLRClass {
@@ -466,7 +466,7 @@ func convertWireToMOLRList(w *gsm_map.MOLRList) MOLRList {
 }
 
 // ============================================================================
-// GMLCList — TS 29.002 MAP-MS-DataTypes.asn:1503
+// GMLCList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertGMLCListToWire(list GMLCList) (*gsm_map.GMLCList, error) {
@@ -514,7 +514,7 @@ func convertWireToGMLCList(w *gsm_map.GMLCList) (GMLCList, error) {
 }
 
 // ============================================================================
-// LCSInformation — TS 29.002 MAP-MS-DataTypes.asn:1490
+// LCSInformation — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertLCSInformationToWire(l *LCSInformation) (*gsm_map.LCSInformation, error) {

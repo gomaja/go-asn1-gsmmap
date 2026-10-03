@@ -505,7 +505,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
 		if s == "" {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.SgsnNumber: %w", ErrIsdSGSNNumberDecodedEmpty)
+			return nil, fmt.Errorf("InsertSubscriberDataArg.SgsnNumber: %w", ErrIsdSgsnNumberDecodedEmpty)
 		}
 		out.SgsnNumber = s
 		out.SgsnNumberNature = nature

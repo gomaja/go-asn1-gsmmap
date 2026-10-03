@@ -7,7 +7,7 @@ import (
 )
 
 // ============================================================================
-// MC-SS-Info — TS 29.002 MAP-CommonDataTypes.asn:627
+// MC-SS-Info — 3GPP TS 29.002 V19.1.0 §17.7.8
 // ============================================================================
 
 func convertMCSSInfoToWire(m *MCSSInfo) (*gsm_map.MCSSInfo, error) {
@@ -41,7 +41,7 @@ func convertWireToMCSSInfo(w *gsm_map.MCSSInfo) (*MCSSInfo, error) {
 
 // ============================================================================
 // CSG-SubscriptionData / CSG-SubscriptionDataList / VPLMN-CSG-SubscriptionDataList
-// — TS 29.002 MAP-MS-DataTypes.asn:1259-1274
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubscriptionData, error) {
@@ -170,7 +170,7 @@ func convertWireToVPLMNCSGSubscriptionDataList(w *gsm_map.VPLMNCSGSubscriptionDa
 
 // ============================================================================
 // AdjacentAccessRestrictionData / AdjacentAccessRestrictionDataList
-// — TS 29.002 MAP-MS-DataTypes.asn:1475-1483
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertAdjacentAccessRestrictionDataToWire(a *AdjacentAccessRestrictionData) (*gsm_map.AdjacentAccessRestrictionData, error) {
@@ -237,7 +237,7 @@ func convertWireToAdjacentAccessRestrictionDataList(w *gsm_map.AdjacentAccessRes
 }
 
 // ============================================================================
-// IMSI-GroupId / IMSI-GroupIdList — TS 29.002 MAP-MS-DataTypes.asn:1242-1252
+// IMSI-GroupId / IMSI-GroupIdList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertIMSIGroupIdToWire(g *IMSIGroupId) (*gsm_map.IMSIGroupId, error) {
@@ -298,7 +298,7 @@ func convertWireToIMSIGroupIdList(w *gsm_map.IMSIGroupIdList) (IMSIGroupIdList, 
 
 // ============================================================================
 // EDRX-Cycle-Length / EDRX-Cycle-Length-List
-// — TS 29.002 MAP-MS-DataTypes.asn:1207-1218
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertEDRXCycleLengthToWire(e *EDRXCycleLength) (*gsm_map.EDRXCycleLength, error) {
@@ -361,7 +361,7 @@ func convertWireToEDRXCycleLengthList(w *gsm_map.EDRXCycleLengthList) (EDRXCycle
 }
 
 // ============================================================================
-// Reset-Id-List — TS 29.002 MAP-MS-DataTypes.asn:1223-1227
+// Reset-Id-List — 3GPP TS 29.002 V19.1.0 §17.7.1
 // Reset-Id is a leaf OCTET STRING (SIZE 1..4).
 // ============================================================================
 

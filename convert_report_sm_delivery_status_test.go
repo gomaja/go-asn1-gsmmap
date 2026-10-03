@@ -143,7 +143,7 @@ func TestReportSMDeliveryStatusEncodeNegative(t *testing.T) {
 	}{
 		{"nil arg", nil, ErrReportSMDeliveryStatusNil, "", ""},
 		{"empty MSISDN", func(r *ReportSMDeliveryStatus) { r.MSISDN = "" }, ErrReportSMDeliveryStatusMSISDNEmpty, "", ""},
-		{"empty ServiceCentreAddress", func(r *ReportSMDeliveryStatus) { r.ServiceCentreAddress = "" }, ErrReportSMDeliveryStatusSCAEmpty, "", ""},
+		{"empty ServiceCentreAddress", func(r *ReportSMDeliveryStatus) { r.ServiceCentreAddress = "" }, ErrReportSMDeliveryStatusServiceCentreAddressEmpty, "", ""},
 		{"outcome out of range", func(r *ReportSMDeliveryStatus) { r.SmDeliveryOutcome = SmDeliveryOutcome(9) }, ErrReportSMDeliveryStatusOutcomeInvalid, "", ""},
 		{"diagnostic out of range", func(r *ReportSMDeliveryStatus) { r.AbsentSubscriberDiagnosticSM = &bad }, nil, "absentSubscriberDiagnosticSM", "(0..255)"},
 		{"IMSI too short", func(r *ReportSMDeliveryStatus) { r.IMSI = "1234" }, ErrIMSIInvalidLength, "", ""},
@@ -194,7 +194,7 @@ func TestReportSMDeliveryStatusDecodeNegative(t *testing.T) {
 	}{
 		{"outcome out of range", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.SmDeliveryOutcome = gsm_map.SMDeliveryOutcome(7) }, ErrReportSMDeliveryStatusOutcomeInvalid, "", ""},
 		{"MSISDN present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.Msisdn = emptyAddr() }, ErrReportSMDeliveryStatusMSISDNEmpty, "", ""},
-		{"SCA present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.ServiceCentreAddress = emptyAddr() }, ErrReportSMDeliveryStatusSCAEmpty, "", ""},
+		{"SCA present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.ServiceCentreAddress = emptyAddr() }, ErrReportSMDeliveryStatusServiceCentreAddressEmpty, "", ""},
 		{"diagnostic out of range on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.AbsentSubscriberDiagnosticSM = &diag999 }, nil, "absentSubscriberDiagnosticSM", "(0..255)"},
 		{"IMSI invalid size on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { v := imsiShort; w.Imsi = &v }, ErrIMSIInvalidLength, "", ""},
 	}
@@ -218,8 +218,8 @@ func TestReportSMDeliveryStatusDecodeNegative(t *testing.T) {
 		ea := emptyAddr()
 		w := &gsm_map.ReportSMDeliveryStatusRes{StoredMSISDN: &ea}
 		_, err := convertResToReportSMDeliveryStatusRes(w)
-		if !errors.Is(err, ErrReportSMDeliveryStatusResStoredMSISDNEmpty) {
-			t.Errorf("want ErrReportSMDeliveryStatusResStoredMSISDNEmpty, got %v", err)
+		if !errors.Is(err, ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty) {
+			t.Errorf("want ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty, got %v", err)
 		}
 	})
 }

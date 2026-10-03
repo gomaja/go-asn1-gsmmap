@@ -65,7 +65,7 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 		return nil, ErrReportSMDeliveryStatusMSISDNEmpty
 	}
 	if r.ServiceCentreAddress == "" {
-		return nil, ErrReportSMDeliveryStatusSCAEmpty
+		return nil, ErrReportSMDeliveryStatusServiceCentreAddressEmpty
 	}
 	if err := validateSmDeliveryOutcome(r.SmDeliveryOutcome); err != nil {
 		return nil, fmt.Errorf("ReportSMDeliveryStatus.SmDeliveryOutcome: %w", err)
@@ -153,7 +153,7 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 		return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.ServiceCentreAddress: %w", err)
 	}
 	if sca == "" {
-		return nil, ErrReportSMDeliveryStatusSCAEmpty
+		return nil, ErrReportSMDeliveryStatusServiceCentreAddressEmpty
 	}
 	if err := validateSmDeliveryOutcome(w.SmDeliveryOutcome); err != nil {
 		return nil, fmt.Errorf("ReportSMDeliveryStatus.SmDeliveryOutcome: %w", err)
@@ -244,7 +244,7 @@ func convertResToReportSMDeliveryStatusRes(w *gsm_map.ReportSMDeliveryStatusRes)
 			return nil, fmt.Errorf("decoding ReportSMDeliveryStatusRes.StoredMSISDN: %w", err)
 		}
 		if s == "" {
-			return nil, ErrReportSMDeliveryStatusResStoredMSISDNEmpty
+			return nil, ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty
 		}
 		out.StoredMSISDN = s
 		out.StoredMSISDNNature = nature

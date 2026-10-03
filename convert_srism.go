@@ -18,7 +18,7 @@ func isDefinedSmRpMti(v gsm_map.SMRPMTI) bool {
 
 func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 	// msisdn and serviceCentreAddress are non-OPTIONAL in
-	// RoutingInfoForSM-Arg per MAP-SM-DataTypes.asn:63-66.
+	// RoutingInfoForSM-Arg per 3GPP TS 29.002 V19.1.0 §17.7.6.
 	if s.MSISDN == "" {
 		return nil, ErrSriSmMissingMSISDN
 	}

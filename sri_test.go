@@ -37,7 +37,7 @@ func TestSriTypesCompile(t *testing.T) {
 func TestSriSentinelErrorsExist(t *testing.T) {
 	errs := []error{
 		ErrSriMissingMSISDN,
-		ErrSriMissingGmsc,
+		ErrSriMissingGmscOrGsmSCFAddress,
 		ErrSriInvalidInterrogationType,
 		ErrSriChoiceMultipleAlternatives,
 		ErrSriChoiceNoAlternative,
@@ -288,7 +288,7 @@ func TestSriValidationErrors(t *testing.T) {
 		constraint string
 	}{
 		{"missing msisdn", &Sri{GmscOrGsmSCFAddress: "1"}, ErrSriMissingMSISDN, "", ""},
-		{"missing gmsc", &Sri{MSISDN: "1"}, ErrSriMissingGmsc, "", ""},
+		{"missing gmsc", &Sri{MSISDN: "1"}, ErrSriMissingGmscOrGsmSCFAddress, "", ""},
 		{"bad interrogation", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}, ErrSriInvalidInterrogationType, "", ""},
 		{"bad numberOfForwarding", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", NumberOfForwarding: intPtr(9)}, nil, "numberOfForwarding", "(1..5)"},
 		{"bad orCapability", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", OrCapability: intPtr(200)}, nil, "or-Capability", "(1..127)"},

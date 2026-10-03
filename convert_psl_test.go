@@ -359,7 +359,7 @@ func TestResponseTimeEncoderRejectsUnknownValue(t *testing.T) {
 }
 
 func TestResponseTimeDecoderAppliesSpecExceptionClause(t *testing.T) {
-	// Per TS 29.002 MAP-LCS-DataTypes.asn:270-271, an unrecognized value
+	// Per 3GPP TS 29.002 V19.1.0 §17.7.13, an unrecognized value
 	// shall be treated the same as delaytolerant(1) on decode.
 	w := &gsm_map.ResponseTime{ResponseTimeCategory: 5}
 	out := convertWireToResponseTime(w)
@@ -431,7 +431,7 @@ func TestLCSQoSVerticalAccuracyMustBeOneOctet(t *testing.T) {
 }
 
 // Spec mandates bit 8 = 0 on the Horizontal-Accuracy / Vertical-Accuracy
-// uncertainty code octet (TS 29.002 MAP-LCS-DataTypes.asn:250 / 256).
+// uncertainty code octet (3GPP TS 29.002 V19.1.0 §17.7.13 / 256).
 // MSB-set values must be rejected on both encode and decode.
 func TestLCSQoSHorizontalAccuracyReservedBitRejected(t *testing.T) {
 	_, err := convertLCSQoSToWire(&LCSQoS{HorizontalAccuracy: HexBytes{0x80}})

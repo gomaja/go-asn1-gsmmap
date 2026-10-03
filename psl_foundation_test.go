@@ -120,7 +120,7 @@ func TestPSLSentinelErrors(t *testing.T) {
 		ErrPrivacyCheckRelatedActionInvalid,
 		ErrAccuracyFulfilmentIndicatorInvalid,
 		ErrResponseTimeCategoryInvalid,
-		ErrLCSClientIDDialedByMSEmpty,
+		ErrLCSClientIDDialedByMSDecodedEmpty,
 	}
 	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {

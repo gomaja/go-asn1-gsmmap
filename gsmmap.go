@@ -145,7 +145,7 @@ type MtFsm struct {
 
 	// Optional fields (post-extension marker).
 	SmDeliveryTimer           *int                // SM-DeliveryTimerValue: 30..600 seconds
-	SmDeliveryStartTime       HexBytes            // Time octet string; nil if absent
+	SmDeliveryStartTime       HexBytes            // Time: 4 octets of seconds since 1900-01-01 UTC (3GPP TS 29.002 V19.1.0 §17.7.8; RFC 6733 §4.3.1); nil if absent
 	SmsOverIPOnlyIndicator    bool                // [0] NULL
 	CorrelationID             *SriSmCorrelationID // [1] reuse SRI-SM type
 	MaximumRetransmissionTime HexBytes            // [2] Time octet string; nil if absent
@@ -217,7 +217,7 @@ type MoFsmResp struct {
 
 // AddInfo corresponds to ADD-Info SEQUENCE (opCode 2).
 type AddInfo struct {
-	IMEISV                   string // IMEI (TBCD-decoded)
+	IMEISV                   string // IMEISV digits (TBCD-decoded)
 	SkipSubscriberDataUpdate bool
 }
 
@@ -450,18 +450,14 @@ type RequestedNodes struct {
 // SubscriberIdentity represents the subscriber identity CHOICE.
 // Set exactly one of IMSI or MSISDN.
 //
-// MSISDNNature/MSISDNPlan carry the AddressString nature-of-address and
-// numbering-plan for the MSISDN alternative; they are only meaningful
-// when MSISDN is set. Decode exposes the values read from the wire
-// header. On encode a zero value is normalized to its default —
-// International for Nature, ISDN for Plan (E.164, the usual MSISDN form)
-// — so a non-default Nature/Plan round-trips only if set to a non-zero
-// value; a wire "unknown" (0) re-encodes as International/ISDN.
+// MSISDNNature/MSISDNPlan carry the AddressString nature and plan for the
+// MSISDN alternative. Zero means unknown on both decode and encode.
+// Encoding canonicalizes the extension bit and trailing TBCD filler octets.
 type SubscriberIdentity struct {
 	IMSI         string
 	MSISDN       string
-	MSISDNNature uint8 // address nature indicator (0 normalizes to International on encode)
-	MSISDNPlan   uint8 // numbering plan indicator (0 normalizes to ISDN on encode)
+	MSISDNNature uint8 // address nature indicator; 0 means unknown
+	MSISDNPlan   uint8 // numbering plan indicator; 0 means unknown
 }
 
 // RequestedInfo represents the requested information flags for ATI.
@@ -617,7 +613,7 @@ const (
 
 // CSLocationInformation contains CS domain location data (opCode 71).
 type CSLocationInformation struct {
-	AgeOfLocationInformation *int   // seconds; nil if absent
+	AgeOfLocationInformation *int   // minutes; nil if absent
 	VlrNumber                string // decoded; empty if absent
 	VlrNumberNature          uint8
 	VlrNumberPlan            uint8
@@ -637,7 +633,7 @@ type CSLocationInformation struct {
 
 // EPSLocationInformation contains EPS/LTE location data.
 type EPSLocationInformation struct {
-	AgeOfLocationInformation *int              // seconds; nil if absent
+	AgeOfLocationInformation *int              // minutes; nil if absent
 	EUtranCellGlobalIdentity HexBytes          // raw 7 octets; nil if absent
 	TrackingAreaIdentity     HexBytes          // raw 5 octets; nil if absent
 	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
@@ -648,7 +644,7 @@ type EPSLocationInformation struct {
 
 // GPRSLocationInformation contains GPRS domain location data (opCode 71).
 type GPRSLocationInformation struct {
-	AgeOfLocationInformation *int              // seconds; nil if absent
+	AgeOfLocationInformation *int              // minutes; nil if absent
 	CellGlobalId             HexBytes          // raw fixed-length cell ID or SAI; nil if absent
 	LAI                      HexBytes          // raw 5-octet LAI; nil if absent
 	RouteingAreaIdentity     HexBytes          // raw octets; nil if absent
@@ -974,7 +970,7 @@ type DCSI struct {
 // GmscCamelSubscriptionInfo per 3GPP TS 29.002. Carries the CAMEL
 // subscription information reported to the GMSC for call routing.
 // Fields are typed SEQUENCEs with full field coverage; the lossy opaque
-// HexBytes representation used in earlier versions has been replaced.
+// The field uses typed CAMEL subscription data.
 type GmscCamelSubscriptionInfo struct {
 	TCSI                      *TCSI                   // [0]
 	OCSI                      *OCSI                   // [1]
@@ -983,7 +979,7 @@ type GmscCamelSubscriptionInfo struct {
 	DCSI                      *DCSI                   // [5]
 }
 
-// SSCSI (SS-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2254.
+// SSCSI (SS-CSI) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Supplementary Service CAMEL Subscription Info.
 //
 // 3GPP TS 29.002 V19.1.0 §17.7.1 SS-EventList defines actions for
@@ -1043,7 +1039,7 @@ const (
 	MMCodeNetworkInitiatedTransferToMSNotReachableForPaging MMCode = 0x86
 )
 
-// MCSI (M-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2517.
+// MCSI (M-CSI) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Mobility-events CAMEL Subscription Info. MobilityTriggers carries CS domain
 // MM-Codes only (see MMCode).
 //
@@ -1062,7 +1058,7 @@ type MCSI struct {
 	GsmSCFAddressPlan   uint8
 }
 
-// DefaultSMSHandling per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2509.
+// DefaultSMSHandling per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // ENUMERATED { continueTransaction(0), releaseTransaction(1), ... }.
 // Per spec exception handling, values 2..31 are treated as
 // continueTransaction and values > 31 as releaseTransaction on decode —
@@ -1076,7 +1072,7 @@ const (
 	DefaultSMSHandlingReleaseTransaction  = gsm_map.DefaultSMSHandlingReleaseTransaction
 )
 
-// SMSTriggerDetectionPoint per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2487.
+// SMSTriggerDetectionPoint per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // ENUMERATED { sms-CollectedInfo(1), sms-DeliveryRequest(2), ... }.
 // MO-SMS-CSI entries carry sms-CollectedInfo; MT-SMS-CSI entries and
 // MT-smsCAMELTDP-Criteria carry sms-DeliveryRequest. The encoder rejects any
@@ -1089,7 +1085,7 @@ const (
 	SMSTriggerDetectionPointSmsDeliveryRequest = gsm_map.SMSTriggerDetectionPointSmsDeliveryRequest
 )
 
-// SMSCAMELTDPData per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2478.
+// SMSCAMELTDPData per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // One SMS CAMEL trigger detection point entry.
 type SMSCAMELTDPData struct {
 	SmsTriggerDetectionPoint SMSTriggerDetectionPoint // [0] mandatory
@@ -1100,7 +1096,7 @@ type SMSCAMELTDPData struct {
 	DefaultSMSHandling       DefaultSMSHandling // [3] mandatory
 }
 
-// SMSCSI (SMS-CSI) per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2458.
+// SMSCSI (SMS-CSI) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Used for both mo-sms-CSI and mt-sms-CSI fields on the VLR.
 //
 // 3GPP TS 29.002 V19.1.0 §17.7.1: "SMS-CAMEL-TDP-Data and
@@ -1125,7 +1121,7 @@ type SMSCSI struct {
 	CamelCapabilityHandling *int              // [1] phase (1..4); nil = absent
 }
 
-// MTSMSTPDUType per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2213.
+// MTSMSTPDUType per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // ENUMERATED { sms-DELIVER(0), sms-SUBMIT-REPORT(1), sms-STATUS-REPORT(2), ... }.
 // TPDU-TypeCriterion exists only from CAMEL phase 4 on, where
 // "sms-SUBMIT-REPORT shall not be used" (3GPP TS 29.002 V19.1.0 §17.7.1), so
@@ -1138,14 +1134,14 @@ const (
 	MTSMSTPDUTypeSmsSTATUSREPORT = gsm_map.MTSMSTPDUTypeSmsSTATUSREPORT
 )
 
-// MTSmsCAMELTDPCriteria per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2202.
+// MTSmsCAMELTDPCriteria per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Selection criteria for an MT-SMS CAMEL invocation.
 type MTSmsCAMELTDPCriteria struct {
 	SmsTriggerDetectionPoint SMSTriggerDetectionPoint // mandatory
 	TpduTypeCriterion        []MTSMSTPDUType          // [0] optional, 1..5 entries when present
 }
 
-// VlrCamelSubscriptionInfo per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2183.
+// VlrCamelSubscriptionInfo per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Full typed coverage; all 11 fields are exposed. Fields with dedicated
 // ASN.1 CHOICE/SEQUENCE types delegate to their own domain structs.
 //
@@ -1165,9 +1161,9 @@ type VlrCamelSubscriptionInfo struct {
 	MtSmsCAMELTDPCriteriaList []MTSmsCAMELTDPCriteria // [11] 1..10 entries, TS 29.002 §17.7.1
 }
 
-// --- Ext-SS-Info (MAP-MS-DataTypes.asn:1826) — 5-alternative CHOICE ---
+// --- Ext-SS-Info (3GPP TS 29.002 V19.1.0 §17.7.1) — 5-alternative CHOICE ---
 
-// CliRestrictionOption per TS 29.002 MAP-SS-DataTypes.asn:177.
+// CliRestrictionOption per 3GPP TS 29.002 V19.1.0 §17.7.4.
 // ENUMERATED { permanent(0), temporaryDefaultRestricted(1),
 // temporaryDefaultAllowed(2) }.
 type CliRestrictionOption = gsm_map.CliRestrictionOption
@@ -1178,7 +1174,7 @@ const (
 	CliRestrictionTemporaryDefaultAllowed    = gsm_map.CliRestrictionOptionTemporaryDefaultAllowed
 )
 
-// OverrideCategory per TS 29.002 MAP-SS-DataTypes.asn:182.
+// OverrideCategory per 3GPP TS 29.002 V19.1.0 §17.7.4.
 // ENUMERATED { overrideEnabled(0), overrideDisabled(1) }.
 type OverrideCategory = gsm_map.OverrideCategory
 
@@ -1188,13 +1184,13 @@ const (
 )
 
 // SSSubscriptionOption is the SS-SubscriptionOption CHOICE
-// (MAP-SS-DataTypes.asn:173). Set exactly one alternative.
+// (3GPP TS 29.002 V19.1.0 §17.7.4). Set exactly one alternative.
 type SSSubscriptionOption struct {
 	CliRestriction *CliRestrictionOption // [2] cliRestrictionOption
 	Override       *OverrideCategory     // [1] overrideCategory
 }
 
-// IntraCUGOptions per TS 29.002 MAP-MS-DataTypes.asn:1929.
+// IntraCUGOptions per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // ENUMERATED { noCUG-Restrictions(0), cugIC-CallBarred(1),
 // cugOG-CallBarred(2) }.
 type IntraCUGOptions = gsm_map.IntraCUGOptions
@@ -1205,7 +1201,7 @@ const (
 	IntraCUGOGCallBarred   = gsm_map.IntraCUGOptionsCugOGCallBarred
 )
 
-// CUGSubscription per TS 29.002 MAP-MS-DataTypes.asn:1916.
+// CUGSubscription per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type CUGSubscription struct {
 	CugIndex              int                   // mandatory 0..32767
 	CugInterlock          HexBytes              // mandatory, exactly 4 octets
@@ -1213,32 +1209,32 @@ type CUGSubscription struct {
 	BasicServiceGroupList []ExtBasicServiceCode // optional, 1..32 entries when present
 }
 
-// CUGFeature per TS 29.002 MAP-MS-DataTypes.asn:1944.
+// CUGFeature per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type CUGFeature struct {
 	BasicService         *ExtBasicServiceCode // optional
 	PreferentialCUGIndex *int                 // optional 0..32767
 	InterCUGRestrictions uint8                // mandatory; 1 octet bit-encoded per spec
 }
 
-// CUGInfo per TS 29.002 MAP-MS-DataTypes.asn:1907.
+// CUGInfo per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type CUGInfo struct {
 	CugSubscriptionList []CUGSubscription // mandatory, 0..10 entries; nil is the empty list
 	CugFeatureList      []CUGFeature      // optional, 1..32 entries when present
 }
 
-// ExtCallBarringFeature per TS 29.002 MAP-MS-DataTypes.asn:1901.
+// ExtCallBarringFeature per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ExtCallBarringFeature struct {
 	BasicService *ExtBasicServiceCode // optional
 	SsStatus     HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status
 }
 
-// ExtCallBarInfo per TS 29.002 MAP-MS-DataTypes.asn:1892.
+// ExtCallBarInfo per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ExtCallBarInfo struct {
 	SsCode                 SsCode                  // mandatory
 	CallBarringFeatureList []ExtCallBarringFeature // mandatory, 1..32 entries
 }
 
-// ExtForwFeature per TS 29.002 MAP-MS-DataTypes.asn:1842.
+// ExtForwFeature per 3GPP TS 29.002 V19.1.0 §17.7.1.
 //
 // ForwardedToNumber + ForwardingOptions + NoReplyConditionTime are all
 // optional on the wire; the encoder writes whatever subset the caller
@@ -1260,13 +1256,13 @@ type ExtForwFeature struct {
 	LongForwardedToNumberPlan   uint8    // [10] numbering plan
 }
 
-// ExtForwInfo per TS 29.002 MAP-MS-DataTypes.asn:1833.
+// ExtForwInfo per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ExtForwInfo struct {
 	SsCode                SsCode           // mandatory
 	ForwardingFeatureList []ExtForwFeature // mandatory, 1..32 entries
 }
 
-// ExtSSData per TS 29.002 MAP-MS-DataTypes.asn:1963.
+// ExtSSData per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ExtSSData struct {
 	SsCode                SsCode                // mandatory
 	SsStatus              HexBytes              // [4] mandatory, 1..5 octets per Ext-SS-Status
@@ -1274,7 +1270,7 @@ type ExtSSData struct {
 	BasicServiceGroupList []ExtBasicServiceCode // optional, 1..32 entries when present
 }
 
-// EMLPPInfo per TS 29.002 MAP-CommonDataTypes.asn:607.
+// EMLPPInfo per 3GPP TS 29.002 V19.1.0 §17.7.8.
 //
 // Both priorities are EMLPP-Priority INTEGER (0..15); per spec exception
 // handling, values 7..15 are spare and shall be mapped to 4 on decode.
@@ -1286,8 +1282,7 @@ type EMLPPInfo struct {
 	DefaultPriority         int // mandatory 0..6 (post-mapping)
 }
 
-// ExtSSInfo is the Ext-SS-InfoList element CHOICE per TS 29.002
-// MAP-MS-DataTypes.asn:1826. Exactly one alternative must be set.
+// ExtSSInfo is the Ext-SS-InfoList element CHOICE per 3GPP TS 29.002 V19.1.0 §17.7.1. Exactly one alternative must be set.
 type ExtSSInfo struct {
 	ForwardingInfo  *ExtForwInfo    // [0] forwardingInfo
 	CallBarringInfo *ExtCallBarInfo // [1] callBarringInfo
@@ -1357,7 +1352,7 @@ type Sri struct {
 	CcbsCall                        bool
 	SupportedCCBSPhase              *int // only 1 is used; reserved 2..127 decode as 1
 	AdditionalSignalInfo            *ExtExternalSignalInfo
-	IstSupportIndicator             *int
+	IstSupportIndicator             *int // 0 or 1; values above 1 decode as 1
 	PrePagingSupported              bool
 	CallDiversionTreatmentIndicator HexBytes
 	LongFTNSupported                bool
@@ -1710,7 +1705,7 @@ type CancelLocation struct {
 
 // --- InsertSubscriberData (opCode 7) — foundation types ---
 
-// SubscriberStatus per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:1756).
+// SubscriberStatus per 3GPP TS 29.002 (3GPP TS 29.002 V19.1.0 §17.7.1).
 // ENUMERATED { serviceGranted(0), operatorDeterminedBarring(1) }, not
 // extensible: Marshal and Parse reject any other value
 // (ErrSubscriberStatusInvalid).
@@ -1721,7 +1716,7 @@ const (
 	SubscriberStatusOperatorDeterminedBarring = gsm_map.SubscriberStatusOperatorDeterminedBarring
 )
 
-// NetworkAccessMode per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:1509).
+// NetworkAccessMode per 3GPP TS 29.002 (3GPP TS 29.002 V19.1.0 §17.7.1).
 // ENUMERATED { packetAndCircuit(0), onlyCircuit(1), onlyPacket(2) }.
 type NetworkAccessMode = gsm_map.NetworkAccessMode
 
@@ -1731,7 +1726,7 @@ const (
 	NetworkAccessModeOnlyPacket       = gsm_map.NetworkAccessModeOnlyPacket
 )
 
-// RegionalSubscriptionResponse per 3GPP TS 29.002 (MAP-MS-DataTypes.asn:2091).
+// RegionalSubscriptionResponse per 3GPP TS 29.002 (3GPP TS 29.002 V19.1.0 §17.7.1).
 // ENUMERATED { networkNode-AreaRestricted(0), tooManyZoneCodes(1),
 // zoneCodesConflict(2), regionalSubscNotSupported(3) }, not extensible:
 // Marshal and Parse reject any other value
@@ -1745,7 +1740,7 @@ const (
 	RegionalSubscriptionResponseRegionalSubscNotSupported = gsm_map.RegionalSubscriptionResponseRegionalSubscNotSupported
 )
 
-// ODBGeneralData (BIT STRING SIZE 15..32) per TS 29.002 MAP-MS-DataTypes.asn:1776.
+// ODBGeneralData (BIT STRING SIZE 15..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // 29 named bits covering operator-determined barring of outgoing calls,
 // explicit call transfer, packet-oriented services, and roaming. Unknown
 // bits received from peers are treated as unsupported-ODB per spec
@@ -1782,7 +1777,7 @@ type ODBGeneralData struct {
 	RegistrationInternationalCFBarred                               bool // bit 28
 }
 
-// ODBHPLMNData (BIT STRING SIZE 4..32) per TS 29.002 MAP-MS-DataTypes.asn:1812.
+// ODBHPLMNData (BIT STRING SIZE 4..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Carries HPLMN-specific ODB barring types. Unknown bits received from
 // peers are treated as unsupported-ODB per spec exception handling.
 type ODBHPLMNData struct {
@@ -1792,8 +1787,7 @@ type ODBHPLMNData struct {
 	PLMNSpecificBarringType4 bool // bit 3
 }
 
-// AccessRestrictionData (BIT STRING SIZE 2..8) per TS 29.002
-// MAP-MS-DataTypes.asn:1454. Access-type restrictions applied to the
+// AccessRestrictionData (BIT STRING SIZE 2..8) per 3GPP TS 29.002 V19.1.0 §17.7.1. Access-type restrictions applied to the
 // subscriber. Per spec, nodes shall ignore restrictions for access types
 // they do not support.
 type AccessRestrictionData struct {
@@ -1807,8 +1801,7 @@ type AccessRestrictionData struct {
 	EnhancedCoverageNotAllowed  bool // bit 7
 }
 
-// ExtAccessRestrictionData (BIT STRING SIZE 1..32) per TS 29.002
-// MAP-MS-DataTypes.asn:1471. Additional access-type restrictions that
+// ExtAccessRestrictionData (BIT STRING SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1. Additional access-type restrictions that
 // don't fit in the 8-bit AccessRestrictionData.
 type ExtAccessRestrictionData struct {
 	NrAsSecondaryRATNotAllowed                 bool // bit 0
@@ -1863,8 +1856,7 @@ type SupportedFeatures struct {
 	BitLength                                        int  // 0 selects the shortest valid length (at least 26)
 }
 
-// ExtSupportedFeatures (BIT STRING SIZE 1..40) per TS 29.002
-// MAP-MS-DataTypes.asn:687. Extension to SupportedFeatures for newer
+// ExtSupportedFeatures (BIT STRING SIZE 1..40) per 3GPP TS 29.002 V19.1.0 §17.7.1. Extension to SupportedFeatures for newer
 // feature bits; only bit 0 is currently named. BitLength and UnknownBits
 // retain unnamed bits 1..39 and trailing zero bits on Parse/Marshal
 // (3GPP TS 29.002 V19.1.0 §17.7.1, SIZE (1..40)).
@@ -1874,23 +1866,21 @@ type ExtSupportedFeatures struct {
 	UnknownBits                      HexBytes // positions 1..39, MSB first; bit 0 is ignored
 }
 
-// ODBData per TS 29.002 MAP-MS-DataTypes.asn:1770. Wraps the general
+// ODBData per 3GPP TS 29.002 V19.1.0 §17.7.1. Wraps the general
 // ODB bit-string with an optional HPLMN-specific overlay.
 type ODBData struct {
 	OdbGeneralData *ODBGeneralData // mandatory
 	OdbHPLMNData   *ODBHPLMNData   // optional
 }
 
-// ZoneCode (OCTET STRING SIZE 2) per TS 29.002 MAP-MS-DataTypes.asn:2073.
+// ZoneCode (OCTET STRING SIZE 2) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Internal structure defined in 3GPP TS 23.003.
 type ZoneCode HexBytes
 
-// ZoneCodeList (SEQUENCE SIZE 1..10 OF ZoneCode) per TS 29.002
-// MAP-MS-DataTypes.asn:2070.
+// ZoneCodeList (SEQUENCE SIZE 1..10 OF ZoneCode) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ZoneCodeList []ZoneCode
 
-// AdditionalSubscriptions (BIT STRING SIZE 3..8) per TS 29.002
-// MAP-MS-DataTypes.asn:2711. Carries VGCS uplink-request privileges.
+// AdditionalSubscriptions (BIT STRING SIZE 3..8) per 3GPP TS 29.002 V19.1.0 §17.7.1. Carries VGCS uplink-request privileges.
 // Bits other than the three listed below shall be discarded by the
 // receiver per spec.
 type AdditionalSubscriptions struct {
@@ -1899,7 +1889,7 @@ type AdditionalSubscriptions struct {
 	EmergencyReset          bool // bit 2
 }
 
-// VoiceBroadcastData per TS 29.002 MAP-MS-DataTypes.asn:2717.
+// VoiceBroadcastData per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // GroupId and LongGroupId are TBCD digit strings (alphabet
 // "0123456789*#abc") of at most 6 and 8 characters; shorter values are
 // padded with the TBCD filler on the wire (GroupId ::= TBCD-STRING
@@ -1913,7 +1903,7 @@ type VoiceBroadcastData struct {
 	LongGroupId              string // optional TBCD digits, at most 8
 }
 
-// VoiceGroupCallData per TS 29.002 MAP-MS-DataTypes.asn:2695.
+// VoiceGroupCallData per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // GroupId and LongGroupId are TBCD digit strings (alphabet
 // "0123456789*#abc") of at most 6 and 8 characters; shorter values are
 // padded with the TBCD filler on the wire (GroupId ::= TBCD-STRING
@@ -1934,10 +1924,10 @@ type VoiceGroupCallData struct {
 	LongGroupId             string                   // optional TBCD digits, at most 8
 }
 
-// VBSDataList per TS 29.002 MAP-MS-DataTypes.asn:2685 (SIZE 1..50).
+// VBSDataList per 3GPP TS 29.002 V19.1.0 §17.7.1 (SIZE 1..50).
 type VBSDataList []VoiceBroadcastData
 
-// VGCSDataList per TS 29.002 MAP-MS-DataTypes.asn:2688 (SIZE 1..50).
+// VGCSDataList per 3GPP TS 29.002 V19.1.0 §17.7.1 (SIZE 1..50).
 type VGCSDataList []VoiceGroupCallData
 
 // CancelLocationRes represents a CancelLocation response (opCode 3) per
@@ -1945,7 +1935,7 @@ type VGCSDataList []VoiceGroupCallData
 // ExtensionContainer; the wire response is effectively empty in practice.
 type CancelLocationRes struct{}
 
-// MCSSInfo (SEQUENCE) per TS 29.002 MAP-CommonDataTypes.asn:627.
+// MCSSInfo (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.8.
 // Carries multicall supplementary-service status and bearer counts.
 type MCSSInfo struct {
 	SsCode   SsCode   // [0] mandatory
@@ -1954,27 +1944,26 @@ type MCSSInfo struct {
 	NbrUser  int      // [3] mandatory: MC-Bearers (1..7)
 }
 
-// CSGSubscriptionData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1262.
+// CSGSubscriptionData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // CsgID is a 27-bit Closed Subscriber Group identifier (3GPP TS 29.002
 // V19.1.0 §17.7.8); its bit length is explicit as in UserCSGInformation.
 type CSGSubscriptionData struct {
 	CsgID              HexBytes   // mandatory: CSG-Id BIT STRING (4 octets carrying 27 bits)
 	CsgIDBits          int        // mandatory: SIZE (27), checked by the BER codec
-	ExpirationDate     HexBytes   // optional: Time (UTCTime/GeneralizedTime BER-encoded)
+	ExpirationDate     HexBytes   // optional: Time, 4 octets of seconds since 1900-01-01 UTC (3GPP TS 29.002 V19.1.0 §17.7.8; RFC 6733 §4.3.1)
 	LipaAllowedAPNList []HexBytes // [0] optional: list of APN OCTET STRINGs (SIZE 2..63), 1..50 entries when present
 	PlmnId             HexBytes   // [1] optional: PLMN-Id (3 octets)
 }
 
 // CSGSubscriptionDataList (SEQUENCE SIZE 1..50 OF CSG-SubscriptionData) per
-// TS 29.002 MAP-MS-DataTypes.asn:1259.
+// 3GPP TS 29.002 V19.1.0 §17.7.1.
 type CSGSubscriptionDataList []CSGSubscriptionData
 
 // VPLMNCSGSubscriptionDataList (SEQUENCE SIZE 1..50 OF CSG-SubscriptionData)
-// per TS 29.002 MAP-MS-DataTypes.asn:1271. Same shape as CSGSubscriptionDataList.
+// per 3GPP TS 29.002 V19.1.0 §17.7.1. Same shape as CSGSubscriptionDataList.
 type VPLMNCSGSubscriptionDataList []CSGSubscriptionData
 
-// AdjacentAccessRestrictionData (SEQUENCE) per TS 29.002
-// MAP-MS-DataTypes.asn:1478.
+// AdjacentAccessRestrictionData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type AdjacentAccessRestrictionData struct {
 	PlmnId                   HexBytes                  // [0] mandatory: 3-octet PLMN-Id
 	AccessRestrictionData    AccessRestrictionData     // [1] mandatory
@@ -1982,21 +1971,20 @@ type AdjacentAccessRestrictionData struct {
 }
 
 // AdjacentAccessRestrictionDataList (SEQUENCE SIZE 1..50 OF
-// AdjacentAccessRestrictionData) per TS 29.002 MAP-MS-DataTypes.asn:1475.
+// AdjacentAccessRestrictionData) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type AdjacentAccessRestrictionDataList []AdjacentAccessRestrictionData
 
-// IMSIGroupId (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1245.
+// IMSIGroupId (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type IMSIGroupId struct {
 	GroupServiceID uint32   // [0] mandatory: 0..4294967295
 	PlmnId         HexBytes // [1] mandatory: 3-octet PLMN-Id
 	LocalGroupID   HexBytes // [2] mandatory: 1..10 octets
 }
 
-// IMSIGroupIdList (SEQUENCE SIZE 1..50 OF IMSI-GroupId) per TS 29.002
-// MAP-MS-DataTypes.asn:1242.
+// IMSIGroupIdList (SEQUENCE SIZE 1..50 OF IMSI-GroupId) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type IMSIGroupIdList []IMSIGroupId
 
-// EDRXCycleLength (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1210.
+// EDRXCycleLength (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // EDRXCycleLengthValue is a single-octet code per 3GPP TS 29.272 clause 7.3.216.
 type EDRXCycleLength struct {
 	// RatType: currently defined values are 0..5 (UsedRatUTRAN..UsedRatNBIOT);
@@ -2006,16 +1994,14 @@ type EDRXCycleLength struct {
 	EDRXCycleLengthValue HexBytes    // [1] mandatory: exactly 1 octet
 }
 
-// EDRXCycleLengthList (SEQUENCE SIZE 1..8 OF EDRX-Cycle-Length) per TS 29.002
-// MAP-MS-DataTypes.asn:1207.
+// EDRXCycleLengthList (SEQUENCE SIZE 1..8 OF EDRX-Cycle-Length) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type EDRXCycleLengthList []EDRXCycleLength
 
-// ResetIdList (SEQUENCE SIZE 1..50 OF Reset-Id) per TS 29.002
-// MAP-MS-DataTypes.asn:1223. Each Reset-Id is an OCTET STRING (SIZE 1..4)
+// ResetIdList (SEQUENCE SIZE 1..50 OF Reset-Id) per 3GPP TS 29.002 V19.1.0 §17.7.1. Each Reset-Id is an OCTET STRING (SIZE 1..4)
 // unique within the HPLMN.
 type ResetIdList []HexBytes
 
-// AMBR (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1386. The two
+// AMBR (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1. The two
 // mandatory bandwidth fields are Bandwidth INTEGER (bits per second);
 // the extended pair carries kbps values for >4 Gbps profiles.
 type AMBR struct {
@@ -2025,7 +2011,7 @@ type AMBR struct {
 	ExtendedMaxRequestedBandwidthDL *int64 // [4] optional, kilobits per second
 }
 
-// SIPTOPermission (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1567.
+// SIPTOPermission (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Constants alias the go-asn1 spec exports.
 type SIPTOPermission = gsm_map.SIPTOPermission
 
@@ -2034,8 +2020,7 @@ const (
 	SIPTOAboveRanNotAllowed = gsm_map.SIPTOPermissionSiptoAboveRanNotAllowed
 )
 
-// SIPTOLocalNetworkPermission (ENUMERATED) per TS 29.002
-// MAP-MS-DataTypes.asn:1572. Aliased from go-asn1.
+// SIPTOLocalNetworkPermission (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1. Aliased from go-asn1.
 type SIPTOLocalNetworkPermission = gsm_map.SIPTOLocalNetworkPermission
 
 const (
@@ -2043,7 +2028,7 @@ const (
 	SIPTOAtLocalNetworkNotAllowed = gsm_map.SIPTOLocalNetworkPermissionSiptoAtLocalNetworkNotAllowed
 )
 
-// LIPAPermission (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1577.
+// LIPAPermission (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Aliased from go-asn1.
 type LIPAPermission = gsm_map.LIPAPermission
 
@@ -2053,7 +2038,7 @@ const (
 	LIPAConditional = gsm_map.LIPAPermissionLipaConditional
 )
 
-// NIDDMechanism (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1362.
+// NIDDMechanism (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Default (when absent) is sGi-based-data-delivery (0) per spec.
 // Aliased from go-asn1.
 type NIDDMechanism = gsm_map.NIDDMechanism
@@ -2063,7 +2048,7 @@ const (
 	NIDDSCEFBasedDataDelivery = gsm_map.NIDDMechanismSCEFBasedDataDelivery
 )
 
-// PDPContext (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1522.
+// PDPContext (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Mandatory fields: PdpContextId, PdpType, QosSubscribed, Apn.
 // VplmnAddressAllowed is an OPTIONAL ASN.1 NULL — true means present.
 // All other fields are optional pointers / slices; the zero-value
@@ -2074,7 +2059,7 @@ const (
 // (mandatory base fields first, then extensions [0]..[14]).
 //
 // The Ext-QoS-Subscribed extension chain is hierarchical per
-// MAP-MS-DataTypes.asn:1534-1538: Ext2 requires Ext, Ext3 requires
+// 3GPP TS 29.002 V19.1.0 §17.7.1: Ext2 requires Ext, Ext3 requires
 // Ext2, Ext4 requires Ext3.
 type PDPContext struct {
 	PdpContextId        int      // mandatory, ContextId 1..50
@@ -2101,18 +2086,17 @@ type PDPContext struct {
 	SCEFID                      HexBytes                     // [14] optional, FQDN SIZE 9..255
 }
 
-// GPRSDataList (SEQUENCE SIZE 1..50 OF PDP-Context) per TS 29.002
-// MAP-MS-DataTypes.asn:1517.
+// GPRSDataList (SEQUENCE SIZE 1..50 OF PDP-Context) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type GPRSDataList []PDPContext
 
-// GPRSSubscriptionData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1585.
+// GPRSSubscriptionData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type GPRSSubscriptionData struct {
 	CompleteDataListIncluded bool         // optional NULL — true when present
 	GprsDataList             GPRSDataList // [1] mandatory, 1..50 entries
 	ApnOiReplacement         HexBytes     // [3] optional, OCTET STRING SIZE 9..100
 }
 
-// LSAOnlyAccessIndicator (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1702.
+// LSAOnlyAccessIndicator (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Aliased from go-asn1.
 type LSAOnlyAccessIndicator = gsm_map.LSAOnlyAccessIndicator
 
@@ -2121,26 +2105,24 @@ const (
 	LSAAccessOutsideRestricted = gsm_map.LSAOnlyAccessIndicatorAccessOutsideLSAsRestricted
 )
 
-// LSAData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1711.
+// LSAData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type LSAData struct {
 	LsaIdentity            HexBytes // [0] mandatory, OCTET STRING SIZE 3
 	LsaAttributes          HexBytes // [1] mandatory, OCTET STRING SIZE 1
 	LsaActiveModeIndicator bool     // [2] optional NULL — true when present
 }
 
-// LSADataList (SEQUENCE SIZE 1..20 OF LSAData) per TS 29.002
-// MAP-MS-DataTypes.asn:1706.
+// LSADataList (SEQUENCE SIZE 1..20 OF LSAData) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type LSADataList []LSAData
 
-// LSAInformation (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1718.
+// LSAInformation (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type LSAInformation struct {
 	CompleteDataListIncluded bool                    // optional NULL — true when present
 	LsaOnlyAccessIndicator   *LSAOnlyAccessIndicator // [1] optional
 	LsaDataList              LSADataList             // [2] optional, 1..20 entries when present
 }
 
-// PDNConnectionContinuity (ENUMERATED) per TS 29.002
-// MAP-MS-DataTypes.asn:1356. Aliased from go-asn1.
+// PDNConnectionContinuity (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1. Aliased from go-asn1.
 type PDNConnectionContinuity = gsm_map.PDNConnectionContinuity
 
 const (
@@ -2149,7 +2131,7 @@ const (
 	PDNConnectionDisconnectWithoutReactivationRequest = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithoutReactivationRequest
 )
 
-// PDNGWAllocationType (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1437.
+// PDNGWAllocationType (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Aliased from go-asn1.
 type PDNGWAllocationType = gsm_map.PDNGWAllocationType
 
@@ -2167,8 +2149,7 @@ const (
 	WLANOffloadabilityAllowed    = gsm_map.WLANOffloadabilityIndicationAllowed
 )
 
-// AllocationRetentionPriority (SEQUENCE) per TS 29.002
-// MAP-MS-DataTypes.asn:1420. PriorityLevel is an opaque INTEGER per spec
+// AllocationRetentionPriority (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1. PriorityLevel is an opaque INTEGER per spec
 // (3GPP TS 29.212 defines actual semantics). Pre-emption flags are
 // optional BOOLEANs.
 type AllocationRetentionPriority struct {
@@ -2177,14 +2158,14 @@ type AllocationRetentionPriority struct {
 	PreEmptionVulnerability *bool // [2] optional
 }
 
-// EPSQoSSubscribed (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1380.
+// EPSQoSSubscribed (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // QoS-Class-Identifier is INTEGER (1..9) per asn:1415.
 type EPSQoSSubscribed struct {
 	QosClassIdentifier          int                         // [0] mandatory, 1..9
 	AllocationRetentionPriority AllocationRetentionPriority // [1] mandatory
 }
 
-// SpecificAPNInfo (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1403.
+// SpecificAPNInfo (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // PdnGwIdentity is the shared public type,
 // which enforces strict spec sizes (IPv4=4, IPv6=16) and the
 // "at least one identity present" rule.
@@ -2194,7 +2175,7 @@ type SpecificAPNInfo struct {
 }
 
 // SpecificAPNInfoList (SEQUENCE SIZE 1..50 OF SpecificAPNInfo) per
-// TS 29.002 MAP-MS-DataTypes.asn:1398. The field is OPTIONAL on the
+// 3GPP TS 29.002 V19.1.0 §17.7.1. The field is OPTIONAL on the
 // wire; in this public API absence is represented by a nil slice.
 // A non-nil empty slice (len == 0) is rejected as a size violation —
 // callers must use nil rather than `SpecificAPNInfoList{}` to mean
@@ -2209,7 +2190,7 @@ type WLANOffloadability struct {
 	WlanOffloadabilityUTRAN  *WLANOffloadabilityIndication // [1] optional
 }
 
-// APNConfiguration (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1327.
+// APNConfiguration (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Mandatory fields: ContextId, PdnType, Apn, EpsQosSubscribed.
 // VplmnAddressAllowed and NonIPPDNTypeIndicator are OPTIONAL ASN.1 NULL
 // fields modeled as bool (true means present).
@@ -2245,11 +2226,10 @@ type APNConfiguration struct {
 	PdnConnectionContinuity     *PDNConnectionContinuity     // [22] optional
 }
 
-// EPSDataList (SEQUENCE SIZE 1..50 OF APN-Configuration) per TS 29.002
-// MAP-MS-DataTypes.asn:1320.
+// EPSDataList (SEQUENCE SIZE 1..50 OF APN-Configuration) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type EPSDataList []APNConfiguration
 
-// APNConfigurationProfile (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1308.
+// APNConfigurationProfile (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type APNConfigurationProfile struct {
 	DefaultContext           int         // mandatory, ContextId 1..50
 	CompleteDataListIncluded bool        // optional NULL — true when present
@@ -2257,7 +2237,7 @@ type APNConfigurationProfile struct {
 	AdditionalDefaultContext *int        // [3] optional, ContextId 1..50
 }
 
-// EPSSubscriptionData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1283.
+// EPSSubscriptionData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // All fields are OPTIONAL per spec. ApnConfigurationProfile typically
 // carries the substantive payload, but the spec does not mandate it;
 // callers requiring its presence should validate at their layer.
@@ -2280,10 +2260,10 @@ type EPSSubscriptionData struct {
 }
 
 // ============================================================================
-// LCS-Information (TS 29.002 MAP-MS-DataTypes.asn:1490)
+// LCS-Information (3GPP TS 29.002 V19.1.0 §17.7.1)
 // ============================================================================
 
-// GMLCRestriction (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:2027.
+// GMLCRestriction (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Aliased from go-asn1. The encoder accepts only the listed values; the
 // decoder ignores any other value, leaving the parameter absent (3GPP TS
 // 29.002 V19.1.0 §17.7.1).
@@ -2294,7 +2274,7 @@ const (
 	GMLCRestrictionHomeCountry = gsm_map.GMLCRestrictionHomeCountry
 )
 
-// NotificationToMSUser (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:2035.
+// NotificationToMSUser (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Aliased from go-asn1. The encoder accepts only the listed values; the
 // decoder ignores any other value, leaving the parameter absent (3GPP TS
 // 29.002 V19.1.0 §17.7.1).
@@ -2320,7 +2300,7 @@ const (
 	LCSClientTargetMSsubscribedService = gsm_map.LCSClientInternalIDTargetMSsubscribedService
 )
 
-// LCSClientExternalID (SEQUENCE) per TS 29.002 MAP-CommonDataTypes.asn:642
+// LCSClientExternalID (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.8
 // in the go-asn1 library. Surfaces the optional ISDN-AddressString as a
 // digits string + nature/plan triple consistent with the rest of the
 // public API.
@@ -2330,7 +2310,7 @@ type LCSClientExternalID struct {
 	ExternalAddressPlan   uint8
 }
 
-// ExternalClient (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2018.
+// ExternalClient (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ExternalClient struct {
 	ClientIdentity       LCSClientExternalID   // mandatory
 	GmlcRestriction      *GMLCRestriction      // [0] optional
@@ -2338,32 +2318,31 @@ type ExternalClient struct {
 }
 
 // ExternalClientList (SEQUENCE SIZE 0..5 OF ExternalClient) per
-// TS 29.002 MAP-MS-DataTypes.asn:2003.
+// 3GPP TS 29.002 V19.1.0 §17.7.1.
 //
 // Note: spec allows 0 entries (the only such list in the package),
 // so an empty slice is valid here unlike elsewhere.
 type ExternalClientList []ExternalClient
 
 // ExtExternalClientList (SEQUENCE SIZE 1..35 OF ExternalClient) per
-// TS 29.002 MAP-MS-DataTypes.asn:2013.
+// 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ExtExternalClientList []ExternalClient
 
 // PLMNClientList (SEQUENCE SIZE 1..5 OF LCSClientInternalID) per
-// TS 29.002 MAP-MS-DataTypes.asn:2008.
+// 3GPP TS 29.002 V19.1.0 §17.7.1.
 type PLMNClientList []LCSClientInternalID
 
-// ServiceType (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2050.
+// ServiceType (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ServiceType struct {
 	ServiceTypeIdentity  int64                 // mandatory, LCSServiceTypeID INTEGER
 	GmlcRestriction      *GMLCRestriction      // [0] optional
 	NotificationToMSUser *NotificationToMSUser // [1] optional
 }
 
-// ServiceTypeList (SEQUENCE SIZE 1..32 OF ServiceType) per TS 29.002
-// MAP-MS-DataTypes.asn:2045.
+// ServiceTypeList (SEQUENCE SIZE 1..32 OF ServiceType) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ServiceTypeList []ServiceType
 
-// LCSPrivacyClass (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1976.
+// LCSPrivacyClass (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // SsCode is a single-octet SS-Code; SsStatus is the Ext-SS-Status
 // OCTET STRING (SIZE 1..5) shared with Ext-SS-Info.
 type LCSPrivacyClass struct {
@@ -2377,17 +2356,16 @@ type LCSPrivacyClass struct {
 }
 
 // LCSPrivacyExceptionList (SEQUENCE SIZE 1..4 OF LCS-PrivacyClass) per
-// TS 29.002 MAP-MS-DataTypes.asn:1971.
+// 3GPP TS 29.002 V19.1.0 §17.7.1.
 type LCSPrivacyExceptionList []LCSPrivacyClass
 
-// MOLRClass (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2064.
+// MOLRClass (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type MOLRClass struct {
 	SsCode   SsCode   // mandatory
 	SsStatus HexBytes // mandatory, Ext-SS-Status 1..5 octets
 }
 
-// MOLRList (SEQUENCE SIZE 1..3 OF MOLR-Class) per TS 29.002
-// MAP-MS-DataTypes.asn:2059.
+// MOLRList (SEQUENCE SIZE 1..3 OF MOLR-Class) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type MOLRList []MOLRClass
 
 // GMLCAddress represents an ISDN-AddressString entry in a GMLC-List.
@@ -2397,13 +2375,12 @@ type GMLCAddress struct {
 	Plan    uint8
 }
 
-// GMLCList (SEQUENCE SIZE 1..5 OF ISDN-AddressString) per TS 29.002
-// MAP-MS-DataTypes.asn:1503. Each entry is an ISDN-AddressString of 1..9
+// GMLCList (SEQUENCE SIZE 1..5 OF ISDN-AddressString) per 3GPP TS 29.002 V19.1.0 §17.7.1. Each entry is an ISDN-AddressString of 1..9
 // octets, at most 16 digits; Marshal and Parse reject a longer one
 // (ErrGMLCAddressInvalidSize).
 type GMLCList []GMLCAddress
 
-// LCSInformation (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1490.
+// LCSInformation (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // All four lists are OPTIONAL. AddLcsPrivacyExceptionList requires an
 // LcsPrivacyExceptionList of four classes and no SS-Code in both lists
 // (ErrLCSAddPrivacyExceptionListNotAllowed,
@@ -2423,7 +2400,7 @@ type LCSInformation struct {
 // The LCS types shared by ProvideSubscriberLocation (opCode 83) and
 // SubscriberLocationReport (opCode 86).
 
-// LocationEstimateType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:153.
+// LocationEstimateType (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum. Aliased from go-asn1. Marshal sends only the listed
 // values. 3GPP TS 29.002 V19.1.0 §17.7.13: "a ProvideSubscriberLocation-Arg
 // containing an unrecognized LocationEstimateType shall be rejected by the
@@ -2440,8 +2417,7 @@ const (
 	LocationEstimateNotificationVerificationOnly = gsm_map.LocationEstimateTypeNotificationVerificationOnly
 )
 
-// DeferredLocationEventType (BIT STRING SIZE 1..16) per TS 29.002
-// MAP-LCS-DataTypes.asn:165. 5 named bits (msAvailable through periodicLDR).
+// DeferredLocationEventType (BIT STRING SIZE 1..16) per 3GPP TS 29.002 V19.1.0 §17.7.13. 5 named bits (msAvailable through periodicLDR).
 // Surfaced as a bools-only struct to match the package's BIT STRING surrogate
 // pattern (e.g., SupportedCamelPhases). Codec lives with PSL converters.
 //
@@ -2460,14 +2436,14 @@ type DeferredLocationEventType struct {
 	PeriodicLDR      bool // bit 4
 }
 
-// LocationType (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:148.
+// LocationType (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Mandatory in PSL-Arg.
 type LocationType struct {
 	LocationEstimateType      LocationEstimateType       // [0] mandatory
 	DeferredLocationEventType *DeferredLocationEventType // [1] optional, present only past the extensibility marker
 }
 
-// LCSClientType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:188.
+// LCSClientType (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum. Aliased from go-asn1. Marshal sends only the listed
 // values. 3GPP TS 29.002 V19.1.0 §17.7.13: "unrecognized values may be
 // ignored if the LCS client uses the privacy override otherwise, an
@@ -2484,7 +2460,7 @@ const (
 	LCSClientTypeLawfulInterceptServices = gsm_map.LCSClientTypeLawfulInterceptServices
 )
 
-// LCSFormatIndicator (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:224.
+// LCSFormatIndicator (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum. Aliased from go-asn1.
 type LCSFormatIndicator = gsm_map.LCSFormatIndicator
 
@@ -2496,7 +2472,7 @@ const (
 	LCSFormatSipUrl       = gsm_map.LCSFormatIndicatorSipUrl
 )
 
-// LCSClientName (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:199.
+// LCSClientName (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // NameString is a USSD-String of 1..63 octets per maxNameStringLength.
 // Surfaced as an opaque byte slice coded per DataCodingScheme; decode it
 // with DataCodingScheme.Decode.
@@ -2510,7 +2486,7 @@ type LCSClientName struct {
 	LcsFormatIndicator *LCSFormatIndicator  // [3] optional, present only past the extensibility marker
 }
 
-// LCSRequestorID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:214.
+// LCSRequestorID (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // RequestorIDString is a USSD-String of 1..63 octets per
 // maxRequestorIDStringLength.
 type LCSRequestorID struct {
@@ -2519,7 +2495,7 @@ type LCSRequestorID struct {
 	LcsFormatIndicator *LCSFormatIndicator  // [2] optional, present only past the extensibility marker
 }
 
-// LCSClientID (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:178.
+// LCSClientID (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // LcsClientDialedByMS is an AddressString surfaced as digits + nature/plan
 // triple consistent with the rest of the public API.
 type LCSClientID struct {
@@ -2536,7 +2512,7 @@ type LCSClientID struct {
 	LcsRequestorID            *LCSRequestorID      // [6] optional (past extensibility marker)
 }
 
-// ResponseTimeCategory (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:266.
+// ResponseTimeCategory (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum; spec exception: unknown values shall be treated as
 // delaytolerant(1) on decode. Aliased from go-asn1; the lenient remap
 // happens in the decoder.
@@ -2547,7 +2523,7 @@ const (
 	ResponseTimeDelaytolerant = gsm_map.ResponseTimeCategoryDelaytolerant
 )
 
-// ResponseTime (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:261.
+// ResponseTime (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // An expandable SEQUENCE per spec, currently carrying only the category.
 type ResponseTime struct {
 	ResponseTimeCategory ResponseTimeCategory // mandatory
@@ -2565,7 +2541,7 @@ const (
 	LCSQoSClassAssured    = gsm_map.LCSQoSClassAssured
 )
 
-// LCSQoS (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:237.
+// LCSQoS (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // All fields optional. Horizontal/Vertical-Accuracy are 1-octet uncertainty
 // codes per 3GPP TS 23.032; surfaced as raw single-octet HexBytes.
 //
@@ -2590,8 +2566,7 @@ type LCSQoS struct {
 	LcsQosClass               *LCSQoSClass  // [6] optional, past the extensibility marker; nil = absent
 }
 
-// PrivacyCheckRelatedAction (ENUMERATED) per TS 29.002
-// MAP-LCS-DataTypes.asn:307. Aliased from go-asn1. Extensible: the encoder
+// PrivacyCheckRelatedAction (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13. Aliased from go-asn1. Extensible: the encoder
 // accepts only the listed values. 3GPP TS 29.002 V19.1.0 §17.7.13: "a
 // ProvideSubscriberLocation-Arg containing an unrecognized
 // PrivacyCheckRelatedAction shall be rejected by the receiver with a return
@@ -2607,13 +2582,13 @@ const (
 	PrivacyCheckNotAllowed                 = gsm_map.PrivacyCheckRelatedActionNotAllowed
 )
 
-// LCSPrivacyCheck (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:302.
+// LCSPrivacyCheck (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 type LCSPrivacyCheck struct {
 	CallSessionUnrelated PrivacyCheckRelatedAction  // [0] mandatory
 	CallSessionRelated   *PrivacyCheckRelatedAction // [1] optional
 }
 
-// LCSCodeword (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:293.
+// LCSCodeword (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // LcsCodewordString is a USSD-String of 1..20 octets per
 // maxLCSCodewordStringLength.
 type LCSCodeword struct {
@@ -2621,8 +2596,7 @@ type LCSCodeword struct {
 	LcsCodewordString HexBytes             // [1] mandatory, LCSCodewordString 1..20 octets
 }
 
-// AccuracyFulfilmentIndicator (ENUMERATED) per TS 29.002
-// MAP-LCS-DataTypes.asn:457. Extensible enum. Aliased from go-asn1.
+// AccuracyFulfilmentIndicator (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13. Extensible enum. Aliased from go-asn1.
 type AccuracyFulfilmentIndicator = gsm_map.AccuracyFulfilmentIndicator
 
 const (
@@ -2630,8 +2604,7 @@ const (
 	AccuracyFulfilmentRequestedAccuracyNotFulfilled = gsm_map.AccuracyFulfilmentIndicatorRequestedAccuracyNotFulfilled
 )
 
-// SupportedGADShapes (BIT STRING SIZE 7..16) per TS 29.002
-// MAP-LCS-DataTypes.asn:280. 7 named bits per 3GPP TS 23.032.
+// SupportedGADShapes (BIT STRING SIZE 7..16) per 3GPP TS 29.002 V19.1.0 §17.7.13. 7 named bits per 3GPP TS 23.032.
 // Surfaced as a bools-only struct following the package BIT STRING pattern.
 type SupportedGADShapes struct {
 	EllipsoidPoint                                    bool // bit 0
@@ -2643,7 +2616,7 @@ type SupportedGADShapes struct {
 	EllipsoidArc                                      bool // bit 6
 }
 
-// LCSPriority (OCTET STRING SIZE 1) per TS 29.002 MAP-LCS-DataTypes.asn:232.
+// LCSPriority (OCTET STRING SIZE 1) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Per spec: 0 = highest, 1 = normal, all other values treated as 1
 // (3GPP TS 29.002 V19.1.0 §17.7.13). Marshal sends only {0x00} or {0x01}
 // (ErrLCSPriorityInvalid); Parse decodes any other value as {0x01}.
@@ -2657,9 +2630,8 @@ type LCSReferenceNumber = HexBytes
 // PSL geographical / positioning data types (TS 29.002 MAP-LCS-DataTypes.asn)
 // ============================================================================
 //
-// Second PR of the staged ProvideSubscriberLocation (opCode 83)
-// implementation. Lands the OCTET STRING / INTEGER types referenced by
-// PSL-Res and used in deferred-MT-LR responses. Contents are opaque
+// OCTET STRING and INTEGER types referenced by ProvideSubscriberLocation-Res
+// (opCode 83) and deferred-MT-LR responses. Contents are opaque
 // per the cited 3GPP specs (TS 23.032 for geographical/velocity data,
 // TS 49.031 for GERAN/GANSS positioning data, TS 25.413 for UTRAN
 // positioning data) — this package preserves them verbatim and leaves
@@ -2669,54 +2641,45 @@ type LCSReferenceNumber = HexBytes
 // they compose cleanly with the existing public-API patterns
 // (extensionContainer-style opaque pass-through).
 
-// ExtGeographicalInformation (OCTET STRING SIZE 1..20) per TS 29.002
-// MAP-LCS-DataTypes.asn:462. Carries a 3GPP TS 23.032 geographical
+// ExtGeographicalInformation (OCTET STRING SIZE 1..20) per 3GPP TS 29.002 V19.1.0 §17.7.13. Carries a 3GPP TS 23.032 geographical
 // information element; only a subset of TS 23.032 shapes is allowed
-// in this field (see TS 29.002 MAP-LCS-DataTypes.asn:466).
+// in this field (see 3GPP TS 29.002 V19.1.0 §17.7.13).
 type ExtGeographicalInformation = HexBytes
 
-// AddGeographicalInformation (OCTET STRING SIZE 1..91) per TS 29.002
-// MAP-LCS-DataTypes.asn:601. Carries a 3GPP TS 23.032 geographical
+// AddGeographicalInformation (OCTET STRING SIZE 1..91) per 3GPP TS 29.002 V19.1.0 §17.7.13. Carries a 3GPP TS 23.032 geographical
 // information element; all TS 23.032 shapes are allowed in this field
 // (the wider size bound vs Ext-GeographicalInformation reflects that).
 type AddGeographicalInformation = HexBytes
 
-// VelocityEstimate (OCTET STRING SIZE 4..7) per TS 29.002
-// MAP-LCS-DataTypes.asn:522. Carries a 3GPP TS 23.032 velocity
+// VelocityEstimate (OCTET STRING SIZE 4..7) per 3GPP TS 29.002 V19.1.0 §17.7.13. Carries a 3GPP TS 23.032 velocity
 // description element.
 type VelocityEstimate = HexBytes
 
-// PositioningDataInformation (OCTET STRING SIZE 2..10) per TS 29.002
-// MAP-LCS-DataTypes.asn:552. GERAN positioning data per 3GPP TS 49.031.
+// PositioningDataInformation (OCTET STRING SIZE 2..10) per 3GPP TS 29.002 V19.1.0 §17.7.13. GERAN positioning data per 3GPP TS 49.031.
 type PositioningDataInformation = HexBytes
 
-// UtranPositioningDataInfo (OCTET STRING SIZE 3..11) per TS 29.002
-// MAP-LCS-DataTypes.asn:560. UTRAN positioning data
+// UtranPositioningDataInfo (OCTET STRING SIZE 3..11) per 3GPP TS 29.002 V19.1.0 §17.7.13. UTRAN positioning data
 // (positioningDataDiscriminator + positioningDataSet) per 3GPP TS 25.413.
 type UtranPositioningDataInfo = HexBytes
 
-// GeranGANSSpositioningData (OCTET STRING SIZE 2..10) per TS 29.002
-// MAP-LCS-DataTypes.asn:568. GERAN GANSS positioning data per
+// GeranGANSSpositioningData (OCTET STRING SIZE 2..10) per 3GPP TS 29.002 V19.1.0 §17.7.13. GERAN GANSS positioning data per
 // 3GPP TS 49.031.
 type GeranGANSSpositioningData = HexBytes
 
-// UtranGANSSpositioningData (OCTET STRING SIZE 1..9) per TS 29.002
-// MAP-LCS-DataTypes.asn:576. UTRAN GANSS positioning data
+// UtranGANSSpositioningData (OCTET STRING SIZE 1..9) per 3GPP TS 29.002 V19.1.0 §17.7.13. UTRAN GANSS positioning data
 // (GANSS-PositioningDataSet only) per 3GPP TS 25.413.
 type UtranGANSSpositioningData = HexBytes
 
-// UtranAdditionalPositioningData (OCTET STRING SIZE 1..8) per TS 29.002
-// MAP-LCS-DataTypes.asn:584. UTRAN Additional-PositioningDataSet only,
+// UtranAdditionalPositioningData (OCTET STRING SIZE 1..8) per 3GPP TS 29.002 V19.1.0 §17.7.13. UTRAN Additional-PositioningDataSet only,
 // per 3GPP TS 25.413.
 type UtranAdditionalPositioningData = HexBytes
 
-// UtranCivicAddress (OCTET STRING) per TS 29.002 MAP-LCS-DataTypes.asn:597.
+// UtranCivicAddress (OCTET STRING) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // CivicAddress only, per 3GPP TS 25.413. The spec puts no explicit size
 // bound on the wire; size validation is left to the caller.
 type UtranCivicAddress = HexBytes
 
-// UtranBaroPressureMeas (INTEGER 30000..115000) per TS 29.002
-// MAP-LCS-DataTypes.asn:592. UTRAN BarometricPressureMeasurement per
+// UtranBaroPressureMeas (INTEGER 30000..115000) per 3GPP TS 29.002 V19.1.0 §17.7.13. UTRAN BarometricPressureMeasurement per
 // 3GPP TS 25.413. Raw value per the cited spec; no scaling is applied
 // here. Aliased from go-asn1's gsm_map.UtranBaroPressureMeas, which is
 // int64-backed.
@@ -2732,7 +2695,7 @@ type UtranBaroPressureMeas = gsm_map.UtranBaroPressureMeas
 // periodicLDRInfo and reportingPLMNList fields, and PSL-Res's
 // targetServingNodeForHandover CHOICE.
 
-// AreaType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:337.
+// AreaType (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum. Aliased from go-asn1.
 type AreaType = gsm_map.AreaType
 
@@ -2745,27 +2708,25 @@ const (
 	AreaTypeUtranCellId    = gsm_map.AreaTypeUtranCellId
 )
 
-// AreaIdentification (OCTET STRING SIZE 2..7) per TS 29.002
-// MAP-LCS-DataTypes.asn:346. Internal structure per the spec comment
+// AreaIdentification (OCTET STRING SIZE 2..7) per 3GPP TS 29.002 V19.1.0 §17.7.13. Internal structure per the spec comment
 // (MCC/MNC/LAC/CI etc., depending on AreaType).
 type AreaIdentification = HexBytes
 
-// Area (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:332.
+// Area (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 type Area struct {
 	AreaType           AreaType           // [0] mandatory
 	AreaIdentification AreaIdentification // [1] mandatory, 2..7 octets
 }
 
-// AreaList (SEQUENCE SIZE 1..10 OF Area) per TS 29.002
-// MAP-LCS-DataTypes.asn:328 (maxNumOfAreas).
+// AreaList (SEQUENCE SIZE 1..10 OF Area) per 3GPP TS 29.002 V19.1.0 §17.7.13 (maxNumOfAreas).
 type AreaList []Area
 
-// AreaDefinition (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:324.
+// AreaDefinition (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 type AreaDefinition struct {
 	AreaList AreaList // [0] mandatory, 1..10 entries
 }
 
-// OccurrenceInfo (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:361.
+// OccurrenceInfo (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum. Aliased from go-asn1.
 type OccurrenceInfo = gsm_map.OccurrenceInfo
 
@@ -2774,33 +2735,31 @@ const (
 	OccurrenceMultipleTimeEvent = gsm_map.OccurrenceInfoMultipleTimeEvent
 )
 
-// IntervalTime (INTEGER 1..32767) per TS 29.002 MAP-LCS-DataTypes.asn:366.
+// IntervalTime (INTEGER 1..32767) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Minimum interval time between area reports, in seconds. Aliased from
 // go-asn1 to int64.
 type IntervalTime = gsm_map.IntervalTime
 
-// AreaEventInfo (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:318.
+// AreaEventInfo (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 type AreaEventInfo struct {
 	AreaDefinition AreaDefinition  // [0] mandatory
 	OccurrenceInfo *OccurrenceInfo // [1] optional
 	IntervalTime   *IntervalTime   // [2] optional, 1..32767 seconds
 }
 
-// ReportingAmount (INTEGER 1..8639999) per TS 29.002
-// MAP-LCS-DataTypes.asn:380 (maxReportingAmount). Aliased from go-asn1
+// ReportingAmount (INTEGER 1..8639999) per 3GPP TS 29.002 V19.1.0 §17.7.13 (maxReportingAmount). Aliased from go-asn1
 // to int64.
 type ReportingAmount = gsm_map.ReportingAmount
 
-// ReportingInterval (INTEGER 1..8639999) per TS 29.002
-// MAP-LCS-DataTypes.asn:384 (maxReportingInterval). Value is in seconds.
+// ReportingInterval (INTEGER 1..8639999) per 3GPP TS 29.002 V19.1.0 §17.7.13 (maxReportingInterval). Value is in seconds.
 // Aliased from go-asn1 to int64.
 type ReportingInterval = gsm_map.ReportingInterval
 
-// PeriodicLDRInfo (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:369.
+// PeriodicLDRInfo (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
 // Per spec: ReportingInterval × ReportingAmount must not exceed
 // 8639999 (99 days, 23 hours, 59 minutes, 59 seconds) for compatibility
-// with OMA MLP and RLP. Validation lives in the codec PR.
+// with OMA MLP and RLP. The MAP conversion checks this product before encoding and after decoding.
 //
 // Note: the ASN.1 definition includes an optional
 // reportingOptionMilliseconds at tag [0] past the extensibility marker;
@@ -2812,7 +2771,7 @@ type PeriodicLDRInfo struct {
 	ReportingInterval ReportingInterval // mandatory, 1..8639999 seconds
 }
 
-// RANTechnology (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:420.
+// RANTechnology (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum. Aliased from go-asn1.
 type RANTechnology = gsm_map.RANTechnology
 
@@ -2821,7 +2780,7 @@ const (
 	RANTechnologyUmts = gsm_map.RANTechnologyUmts
 )
 
-// ReportingPLMN (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:414.
+// ReportingPLMN (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // PlmnId is a 3-octet PLMN-Id per TS 23.003.
 type ReportingPLMN struct {
 	PlmnId                     HexBytes       // [0] mandatory, 3 octets
@@ -2829,17 +2788,16 @@ type ReportingPLMN struct {
 	RanPeriodicLocationSupport bool           // [2] optional NULL; true when present, false when absent
 }
 
-// PLMNList (SEQUENCE SIZE 1..20 OF ReportingPLMN) per TS 29.002
-// MAP-LCS-DataTypes.asn:409 (maxNumOfReportingPLMN).
+// PLMNList (SEQUENCE SIZE 1..20 OF ReportingPLMN) per 3GPP TS 29.002 V19.1.0 §17.7.13 (maxNumOfReportingPLMN).
 type PLMNList []ReportingPLMN
 
-// ReportingPLMNList (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:404.
+// ReportingPLMNList (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 type ReportingPLMNList struct {
 	PlmnListPrioritized bool     // [0] optional NULL; true when present, false when absent
 	PlmnList            PLMNList // [1] mandatory, 1..20 entries
 }
 
-// TerminationCause (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:696.
+// TerminationCause (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum. Aliased from go-asn1. The encoder accepts only the listed
 // values; the decoder treats any other value as TerminationErrorundefined
 // (3GPP TS 29.002 V19.1.0 §17.7.13).
@@ -2890,16 +2848,15 @@ const (
 )
 
 // ============================================================================
-// ProvideSubscriberLocationArg — TS 29.002 MAP-LCS-DataTypes.asn:425
+// ProvideSubscriberLocationArg — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 //
 // Top-level PSL-Arg public type, opCode 83. Wires the PSL leaf,
-// LCS-Client, and area-event/periodic/PLMN-list converters from PRs
-// #43, #44, and #45 into a single public struct. Marshal()/Parse()
-// entry points are in marshal.go / parse.go.
+// LCS-Client, and area-event/periodic/PLMN-list converters in one public
+// struct. Marshal and Parse entry points are in marshal.go and parse.go.
 
 // ProvideSubscriberLocationArg represents a ProvideSubscriberLocation
-// request (opCode 83) per TS 29.002 MAP-LCS-DataTypes.asn:425.
+// request (opCode 83) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
 // Mandatory fields: LocationType, MlcNumber (digits string + Nature/Plan
 // triple); empty MlcNumber digits are rejected on encode.
@@ -2945,11 +2902,11 @@ type ProvideSubscriberLocationArg struct {
 }
 
 // ============================================================================
-// ProvideSubscriberLocationRes — TS 29.002 MAP-LCS-DataTypes.asn:425
+// ProvideSubscriberLocationRes — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 // ProvideSubscriberLocationRes represents a ProvideSubscriberLocation
-// response (opCode 83) per TS 29.002 MAP-LCS-DataTypes.asn:425.
+// response (opCode 83) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
 // Mandatory: LocationEstimate (Ext-GeographicalInformation, 1..20 octets).
 // Optional fields follow the package-wide conventions:
@@ -3052,7 +3009,7 @@ func (c MapErrorCode) String() string {
 type AbsentSubscriberDiagnosticSM int64
 
 // AbsentSubscriberDiagnosticSM* values per 3GPP TS 23.040 §3.3.2.
-// Codes outside this set are still valid wire values (the spec range
+// Codes outside this set are valid wire values (the spec range
 // is 0..255); String() returns "unknown" for unrecognized codes
 // without rejecting them.
 const (
@@ -3130,11 +3087,10 @@ type UnknownSubscriberParam struct {
 
 // CallBarredParam (CHOICE) per TS 29.002 MAP-ER-DataTypes.asn.
 // Returned with errorCode 13 (callBarred). The CHOICE is between a
-// bare CallBarringCause (legacy) and the extensible variant. Set
-// exactly one of CallBarringCause or ExtensibleCallBarredParam on
-// encode; both fields are populated mutually exclusively on decode.
+// bare CallBarringCause and the extensible variant. Decode populates
+// exactly one of CallBarringCause or ExtensibleCallBarredParam.
 type CallBarredParam struct {
-	CallBarringCause          *gsm_map.CallBarringCause  // legacy alternative
+	CallBarringCause          *gsm_map.CallBarringCause  // bare alternative
 	ExtensibleCallBarredParam *ExtensibleCallBarredParam // extensible alternative
 }
 
@@ -3149,13 +3105,12 @@ type ExtensibleCallBarredParam struct {
 // SystemFailureParam (CHOICE) per TS 29.002 MAP-ER-DataTypes.asn.
 // Returned with errorCode 34 (systemFailure). Identifies which network
 // node broke — critical for incident triage. The CHOICE is between a
-// bare NetworkResource (legacy) and the extensible variant. Set
-// exactly one on encode; both fields are populated mutually
-// exclusively on decode. NetworkResource is not extensible: Parse rejects
+// bare NetworkResource and the extensible variant. Decode populates
+// exactly one of NetworkResource or ExtensibleSystemFailureParam. NetworkResource is not extensible: Parse rejects
 // a value other than plmn(0) to rss(7) in either alternative
 // (ErrNetworkResourceInvalid).
 type SystemFailureParam struct {
-	NetworkResource              *gsm_map.NetworkResource      // legacy alternative
+	NetworkResource              *gsm_map.NetworkResource      // bare alternative
 	ExtensibleSystemFailureParam *ExtensibleSystemFailureParam // extensible alternative
 }
 
@@ -3242,7 +3197,7 @@ type UnexpectedDataParam struct {
 // SequenceNumber, LCSLocationInfo, Deferredmt-lrData. The shared LCS
 // positioning/area/PLMN types are those of ProvideSubscriberLocation.
 
-// LCSEvent (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:681.
+// LCSEvent (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Extensible enum. Aliased from go-asn1. Marshal sends only the listed
 // values. 3GPP TS 29.002 V19.1.0 §17.7.13: "a SubscriberLocationReport-Arg
 // containing an unrecognized LCS-Event shall be rejected by a receiver with
@@ -3291,7 +3246,7 @@ type LCSLocationInfo struct {
 	// decode and emitted as absent on encode.
 }
 
-// DeferredmtLrData (SEQUENCE) per TS 29.002 MAP-LCS-DataTypes.asn:673.
+// DeferredmtLrData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Present in SLR-Arg only when LcsEvent indicates a
 // deferredmt-lrResponse. LcsLocationInfo may be present only if
 // TerminationCause indicates mt-lrRestart (caller-enforced invariant).
@@ -3302,11 +3257,11 @@ type DeferredmtLrData struct {
 }
 
 // ============================================================================
-// SubscriberLocationReportArg — TS 29.002 MAP-LCS-DataTypes.asn:622
+// SubscriberLocationReportArg — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 // SubscriberLocationReportArg represents a SubscriberLocationReport
-// request (opCode 86) per TS 29.002 MAP-LCS-DataTypes.asn:622. Sent
+// request (opCode 86) per 3GPP TS 29.002 V19.1.0 §17.7.13. Sent
 // from the MSC/SGSN/MME (or GMLC) to report a computed location.
 //
 // Mandatory fields: LcsEvent, LcsClientID, LcsLocationInfo. Per spec,
@@ -3380,11 +3335,11 @@ type SubscriberLocationReportArg struct {
 }
 
 // ============================================================================
-// SubscriberLocationReportRes — TS 29.002 MAP-LCS-DataTypes.asn:691
+// SubscriberLocationReportRes — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 // SubscriberLocationReportRes represents a SubscriberLocationReport
-// response (opCode 86) per TS 29.002 MAP-LCS-DataTypes.asn:691. Sent by
+// response (opCode 86) per 3GPP TS 29.002 V19.1.0 §17.7.13. Sent by
 // the GMLC back to the reporting node to acknowledge the report and,
 // for emergency calls, return the routing identifiers it assigned.
 //
@@ -3415,11 +3370,11 @@ type SubscriberLocationReportRes struct {
 }
 
 // ============================================================================
-// SendRoutingInfoForLCS — TS 29.002 MAP-LCS-DataTypes.asn:603
+// SendRoutingInfoForLCS — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 // SriLcs represents a SendRoutingInfoForLCS request (opCode 85) per
-// TS 29.002 MAP-LCS-DataTypes.asn:603 (RoutingInfoForLCS-Arg). Sent from
+// 3GPP TS 29.002 V19.1.0 §17.7.13 (RoutingInfoForLCS-Arg). Sent from
 // the GMLC to the HLR to locate the serving node (MSC/SGSN/MME) of a
 // target subscriber before a location request, and to learn the
 // applicable GMLC/PPR addresses.
@@ -3439,7 +3394,7 @@ type SriLcs struct {
 }
 
 // SriLcsResp represents a SendRoutingInfoForLCS response (opCode 85) per
-// TS 29.002 MAP-LCS-DataTypes.asn:610 (RoutingInfoForLCS-Res). Returned
+// 3GPP TS 29.002 V19.1.0 §17.7.13 (RoutingInfoForLCS-Res). Returned
 // by the HLR with the target's serving-node location info and the
 // GMLC/PPR addresses involved in the location procedure.
 //
@@ -3459,7 +3414,7 @@ type SriLcsResp struct {
 }
 
 // ============================================================================
-// SGSN-CAMEL-SubscriptionInfo (TS 29.002 MAP-MS-DataTypes.asn:1596)
+// SGSN-CAMEL-SubscriptionInfo (3GPP TS 29.002 V19.1.0 §17.7.1)
 // ============================================================================
 
 // GPRSTriggerDetectionPoint (ENUMERATED) per TS 29.002
@@ -3477,7 +3432,7 @@ const (
 	GPRSTDPPdpContextChangeOfPosition             = gsm_map.GPRSTriggerDetectionPointPdpContextChangeOfPosition
 )
 
-// DefaultGPRSHandling (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1634.
+// DefaultGPRSHandling (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Per spec exception clause, decoders MUST treat values >1 as
 // releaseTransaction. Aliased from go-asn1; the lenient remap happens
 // in the decoder.
@@ -3488,7 +3443,7 @@ const (
 	DefaultGPRSReleaseTransaction  = gsm_map.DefaultGPRSHandlingReleaseTransaction
 )
 
-// GPRSCamelTDPData (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1625.
+// GPRSCamelTDPData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // All four fields are mandatory per spec.
 type GPRSCamelTDPData struct {
 	GprsTriggerDetectionPoint GPRSTriggerDetectionPoint // [0] mandatory
@@ -3500,10 +3455,10 @@ type GPRSCamelTDPData struct {
 }
 
 // GPRSCamelTDPDataList (SEQUENCE SIZE 1..10 OF GPRS-CamelTDPData) per
-// TS 29.002 MAP-MS-DataTypes.asn:1620.
+// 3GPP TS 29.002 V19.1.0 §17.7.1.
 type GPRSCamelTDPDataList []GPRSCamelTDPData
 
-// GPRSCSI (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1606.
+// GPRSCSI (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 //
 // 3GPP TS 29.002 V19.1.0 §17.7.1: "GPRS-CamelTDPData and
 // camelCapabilityHandling shall be present in the GPRS-CSI sequence. If
@@ -3527,7 +3482,7 @@ type GPRSCSI struct {
 	CamelCapabilityHandling *int                 // [1] CAMEL phase 1..4; nil = absent
 }
 
-// MGCSI (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:2528.
+// MGCSI (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // MobilityTriggers SIZE 1..10, PS domain MM-Codes only (see MMCode).
 //
 // 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationToCSE and csi-Active shall
@@ -3545,8 +3500,7 @@ type MGCSI struct {
 	GsmSCFAddressPlan   uint8
 }
 
-// SGSNCAMELSubscriptionInfo (SEQUENCE) per TS 29.002
-// MAP-MS-DataTypes.asn:1596. All fields optional.
+// SGSNCAMELSubscriptionInfo (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1. All fields optional.
 type SGSNCAMELSubscriptionInfo struct {
 	GprsCSI                   *GPRSCSI                // [0] optional
 	MoSmsCSI                  *SMSCSI                 // [1] optional
@@ -3556,12 +3510,11 @@ type SGSNCAMELSubscriptionInfo struct {
 }
 
 // ============================================================================
-// InsertSubscriberData (opCode 7) — TS 29.002 MAP-MS-DataTypes.asn:1738
+// InsertSubscriberData (opCode 7) — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 // InsertSubscriberDataArg (SEQUENCE) per TS 29.002. All fields are
-// OPTIONAL per spec. The sub-types covered by PRs E1a/E1b1/E1b2/E1b3
-// are referenced here with their public Go equivalents; opaque scalar
+// OPTIONAL per spec. Sub-types use their public Go equivalents; opaque scalar
 // fields are surfaced as `HexBytes` or typed integers.
 type InsertSubscriberDataArg struct {
 	// Identification (typically present together)
@@ -3670,8 +3623,73 @@ type InsertSubscriberDataRes struct {
 
 // MAP operation sentinel errors.
 var (
-	ErrSriMissingMSISDN = errors.New("sri: MSISDN is empty")
-	ErrSriMissingGmsc   = errors.New("sri: GmscOrGsmSCFAddress is empty")
+	ErrCallBarredCausePayloadMissing              = errors.New("CallBarredParam.CallBarringCause payload is missing")
+	ErrCallBarredChoiceInvalid                    = errors.New("CallBarredParam choice is invalid")
+	ErrCallBarredExtensiblePayloadMissing         = errors.New("CallBarredParam.ExtensibleCallBarredParam payload is missing")
+	ErrCellGlobalIdOrLAIChoiceInvalid             = errors.New("CellGlobalIdOrServiceAreaIdOrLAI choice is invalid")
+	ErrCellGlobalIdPayloadMissing                 = errors.New("CellGlobalIdOrServiceAreaIdOrLAI cellGlobalId payload is missing")
+	ErrGeoAltitudeOutOfRange                      = errors.New("geographical altitude is out of range")
+	ErrGeoAngleOutOfRange                         = errors.New("geographical angle is out of range")
+	ErrGeoArcFieldsMissing                        = errors.New("ellipsoid arc has missing fields")
+	ErrGeoArcInvalidLength                        = errors.New("ellipsoid arc has invalid length")
+	ErrGeoCodeOutOfRange                          = errors.New("geographical code is out of range")
+	ErrGeoInformationTooShort                     = errors.New("geographical information is too short")
+	ErrGeoLatitudeEncodingOverflow                = errors.New("latitude rounds beyond the encoding range")
+	ErrGeoLatitudeNotFinite                       = errors.New("latitude is not finite")
+	ErrGeoLatitudeOutOfRange                      = errors.New("latitude is out of range")
+	ErrGeoLongitudeEncodingCollapse               = errors.New("longitude rounds to a different boundary value")
+	ErrGeoLongitudeEncodingOverflow               = errors.New("longitude rounds beyond the encoding range")
+	ErrGeoLongitudeNotFinite                      = errors.New("longitude is not finite")
+	ErrGeoLongitudeOutOfRange                     = errors.New("longitude is out of range")
+	ErrGeoPointAltitudeFieldsMissing              = errors.New("ellipsoid point with altitude has missing fields")
+	ErrGeoPointAltitudeInvalidLength              = errors.New("ellipsoid point with altitude has invalid length")
+	ErrGeoPointInvalidLength                      = errors.New("ellipsoid point has invalid length")
+	ErrGeoPointUncertaintyEllipseFieldsMissing    = errors.New("ellipsoid point with uncertainty ellipse has missing fields")
+	ErrGeoPointUncertaintyEllipseInvalidLength    = errors.New("ellipsoid point with uncertainty ellipse has invalid length")
+	ErrGeoPointUncertaintyFieldsMissing           = errors.New("ellipsoid point with uncertainty has missing fields")
+	ErrGeoPointUncertaintyInvalidLength           = errors.New("ellipsoid point with uncertainty has invalid length")
+	ErrGeoShapeTypeInvalid                        = errors.New("geographical shape type is unsupported")
+	ErrGoIntOverflow                              = errors.New("integer does not fit Go int")
+	ErrInt64Overflow                              = errors.New("integer does not fit int64")
+	ErrIntegerMissing                             = errors.New("integer value is missing")
+	ErrIntegerOutOfRange                          = errors.New("integer value is out of range")
+	ErrLAIPayloadMissing                          = errors.New("CellGlobalIdOrServiceAreaIdOrLAI LAI payload is missing")
+	ErrPdnGwIdentityAddressMissing                = errors.New("PdnGwIdentity has no address or name")
+	ErrPdnGwIdentityIPv4AddressInvalidLength      = errors.New("PdnGwIdentity IPv4Address has invalid length")
+	ErrPdnGwIdentityIPv6AddressInvalidLength      = errors.New("PdnGwIdentity IPv6Address has invalid length")
+	ErrPsSubscriberStateChoiceInvalid             = errors.New("PsSubscriberState choice is invalid")
+	ErrPsSubscriberStateReasonMissing             = errors.New("PsSubscriberState NetDetNotReachable reason is missing")
+	ErrSaiAuthenticationSetListChoiceInvalid      = errors.New("AuthenticationSetList choice is invalid")
+	ErrSmRpDaChoiceInvalid                        = errors.New("SmRpDa choice is invalid")
+	ErrSmRpDaIMSIPayloadMissing                   = errors.New("SmRpDa IMSI payload is missing")
+	ErrSmRpDaLMSIPayloadMissing                   = errors.New("SmRpDa LMSI payload is missing")
+	ErrSmRpDaServiceCentreAddressDAPayloadMissing = errors.New("SmRpDa ServiceCentreAddressDA payload is missing")
+	ErrSmRpOaChoiceInvalid                        = errors.New("SmRpOa choice is invalid")
+	ErrSmRpOaMSISDNPayloadMissing                 = errors.New("SmRpOa MSISDN payload is missing")
+	ErrSmRpOaServiceCentreAddressOAPayloadMissing = errors.New("SmRpOa ServiceCentreAddressOA payload is missing")
+	ErrSubscriberStateChoiceInvalid               = errors.New("SubscriberState choice is invalid")
+	ErrSubscriberStateInvalid                     = errors.New("SubscriberState state is invalid")
+	ErrSubscriberStateNotReachableReasonMissing   = errors.New("SubscriberState NotReachableReason is missing")
+	ErrSystemFailureChoiceInvalid                 = errors.New("SystemFailureParam choice is invalid")
+	ErrSystemFailureExtensiblePayloadMissing      = errors.New("SystemFailureParam extensible payload is missing")
+	ErrSystemFailureNetworkResourcePayloadMissing = errors.New("SystemFailureParam NetworkResource payload is missing")
+	ErrTPDUDecodedNil                             = errors.New("TPDU decoder returned nil without an error")
+
+	ErrSriForwardingReasonInvalid                 = errors.New("sri: ForwardingReason must be 0..2")
+	ErrNumberPortabilityStatusInvalid             = errors.New("NumberPortabilityStatus must be a listed value")
+	ErrSriSsListSsCodeInvalidLength               = errors.New("sri: SsList SS-Code must be exactly 1 octet")
+	ErrSriSsList2SsCodeInvalidLength              = errors.New("sri: SsList2 SS-Code must be exactly 1 octet")
+	ErrSsCSIEventListSsCodeInvalidLength          = errors.New("ssCSI: SsEventList SsCode must be exactly 1 octet")
+	ErrPLMNIdInvalidLength                        = errors.New("PLMNId must be exactly 3 octets")
+	ErrImsVoiceOverPSSessionsIndicationInvalid    = errors.New("ImsVoiceOverPSSessionsIndication must be 0..2")
+	ErrDaylightSavingTimeInvalid                  = errors.New("DaylightSavingTime must be 0..2")
+	ErrPsSubscriberStateNetDetNotReachableInvalid = errors.New("PsSubscriberState.NetDetNotReachable must be 0..3")
+	ErrSubscriberStateNotReachableReasonInvalid   = errors.New("SubscriberState.NotReachableReason must be 0..3")
+	ErrCallBarringCauseInvalid                    = errors.New("CallBarringCause must be 0..1")
+	ErrRoamingNotAllowedCauseInvalid              = errors.New("RoamingNotAllowedCause must be 0 or 3")
+
+	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
+	ErrSriMissingGmscOrGsmSCFAddress = errors.New("sri: GmscOrGsmSCFAddress is empty")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrSriInvalidInterrogationType   = errors.New("sri: InterrogationType must be 0 or 1")
 	ErrSriChoiceMultipleAlternatives = errors.New("sri: CHOICE has multiple alternatives set")
@@ -3758,7 +3776,7 @@ var (
 	// it shall be set to zero, when transmitted by the MS", and "The Check
 	// Digit is not part of the digits transmitted". Parse keeps a non-zero
 	// spare digit, so an IMEI from a peer that puts the Check Digit there
-	// still decodes; Marshal sends 0. Every public IMEI field follows this
+	// decodes; Marshal sends 0. Every public IMEI field follows this
 	// rule.
 	ErrIMEISpareDigitNotZero = errors.New("identity: a 15-digit IMEI carries the spare digit 0 in its last position, not the check digit, per 3GPP TS 29.002 V19.1.0 §17.7.8 and 3GPP TS 23.003 V20.1.0 §6.2.1")
 	// ErrIMEISVInvalidLength is returned when an IMEISV does not have 16
@@ -3784,17 +3802,17 @@ var (
 	ErrForwardingDataLongForwardedToNumberDecodedEmpty = errors.New("forwardingData: present wire longForwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSriSmRespSmsf3gppNumberDecodedEmpty             = errors.New("sriSmResp: present wire smsf-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSriSmRespSmsfNon3gppNumberDecodedEmpty          = errors.New("sriSmResp: present wire smsf-non-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPurgeMSVLRNumberDecodedEmpty                    = errors.New("purgeMS: present wire vlr-Number decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPurgeMSSGSNNumberDecodedEmpty                   = errors.New("purgeMS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPurgeMSVlrNumberDecodedEmpty                    = errors.New("purgeMS: present wire vlr-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPurgeMSSgsnNumberDecodedEmpty                   = errors.New("purgeMS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrMnpInfoResMSISDNDecodedEmpty                    = errors.New("mnpInfoRes: present wire msisdn decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrUpdateGprsLocationMmeNumberForMTSMSDecodedEmpty = errors.New("updateGprsLocation: present wire mmeNumberforMTSMS decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSriRespVmscAddressDecodedEmpty                  = errors.New("sriResp: present wire vmsc-Address decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSriRespMSISDNDecodedEmpty                       = errors.New("sriResp: present wire msisdn decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrLocationInformationVLRNumberDecodedEmpty        = errors.New("locationInformation: present wire vlr-number decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrLocationInformationMSCNumberDecodedEmpty        = errors.New("locationInformation: present wire msc-Number decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrLocationInformationGPRSSGSNNumberDecodedEmpty   = errors.New("locationInformationGPRS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLocationInformationVlrNumberDecodedEmpty        = errors.New("locationInformation: present wire vlr-number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLocationInformationMscNumberDecodedEmpty        = errors.New("locationInformation: present wire msc-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLocationInformationGPRSSgsnNumberDecodedEmpty   = errors.New("locationInformationGPRS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrMtFsmSmsGmscAddressDecodedEmpty                 = errors.New("mtFsm: present wire smsGmscAddress decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrIsdSGSNNumberDecodedEmpty                       = errors.New("insertSubscriberDataArg: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrIsdSgsnNumberDecodedEmpty                       = errors.New("insertSubscriberDataArg: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrIsdAdditionalMSISDNDecodedEmpty                 = errors.New("insertSubscriberDataArg: present wire additionalMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrEPSSubscriptionDataStnSrDecodedEmpty            = errors.New("epsSubscriptionData: present wire stn-sr decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrLCSClientExternalIDExternalAddressDecodedEmpty  = errors.New("lcsClientExternalID: present wire externalAddress decoded to empty digits; presence cannot round-trip through string-based API")
@@ -3804,10 +3822,10 @@ var (
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrAscInvalidSmsGmscAlertEvent = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
 
-	ErrUpdateLocationMissingMSCNumber        = errors.New("updateLocation: MscNumber is empty")
-	ErrUpdateLocationMissingVLRNumber        = errors.New("updateLocation: VlrNumber is empty")
+	ErrUpdateLocationMissingMscNumber        = errors.New("updateLocation: MscNumber is empty")
+	ErrUpdateLocationMissingVlrNumber        = errors.New("updateLocation: VlrNumber is empty")
 	ErrUpdateLocationResMissingHLRNumber     = errors.New("updateLocationRes: HLRNumber is empty")
-	ErrUpdateGprsLocationMissingSGSNNumber   = errors.New("updateGprsLocation: SgsnNumber is mandatory and must be non-empty")
+	ErrUpdateGprsLocationMissingSgsnNumber   = errors.New("updateGprsLocation: SgsnNumber is mandatory and must be non-empty")
 	ErrUpdateGprsLocationResMissingHLRNumber = errors.New("updateGprsLocationRes: HLRNumber is mandatory and must be non-empty")
 
 	// ErrUsedRATTypeInvalid, ErrUESRVCCCapabilityInvalid and
@@ -3818,9 +3836,9 @@ var (
 	ErrUESRVCCCapabilityInvalid  = errors.New("updateGprsLocation: UeSrvccCapability must be ue-srvcc-not-supported(0) or ue-srvcc-supported(1) per 3GPP TS 29.002 V19.1.0 §17.7.1 (extensible enum: unknown values preserved on decode)")
 	ErrSMSRegisterRequestInvalid = errors.New("updateGprsLocation: SmsRegisterRequest must be sms-registration-required(0), sms-registration-not-preferred(1) or no-preference(2) per 3GPP TS 29.002 V19.1.0 §17.7.1 (extensible enum: unknown values preserved on decode)")
 
-	ErrSmRpDaServiceCentreAddressDecodedEmpty = errors.New("smRpDa: present wire serviceCentreAddressDA decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSmRpOaMSISDNDecodedEmpty               = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSmRpOaServiceCentreAddressDecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpDaServiceCentreAddressDADecodedEmpty = errors.New("smRpDa: present wire serviceCentreAddressDA decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpOaMSISDNDecodedEmpty                 = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpOaServiceCentreAddressOADecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
 
 	ErrSriSmMissingMSISDN                = errors.New("sriSm: MSISDN is empty")
 	ErrSriSmMissingServiceCentreAddress  = errors.New("sriSm: ServiceCentreAddress is empty")
@@ -3909,15 +3927,15 @@ var (
 
 	// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
 	ErrBitStringOctetsMismatch = errors.New("bitString: a BIT STRING of n bits must have exactly (n+7)/8 octets per X.690 §8.6.2")
-	// Encode still checks bit length against bytes: https://github.com/gomaja/go-asn1/issues/80.
+	// Encode checks bit length against bytes: https://github.com/gomaja/go-asn1/issues/80.
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrAPNInvalidSize = errors.New("apn: each entry must be 2..63 octets per TS 29.002 MAP-MS-DataTypes.asn:1654")
+	ErrAPNInvalidSize = errors.New("apn: each entry must be 2..63 octets per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrResetIdInvalidSize = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")
 
-	ErrExtQoSHierarchyViolated         = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per TS 29.002 MAP-MS-DataTypes.asn:1534-1538 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
-	ErrExtPDPAddressWithoutPDPAddress  = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per TS 29.002 MAP-MS-DataTypes.asn:1549")
+	ErrExtQoSHierarchyViolated         = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per 3GPP TS 29.002 V19.1.0 §17.7.1 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
+	ErrExtPDPAddressWithoutPDPAddress  = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrGPRSSubscriptionDataMissingList = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
 	ErrAMBRBandwidthOutOfRange         = errors.New("ambr: bandwidth fields must be non-negative")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
@@ -3933,15 +3951,15 @@ var (
 	ErrLSAOnlyAccessIndicatorInvalid = errors.New("lsaInformation: LsaOnlyAccessIndicator must be accessOutsideLSAsAllowed(0) or accessOutsideLSAsRestricted(1)")
 
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrPDNGWAllocationTypeInvalid = errors.New("apnConfiguration: PdnGwAllocationType must be static(0) or dynamic(1) per TS 29.002 MAP-MS-DataTypes.asn:1437")
+	ErrPDNGWAllocationTypeInvalid = errors.New("apnConfiguration: PdnGwAllocationType must be static(0) or dynamic(1) per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrPDNConnectionContinuityInvalid = errors.New("apnConfiguration: PdnConnectionContinuity must be 0..2 per TS 29.002 MAP-MS-DataTypes.asn:1356")
+	ErrPDNConnectionContinuityInvalid = errors.New("apnConfiguration: PdnConnectionContinuity must be 0..2 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrWLANOffloadabilityIndicationInvalid = errors.New("wlanOffloadability: WLAN-Offloadability-Indication must be notAllowed(0) or allowed(1)")
 	ErrAPNConfigurationProfileMissingList  = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")
 
 	ErrGMLCRestrictionInvalid      = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
-	ErrNotificationToMSUserInvalid = errors.New("notificationToMSUser: must be 0..3 per TS 29.002 MAP-MS-DataTypes.asn:2035")
+	ErrNotificationToMSUserInvalid = errors.New("notificationToMSUser: must be 0..3 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrLCSClientInternalIDInvalid = errors.New("lcsClientInternalID: LCSClientInternalID must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.8 (extensible enum: unknown values preserved on decode)")
 	ErrGMLCAddressEmpty           = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
@@ -3975,7 +3993,7 @@ var (
 	ErrIsdResSsListSize      = errors.New("insertSubscriberDataRes: SsList entries must each be exactly 1 octet (SS-Code) per TS 29.002")
 	ErrIsdMSISDNDecodedEmpty = errors.New("insertSubscriberDataArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
 
-	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause TS 29.002 MAP-MS-DataTypes.asn:1638-1640 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
+	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause 3GPP TS 29.002 V19.1.0 §17.7.1 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
 	ErrGPRSTriggerDetectionPointInvalid  = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be attach(1), attachChangeOfPosition(2), pdp-ContextEstablishment(11), pdp-ContextEstablishmentAcknowledgement(12) or pdp-ContextChangeOfPosition(14); a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelCapabilityHandlingOutOfRange = errors.New("camel: CamelCapabilityHandling must be 1..4 (CAMEL phases 1 to 4) when set; the decoder treats received values above 4 as phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
@@ -3988,7 +4006,7 @@ var (
 	ErrMGCSIMMCodeInvalid = errors.New("mgCSI: MobilityTriggers entry must be a PS domain MM-Code (0x80 to 0x86); the SGSN ignores any other per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
-	ErrLocationEstimateTypeInvalid = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (a receiver rejects unknown values: ErrLocationEstimateTypeUnrecognized)")
+	ErrLocationEstimateTypeInvalid = errors.New("locationType: LocationEstimateType must be 0..5 per 3GPP TS 29.002 V19.1.0 §17.7.13 (a receiver rejects unknown values: ErrLocationEstimateTypeUnrecognized)")
 	// ErrLocationEstimateTypeUnrecognized is returned by Parse for a
 	// ProvideSubscriberLocation-Arg whose LocationEstimateType is not a
 	// listed value. 3GPP TS 29.002 V19.1.0 §17.7.13: such an argument "shall
@@ -4003,7 +4021,7 @@ var (
 	// by the receiver with a return error cause of unexpected data value".
 	ErrDeferredLocationEventTypeUnrecognized = errors.New("locationType: DeferredLocationEventType sets a bit other than msAvailable(0) to periodicLDR(4); the ProvideSubscriberLocation-Arg is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 gives conditional receiver handling of unknown values.
-	ErrLCSClientTypeInvalid = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (a receiver keeps an unknown value only under privacyOverride: ErrLCSClientTypeUnrecognized)")
+	ErrLCSClientTypeInvalid = errors.New("lcsClientID: LcsClientType must be 0..3 per 3GPP TS 29.002 V19.1.0 §17.7.13 (a receiver keeps an unknown value only under privacyOverride: ErrLCSClientTypeUnrecognized)")
 	// ErrLCSClientTypeUnrecognized is returned by Parse for an LCS-ClientID
 	// whose LCSClientType is not a listed value, unless the
 	// ProvideSubscriberLocation-Arg carrying it has privacyOverride. 3GPP TS
@@ -4013,7 +4031,7 @@ var (
 	// be returned if received in a MAP invoke".
 	ErrLCSClientTypeUnrecognized = errors.New("lcsClientID: unrecognized LcsClientType without privacy override; the invoke is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
-	ErrLCSFormatIndicatorInvalid = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
+	ErrLCSFormatIndicatorInvalid = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
 	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
 	ErrPrivacyCheckRelatedActionInvalid = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.13 (a receiver rejects unknown values: ErrPrivacyCheckRelatedActionUnrecognized)")
 	// ErrPrivacyCheckRelatedActionUnrecognized is returned by Parse for a
@@ -4023,28 +4041,29 @@ var (
 	// with a return error cause of unexpected data value".
 	ErrPrivacyCheckRelatedActionUnrecognized = errors.New("lcsPrivacyCheck: unrecognized PrivacyCheckRelatedAction; the ProvideSubscriberLocation-Arg is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
-	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:457 (extensible enum: unknown values preserved on decode)")
+	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
 	// Sender accepts only defined values; receivers map unknown values to delaytolerant (3GPP TS 29.002 V19.1.0 §17.7.13).
 	// ErrLCSQoSClassInvalid: the encoder sends only bestEffort(0) or
 	// assured(1); the decoder treats any other value as bestEffort per 3GPP
 	// TS 29.002 V19.1.0 §17.7.13 LCS-QoS-Class.
-	ErrLCSQoSClassInvalid            = errors.New("lcsQoS: LcsQosClass must be bestEffort(0) or assured(1); a receiver treats an unrecognized value as bestEffort per 3GPP TS 29.002 V19.1.0 §17.7.13")
-	ErrResponseTimeCategoryInvalid   = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
-	ErrHorizontalAccuracyReservedBit = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:250 (only the low 7 bits encode the uncertainty code per TS 23.032)")
-	ErrVerticalAccuracyReservedBit   = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:256 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")
-	ErrLCSClientIDDialedByMSEmpty    = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
+	ErrLCSQoSClassInvalid                           = errors.New("lcsQoS: LcsQosClass must be bestEffort(0) or assured(1); a receiver treats an unrecognized value as bestEffort per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrResponseTimeCategoryInvalid                  = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause 3GPP TS 29.002 V19.1.0 §17.7.13 (unrecognized values → delaytolerant)")
+	ErrHorizontalAccuracyReservedBit                = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per 3GPP TS 29.002 V19.1.0 §17.7.13 (only the low 7 bits encode the uncertainty code per TS 23.032)")
+	ErrVerticalAccuracyReservedBit                  = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per 3GPP TS 29.002 V19.1.0 §17.7.13 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")
+	ErrLCSClientIDDialedByMSDecodedEmpty            = errors.New("lcsClientID: present wire LcsClientDialedByMS decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLCSClientIDDialedByMSNaturePlanWithoutDigits = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty")
 	// ErrLCSPriorityInvalid: the encoder sends only 0 (highest) or 1
 	// (normal); the decoder treats any other value as 1 per 3GPP TS 29.002
 	// V19.1.0 §17.7.13 LCS-Priority.
 	ErrLCSPriorityInvalid = errors.New("lcsPriority: must be 0 (highest priority) or 1 (normal priority); a receiver treats all other values as 1 per 3GPP TS 29.002 V19.1.0 §17.7.13")
 
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
-	ErrAreaTypeInvalid = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
+	ErrAreaTypeInvalid = errors.New("area: AreaType must be 0..5 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
-	ErrOccurrenceInfoInvalid      = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:361 (extensible enum: unknown values preserved on decode)")
-	ErrPeriodicLDRProductExceeded = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
+	ErrOccurrenceInfoInvalid      = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
+	ErrPeriodicLDRProductExceeded = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
-	ErrRANTechnologyInvalid                     = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
+	ErrRANTechnologyInvalid                     = errors.New("reportingPLMN: RanTechnology must be 0..1 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
 	ErrTerminationCauseInvalid                  = errors.New("deferredmt-lrData: TerminationCause must be 0..9; the decoder treats unrecognized values as errorundefined(1) per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrServingNodeAddressMultipleAlts           = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
 	ErrServingNodeAddressNoAlt                  = errors.New("servingNodeAddress: CHOICE has no alternative set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
@@ -4060,22 +4079,22 @@ var (
 	ErrPSLResCellIdOrSaiInvalidChoice = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 
 	// Encoder accepts only defined LCS-Event values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
-	ErrLCSEventInvalid = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (a receiver rejects unknown values: ErrLCSEventUnrecognized)")
+	ErrLCSEventInvalid = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per 3GPP TS 29.002 V19.1.0 §17.7.13 (a receiver rejects unknown values: ErrLCSEventUnrecognized)")
 	// ErrLCSEventUnrecognized is returned by Parse for a
 	// SubscriberLocationReport-Arg whose LCS-Event is not a listed value.
 	// 3GPP TS 29.002 V19.1.0 §17.7.13: such an argument "shall be rejected
 	// by a receiver with a return error cause of unexpected data value".
-	ErrLCSEventUnrecognized            = errors.New("subscriberLocationReport: unrecognized LcsEvent; the SubscriberLocationReport-Arg is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
-	ErrLCSLocationInfoNetworkNodeEmpty = errors.New("lcsLocationInfo: NetworkNodeNumber digits are mandatory on encode and decode")
+	ErrLCSEventUnrecognized                  = errors.New("subscriberLocationReport: unrecognized LcsEvent; the SubscriberLocationReport-Arg is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrLCSLocationInfoNetworkNodeNumberEmpty = errors.New("lcsLocationInfo: NetworkNodeNumber digits are mandatory on encode and decode")
 
-	// SubscriberLocationReportArg top-level (TS 29.002 MAP-LCS-DataTypes.asn:622).
+	// SubscriberLocationReportArg top-level (3GPP TS 29.002 V19.1.0 §17.7.13).
 	ErrSLRArgNil                     = errors.New("subscriberLocationReportArg: nil argument is not permitted")
 	ErrSLRArgMSISDNDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgNaESRDDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgNaESRKDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgCellGlobalIdAndLAIMutex = errors.New("subscriberLocationReportArg: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
 
-	// SubscriberLocationReportRes top-level (TS 29.002 MAP-LCS-DataTypes.asn:691).
+	// SubscriberLocationReportRes top-level (3GPP TS 29.002 V19.1.0 §17.7.13).
 	ErrSLRResNil                = errors.New("subscriberLocationReportRes: nil argument is not permitted")
 	ErrSLRResNaESRKDecodedEmpty = errors.New("subscriberLocationReportRes: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRResNaESRDDecodedEmpty = errors.New("subscriberLocationReportRes: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
@@ -4086,7 +4105,7 @@ var (
 	ErrSubscriberIdentityMSISDNDecodedEmpty = errors.New("subscriberIdentity: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSubscriberIdentityUnknownChoice      = errors.New("subscriberIdentity: CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 
-	// SendRoutingInfoForLCS top-level (TS 29.002 MAP-LCS-DataTypes.asn:603).
+	// SendRoutingInfoForLCS top-level (3GPP TS 29.002 V19.1.0 §17.7.13).
 	ErrSriLcsNil            = errors.New("sriLcs: nil argument is not permitted")
 	ErrSriLcsMlcNumberEmpty = errors.New("sriLcs: MlcNumber digits are mandatory on encode and decode")
 	ErrSriLcsRespNil        = errors.New("sriLcsResp: nil argument is not permitted")
@@ -4099,11 +4118,11 @@ var (
 	ErrRequestedDomainInvalid = errors.New("requestedInfo: RequestedDomain must be cs-Domain(0) or ps-Domain(1); a receiver maps values above 1 to cs-Domain per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// ReportSMDeliveryStatus top-level (TS 29.002 MAP-SM-DataTypes.asn).
-	ErrReportSMDeliveryStatusNil         = errors.New("reportSMDeliveryStatus: nil argument is not permitted")
-	ErrReportSMDeliveryStatusMSISDNEmpty = errors.New("reportSMDeliveryStatus: MSISDN digits are mandatory on encode and decode")
-	ErrReportSMDeliveryStatusSCAEmpty    = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory on encode and decode")
+	ErrReportSMDeliveryStatusNil                       = errors.New("reportSMDeliveryStatus: nil argument is not permitted")
+	ErrReportSMDeliveryStatusMSISDNEmpty               = errors.New("reportSMDeliveryStatus: MSISDN digits are mandatory on encode and decode")
+	ErrReportSMDeliveryStatusServiceCentreAddressEmpty = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory on encode and decode")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrReportSMDeliveryStatusOutcomeInvalid       = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 MAP-SM-DataTypes.asn")
-	ErrReportSMDeliveryStatusResNil               = errors.New("reportSMDeliveryStatusRes: nil argument is not permitted")
-	ErrReportSMDeliveryStatusResStoredMSISDNEmpty = errors.New("reportSMDeliveryStatusRes: present wire StoredMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrReportSMDeliveryStatusOutcomeInvalid              = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 MAP-SM-DataTypes.asn")
+	ErrReportSMDeliveryStatusResNil                      = errors.New("reportSMDeliveryStatusRes: nil argument is not permitted")
+	ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty = errors.New("reportSMDeliveryStatusRes: present wire StoredMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 )

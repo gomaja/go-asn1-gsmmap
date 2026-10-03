@@ -22,7 +22,7 @@ func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo,
 		return nil, nil
 	}
 	if l.NetworkNodeNumber == "" {
-		return nil, ErrLCSLocationInfoNetworkNodeEmpty
+		return nil, ErrLCSLocationInfoNetworkNodeNumberEmpty
 	}
 	nodeWire, err := encodeAddressField(l.NetworkNodeNumber, l.NetworkNodeNumberNature, l.NetworkNodeNumberPlan)
 	if err != nil {
@@ -82,7 +82,7 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 		return nil, fmt.Errorf("decoding LCSLocationInfo.NetworkNodeNumber: %w", err)
 	}
 	if node == "" {
-		return nil, ErrLCSLocationInfoNetworkNodeEmpty
+		return nil, ErrLCSLocationInfoNetworkNodeNumberEmpty
 	}
 
 	out := &LCSLocationInfo{
@@ -135,7 +135,7 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 }
 
 // ============================================================================
-// DeferredmtLrData — TS 29.002 MAP-LCS-DataTypes.asn:673
+// DeferredmtLrData — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 //
 // LcsLocationInfo may be present only if TerminationCause indicates

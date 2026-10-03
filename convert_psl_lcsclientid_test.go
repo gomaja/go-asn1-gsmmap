@@ -311,30 +311,28 @@ func TestLCSClientIDDialedByMSWireEmptyDigitsRejected(t *testing.T) {
 		LcsClientDialedByMS: &emptyAddr,
 	}
 	_, err := convertWireToLCSClientID(w)
-	if !errors.Is(err, ErrLCSClientIDDialedByMSEmpty) {
-		t.Errorf("want ErrLCSClientIDDialedByMSEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSClientIDDialedByMSDecodedEmpty) {
+		t.Errorf("want ErrLCSClientIDDialedByMSDecodedEmpty, got %v", err)
 	}
 }
 
-// Symmetric encode-side check: empty digits combined with non-zero
-// Nature/Plan must surface ErrLCSClientIDDialedByMSEmpty rather than
-// silently dropping the field.
+// Empty digits with address metadata fail on encode.
 func TestLCSClientIDDialedByMSEncodeEmptyWithNaturePlanRejected(t *testing.T) {
 	_, err := convertLCSClientIDToWire(&LCSClientID{
 		LcsClientType:             LCSClientTypeEmergencyServices,
 		LcsClientDialedByMS:       "",
 		LcsClientDialedByMSNature: 0x10,
 	})
-	if !errors.Is(err, ErrLCSClientIDDialedByMSEmpty) {
-		t.Errorf("Nature set with empty digits: want ErrLCSClientIDDialedByMSEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSClientIDDialedByMSNaturePlanWithoutDigits) {
+		t.Errorf("Nature set with empty digits: want ErrLCSClientIDDialedByMSNaturePlanWithoutDigits, got %v", err)
 	}
 	_, err = convertLCSClientIDToWire(&LCSClientID{
 		LcsClientType:           LCSClientTypeEmergencyServices,
 		LcsClientDialedByMS:     "",
 		LcsClientDialedByMSPlan: 0x01,
 	})
-	if !errors.Is(err, ErrLCSClientIDDialedByMSEmpty) {
-		t.Errorf("Plan set with empty digits: want ErrLCSClientIDDialedByMSEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSClientIDDialedByMSNaturePlanWithoutDigits) {
+		t.Errorf("Plan set with empty digits: want ErrLCSClientIDDialedByMSNaturePlanWithoutDigits, got %v", err)
 	}
 }
 

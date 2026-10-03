@@ -13,16 +13,16 @@ func validateSri(s *Sri) error {
 		return ErrSriMissingMSISDN
 	}
 	if s.GmscOrGsmSCFAddress == "" {
-		return ErrSriMissingGmsc
+		return ErrSriMissingGmscOrGsmSCFAddress
 	}
 	if s.InterrogationType != InterrogationBasicCall && s.InterrogationType != InterrogationForwarding {
 		return ErrSriInvalidInterrogationType
 	}
 
-	// ForwardingReason — 0..2 per TS 29.002.
+	// ForwardingReason — 0..2 (3GPP TS 29.002 V19.1.0 §17.7.3).
 	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	if s.ForwardingReason != nil && (*s.ForwardingReason < 0 || *s.ForwardingReason > 2) {
-		return fmt.Errorf("ForwardingReason out of range 0..2: %d", *s.ForwardingReason)
+		return fmt.Errorf("ForwardingReason=%d: %w", *s.ForwardingReason, ErrSriForwardingReasonInvalid)
 	}
 	// SupportedCCBS-Phase, 3GPP TS 29.002 V19.1.0 §17.7.3: "Only value 1 is
 	// used. Values in the ranges 2-127 are reserved for future use."
@@ -210,15 +210,15 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
 
-	gmsc, gmscNature, gmscPlan, err := decodeAddressWithDigits(arg.GmscOrGsmSCFAddress, ErrSriMissingGmsc)
+	gmsc, gmscNature, gmscPlan, err := decodeAddressWithDigits(arg.GmscOrGsmSCFAddress, ErrSriMissingGmscOrGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GmscOrGsmSCFAddress: %w", err)
 	}
 
-	// InterrogationType — 0 (basicCall) or 1 (forwarding) per TS 29.002.
+	// InterrogationType — 0 (basicCall) or 1 (forwarding), 3GPP TS 29.002 V19.1.0 §17.7.3.
 	it, err := narrowInt64Range(int64(arg.InterrogationType), 0, 1, "InterrogationType")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding InterrogationType: %w: %w", ErrSriInvalidInterrogationType, err)
 	}
 
 	s := &Sri{
@@ -256,12 +256,12 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 		s.CallReferenceNumber = HexBytes(*arg.CallReferenceNumber)
 	}
 
-	// ForwardingReason — 0..2 per TS 29.002.
+	// ForwardingReason — 0..2 (3GPP TS 29.002 V19.1.0 §17.7.3).
 	if arg.ForwardingReason != nil {
 		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		v, err := narrowInt64Range(int64(*arg.ForwardingReason), 0, 2, "ForwardingReason")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("ForwardingReason: %w: %w", ErrSriForwardingReasonInvalid, err)
 		}
 		fr := ForwardingReason(v)
 		s.ForwardingReason = &fr
@@ -336,7 +336,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	// istCommandSupported(1), ... } per TS 29.002. Spec exception:
 	// "reception of values > 1 shall be mapped to istCommandSupported".
 	// Apply the mapping in int64 space first so wire values that exceed
-	// platform int still satisfy the spec mandate on 32-bit builds.
+	// platform int satisfy the spec mandate on 32-bit builds.
 	if arg.IstSupportIndicator != nil {
 		v, err := istSupportIndicatorFromWire(*arg.IstSupportIndicator)
 		if err != nil {
@@ -482,7 +482,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
 		default:
-			return nil, fmt.Errorf("NumberPortabilityStatus has undefined value %d", *s.NumberPortabilityStatus)
+			return nil, fmt.Errorf("NumberPortabilityStatus=%d: %w", *s.NumberPortabilityStatus, ErrNumberPortabilityStatusInvalid)
 		}
 		v := *s.NumberPortabilityStatus
 		out.NumberPortabilityStatus = &v
@@ -604,7 +604,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 		for i, c := range res.SsList.Values {
 			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(c) != 1 {
-				return nil, fmt.Errorf("SsList[%d]: SS-Code must be exactly 1 octet, got %d", i, len(c))
+				return nil, fmt.Errorf("SsList[%d] length %d: %w", i, len(c), ErrSriSsListSsCodeInvalidLength)
 			}
 			out.SsList[i] = SsCode(c[0])
 		}
@@ -702,7 +702,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 		for i, c := range res.SsList2.Values {
 			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(c) != 1 {
-				return nil, fmt.Errorf("SsList2[%d]: SS-Code must be exactly 1 octet, got %d", i, len(c))
+				return nil, fmt.Errorf("SsList2[%d] length %d: %w", i, len(c), ErrSriSsList2SsCodeInvalidLength)
 			}
 			out.SsList2[i] = SsCode(c[0])
 		}

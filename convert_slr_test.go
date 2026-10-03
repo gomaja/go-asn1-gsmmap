@@ -121,8 +121,8 @@ func TestLCSLocationInfoNilPassesThrough(t *testing.T) {
 
 func TestLCSLocationInfoEmptyNetworkNodeRejected(t *testing.T) {
 	_, err := convertLCSLocationInfoToWire(&LCSLocationInfo{})
-	if !errors.Is(err, ErrLCSLocationInfoNetworkNodeEmpty) {
-		t.Errorf("encode empty NetworkNodeNumber: want ErrLCSLocationInfoNetworkNodeEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSLocationInfoNetworkNodeNumberEmpty) {
+		t.Errorf("encode empty NetworkNodeNumber: want ErrLCSLocationInfoNetworkNodeNumberEmpty, got %v", err)
 	}
 }
 
@@ -198,8 +198,8 @@ func TestLCSLocationInfoWireEmptyNodeDecodedEmptyRejected(t *testing.T) {
 	emptyAddr := gsm_map.ISDNAddressString{0x91} // header-only, no digits
 	w := &gsm_map.LCSLocationInfo{NetworkNodeNumber: emptyAddr}
 	_, err := convertWireToLCSLocationInfo(w)
-	if !errors.Is(err, ErrLCSLocationInfoNetworkNodeEmpty) {
-		t.Errorf("want ErrLCSLocationInfoNetworkNodeEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSLocationInfoNetworkNodeNumberEmpty) {
+		t.Errorf("want ErrLCSLocationInfoNetworkNodeNumberEmpty, got %v", err)
 	}
 }
 

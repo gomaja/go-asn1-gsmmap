@@ -86,7 +86,7 @@ func TestSLRSequenceNumberAlias(t *testing.T) {
 func TestSLRSentinelErrors(t *testing.T) {
 	sentinels := []error{
 		ErrLCSEventInvalid,
-		ErrLCSLocationInfoNetworkNodeEmpty,
+		ErrLCSLocationInfoNetworkNodeNumberEmpty,
 	}
 	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {

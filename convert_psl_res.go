@@ -214,7 +214,7 @@ func convertProvideSubscriberLocationResToWire(r *ProvideSubscriberLocationRes) 
 
 	if r.AccuracyFulfilmentIndicator != nil {
 		v := *r.AccuracyFulfilmentIndicator
-		// AccuracyFulfilmentIndicator is extensible (TS 29.002:457);
+		// AccuracyFulfilmentIndicator is extensible (3GPP TS 29.002 V19.1.0 §17.7.13);
 		// encoder strict (0..1), decoder lenient.
 		if int64(v) < 0 || int64(v) > 1 {
 			return nil, fmt.Errorf("ProvideSubscriberLocationRes.AccuracyFulfilmentIndicator=%d: %w", v, ErrAccuracyFulfilmentIndicatorInvalid)

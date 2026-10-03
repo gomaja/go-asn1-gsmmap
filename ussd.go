@@ -41,7 +41,8 @@ var (
 	ErrUSSDTextTooLong = errors.New("ussd: encoded text exceeds 160 octets")
 	// ErrUSSDTextEmpty is returned when the text to encode, or the octets to
 	// decode, are empty: USSD-String is SIZE (1..maxUSSD-StringLength).
-	ErrUSSDTextEmpty = errors.New("ussd: empty text")
+	ErrUSSDTextEmpty   = errors.New("ussd: empty text")
+	ErrUSSDInvalidUTF8 = errors.New("ussd: text is not valid UTF-8")
 	// ErrAlertingPatternReserved is returned when marshalling an
 	// AlertingPattern that is not one of the eight values 3GPP TS 29.002
 	// V19.1.0 §17.7.8 defines.
@@ -213,7 +214,7 @@ func (d USSDDataCodingScheme) Encode(text string) ([]byte, error) {
 		// []rune would turn invalid UTF-8 into U+FFFD, which UCS2 can code,
 		// so the text is checked first.
 		if !utf8.ValidString(text) {
-			return nil, errors.New("encoding UCS2 USSD-String: text is not valid UTF-8")
+			return nil, fmt.Errorf("encoding UCS2 USSD-String: %w", ErrUSSDInvalidUTF8)
 		}
 		var err error
 		out, err = ucs2.Encode([]rune(text))

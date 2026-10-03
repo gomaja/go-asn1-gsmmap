@@ -10,8 +10,7 @@ import (
 // --- CAMEL subscription info converters ---
 //
 // Full field-for-field conversion between the public CAMEL types and the
-// go-asn1 wire types. Replaces the earlier opaque-HexBytes stubs that
-// silently dropped CAMEL subscription data on round-trip.
+// go-asn1 wire types. Nested CAMEL subscription fields are converted to and from the wire types.
 
 // isValidOBcsmTDP reports whether v is a defined originating BCSM TDP.
 func isValidOBcsmTDP(v OBcsmTriggerDetectionPoint) bool {
@@ -469,7 +468,7 @@ func convertTBcsmTDPCriteriaToWire(c *TBcsmCamelTDPCriteria) (gsm_map.TBCSMCAMEL
 // (3GPP TS 29.002 V19.1.0 §17.7.1) covers only "T-BcsmCamelTDPData
 // sequences containing this parameter with any other value than the ones
 // listed above", so in T-BCSM-CAMEL-TDP-Criteria an unlisted value is kept
-// (§17.1.4); Marshal still sends only the listed values.
+// (§17.1.4); Marshal sends only the listed values.
 func convertWireToTBcsmTDPCriteria(w *gsm_map.TBCSMCAMELTDPCriteria) (TBcsmCamelTDPCriteria, error) {
 	out := TBcsmCamelTDPCriteria{TBcsmTriggerDetectionPoint: w.TBCSMTriggerDetectionPoint}
 	if w.BasicServiceCriteria != nil && len(w.BasicServiceCriteria.Values) > 0 {
@@ -727,7 +726,7 @@ func convertWireToDCSI(w *gsm_map.DCSI) (*DCSI, error) {
 
 // convertGmscCamelSubInfoToWire converts the public GmscCamelSubscriptionInfo
 // to its wire-level representation, including every nested CSI and criteria
-// list. Replaces the earlier stub that silently dropped all CAMEL data.
+// list.
 func convertGmscCamelSubInfoToWire(g *GmscCamelSubscriptionInfo) (gsm_map.GmscCamelSubscriptionInfo, error) {
 	out := gsm_map.GmscCamelSubscriptionInfo{}
 	if g.TCSI != nil {
@@ -777,8 +776,7 @@ func convertGmscCamelSubInfoToWire(g *GmscCamelSubscriptionInfo) (gsm_map.GmscCa
 }
 
 // convertWireToGmscCamelSubInfo converts a wire GmscCamelSubscriptionInfo back
-// into the public type. Replaces the earlier stub that silently dropped all
-// CAMEL data on decode.
+// into the public type.
 func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCamelSubscriptionInfo, error) {
 	out := GmscCamelSubscriptionInfo{}
 	if w.TCSI != nil {
@@ -824,7 +822,7 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 	return out, nil
 }
 
-// --- VlrCamelSubscriptionInfo sub-types (MAP-MS-DataTypes.asn:2183) ---
+// --- VlrCamelSubscriptionInfo sub-types (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
 // isVLRSSEvent reports whether c is an SS-EventList code an SS-CSI sent to
 // the VLR may carry. 3GPP TS 29.002 V19.1.0 §17.7.1 SS-EventList defines
@@ -884,7 +882,7 @@ func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 	for i, b := range events.Values {
 		// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 		if len(b) != 1 {
-			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]: SsCode must be 1 octet, got %d", i, len(b))
+			return nil, fmt.Errorf("SS-CSI.SsEventList[%d] length %d: %w", i, len(b), ErrSsCSIEventListSsCodeInvalidLength)
 		}
 		if c := SsCode(b[0]); isVLRSSEvent(c) {
 			ssList = append(ssList, c)

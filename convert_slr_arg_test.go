@@ -181,7 +181,7 @@ func TestSLRArgEncodeNegative(t *testing.T) {
 		{"nil arg", nil, ErrSLRArgNil, "", ""},
 		{"LcsEvent out of range", func(a *SubscriberLocationReportArg) { a.LcsEvent = LCSEvent(99) }, ErrLCSEventInvalid, "", ""},
 		{"LcsClientType out of range", func(a *SubscriberLocationReportArg) { a.LcsClientID.LcsClientType = LCSClientType(99) }, ErrLCSClientTypeInvalid, "", ""},
-		{"LcsLocationInfo empty node", func(a *SubscriberLocationReportArg) { a.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeEmpty, "", ""},
+		{"LcsLocationInfo empty node", func(a *SubscriberLocationReportArg) { a.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeNumberEmpty, "", ""},
 		{"IMSI too short", func(a *SubscriberLocationReportArg) { a.IMSI = "1234" }, ErrIMSIInvalidLength, "", ""},
 		{"IMSI too long", func(a *SubscriberLocationReportArg) { a.IMSI = "1234567890123456" }, ErrIMSIInvalidLength, "", ""},
 		{"IMEI wrong length", func(a *SubscriberLocationReportArg) { a.IMEI = "12345" }, ErrIMEIInvalidLength, "", ""},

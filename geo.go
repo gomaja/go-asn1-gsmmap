@@ -56,7 +56,7 @@ func uncertaintyToMeters(k uint8) float64 {
 // spare/zero, so values above 127 cannot be encoded without truncation.
 func check7Bit(name string, v uint8) error {
 	if v > 127 {
-		return fmt.Errorf("%s out of range [0, 127]: %d", name, v)
+		return fmt.Errorf("%w: %s out of range [0, 127]: %d", ErrGeoCodeOutOfRange, name, v)
 	}
 	return nil
 }
@@ -67,7 +67,7 @@ func check7Bit(name string, v uint8) error {
 // so the octet itself is capped at 179).
 func checkAngle(name string, v uint8) error {
 	if v > 179 {
-		return fmt.Errorf("%s out of range [0, 179]: %d", name, v)
+		return fmt.Errorf("%w: %s out of range [0, 179]: %d", ErrGeoAngleOutOfRange, name, v)
 	}
 	return nil
 }
@@ -82,7 +82,7 @@ func checkAngle(name string, v uint8) error {
 //	Octets 8+:     Shape-specific fields
 func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 	if len(data) < 1 {
-		return nil, fmt.Errorf("geographical information too short")
+		return nil, fmt.Errorf("%w: geographical information too short", ErrGeoInformationTooShort)
 	}
 
 	shapeType := ShapeType(data[0] >> 4)
@@ -91,13 +91,13 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 	switch shapeType {
 	case ShapeEllipsoidPoint:
 		if len(data) < 7 {
-			return nil, fmt.Errorf("ellipsoid point requires 7 octets, got %d", len(data))
+			return nil, fmt.Errorf("%w: ellipsoid point requires 7 octets, got %d", ErrGeoPointInvalidLength, len(data))
 		}
 		gi.Latitude, gi.Longitude = decodeLatLon(data[1:7])
 
 	case ShapeEllipsoidPointUncertainty:
 		if len(data) < 8 {
-			return nil, fmt.Errorf("ellipsoid point with uncertainty requires 8 octets, got %d", len(data))
+			return nil, fmt.Errorf("%w: ellipsoid point with uncertainty requires 8 octets, got %d", ErrGeoPointUncertaintyInvalidLength, len(data))
 		}
 		gi.Latitude, gi.Longitude = decodeLatLon(data[1:7])
 		uc := data[7] & 0x7F
@@ -107,7 +107,7 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 
 	case ShapeEllipsoidPointUncertaintyEllipse:
 		if len(data) < 11 {
-			return nil, fmt.Errorf("ellipsoid point with uncertainty ellipse requires 11 octets, got %d", len(data))
+			return nil, fmt.Errorf("%w: ellipsoid point with uncertainty ellipse requires 11 octets, got %d", ErrGeoPointUncertaintyEllipseInvalidLength, len(data))
 		}
 		gi.Latitude, gi.Longitude = decodeLatLon(data[1:7])
 		semiMajor := data[7] & 0x7F
@@ -121,7 +121,7 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 
 	case ShapeEllipsoidPointAltitude:
 		if len(data) < 14 {
-			return nil, fmt.Errorf("ellipsoid point with altitude requires 14 octets, got %d", len(data))
+			return nil, fmt.Errorf("%w: ellipsoid point with altitude requires 14 octets, got %d", ErrGeoPointAltitudeInvalidLength, len(data))
 		}
 		gi.Latitude, gi.Longitude = decodeLatLon(data[1:7])
 		altSign := data[7] >> 7
@@ -143,7 +143,7 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 
 	case ShapeEllipsoidArc:
 		if len(data) < 13 {
-			return nil, fmt.Errorf("ellipsoid arc requires 13 octets, got %d", len(data))
+			return nil, fmt.Errorf("%w: ellipsoid arc requires 13 octets, got %d", ErrGeoArcInvalidLength, len(data))
 		}
 		gi.Latitude, gi.Longitude = decodeLatLon(data[1:7])
 		innerRadius := uint16(data[7])<<8 | uint16(data[8])
@@ -158,7 +158,7 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 		gi.Confidence = &confidence
 
 	default:
-		return nil, fmt.Errorf("unsupported shape type: %d", shapeType)
+		return nil, fmt.Errorf("%w: unsupported shape type: %d", ErrGeoShapeTypeInvalid, shapeType)
 	}
 
 	return gi, nil
@@ -195,16 +195,16 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 // re-emit bytes that violate TS 23.032.
 func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	if math.IsNaN(gi.Latitude) || math.IsInf(gi.Latitude, 0) {
-		return nil, fmt.Errorf("latitude is not a finite number: %v", gi.Latitude)
+		return nil, fmt.Errorf("%w: latitude is not a finite number: %v", ErrGeoLatitudeNotFinite, gi.Latitude)
 	}
 	if math.IsNaN(gi.Longitude) || math.IsInf(gi.Longitude, 0) {
-		return nil, fmt.Errorf("longitude is not a finite number: %v", gi.Longitude)
+		return nil, fmt.Errorf("%w: longitude is not a finite number: %v", ErrGeoLongitudeNotFinite, gi.Longitude)
 	}
 	if gi.Latitude <= -90 || gi.Latitude >= 90 {
-		return nil, fmt.Errorf("latitude out of range (-90, 90): %v", gi.Latitude)
+		return nil, fmt.Errorf("%w: latitude out of range (-90, 90): %v", ErrGeoLatitudeOutOfRange, gi.Latitude)
 	}
 	if gi.Longitude < -180 || gi.Longitude >= 180 {
-		return nil, fmt.Errorf("longitude out of range [-180, 180): %v", gi.Longitude)
+		return nil, fmt.Errorf("%w: longitude out of range [-180, 180): %v", ErrGeoLongitudeOutOfRange, gi.Longitude)
 	}
 	latBytes, lonBytes, err := encodeLatLon(gi.Latitude, gi.Longitude)
 	if err != nil {
@@ -221,7 +221,7 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 
 	case ShapeEllipsoidPointUncertainty:
 		if gi.UncertaintyCode == nil {
-			return nil, fmt.Errorf("EllipsoidPointUncertainty requires UncertaintyCode")
+			return nil, fmt.Errorf("%w: EllipsoidPointUncertainty requires UncertaintyCode", ErrGeoPointUncertaintyFieldsMissing)
 		}
 		if err := check7Bit("UncertaintyCode", *gi.UncertaintyCode); err != nil {
 			return nil, err
@@ -236,7 +236,7 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	case ShapeEllipsoidPointUncertaintyEllipse:
 		if gi.UncertaintySemiMajor == nil || gi.UncertaintySemiMinor == nil ||
 			gi.AngleMajorAxis == nil || gi.Confidence == nil {
-			return nil, fmt.Errorf("EllipsoidPointUncertaintyEllipse requires UncertaintySemiMajor, UncertaintySemiMinor, AngleMajorAxis, Confidence")
+			return nil, fmt.Errorf("%w: EllipsoidPointUncertaintyEllipse requires UncertaintySemiMajor, UncertaintySemiMinor, AngleMajorAxis, Confidence", ErrGeoPointUncertaintyEllipseFieldsMissing)
 		}
 		if err := check7Bit("UncertaintySemiMajor", *gi.UncertaintySemiMajor); err != nil {
 			return nil, err
@@ -264,11 +264,11 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 		if gi.Altitude == nil || gi.UncertaintySemiMajor == nil ||
 			gi.UncertaintySemiMinor == nil || gi.AngleMajorAxis == nil ||
 			gi.UncertaintyAltitude == nil || gi.Confidence == nil {
-			return nil, fmt.Errorf("EllipsoidPointAltitude requires Altitude, UncertaintySemiMajor, UncertaintySemiMinor, AngleMajorAxis, UncertaintyAltitude, Confidence")
+			return nil, fmt.Errorf("%w: EllipsoidPointAltitude requires Altitude, UncertaintySemiMajor, UncertaintySemiMinor, AngleMajorAxis, UncertaintyAltitude, Confidence", ErrGeoPointAltitudeFieldsMissing)
 		}
 		alt := *gi.Altitude
 		if alt < -32767 {
-			return nil, fmt.Errorf("altitude out of range [-32767, 32767]: %d", alt)
+			return nil, fmt.Errorf("%w: altitude out of range [-32767, 32767]: %d", ErrGeoAltitudeOutOfRange, alt)
 		}
 		if err := check7Bit("UncertaintySemiMajor", *gi.UncertaintySemiMajor); err != nil {
 			return nil, err
@@ -306,7 +306,7 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	case ShapeEllipsoidArc:
 		if gi.InnerRadius == nil || gi.UncertaintyRadius == nil ||
 			gi.OffsetAngle == nil || gi.IncludedAngle == nil || gi.Confidence == nil {
-			return nil, fmt.Errorf("EllipsoidArc requires InnerRadius, UncertaintyRadius, OffsetAngle, IncludedAngle, Confidence")
+			return nil, fmt.Errorf("%w: EllipsoidArc requires InnerRadius, UncertaintyRadius, OffsetAngle, IncludedAngle, Confidence", ErrGeoArcFieldsMissing)
 		}
 		if err := check7Bit("UncertaintyRadius", *gi.UncertaintyRadius); err != nil {
 			return nil, err
@@ -333,7 +333,7 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 		return data, nil
 
 	default:
-		return nil, fmt.Errorf("unsupported shape type: %d", gi.ShapeType)
+		return nil, fmt.Errorf("%w: unsupported shape type: %d", ErrGeoShapeTypeInvalid, gi.ShapeType)
 	}
 }
 
@@ -381,7 +381,7 @@ func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte, err err
 	}
 	latN := uint32(math.Round(lat / 90.0 * float64(1<<23)))
 	if latN > 0x7FFFFF {
-		return latBytes, lonBytes, fmt.Errorf("latitude %v rounds past the ±90 boundary of the 23-bit encoding", rawLat)
+		return latBytes, lonBytes, fmt.Errorf("%w: latitude %v rounds past the ±90 boundary of the 23-bit encoding", ErrGeoLatitudeEncodingOverflow, rawLat)
 	}
 	latBytes[0] = sign<<7 | byte((latN>>16)&0x7F)
 	latBytes[1] = byte(latN >> 8)
@@ -389,13 +389,13 @@ func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte, err err
 
 	lonN := int32(math.Round(lon / 360.0 * float64(1<<24)))
 	if lonN > 0x7FFFFF {
-		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds past the +180 boundary of the 24-bit encoding", lon)
+		return latBytes, lonBytes, fmt.Errorf("%w: longitude %v rounds past the +180 boundary of the 24-bit encoding", ErrGeoLongitudeEncodingOverflow, lon)
 	}
 	// -0x800000 is the legitimate quantum for lon=-180 exactly. Any other
 	// caller value that rounds onto it (ULPs in (-180, -179.99998927°])
 	// would silently collapse onto -180 on the wire.
 	if lonN == -0x800000 && lon != -180 {
-		return latBytes, lonBytes, fmt.Errorf("longitude %v rounds onto the -180 quantum (would silently collapse onto -180)", lon)
+		return latBytes, lonBytes, fmt.Errorf("%w: longitude %v rounds onto the -180 quantum (would silently collapse onto -180)", ErrGeoLongitudeEncodingCollapse, lon)
 	}
 	lonBytes[0] = byte(lonN >> 16)
 	lonBytes[1] = byte(lonN >> 8)

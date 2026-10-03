@@ -1,8 +1,19 @@
 package gsn
 
 import (
+	"errors"
 	"fmt"
 	"net"
+)
+
+// Rejection conditions for GSN address conversion.
+var (
+	ErrInvalidIP          = errors.New("gsn: invalid IP")
+	ErrAddressTooShort    = errors.New("gsn: address too short")
+	ErrDataTooShort       = errors.New("gsn: data too short")
+	ErrIPv4LengthInvalid  = errors.New("gsn: invalid IPv4 address length")
+	ErrIPv6LengthInvalid  = errors.New("gsn: invalid IPv6 address length")
+	ErrAddressTypeInvalid = errors.New("gsn: unknown address type")
 )
 
 // Build encodes an IPv4/IPv6 address into GSN Address format per 3GPP TS 23.003.
@@ -13,7 +24,7 @@ import (
 func Build(ipStr string) ([]byte, error) {
 	ip := net.ParseIP(ipStr)
 	if ip == nil {
-		return nil, fmt.Errorf("gsn: invalid IP: %s", ipStr)
+		return nil, fmt.Errorf("%w: %s", ErrInvalidIP, ipStr)
 	}
 
 	var addrType uint8
@@ -40,7 +51,7 @@ func Build(ipStr string) ([]byte, error) {
 // Parse decodes a GSN Address format byte slice into an IPv4/IPv6 string.
 func Parse(data []byte) (string, error) {
 	if len(data) < 1 {
-		return "", fmt.Errorf("gsn: address too short")
+		return "", fmt.Errorf("%w", ErrAddressTooShort)
 	}
 
 	header := data[0]
@@ -48,7 +59,7 @@ func Parse(data []byte) (string, error) {
 	addrLen := header & 0x3F
 
 	if len(data) < 1+int(addrLen) {
-		return "", fmt.Errorf("gsn: data too short: expected %d bytes, got %d", 1+int(addrLen), len(data))
+		return "", fmt.Errorf("%w: expected %d bytes, got %d", ErrDataTooShort, 1+int(addrLen), len(data))
 	}
 
 	addrBytes := data[1 : 1+addrLen]
@@ -56,15 +67,15 @@ func Parse(data []byte) (string, error) {
 	switch addrType {
 	case 0:
 		if addrLen != 4 {
-			return "", fmt.Errorf("gsn: invalid IPv4 address length: %d", addrLen)
+			return "", fmt.Errorf("%w: %d", ErrIPv4LengthInvalid, addrLen)
 		}
 		return net.IP(addrBytes).String(), nil
 	case 1:
 		if addrLen != 16 {
-			return "", fmt.Errorf("gsn: invalid IPv6 address length: %d", addrLen)
+			return "", fmt.Errorf("%w: %d", ErrIPv6LengthInvalid, addrLen)
 		}
 		return net.IP(addrBytes).String(), nil
 	default:
-		return "", fmt.Errorf("gsn: unknown address type: %d", addrType)
+		return "", fmt.Errorf("%w: %d", ErrAddressTypeInvalid, addrType)
 	}
 }
