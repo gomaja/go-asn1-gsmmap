@@ -3763,10 +3763,6 @@ var (
 	// digits (3GPP TS 23.003 V20.1.0 §6.2.2).
 	ErrIMEISVInvalidLength = errors.New("identity: IMEISV must have 16 digits per 3GPP TS 23.003 V20.1.0 §6.2.2")
 
-	// ErrAddressStringEmpty is returned when an AddressString has no octets
-	// at all, not even the nature/plan octet.
-	ErrAddressStringEmpty = errors.New("address: AddressString has no octets")
-
 	// ErrIscStoredMSISDNDecodedEmpty is returned when a wire storedMSISDN
 	// carries no digits: StoredMSISDN "" means absent, so the field could not
 	// round-trip.

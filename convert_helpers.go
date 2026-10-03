@@ -31,13 +31,10 @@ func encodeAddressField(digits string, nature, plan uint8) ([]byte, error) {
 }
 
 // decodeAddressField decodes an AddressString byte slice into a phone number string and address components.
+// Every AddressString it receives has at least the nature/plan octet: the
+// codec checks SIZE (1..n) of a field, and the callers check the element of
+// a SEQUENCE OF (isISDNAddressStringSize).
 func decodeAddressField(encoded []byte) (digits string, nature, plan uint8, err error) {
-	// A zero-octet AddressString has no nature/plan octet and violates
-	// SIZE (1..9). address.Decode yields nil digits for it, and tbcd.Decode
-	// treats nil as an empty string, so the check lives here.
-	if len(encoded) == 0 {
-		return "", 0, 0, ErrAddressStringEmpty
-	}
 	_, nat, pl, rawDigits := address.Decode(encoded)
 	digits, err = tbcd.Decode(rawDigits)
 	if err != nil {

@@ -131,6 +131,9 @@ What that means for a consumer:
   which this package does not implement. `Parse` drops them.
 - `LCSQoS.LcsQosClass` carries lcs-qos-class, which `Parse` dropped; an
   unrecognized value decodes as `LCSQoSClassBestEffort` (§17.7.13).
+- `ErrAddressStringEmpty` and `ErrCamelInvalidMobilityTriggerOctet` are
+  gone: a zero-octet AddressString fails its SIZE check first, and a
+  wrong-size MM-Code is `ErrMMCodeInvalidSize` in both CSIs.
 
 ## Usage
 
