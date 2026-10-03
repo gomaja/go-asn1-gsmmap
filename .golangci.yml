@@ -11,13 +11,6 @@ linters:
   default: standard
   enable:
     - unconvert
-  exclusions:
-    rules:
-      # This test file is reserved for a separate worktree.
-      - path: 'extssinfo_test\.go'
-        source: 'gsm_map\.ExtNoRepCondTime\(tc\.wire\)|gsm_map\.EMLPPPriority\(tc\.wire\)'
-        linters:
-          - unconvert
 
 issues:
   # Report all findings from each linter and source line.

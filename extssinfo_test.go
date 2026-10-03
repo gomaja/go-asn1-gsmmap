@@ -286,7 +286,7 @@ func TestExtForwFeatureLenientNoRepCondTime(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			v := gsm_map.ExtNoRepCondTime(tc.wire)
+			v := tc.wire
 			wire.ForwardingFeatureList.Values[0].NoReplyConditionTime = &v
 			if tc.want < 0 {
 				wantConstraintError(t, strictDecodeWire(wire), "forwardingFeatureList.element[0].noReplyConditionTime", "(1..100)")
@@ -378,7 +378,7 @@ func TestParseNoReplyConditionTimeMapsReserved(t *testing.T) {
 			if err != nil {
 				t.Fatalf("convertInsertSubscriberDataArgToWire: %v", err)
 			}
-			v := gsm_map.ExtNoRepCondTime(tc.wire)
+			v := tc.wire
 			w.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].NoReplyConditionTime = &v
 			data, err := w.MarshalBER()
 			if err != nil {
@@ -637,7 +637,7 @@ func TestEMLPPInfoLenientDecode(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			w := &gsm_map.EMLPPInfo{
-				MaximumentitledPriority: gsm_map.EMLPPPriority(tc.wire),
+				MaximumentitledPriority: tc.wire,
 				DefaultPriority:         gsm_map.EMLPPPriority(0),
 			}
 			got, err := convertWireToEMLPPInfo(w)
