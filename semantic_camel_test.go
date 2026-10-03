@@ -2,9 +2,10 @@
 //
 // CAMEL subscription rules of 3GPP TS 29.002 V19.1.0 §17.7.1 that the BER
 // codec cannot express: the CAMEL phase 4 exclusion of sms-SUBMIT-REPORT
-// from TPDU-TypeCriterion, and the presence of the SMS-CSI and D-CSI
-// components that the ASN.1 marks OPTIONAL. Every case goes through the
-// public Marshal and Parse entry points.
+// from TPDU-TypeCriterion, one SMS-CAMEL-TDP-Data per trigger detection
+// point, and D-CSI round trips at the list bounds. The segment-dependent
+// CSI presence rules are in semantic_segment_test.go. Every case goes
+// through the public Marshal and Parse entry points.
 package gsmmap
 
 import (
@@ -180,7 +181,7 @@ func TestMarshalSMSCSITDPDataListSize(t *testing.T) {
 	}
 }
 
-// --- D-CSI presence ---
+// --- D-CSI ---
 
 func TestDCSIRoundTrip(t *testing.T) {
 	list := make([]DPAnalysedInfoCriterium, 10)
