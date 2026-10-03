@@ -260,7 +260,7 @@ func convertSendAuthenticationInfoResToRes(s *SendAuthenticationInfoRes) (*gsm_m
 		res.AuthenticationSetList = asl
 	}
 
-	if len(s.EpsAuthenticationSetList) > 0 {
+	if s.EpsAuthenticationSetList != nil {
 		list := gsm_map.EPSAuthenticationSetList{Values: make([]gsm_map.EPCAV, len(s.EpsAuthenticationSetList))}
 		for i := range s.EpsAuthenticationSetList {
 			list.Values[i] = convertEpcAVToWire(&s.EpsAuthenticationSetList[i])

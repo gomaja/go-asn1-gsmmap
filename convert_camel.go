@@ -260,7 +260,7 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 	out := &gsm_map.DestinationNumberCriteria{
 		MatchType: c.MatchType,
 	}
-	if len(c.DestinationNumberList) > 0 {
+	if c.DestinationNumberList != nil {
 		list := gsm_map.DestinationNumberList{Values: make([]gsm_map.ISDNAddressString, len(c.DestinationNumberList))}
 		for i, n := range c.DestinationNumberList {
 			if n.Digits == "" {
@@ -277,7 +277,7 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 		}
 		out.DestinationNumberList = &list
 	}
-	if len(c.DestinationNumberLengthList) > 0 {
+	if c.DestinationNumberLengthList != nil {
 		list := gsm_map.DestinationNumberLengthList{Values: make([]int64, len(c.DestinationNumberLengthList))}
 		for i, l := range c.DestinationNumberLengthList {
 			list.Values[i] = int64(l)
@@ -684,7 +684,7 @@ func convertDCSIToWire(d *DCSI) (*gsm_map.DCSI, error) {
 		return nil, ErrCamelDCSICapabilityHandlingWithoutList
 	}
 	out := &gsm_map.DCSI{}
-	if len(d.DPAnalysedInfoCriteriaList) > 0 {
+	if d.DPAnalysedInfoCriteriaList != nil {
 		list := gsm_map.DPAnalysedInfoCriteriaList{Values: make([]gsm_map.DPAnalysedInfoCriterium, len(d.DPAnalysedInfoCriteriaList))}
 		for i := range d.DPAnalysedInfoCriteriaList {
 			w, err := convertDPAnalysedInfoCriteriumToWire(&d.DPAnalysedInfoCriteriaList[i])
@@ -750,7 +750,7 @@ func convertGmscCamelSubInfoToWire(g *GmscCamelSubscriptionInfo) (gsm_map.GmscCa
 		}
 		out.DCsi = d
 	}
-	if len(g.OBcsmCamelTDPCriteriaList) > 0 {
+	if g.OBcsmCamelTDPCriteriaList != nil {
 		list := gsm_map.OBcsmCamelTDPCriteriaList{Values: make([]gsm_map.OBcsmCamelTDPCriteria, len(g.OBcsmCamelTDPCriteriaList))}
 		for i := range g.OBcsmCamelTDPCriteriaList {
 			w, err := convertOBcsmTDPCriteriaToWire(&g.OBcsmCamelTDPCriteriaList[i])
@@ -761,7 +761,7 @@ func convertGmscCamelSubInfoToWire(g *GmscCamelSubscriptionInfo) (gsm_map.GmscCa
 		}
 		out.OBcsmCamelTDPCriteriaList = &list
 	}
-	if len(g.TBcsmCamelTDPCriteriaList) > 0 {
+	if g.TBcsmCamelTDPCriteriaList != nil {
 		list := gsm_map.TBCSMCAMELTDPCriteriaList{Values: make([]gsm_map.TBCSMCAMELTDPCriteria, len(g.TBcsmCamelTDPCriteriaList))}
 		for i := range g.TBcsmCamelTDPCriteriaList {
 			w, err := convertTBcsmTDPCriteriaToWire(&g.TBcsmCamelTDPCriteriaList[i])
@@ -1116,7 +1116,7 @@ func convertSMSCSIToWire(s *SMSCSI, tdp SMSTriggerDetectionPoint) (*gsm_map.SMSC
 		return nil, err
 	}
 	out := &gsm_map.SMSCSI{}
-	if len(s.SmsCAMELTDPDataList) > 0 {
+	if s.SmsCAMELTDPDataList != nil {
 		list := gsm_map.SMSCAMELTDPDataList{Values: make([]gsm_map.SMSCAMELTDPData, len(s.SmsCAMELTDPDataList))}
 		seen := map[SMSTriggerDetectionPoint]bool{}
 		for i := range s.SmsCAMELTDPDataList {

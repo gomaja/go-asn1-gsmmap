@@ -426,7 +426,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 	}
 
 	// SsList
-	if len(s.SsList) > 0 {
+	if s.SsList != nil {
 		out.SsList = &gsm_map.SSList{Values: make([]gsm_map.SSCode, len(s.SsList))}
 		for i, c := range s.SsList {
 			out.SsList.Values[i] = gsm_map.SSCode{byte(c)}

@@ -141,7 +141,7 @@ func convertGPRSCSIToWire(g *GPRSCSI) (*gsm_map.GPRSCSI, error) {
 		return nil, err
 	}
 	out := &gsm_map.GPRSCSI{}
-	if len(g.GprsCamelTDPDataList) > 0 {
+	if g.GprsCamelTDPDataList != nil {
 		dl, err := convertGPRSCamelTDPDataListToWire(g.GprsCamelTDPDataList)
 		if err != nil {
 			return nil, err

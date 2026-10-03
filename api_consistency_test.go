@@ -374,3 +374,24 @@ func TestFeatureBitLengthOutOfRange(t *testing.T) {
 		})
 	}
 }
+
+// A nil optional list is absent; a non-nil empty list is present, and the
+// codec rejects it under the list's SIZE lower bound.
+func TestEmptyOptionalListRejected(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		msg        interface{ Marshal() ([]byte, error) }
+		path, size string
+	}{
+		{"GPRS-CSI", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{GprsCSI: &GPRSCSI{GprsCamelTDPDataList: GPRSCamelTDPDataList{}}}}, "gprs-CamelTDPDataList", "SIZE (1..10)"},
+		{"MO-SMS-CSI", &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{MoSmsCSI: &SMSCSI{SmsCAMELTDPDataList: []SMSCAMELTDPData{}}}}, "sms-CAMEL-TDP-DataList", "SIZE (1..10)"},
+		{"UpdateLocation EPLMN", &UpdateLocation{IMSI: "001010123456789", MscNumber: "12", VlrNumber: "12", EplmnList: []HexBytes{}}, "eplmn-List", "SIZE (1..50)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := tc.msg.Marshal()
+			if !matchesConstraint(err, tc.path, tc.size) {
+				t.Fatalf("Marshal: err = %v, want %s %s", err, tc.path, tc.size)
+			}
+		})
+	}
+}
