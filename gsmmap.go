@@ -922,9 +922,11 @@ type DPAnalysedInfoCriterium struct {
 }
 
 // DCSI (D-CSI) per 3GPP TS 29.002. Dialled-number CAMEL Subscription Info.
+// The list and CamelCapabilityHandling are OPTIONAL in the ASN.1 but "shall
+// be present in the D-CSI sequence" (3GPP TS 29.002 V19.1.0 §17.7.1).
 type DCSI struct {
-	DPAnalysedInfoCriteriaList []DPAnalysedInfoCriterium // [0] 1..10 entries
-	CamelCapabilityHandling    *int                      // [1] phase (1..4)
+	DPAnalysedInfoCriteriaList []DPAnalysedInfoCriterium // [0] mandatory 1..10 entries
+	CamelCapabilityHandling    *int                      // [1] mandatory phase (1..4)
 	NotificationToCSE          bool                      // [3] NULL
 	CsiActive                  bool                      // [4] NULL
 }
@@ -1021,14 +1023,14 @@ type SMSCSI struct {
 
 // MTSMSTPDUType per 3GPP TS 29.002 MAP-MS-DataTypes.asn:2213.
 // ENUMERATED { sms-DELIVER(0), sms-SUBMIT-REPORT(1), sms-STATUS-REPORT(2), ... }.
-// The encoder accepts only the listed values; the decoder ignores a
-// TpduTypeCriterion holding any other value, leaving it absent (3GPP TS
-// 29.002 V19.1.0 §17.7.1).
+// TPDU-TypeCriterion exists only from CAMEL phase 4 on, where
+// "sms-SUBMIT-REPORT shall not be used" (3GPP TS 29.002 V19.1.0 §17.7.1), so
+// the encoder accepts only sms-DELIVER and sms-STATUS-REPORT; the decoder
+// ignores a TpduTypeCriterion holding any other value, leaving it absent.
 type MTSMSTPDUType = gsm_map.MTSMSTPDUType
 
 const (
 	MTSMSTPDUTypeSmsDELIVER      = gsm_map.MTSMSTPDUTypeSmsDELIVER
-	MTSMSTPDUTypeSmsSUBMITREPORT = gsm_map.MTSMSTPDUTypeSmsSUBMITREPORT
 	MTSMSTPDUTypeSmsSTATUSREPORT = gsm_map.MTSMSTPDUTypeSmsSTATUSREPORT
 )
 
@@ -3586,11 +3588,13 @@ var (
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrCamelInvalidMobilityTriggerOctet     = errors.New("camel: each MobilityTriggers entry must be exactly 1 octet")
-	ErrCamelSMSCSIMissingTDPData            = errors.New("camel: SMS-CSI must include SmsCAMELTDPDataList per TS 29.002 clause 8.8.1")
-	ErrCamelSMSCSIMissingCapabilityHandling = errors.New("camel: SMS-CSI must include CamelCapabilityHandling per TS 29.002 clause 8.8.1")
+	ErrCamelSMSCSIMissingTDPData            = errors.New("camel: SMS-CSI must include a non-empty SmsCAMELTDPDataList per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrCamelSMSCSIMissingCapabilityHandling = errors.New("camel: SMS-CSI must include CamelCapabilityHandling per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrCamelDCSIMissingCriteriaList         = errors.New("camel: D-CSI must include a non-empty DPAnalysedInfoCriteriaList per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrCamelDCSIMissingCapabilityHandling   = errors.New("camel: D-CSI must include CamelCapabilityHandling per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidSMSTriggerDetectionPoint = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) in an MO-SMS-CSI and sms-DeliveryRequest(2) in an MT-SMS-CSI or MT-smsCAMELTDP-Criteria; a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidDefaultSMSHandling       = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
-	ErrCamelInvalidMTSMSTPDUType            = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0), sms-SUBMIT-REPORT(1), or sms-STATUS-REPORT(2)")
+	ErrCamelInvalidMTSMSTPDUType            = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0) or sms-STATUS-REPORT(2); sms-SUBMIT-REPORT(1) is not used in CAMEL phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// Ext-SS-Info CHOICE / nested SEQUENCE validation
 	ErrExtSSInfoChoiceNoAlternative        = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")

@@ -187,8 +187,8 @@ func TestSMSCSIValidation(t *testing.T) {
 		// Empty TDP list: per spec §8.8.1 the field is required, so the
 		// "missing" sentinel applies (not the size sentinel).
 		_, err := strictWire(convertSMSCSIToWire(&SMSCSI{CamelCapabilityHandling: &cch}, moSMSTriggerDetectionPoint))
-		if !isConstraint(err) {
-			t.Errorf("want BER constraint error, got %v", err)
+		if !errors.Is(err, ErrCamelSMSCSIMissingTDPData) {
+			t.Errorf("want ErrCamelSMSCSIMissingTDPData, got %v", err)
 		}
 	})
 	t.Run("oversizeTDPList", func(t *testing.T) {

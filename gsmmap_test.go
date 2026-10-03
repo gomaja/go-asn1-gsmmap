@@ -3773,8 +3773,9 @@ func TestCamelDCSIRoundTrip(t *testing.T) {
 					DefaultCallHandling: DefaultCallHandlingContinueCall,
 				},
 			},
-			NotificationToCSE: true,
-			CsiActive:         true,
+			CamelCapabilityHandling: intPtr(3),
+			NotificationToCSE:       true,
+			CsiActive:               true,
 		},
 	}
 	got := camelRoundTrip(t, in)
@@ -4107,6 +4108,7 @@ func TestCamelValidationErrors(t *testing.T) {
 						DefaultCallHandling: DefaultCallHandlingContinueCall,
 					},
 				},
+				CamelCapabilityHandling: intPtr(3),
 			},
 		}
 		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
