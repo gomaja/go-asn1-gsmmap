@@ -92,7 +92,7 @@ func TestExtForwInfoRoundTrip(t *testing.T) {
 		{
 			name: "fullFeature",
 			in: &ExtForwInfo{
-				SsCode: 0x29, // CFNRy
+				SsCode: 0x2A, // cfnry, 3GPP TS 29.002 V19.1.0 §17.7.5
 				ForwardingFeatureList: []ExtForwFeature{
 					{
 						BasicService: &ExtBasicServiceCode{
@@ -403,7 +403,7 @@ func TestParseNoReplyConditionTimeMapsReserved(t *testing.T) {
 
 func TestExtCallBarInfoRoundTrip(t *testing.T) {
 	in := &ExtCallBarInfo{
-		SsCode: 0x91, // BAOC
+		SsCode: 0x92, // baoc, 3GPP TS 29.002 V19.1.0 §17.7.5
 		CallBarringFeatureList: []ExtCallBarringFeature{
 			{
 				BasicService: &ExtBasicServiceCode{ExtBearerService: HexBytes{0x11}},
