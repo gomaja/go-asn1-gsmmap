@@ -3,41 +3,25 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // --- ProvideSubscriberInfo (opCode 70) ---
 
-func validateProvideSubscriberInfo(p *ProvideSubscriberInfo) error {
-	if p.IMSI == "" {
-		return ErrPsiMissingIMSI
-	}
-	if len(p.LMSI) != 0 && len(p.LMSI) != 4 {
-		return ErrPsiInvalidLMSI
-	}
-	if p.CallPriority != nil {
-		v := *p.CallPriority
-		if v < 0 || v > 15 {
-			return ErrPsiInvalidCallPriority
-		}
-	}
-	return nil
-}
-
 func convertProvideSubscriberInfoToArg(p *ProvideSubscriberInfo) (*gsm_map.ProvideSubscriberInfoArg, error) {
-	if err := validateProvideSubscriberInfo(p); err != nil {
-		return nil, err
-	}
-
-	imsiBytes, err := tbcd.Encode(p.IMSI)
+	imsiBytes, err := encodeIdentityDigits(identityIMSI, p.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
 
+	reqInfo, err := buildRequestedInfo(&p.RequestedInfo)
+	if err != nil {
+		return nil, fmt.Errorf("ProvideSubscriberInfo.RequestedInfo: %w", err)
+	}
+
 	arg := &gsm_map.ProvideSubscriberInfoArg{
-		Imsi:          gsm_map.IMSI(imsiBytes),
-		RequestedInfo: buildRequestedInfo(&p.RequestedInfo),
+		Imsi:          imsiBytes,
+		RequestedInfo: reqInfo,
 	}
 
 	// LMSI (optional, 4 octets).
@@ -48,7 +32,7 @@ func convertProvideSubscriberInfoToArg(p *ProvideSubscriberInfo) (*gsm_map.Provi
 
 	// CallPriority (optional, 0..15).
 	if p.CallPriority != nil {
-		v := gsm_map.EMLPPPriority(int64(*p.CallPriority))
+		v := int64(*p.CallPriority)
 		arg.CallPriority = &v
 	}
 
@@ -56,12 +40,9 @@ func convertProvideSubscriberInfoToArg(p *ProvideSubscriberInfo) (*gsm_map.Provi
 }
 
 func convertArgToProvideSubscriberInfo(arg *gsm_map.ProvideSubscriberInfoArg) (*ProvideSubscriberInfo, error) {
-	imsi, err := tbcd.Decode(arg.Imsi)
+	imsi, err := decodeIdentityDigits(identityIMSI, arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
-	}
-	if imsi == "" {
-		return nil, ErrPsiMissingIMSI
 	}
 
 	out := &ProvideSubscriberInfo{
@@ -71,19 +52,15 @@ func convertArgToProvideSubscriberInfo(arg *gsm_map.ProvideSubscriberInfoArg) (*
 
 	// LMSI (optional, must be exactly 4 octets when present).
 	if arg.Lmsi != nil {
-		lmsi := []byte(*arg.Lmsi)
-		if len(lmsi) != 4 {
-			return nil, ErrPsiInvalidLMSI
-		}
+		lmsi := *arg.Lmsi
+
 		out.LMSI = HexBytes(lmsi)
 	}
 
 	// CallPriority (optional, 0..15).
 	if arg.CallPriority != nil {
-		v := int64(*arg.CallPriority)
-		if v < 0 || v > 15 {
-			return nil, ErrPsiInvalidCallPriority
-		}
+		v := *arg.CallPriority
+
 		iv := int(v)
 		out.CallPriority = &iv
 	}

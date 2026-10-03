@@ -14,13 +14,13 @@ import (
 )
 
 // UpdateLocationArg has mandatory imsi, msc-Number, vlr-Number
-// (MAP-MS-DataTypes.asn:256-259).
+// (3GPP TS 29.002 V19.1.0 §17.7.1).
 func TestUpdateLocationMandatoryFields(t *testing.T) {
 	base := func() *UpdateLocation {
 		return &UpdateLocation{
 			IMSI:      "204080012345678",
-			MSCNumber: "31600000001",
-			VLRNumber: "31600000002",
+			MscNumber: "31600000001",
+			VlrNumber: "31600000002",
 		}
 	}
 
@@ -31,32 +31,32 @@ func TestUpdateLocationMandatoryFields(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrUpdateLocationMissingIMSI) {
-			t.Errorf("expected ErrUpdateLocationMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 
 	t.Run("MissingMSCNumber", func(t *testing.T) {
 		u := base()
-		u.MSCNumber = ""
+		u.MscNumber = ""
 		_, err := u.Marshal()
 		if err == nil {
-			t.Fatal("expected error for missing MSCNumber")
+			t.Fatal("expected error for missing MscNumber")
 		}
-		if !errors.Is(err, ErrUpdateLocationMissingMSCNumber) {
-			t.Errorf("expected ErrUpdateLocationMissingMSCNumber, got: %v", err)
+		if !errors.Is(err, ErrUpdateLocationMissingMscNumber) {
+			t.Errorf("expected ErrUpdateLocationMissingMscNumber, got: %v", err)
 		}
 	})
 
 	t.Run("MissingVLRNumber", func(t *testing.T) {
 		u := base()
-		u.VLRNumber = ""
+		u.VlrNumber = ""
 		_, err := u.Marshal()
 		if err == nil {
-			t.Fatal("expected error for missing VLRNumber")
+			t.Fatal("expected error for missing VlrNumber")
 		}
-		if !errors.Is(err, ErrUpdateLocationMissingVLRNumber) {
-			t.Errorf("expected ErrUpdateLocationMissingVLRNumber, got: %v", err)
+		if !errors.Is(err, ErrUpdateLocationMissingVlrNumber) {
+			t.Errorf("expected ErrUpdateLocationMissingVlrNumber, got: %v", err)
 		}
 	})
 
@@ -94,8 +94,8 @@ func TestMtFsmMandatoryFields(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing SmRpDa")
 		}
-		if !errors.Is(err, ErrMtFsmSmRpDaNoAlternative) {
-			t.Errorf("expected ErrMtFsmSmRpDaNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrSmRpDaNoAlternative) {
+			t.Errorf("expected ErrSmRpDaNoAlternative, got: %v", err)
 		}
 	})
 
@@ -106,8 +106,8 @@ func TestMtFsmMandatoryFields(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing SmRpOa")
 		}
-		if !errors.Is(err, ErrMtFsmSmRpOaNoAlternative) {
-			t.Errorf("expected ErrMtFsmSmRpOaNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrSmRpOaNoAlternative) {
+			t.Errorf("expected ErrSmRpOaNoAlternative, got: %v", err)
 		}
 	})
 
@@ -123,7 +123,7 @@ func TestMtFsmMandatoryFields(t *testing.T) {
 }
 
 // RoutingInfoForSM-Arg has mandatory msisdn and serviceCentreAddress
-// (MAP-SM-DataTypes.asn:63-66).
+// (3GPP TS 29.002 V19.1.0 §17.7.6).
 func TestSriSmMandatoryFields(t *testing.T) {
 	base := func() *SriSm {
 		return &SriSm{

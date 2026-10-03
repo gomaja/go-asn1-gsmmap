@@ -32,7 +32,7 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportRes.NaESRK: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.NaESRK = &v
 	}
 	// [1] na-ESRD
@@ -41,7 +41,7 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportRes.NaESRD: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.NaESRD = &v
 	}
 	// [2] h-gmlc-Address
@@ -50,7 +50,7 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportRes.HGmlcAddress: %w", err)
 		}
-		v := gsm_map.GSNAddress(gsnAddr)
+		v := gsnAddr
 		out.HGmlcAddress = &v
 	}
 	// [3] mo-lrShortCircuitIndicator (NULL flag)
@@ -65,9 +65,6 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 	}
 	// [5] lcs-ReferenceNumber (OCTET STRING SIZE 1)
 	if len(r.LcsReferenceNumber) > 0 {
-		if len(r.LcsReferenceNumber) != 1 {
-			return nil, fmt.Errorf("SubscriberLocationReportRes.LcsReferenceNumber len=%d: %w", len(r.LcsReferenceNumber), ErrLCSReferenceNumberInvalidSize)
-		}
 		v := gsm_map.LCSReferenceNumber(r.LcsReferenceNumber)
 		out.LcsReferenceNumber = &v
 	}
@@ -79,8 +76,6 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 // struct back to the public type. Validation rules:
 //   - Round-trip safety: present-but-empty NaESRK/NaESRD decoded values
 //     are rejected (cannot round-trip through the string-based API).
-//   - LcsReferenceNumber byte size: rejected when != 1, symmetric with
-//     the encoder.
 //   - ExtensionContainer: dropped (opaque metadata not surfaced; see
 //     SubscriberLocationReportRes doc).
 func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationReportRes) (*SubscriberLocationReportRes, error) {
@@ -91,7 +86,7 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 	out := &SubscriberLocationReportRes{}
 
 	if w.NaESRK != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.NaESRK))
+		s, nature, plan, err := decodeAddressField(*w.NaESRK)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportRes.NaESRK: %w", err)
 		}
@@ -103,7 +98,7 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 		out.NaESRKPlan = plan
 	}
 	if w.NaESRD != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.NaESRD))
+		s, nature, plan, err := decodeAddressField(*w.NaESRD)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportRes.NaESRD: %w", err)
 		}
@@ -123,16 +118,9 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 	}
 	out.MoLrShortCircuitIndicator = nullPtrToBool(w.MoLrShortCircuitIndicator)
 	if w.ReportingPLMNList != nil {
-		v, err := convertWireToReportingPLMNList(w.ReportingPLMNList)
-		if err != nil {
-			return nil, fmt.Errorf("SubscriberLocationReportRes.ReportingPLMNList: %w", err)
-		}
-		out.ReportingPLMNList = v
+		out.ReportingPLMNList = convertWireToReportingPLMNList(w.ReportingPLMNList)
 	}
 	if w.LcsReferenceNumber != nil {
-		if len(*w.LcsReferenceNumber) != 1 {
-			return nil, fmt.Errorf("SubscriberLocationReportRes.LcsReferenceNumber len=%d: %w", len(*w.LcsReferenceNumber), ErrLCSReferenceNumberInvalidSize)
-		}
 		out.LcsReferenceNumber = LCSReferenceNumber(*w.LcsReferenceNumber)
 	}
 

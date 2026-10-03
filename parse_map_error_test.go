@@ -19,7 +19,7 @@ import (
 func TestParseAbsentSubscriberSMParamRoundTrip(t *testing.T) {
 	// Build a wire-form fixture, marshal it, then parse it back.
 	imsiTBCD, _ := tbcd.Encode("001010123456789")
-	wireImsi := gsm_map.IMSI(imsiTBCD)
+	wireImsi := imsiTBCD
 	diag := gsm_map.AbsentSubscriberDiagnosticSM(1)    // imsiDetached
 	addDiag := gsm_map.AbsentSubscriberDiagnosticSM(4) // msPurged-ForNonGPRS
 	wire := &gsm_map.AbsentSubscriberSMParam{
@@ -223,8 +223,9 @@ func TestParseRoamingNotAllowedParamRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if got.RoamingNotAllowedCause != gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed {
-		t.Errorf("RoamingNotAllowedCause: want plmnRoamingNotAllowed, got %v", got.RoamingNotAllowedCause)
+	// Discarded next to the additional cause (3GPP TS 29.002 V19.1.0 §17.7.7).
+	if got.RoamingNotAllowedCause != nil {
+		t.Errorf("RoamingNotAllowedCause: want nil, got %v", *got.RoamingNotAllowedCause)
 	}
 	if got.AdditionalRoamingNotAllowedCause == nil ||
 		*got.AdditionalRoamingNotAllowedCause != gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed {

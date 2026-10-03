@@ -38,13 +38,10 @@ func TestSriTypesCompile(t *testing.T) {
 func TestSriSentinelErrorsExist(t *testing.T) {
 	errs := []error{
 		ErrSriMissingMSISDN,
-		ErrSriMissingGmsc,
+		ErrSriMissingGmscOrGsmSCFAddress,
 		ErrSriInvalidInterrogationType,
-		ErrSriInvalidNumberOfForwarding,
-		ErrSriInvalidOrCapability,
-		ErrSriInvalidCallReferenceNumber,
-		ErrSriChoiceMultipleAlternatives,
-		ErrSriChoiceNoAlternative,
+		ErrExtBasicServiceCodeMultipleAlternatives,
+		ErrExtBasicServiceCodeNoAlternative,
 	}
 	for _, e := range errs {
 		if e == nil {
@@ -185,12 +182,12 @@ func TestExtBasicServiceCodeRoundTrip(t *testing.T) {
 }
 
 func TestExtBasicServiceCodeChoiceValidation(t *testing.T) {
-	if _, err := convertExtBasicServiceCodeToWire(&ExtBasicServiceCode{}); err == nil {
-		t.Errorf("expected ErrSriChoiceNoAlternative for empty ExtBasicServiceCode")
+	if _, err := convertExtBasicServiceCodeToWire(&ExtBasicServiceCode{}); !errors.Is(err, ErrExtBasicServiceCodeNoAlternative) {
+		t.Errorf("expected ErrExtBasicServiceCodeNoAlternative for empty ExtBasicServiceCode, got %v", err)
 	}
 	both := &ExtBasicServiceCode{ExtBearerService: HexBytes{0x10}, ExtTeleservice: HexBytes{0x21}}
-	if _, err := convertExtBasicServiceCodeToWire(both); err == nil {
-		t.Errorf("expected ErrSriChoiceMultipleAlternatives for both set")
+	if _, err := convertExtBasicServiceCodeToWire(both); !errors.Is(err, ErrExtBasicServiceCodeMultipleAlternatives) {
+		t.Errorf("expected ErrExtBasicServiceCodeMultipleAlternatives for both set, got %v", err)
 	}
 }
 
@@ -223,15 +220,21 @@ func TestRoutingInfoRoundTrip(t *testing.T) {
 }
 
 func TestExtendedRoutingInfoChoiceValidation(t *testing.T) {
-	if _, err := convertExtendedRoutingInfoToWire(&ExtendedRoutingInfo{}); err == nil {
-		t.Errorf("expected ErrSriChoiceNoAlternative for empty ExtendedRoutingInfo")
+	if _, err := convertExtendedRoutingInfoToWire(&ExtendedRoutingInfo{}); !errors.Is(err, ErrExtendedRoutingInfoNoAlternative) {
+		t.Errorf("expected ErrExtendedRoutingInfoNoAlternative for empty ExtendedRoutingInfo, got %v", err)
 	}
 }
 
 func TestExternalSignalInfoRoundTrip(t *testing.T) {
-	in := &ExternalSignalInfo{ProtocolID: 0, SignalInfo: HexBytes{0xDE, 0xAD}}
-	w := convertExternalSignalInfoToWire(in)
-	got := convertWireToExternalSignalInfo(w)
+	in := &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xDE, 0xAD}}
+	w, err := convertExternalSignalInfoToWire(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := convertWireToExternalSignalInfo(w)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.ProtocolID != in.ProtocolID || !bytes.Equal(got.SignalInfo, in.SignalInfo) {
 		t.Errorf("got %+v want %+v", got, in)
 	}
@@ -279,21 +282,23 @@ func TestSriMandatoryRoundTrip(t *testing.T) {
 
 func TestSriValidationErrors(t *testing.T) {
 	cases := []struct {
-		name string
-		in   *Sri
-		err  error
+		name       string
+		in         *Sri
+		err        error
+		path       string
+		constraint string
 	}{
-		{"missing msisdn", &Sri{GmscOrGsmSCFAddress: "1"}, ErrSriMissingMSISDN},
-		{"missing gmsc", &Sri{MSISDN: "1"}, ErrSriMissingGmsc},
-		{"bad interrogation", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}, ErrSriInvalidInterrogationType},
-		{"bad numberOfForwarding", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", NumberOfForwarding: intPtr(9)}, ErrSriInvalidNumberOfForwarding},
-		{"bad orCapability", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", OrCapability: intPtr(200)}, ErrSriInvalidOrCapability},
-		{"bad callref", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", CallReferenceNumber: make(HexBytes, 9)}, ErrSriInvalidCallReferenceNumber},
+		{"missing msisdn", &Sri{GmscOrGsmSCFAddress: "1"}, ErrSriMissingMSISDN, "", ""},
+		{"missing gmsc", &Sri{MSISDN: "1"}, ErrSriMissingGmscOrGsmSCFAddress, "", ""},
+		{"bad interrogation", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}, ErrSriInvalidInterrogationType, "", ""},
+		{"bad numberOfForwarding", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", NumberOfForwarding: intPtr(9)}, nil, "numberOfForwarding", "(1..5)"},
+		{"bad orCapability", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", OrCapability: intPtr(200)}, nil, "or-Capability", "(1..127)"},
+		{"bad callref", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", CallReferenceNumber: make(HexBytes, 9)}, nil, "callReferenceNumber", "SIZE (1..8)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := tc.in.Marshal()
-			if !errors.Is(err, tc.err) {
+			if !matchesExpected(err, tc.err, tc.path, tc.constraint) {
 				t.Errorf("got %v, want %v", err, tc.err)
 			}
 		})
@@ -355,7 +360,7 @@ func intPtr(v int) *int { return &v }
 func TestSriRespFullStressRoundTrip(t *testing.T) {
 	mnp := MnpOwnNumberPortedOut
 	ua := UnavailCallBarred
-	timer := 5
+	timer := 15 // IST-AlertTimerValue (15..255), TS 29.002 §17.7.1.
 	camel4 := &OfferedCamel4CSIs{OCSI: true, TCSI: true, PsiEnhancements: true}
 
 	in := &SriResp{
@@ -386,7 +391,7 @@ func TestSriRespFullStressRoundTrip(t *testing.T) {
 		AllowedServices:                 &AllowedServicesFlags{FirstServiceAllowed: true, SecondServiceAllowed: true},
 		UnavailabilityCause:             &ua,
 		ReleaseResourcesSupported:       true,
-		GsmBearerCapability:             &ExternalSignalInfo{ProtocolID: 0, SignalInfo: HexBytes{0xDE, 0xAD}},
+		GsmBearerCapability:             &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xDE, 0xAD}},
 	}
 
 	data, err := in.Marshal()
@@ -424,8 +429,8 @@ func TestSriFullStressRoundTrip(t *testing.T) {
 		ForwardingReason:    &fr,
 		BasicServiceGroup:   &ExtBasicServiceCode{ExtTeleservice: HexBytes{0x11}},
 		BasicServiceGroup2:  &ExtBasicServiceCode{ExtBearerService: HexBytes{0x21}},
-		NetworkSignalInfo:   &ExternalSignalInfo{ProtocolID: 0, SignalInfo: HexBytes{0xDE, 0xAD}},
-		NetworkSignalInfo2:  &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xBE, 0xEF}},
+		NetworkSignalInfo:   &ExternalSignalInfo{ProtocolID: 1, SignalInfo: HexBytes{0xDE, 0xAD}},
+		NetworkSignalInfo2:  &ExternalSignalInfo{ProtocolID: 2, SignalInfo: HexBytes{0xBE, 0xEF}},
 		CamelInfo: &SriCamelInfo{
 			SupportedCamelPhases: SupportedCamelPhases{Phase1: true, Phase2: true, Phase3: true, Phase4: true},
 			SuppressTCSI:         true,

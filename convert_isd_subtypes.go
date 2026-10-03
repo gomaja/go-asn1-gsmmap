@@ -3,27 +3,18 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1/runtime"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // ============================================================================
-// MC-SS-Info — TS 29.002 MAP-CommonDataTypes.asn:627
+// MC-SS-Info — 3GPP TS 29.002 V19.1.0 §17.7.8
 // ============================================================================
 
 func convertMCSSInfoToWire(m *MCSSInfo) (*gsm_map.MCSSInfo, error) {
 	if m == nil {
 		return nil, nil
 	}
-	if err := validateExtSSStatus(m.SsStatus, "MCSSInfo.SsStatus"); err != nil {
-		return nil, err
-	}
-	if int64(m.NbrSB) < 2 || int64(m.NbrSB) > gsm_map.MaxNumOfMCBearers {
-		return nil, fmt.Errorf("%w (got %d)", ErrMCSSInfoNbrSBOutOfRange, m.NbrSB)
-	}
-	if int64(m.NbrUser) < 1 || int64(m.NbrUser) > gsm_map.MaxNumOfMCBearers {
-		return nil, fmt.Errorf("%w (got %d)", ErrMCSSInfoNbrUserOutOfRange, m.NbrUser)
-	}
+
 	return &gsm_map.MCSSInfo{
 		SsCode:   gsm_map.SSCode{byte(m.SsCode)},
 		SsStatus: gsm_map.ExtSSStatus(m.SsStatus),
@@ -36,20 +27,10 @@ func convertWireToMCSSInfo(w *gsm_map.MCSSInfo) (*MCSSInfo, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if err := validateExtSSStatus(HexBytes(w.SsStatus), "MCSSInfo.SsStatus"); err != nil {
-		return nil, err
-	}
-	nbrSB, err := narrowInt64Range(w.NbrSB, 2, gsm_map.MaxNumOfMCBearers, "MCSSInfo.NbrSB")
-	if err != nil {
-		return nil, err
-	}
-	nbrUser, err := narrowInt64Range(w.NbrUser, 1, gsm_map.MaxNumOfMCBearers, "MCSSInfo.NbrUser")
-	if err != nil {
-		return nil, err
-	}
-	if len(w.SsCode) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrMCSSInfoSsCodeInvalidSize, len(w.SsCode))
-	}
+
+	nbrSB := int(w.NbrSB)
+	nbrUser := int(w.NbrUser)
+
 	return &MCSSInfo{
 		SsCode:   SsCode(w.SsCode[0]),
 		SsStatus: HexBytes(w.SsStatus),
@@ -60,41 +41,33 @@ func convertWireToMCSSInfo(w *gsm_map.MCSSInfo) (*MCSSInfo, error) {
 
 // ============================================================================
 // CSG-SubscriptionData / CSG-SubscriptionDataList / VPLMN-CSG-SubscriptionDataList
-// — TS 29.002 MAP-MS-DataTypes.asn:1259-1274
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubscriptionData, error) {
 	if c == nil {
 		return nil, nil
 	}
-	// CSG-Id is exactly 27 bits → ceil(27/8) = 4 octets. Caller must set
-	// the bit length explicitly; silent coercion of 0 has been removed
-	// to prevent encode/decode round-trip mutation (0 → 27).
-	if c.CsgIdBitLength != CSGIdBitLength || len(c.CsgId) != (CSGIdBitLength+7)/8 {
-		return nil, fmt.Errorf("%w (got %d octets, %d bits)", ErrCSGIdInvalidSize, len(c.CsgId), c.CsgIdBitLength)
-	}
-	if c.PlmnId != nil {
-		if err := validatePlmnId(c.PlmnId, "CSGSubscriptionData.PlmnId"); err != nil {
-			return nil, err
-		}
+	// CSG-Id SIZE (27) is checked by the BER codec; bitStringToWire also
+	// enforces the octet count (3GPP TS 29.002 V19.1.0 §17.7.1, X.690 §8.6.2).
+	csgID, err := bitStringToWire("CSGSubscriptionData.CsgID", c.CsgID, c.CsgIDBits)
+	if err != nil {
+		return nil, err
 	}
 	out := &gsm_map.CSGSubscriptionData{
-		CsgId: runtime.BitString{Bytes: append([]byte(nil), c.CsgId...), BitLength: CSGIdBitLength},
+		CsgId: csgID,
 	}
 	if len(c.ExpirationDate) > 0 {
 		t := gsm_map.Time(c.ExpirationDate)
 		out.ExpirationDate = &t
 	}
 	if c.LipaAllowedAPNList != nil {
-		if len(c.LipaAllowedAPNList) < 1 || int64(len(c.LipaAllowedAPNList)) > gsm_map.MaxNumOfLIPAAllowedAPN {
-			return nil, fmt.Errorf("%w (got %d)", ErrLipaAllowedAPNListSize, len(c.LipaAllowedAPNList))
-		}
-		out.LipaAllowedAPNList = make(gsm_map.LIPAAllowedAPNList, len(c.LipaAllowedAPNList))
+		out.LipaAllowedAPNList = &gsm_map.LIPAAllowedAPNList{Values: make([]gsm_map.APN, len(c.LipaAllowedAPNList))}
 		for i, apn := range c.LipaAllowedAPNList {
 			if err := validateAPN(apn, fmt.Sprintf("CSGSubscriptionData.LipaAllowedAPNList[%d]", i)); err != nil {
 				return nil, err
 			}
-			out.LipaAllowedAPNList[i] = gsm_map.APN(apn)
+			out.LipaAllowedAPNList.Values[i] = gsm_map.APN(apn)
 		}
 	}
 	if c.PlmnId != nil {
@@ -108,22 +81,17 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubsc
 	if w == nil {
 		return nil, nil
 	}
-	if w.CsgId.BitLength != CSGIdBitLength || len(w.CsgId.Bytes) != (CSGIdBitLength+7)/8 {
-		return nil, fmt.Errorf("%w (got %d octets, %d bits)", ErrCSGIdInvalidSize, len(w.CsgId.Bytes), w.CsgId.BitLength)
-	}
+
 	out := &CSGSubscriptionData{
-		CsgId:          HexBytes(append([]byte(nil), w.CsgId.Bytes...)),
-		CsgIdBitLength: w.CsgId.BitLength,
+		CsgID:     bitStringFromWire(w.CsgId),
+		CsgIDBits: w.CsgId.BitLength,
 	}
 	if w.ExpirationDate != nil {
 		out.ExpirationDate = HexBytes(*w.ExpirationDate)
 	}
 	if w.LipaAllowedAPNList != nil {
-		if len(w.LipaAllowedAPNList) < 1 || int64(len(w.LipaAllowedAPNList)) > gsm_map.MaxNumOfLIPAAllowedAPN {
-			return nil, fmt.Errorf("%w (got %d)", ErrLipaAllowedAPNListSize, len(w.LipaAllowedAPNList))
-		}
-		out.LipaAllowedAPNList = make([]HexBytes, len(w.LipaAllowedAPNList))
-		for i, apn := range w.LipaAllowedAPNList {
+		out.LipaAllowedAPNList = make([]HexBytes, len(w.LipaAllowedAPNList.Values))
+		for i, apn := range w.LipaAllowedAPNList.Values {
 			if err := validateAPN(HexBytes(apn), fmt.Sprintf("CSGSubscriptionData.LipaAllowedAPNList[%d]", i)); err != nil {
 				return nil, err
 			}
@@ -131,41 +99,34 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubsc
 		}
 	}
 	if w.PlmnId != nil {
-		if err := validatePlmnId(HexBytes(*w.PlmnId), "CSGSubscriptionData.PlmnId"); err != nil {
-			return nil, err
-		}
 		out.PlmnId = HexBytes(*w.PlmnId)
 	}
 	return out, nil
 }
 
-func convertCSGSubscriptionDataListToWire(list CSGSubscriptionDataList) (gsm_map.CSGSubscriptionDataList, error) {
+func convertCSGSubscriptionDataListToWire(list CSGSubscriptionDataList) (*gsm_map.CSGSubscriptionDataList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if len(list) < 1 || len(list) > MaxNumOfCSGSubscriptions {
-		return nil, fmt.Errorf("%w (got %d)", ErrCSGSubscriptionDataListSize, len(list))
-	}
-	out := make(gsm_map.CSGSubscriptionDataList, len(list))
+
+	out := gsm_map.CSGSubscriptionDataList{Values: make([]gsm_map.CSGSubscriptionData, len(list))}
 	for i, csd := range list {
 		w, err := convertCSGSubscriptionDataToWire(&csd)
 		if err != nil {
 			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToCSGSubscriptionDataList(w gsm_map.CSGSubscriptionDataList) (CSGSubscriptionDataList, error) {
+func convertWireToCSGSubscriptionDataList(w *gsm_map.CSGSubscriptionDataList) (CSGSubscriptionDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfCSGSubscriptions {
-		return nil, fmt.Errorf("%w (got %d)", ErrCSGSubscriptionDataListSize, len(w))
-	}
-	out := make(CSGSubscriptionDataList, len(w))
-	for i, csd := range w {
+
+	out := make(CSGSubscriptionDataList, len(w.Values))
+	for i, csd := range w.Values {
 		c, err := convertWireToCSGSubscriptionData(&csd)
 		if err != nil {
 			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
@@ -175,31 +136,48 @@ func convertWireToCSGSubscriptionDataList(w gsm_map.CSGSubscriptionDataList) (CS
 	return out, nil
 }
 
-// VPLMN-CSG-SubscriptionDataList shares the wire shape with CSG-SubscriptionDataList.
-func convertVPLMNCSGSubscriptionDataListToWire(list VPLMNCSGSubscriptionDataList) (gsm_map.CSGSubscriptionDataList, error) {
-	return convertCSGSubscriptionDataListToWire(CSGSubscriptionDataList(list))
+func convertVPLMNCSGSubscriptionDataListToWire(list VPLMNCSGSubscriptionDataList) (*gsm_map.VPLMNCSGSubscriptionDataList, error) {
+	if list == nil {
+		return nil, nil
+	}
+
+	out := &gsm_map.VPLMNCSGSubscriptionDataList{Values: make([]gsm_map.CSGSubscriptionData, len(list))}
+	for i, csd := range list {
+		w, err := convertCSGSubscriptionDataToWire(&csd)
+		if err != nil {
+			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
+		}
+		out.Values[i] = *w
+	}
+	return out, nil
 }
 
-func convertWireToVPLMNCSGSubscriptionDataList(w gsm_map.CSGSubscriptionDataList) (VPLMNCSGSubscriptionDataList, error) {
-	out, err := convertWireToCSGSubscriptionDataList(w)
-	if err != nil {
-		return nil, err
+func convertWireToVPLMNCSGSubscriptionDataList(w *gsm_map.VPLMNCSGSubscriptionDataList) (VPLMNCSGSubscriptionDataList, error) {
+	if w == nil {
+		return nil, nil
 	}
-	return VPLMNCSGSubscriptionDataList(out), nil
+
+	out := make(VPLMNCSGSubscriptionDataList, len(w.Values))
+	for i, csd := range w.Values {
+		c, err := convertWireToCSGSubscriptionData(&csd)
+		if err != nil {
+			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
+		}
+		out[i] = *c
+	}
+	return out, nil
 }
 
 // ============================================================================
 // AdjacentAccessRestrictionData / AdjacentAccessRestrictionDataList
-// — TS 29.002 MAP-MS-DataTypes.asn:1475-1483
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertAdjacentAccessRestrictionDataToWire(a *AdjacentAccessRestrictionData) (*gsm_map.AdjacentAccessRestrictionData, error) {
 	if a == nil {
 		return nil, nil
 	}
-	if err := validatePlmnId(a.PlmnId, "AdjacentAccessRestrictionData.PlmnId"); err != nil {
-		return nil, err
-	}
+
 	out := &gsm_map.AdjacentAccessRestrictionData{
 		PlmnId:                gsm_map.PLMNId(a.PlmnId),
 		AccessRestrictionData: convertAccessRestrictionDataToBitString(&a.AccessRestrictionData),
@@ -215,9 +193,7 @@ func convertWireToAdjacentAccessRestrictionData(w *gsm_map.AdjacentAccessRestric
 	if w == nil {
 		return nil, nil
 	}
-	if err := validatePlmnId(HexBytes(w.PlmnId), "AdjacentAccessRestrictionData.PlmnId"); err != nil {
-		return nil, err
-	}
+
 	out := &AdjacentAccessRestrictionData{
 		PlmnId:                HexBytes(w.PlmnId),
 		AccessRestrictionData: *convertBitStringToAccessRestrictionData(w.AccessRestrictionData),
@@ -228,33 +204,29 @@ func convertWireToAdjacentAccessRestrictionData(w *gsm_map.AdjacentAccessRestric
 	return out, nil
 }
 
-func convertAdjacentAccessRestrictionDataListToWire(list AdjacentAccessRestrictionDataList) (gsm_map.AdjacentAccessRestrictionDataList, error) {
+func convertAdjacentAccessRestrictionDataListToWire(list AdjacentAccessRestrictionDataList) (*gsm_map.AdjacentAccessRestrictionDataList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if len(list) < 1 || len(list) > MaxNumOfAdjacentPLMN {
-		return nil, fmt.Errorf("%w (got %d)", ErrAdjacentAccessRestrictionListSize, len(list))
-	}
-	out := make(gsm_map.AdjacentAccessRestrictionDataList, len(list))
+
+	out := gsm_map.AdjacentAccessRestrictionDataList{Values: make([]gsm_map.AdjacentAccessRestrictionData, len(list))}
 	for i, a := range list {
 		w, err := convertAdjacentAccessRestrictionDataToWire(&a)
 		if err != nil {
 			return nil, fmt.Errorf("AdjacentAccessRestrictionDataList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToAdjacentAccessRestrictionDataList(w gsm_map.AdjacentAccessRestrictionDataList) (AdjacentAccessRestrictionDataList, error) {
+func convertWireToAdjacentAccessRestrictionDataList(w *gsm_map.AdjacentAccessRestrictionDataList) (AdjacentAccessRestrictionDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfAdjacentPLMN {
-		return nil, fmt.Errorf("%w (got %d)", ErrAdjacentAccessRestrictionListSize, len(w))
-	}
-	out := make(AdjacentAccessRestrictionDataList, len(w))
-	for i, a := range w {
+
+	out := make(AdjacentAccessRestrictionDataList, len(w.Values))
+	for i, a := range w.Values {
 		v, err := convertWireToAdjacentAccessRestrictionData(&a)
 		if err != nil {
 			return nil, fmt.Errorf("AdjacentAccessRestrictionDataList[%d]: %w", i, err)
@@ -265,19 +237,14 @@ func convertWireToAdjacentAccessRestrictionDataList(w gsm_map.AdjacentAccessRest
 }
 
 // ============================================================================
-// IMSI-GroupId / IMSI-GroupIdList — TS 29.002 MAP-MS-DataTypes.asn:1242-1252
+// IMSI-GroupId / IMSI-GroupIdList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertIMSIGroupIdToWire(g *IMSIGroupId) (*gsm_map.IMSIGroupId, error) {
 	if g == nil {
 		return nil, nil
 	}
-	if err := validatePlmnId(g.PlmnId, "IMSIGroupId.PlmnId"); err != nil {
-		return nil, err
-	}
-	if len(g.LocalGroupID) < 1 || len(g.LocalGroupID) > 10 {
-		return nil, fmt.Errorf("%w (got %d)", ErrLocalGroupIDInvalidSize, len(g.LocalGroupID))
-	}
+
 	return &gsm_map.IMSIGroupId{
 		GroupServiceId: int64(g.GroupServiceID),
 		PlmnId:         gsm_map.PLMNId(g.PlmnId),
@@ -289,15 +256,7 @@ func convertWireToIMSIGroupId(w *gsm_map.IMSIGroupId) (*IMSIGroupId, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if err := validatePlmnId(HexBytes(w.PlmnId), "IMSIGroupId.PlmnId"); err != nil {
-		return nil, err
-	}
-	if w.GroupServiceId < 0 || w.GroupServiceId > 0xFFFFFFFF {
-		return nil, fmt.Errorf("%w (got %d)", ErrIMSIGroupServiceIDOverflow, w.GroupServiceId)
-	}
-	if len(w.LocalGroupID) < 1 || len(w.LocalGroupID) > 10 {
-		return nil, fmt.Errorf("%w (got %d)", ErrLocalGroupIDInvalidSize, len(w.LocalGroupID))
-	}
+
 	return &IMSIGroupId{
 		GroupServiceID: uint32(w.GroupServiceId),
 		PlmnId:         HexBytes(w.PlmnId),
@@ -305,33 +264,29 @@ func convertWireToIMSIGroupId(w *gsm_map.IMSIGroupId) (*IMSIGroupId, error) {
 	}, nil
 }
 
-func convertIMSIGroupIdListToWire(list IMSIGroupIdList) (gsm_map.IMSIGroupIdList, error) {
+func convertIMSIGroupIdListToWire(list IMSIGroupIdList) (*gsm_map.IMSIGroupIdList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if len(list) < 1 || len(list) > MaxNumOfIMSIGroupId {
-		return nil, fmt.Errorf("%w (got %d)", ErrIMSIGroupIdListSize, len(list))
-	}
-	out := make(gsm_map.IMSIGroupIdList, len(list))
+
+	out := gsm_map.IMSIGroupIdList{Values: make([]gsm_map.IMSIGroupId, len(list))}
 	for i, g := range list {
 		w, err := convertIMSIGroupIdToWire(&g)
 		if err != nil {
 			return nil, fmt.Errorf("IMSIGroupIdList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToIMSIGroupIdList(w gsm_map.IMSIGroupIdList) (IMSIGroupIdList, error) {
+func convertWireToIMSIGroupIdList(w *gsm_map.IMSIGroupIdList) (IMSIGroupIdList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfIMSIGroupId {
-		return nil, fmt.Errorf("%w (got %d)", ErrIMSIGroupIdListSize, len(w))
-	}
-	out := make(IMSIGroupIdList, len(w))
-	for i, g := range w {
+
+	out := make(IMSIGroupIdList, len(w.Values))
+	for i, g := range w.Values {
 		v, err := convertWireToIMSIGroupId(&g)
 		if err != nil {
 			return nil, fmt.Errorf("IMSIGroupIdList[%d]: %w", i, err)
@@ -343,16 +298,17 @@ func convertWireToIMSIGroupIdList(w gsm_map.IMSIGroupIdList) (IMSIGroupIdList, e
 
 // ============================================================================
 // EDRX-Cycle-Length / EDRX-Cycle-Length-List
-// — TS 29.002 MAP-MS-DataTypes.asn:1207-1218
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertEDRXCycleLengthToWire(e *EDRXCycleLength) (*gsm_map.EDRXCycleLength, error) {
 	if e == nil {
 		return nil, nil
 	}
-	if len(e.EDRXCycleLengthValue) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthValueSize, len(e.EDRXCycleLengthValue))
+	if !isListedUsedRATType(e.RatType) {
+		return nil, fmt.Errorf("EDRXCycleLength.RatType=%d: %w", e.RatType, ErrUsedRATTypeInvalid)
 	}
+
 	return &gsm_map.EDRXCycleLength{
 		RatType:              e.RatType,
 		EDRXCycleLengthValue: gsm_map.EDRXCycleLengthValue(e.EDRXCycleLengthValue),
@@ -363,44 +319,38 @@ func convertWireToEDRXCycleLength(w *gsm_map.EDRXCycleLength) (*EDRXCycleLength,
 	if w == nil {
 		return nil, nil
 	}
-	if len(w.EDRXCycleLengthValue) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthValueSize, len(w.EDRXCycleLengthValue))
-	}
-	// UsedRatType is an extensible enum (Postel's law) — preserve unknown
-	// values via direct assignment.
+
+	// UsedRatType is an extensible enum: an unknown value is kept (3GPP TS
+	// 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	return &EDRXCycleLength{
 		RatType:              w.RatType,
 		EDRXCycleLengthValue: HexBytes(w.EDRXCycleLengthValue),
 	}, nil
 }
 
-func convertEDRXCycleLengthListToWire(list EDRXCycleLengthList) (gsm_map.EDRXCycleLengthList, error) {
+func convertEDRXCycleLengthListToWire(list EDRXCycleLengthList) (*gsm_map.EDRXCycleLengthList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if len(list) < 1 || len(list) > MaxNumOfEDRXCycleLength {
-		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthListSize, len(list))
-	}
-	out := make(gsm_map.EDRXCycleLengthList, len(list))
+
+	out := gsm_map.EDRXCycleLengthList{Values: make([]gsm_map.EDRXCycleLength, len(list))}
 	for i, e := range list {
 		w, err := convertEDRXCycleLengthToWire(&e)
 		if err != nil {
 			return nil, fmt.Errorf("EDRXCycleLengthList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToEDRXCycleLengthList(w gsm_map.EDRXCycleLengthList) (EDRXCycleLengthList, error) {
+func convertWireToEDRXCycleLengthList(w *gsm_map.EDRXCycleLengthList) (EDRXCycleLengthList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfEDRXCycleLength {
-		return nil, fmt.Errorf("%w (got %d)", ErrEDRXCycleLengthListSize, len(w))
-	}
-	out := make(EDRXCycleLengthList, len(w))
-	for i, e := range w {
+
+	out := make(EDRXCycleLengthList, len(w.Values))
+	for i, e := range w.Values {
 		v, err := convertWireToEDRXCycleLength(&e)
 		if err != nil {
 			return nil, fmt.Errorf("EDRXCycleLengthList[%d]: %w", i, err)
@@ -411,37 +361,33 @@ func convertWireToEDRXCycleLengthList(w gsm_map.EDRXCycleLengthList) (EDRXCycleL
 }
 
 // ============================================================================
-// Reset-Id-List — TS 29.002 MAP-MS-DataTypes.asn:1223-1227
-// Reset-Id is a leaf OCTET STRING (SIZE 1..4); only the list needs validation.
+// Reset-Id-List — 3GPP TS 29.002 V19.1.0 §17.7.1
+// Reset-Id is a leaf OCTET STRING (SIZE 1..4).
 // ============================================================================
 
-func convertResetIdListToWire(list ResetIdList) (gsm_map.ResetIdList, error) {
+func convertResetIdListToWire(list ResetIdList) (*gsm_map.ResetIdList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if len(list) < 1 || len(list) > MaxNumOfResetId {
-		return nil, fmt.Errorf("%w (got %d)", ErrResetIdListSize, len(list))
-	}
-	out := make(gsm_map.ResetIdList, len(list))
+
+	out := gsm_map.ResetIdList{Values: make([]gsm_map.ResetId, len(list))}
 	for i, r := range list {
-		if len(r) < 1 || len(r) > MaxResetIdOctets {
+		if len(r) < 1 || len(r) > 4 {
 			return nil, fmt.Errorf("ResetIdList[%d]: %w (got %d)", i, ErrResetIdInvalidSize, len(r))
 		}
-		out[i] = gsm_map.ResetId(r)
+		out.Values[i] = gsm_map.ResetId(r)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToResetIdList(w gsm_map.ResetIdList) (ResetIdList, error) {
+func convertWireToResetIdList(w *gsm_map.ResetIdList) (ResetIdList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfResetId {
-		return nil, fmt.Errorf("%w (got %d)", ErrResetIdListSize, len(w))
-	}
-	out := make(ResetIdList, len(w))
-	for i, r := range w {
-		if len(r) < 1 || len(r) > MaxResetIdOctets {
+
+	out := make(ResetIdList, len(w.Values))
+	for i, r := range w.Values {
+		if len(r) < 1 || len(r) > 4 {
 			return nil, fmt.Errorf("ResetIdList[%d]: %w (got %d)", i, ErrResetIdInvalidSize, len(r))
 		}
 		out[i] = HexBytes(r)

@@ -17,51 +17,6 @@ import (
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
-// SupportedCCBSPhase: INTEGER (1..127), spec exception: values 2..127
-// shall be mapped to value 1. This decoder surfaces the raw value so the
-// caller can observe what the peer sent; the mapping is application
-// semantics.
-func TestSriDecodeSupportedCCBSPhase_AcceptsRangeUpTo127(t *testing.T) {
-	cases := []struct {
-		name string
-		in   gsm_map.SupportedCCBSPhase
-	}{
-		{"defined value 1", 1},
-		{"reserved value 2", 2},
-		{"reserved value 50", 50},
-		{"reserved value 127", 127},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			arg := newSriArg()
-			v := tc.in
-			arg.SupportedCCBSPhase = &v
-
-			s, err := convertArgToSri(arg)
-			if err != nil {
-				t.Fatalf("convertArgToSri: unexpected error: %v", err)
-			}
-			if s.SupportedCCBSPhase == nil {
-				t.Fatalf("SupportedCCBSPhase: got nil, want %d", tc.in)
-			}
-			if int64(*s.SupportedCCBSPhase) != int64(tc.in) {
-				t.Errorf("SupportedCCBSPhase: got %d, want %d", *s.SupportedCCBSPhase, tc.in)
-			}
-		})
-	}
-}
-
-func TestSriDecodeSupportedCCBSPhase_RejectsOutOfRange(t *testing.T) {
-	for _, v := range []gsm_map.SupportedCCBSPhase{0, -1, 128} {
-		arg := newSriArg()
-		x := v
-		arg.SupportedCCBSPhase = &x
-		if _, err := convertArgToSri(arg); err == nil {
-			t.Errorf("SupportedCCBSPhase=%d: expected error, got nil", v)
-		}
-	}
-}
-
 // IstSupportIndicator: ENUMERATED { 0, 1, ... }, spec exception: values
 // > 1 shall be mapped to istCommandSupported(1).
 func TestSriDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) {
@@ -95,15 +50,6 @@ func TestSriDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) {
 				t.Errorf("IstSupportIndicator: got %d, want %d", *s.IstSupportIndicator, tc.want)
 			}
 		})
-	}
-}
-
-func TestSriDecodeIstSupportIndicator_RejectsNegative(t *testing.T) {
-	arg := newSriArg()
-	v := gsm_map.ISTSupportIndicator(-1)
-	arg.IstSupportIndicator = &v
-	if _, err := convertArgToSri(arg); err == nil {
-		t.Error("IstSupportIndicator=-1: expected error, got nil")
 	}
 }
 
@@ -258,15 +204,6 @@ func TestSriRespDecodeUnavailabilityCause_AcceptsUnknown(t *testing.T) {
 	}
 }
 
-func TestSriRespDecodeUnavailabilityCause_RejectsNegative(t *testing.T) {
-	res := newSriRes()
-	v := gsm_map.UnavailabilityCause(-1)
-	res.UnavailabilityCause = &v
-	if _, err := convertResToSriResp(res); err == nil {
-		t.Error("UnavailabilityCause=-1: expected error, got nil")
-	}
-}
-
 // RequestingNodeType: ENUMERATED { vlr(0), sgsn(1), s-cscf(2), bsf(3),
 // gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17) }. Spec:
 //
@@ -313,15 +250,6 @@ func TestSaiDecodeRequestingNodeType_AppliesSpecMapping(t *testing.T) {
 	}
 }
 
-func TestSaiDecodeRequestingNodeType_RejectsNegative(t *testing.T) {
-	arg := newSaiArg()
-	v := gsm_map.RequestingNodeType(-1)
-	arg.RequestingNodeType = &v
-	if _, err := convertArgToSendAuthenticationInfo(arg); err == nil {
-		t.Error("RequestingNodeType=-1: expected error, got nil")
-	}
-}
-
 // --- helpers ---
 
 // newSriArg returns a minimally valid SendRoutingInfoArg whose mandatory
@@ -337,9 +265,9 @@ func newSriArg() *gsm_map.SendRoutingInfoArg {
 		panic(err)
 	}
 	return &gsm_map.SendRoutingInfoArg{
-		Msisdn:              gsm_map.ISDNAddressString(msisdn),
+		Msisdn:              msisdn,
 		InterrogationType:   gsm_map.InterrogationType(0),
-		GmscOrGsmSCFAddress: gsm_map.ISDNAddressString(gsmscf),
+		GmscOrGsmSCFAddress: gsmscf,
 	}
 }
 
@@ -364,9 +292,9 @@ func newUpdateLocationArg() *gsm_map.UpdateLocationArg {
 		panic(err)
 	}
 	return &gsm_map.UpdateLocationArg{
-		Imsi:      gsm_map.IMSI(imsi),
-		MscNumber: gsm_map.ISDNAddressString(msc),
-		VlrNumber: gsm_map.ISDNAddressString(vlr),
+		Imsi:      imsi,
+		MscNumber: msc,
+		VlrNumber: vlr,
 	}
 }
 
@@ -377,7 +305,7 @@ func newSaiArg() *gsm_map.SendAuthenticationInfoArg {
 		panic(err)
 	}
 	return &gsm_map.SendAuthenticationInfoArg{
-		Imsi:                     gsm_map.IMSI(imsi),
+		Imsi:                     imsi,
 		NumberOfRequestedVectors: gsm_map.NumberOfRequestedVectors(1),
 	}
 }

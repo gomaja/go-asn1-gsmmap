@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -14,37 +13,21 @@ func validateSri(s *Sri) error {
 		return ErrSriMissingMSISDN
 	}
 	if s.GmscOrGsmSCFAddress == "" {
-		return ErrSriMissingGmsc
+		return ErrSriMissingGmscOrGsmSCFAddress
 	}
 	if s.InterrogationType != InterrogationBasicCall && s.InterrogationType != InterrogationForwarding {
 		return ErrSriInvalidInterrogationType
 	}
-	if s.NumberOfForwarding != nil {
-		if *s.NumberOfForwarding < 1 || *s.NumberOfForwarding > 5 {
-			return ErrSriInvalidNumberOfForwarding
-		}
-	}
-	if s.OrCapability != nil {
-		if *s.OrCapability < 1 || *s.OrCapability > 127 {
-			return ErrSriInvalidOrCapability
-		}
-	}
-	if len(s.CallReferenceNumber) > 8 {
-		return ErrSriInvalidCallReferenceNumber
-	}
-	// ForwardingReason — 0..2 per TS 29.002.
+
+	// ForwardingReason — 0..2 (3GPP TS 29.002 V19.1.0 §17.7.3).
+	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	if s.ForwardingReason != nil && (*s.ForwardingReason < 0 || *s.ForwardingReason > 2) {
-		return fmt.Errorf("ForwardingReason out of range 0..2: %d", *s.ForwardingReason)
+		return fmt.Errorf("ForwardingReason=%d: %w", *s.ForwardingReason, ErrSriForwardingReasonInvalid)
 	}
-	// SupportedCCBSPhase — INTEGER (1..127) per TS 29.002 MAP-CH-DataTypes.
-	// "Only value 1 is used; values 2-127 are reserved for future use" —
-	// syntactic constraint is 1..127, semantic guidance is 1.
-	if s.SupportedCCBSPhase != nil && (*s.SupportedCCBSPhase < 1 || *s.SupportedCCBSPhase > 127) {
-		return fmt.Errorf("SupportedCCBSPhase out of range 1..127: %d", *s.SupportedCCBSPhase)
-	}
-	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
-	if s.CallPriority != nil && (*s.CallPriority < 0 || *s.CallPriority > 15) {
-		return fmt.Errorf("CallPriority out of range 0..15: %d", *s.CallPriority)
+	// SupportedCCBS-Phase, 3GPP TS 29.002 V19.1.0 §17.7.3: "Only value 1 is
+	// used. Values in the ranges 2-127 are reserved for future use."
+	if s.SupportedCCBSPhase != nil && *s.SupportedCCBSPhase != 1 {
+		return fmt.Errorf("%w (got %d)", ErrSriInvalidSupportedCCBSPhase, *s.SupportedCCBSPhase)
 	}
 	return nil
 }
@@ -58,15 +41,15 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 	if err != nil {
 		return nil, fmt.Errorf("encoding MSISDN: %w", err)
 	}
-	gmsc, err := encodeAddressField(s.GmscOrGsmSCFAddress, s.GmscNature, s.GmscPlan)
+	gmsc, err := encodeAddressField(s.GmscOrGsmSCFAddress, s.GmscOrGsmSCFAddressNature, s.GmscOrGsmSCFAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding GmscOrGsmSCFAddress: %w", err)
 	}
 
 	arg := &gsm_map.SendRoutingInfoArg{
-		Msisdn:              gsm_map.ISDNAddressString(msisdn),
+		Msisdn:              msisdn,
 		InterrogationType:   s.InterrogationType,
-		GmscOrGsmSCFAddress: gsm_map.ISDNAddressString(gmsc),
+		GmscOrGsmSCFAddress: gmsc,
 	}
 
 	// CugCheckInfo
@@ -121,12 +104,20 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// NetworkSignalInfo
 	if s.NetworkSignalInfo != nil {
-		arg.NetworkSignalInfo = convertExternalSignalInfoToWire(s.NetworkSignalInfo)
+		v, err := convertExternalSignalInfoToWire(s.NetworkSignalInfo)
+		if err != nil {
+			return nil, fmt.Errorf("encoding NetworkSignalInfo: %w", err)
+		}
+		arg.NetworkSignalInfo = v
 	}
 
 	// NetworkSignalInfo2
 	if s.NetworkSignalInfo2 != nil {
-		arg.NetworkSignalInfo2 = convertExternalSignalInfoToWire(s.NetworkSignalInfo2)
+		v, err := convertExternalSignalInfoToWire(s.NetworkSignalInfo2)
+		if err != nil {
+			return nil, fmt.Errorf("encoding NetworkSignalInfo2: %w", err)
+		}
+		arg.NetworkSignalInfo2 = v
 	}
 
 	// CamelInfo
@@ -157,13 +148,18 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// AdditionalSignalInfo
 	if s.AdditionalSignalInfo != nil {
-		arg.AdditionalSignalInfo = convertExtExternalSignalInfoToWire(s.AdditionalSignalInfo)
+		v, err := convertExtExternalSignalInfoToWire(s.AdditionalSignalInfo)
+		if err != nil {
+			return nil, fmt.Errorf("AdditionalSignalInfo: %w", err)
+		}
+		arg.AdditionalSignalInfo = v
 	}
 
 	// IstSupportIndicator
 	if s.IstSupportIndicator != nil {
+		// Sender accepts defined values; receivers map values above 1 to istCommandSupported (3GPP TS 29.002 V19.1.0 §17.7.1).
 		if *s.IstSupportIndicator < 0 || *s.IstSupportIndicator > 1 {
-			return nil, fmt.Errorf("IstSupportIndicator out of range 0..1: %d", *s.IstSupportIndicator)
+			return nil, fmt.Errorf("IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *s.IstSupportIndicator)
 		}
 		v := gsm_map.ISTSupportIndicator(int64(*s.IstSupportIndicator))
 		arg.IstSupportIndicator = &v
@@ -209,30 +205,30 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 }
 
 func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
-	msisdn, msisdnNature, msisdnPlan, err := decodeAddressField(arg.Msisdn)
+	msisdn, msisdnNature, msisdnPlan, err := decodeAddressWithDigits(arg.Msisdn, ErrSriMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
 
-	gmsc, gmscNature, gmscPlan, err := decodeAddressField(arg.GmscOrGsmSCFAddress)
+	gmsc, gmscNature, gmscPlan, err := decodeAddressWithDigits(arg.GmscOrGsmSCFAddress, ErrSriMissingGmscOrGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GmscOrGsmSCFAddress: %w", err)
 	}
 
-	// InterrogationType — 0 (basicCall) or 1 (forwarding) per TS 29.002.
+	// InterrogationType — 0 (basicCall) or 1 (forwarding), 3GPP TS 29.002 V19.1.0 §17.7.3.
 	it, err := narrowInt64Range(int64(arg.InterrogationType), 0, 1, "InterrogationType")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decoding InterrogationType: %w: %w", ErrSriInvalidInterrogationType, err)
 	}
 
 	s := &Sri{
-		MSISDN:              msisdn,
-		MSISDNNature:        msisdnNature,
-		MSISDNPlan:          msisdnPlan,
-		InterrogationType:   InterrogationType(it),
-		GmscOrGsmSCFAddress: gmsc,
-		GmscNature:          gmscNature,
-		GmscPlan:            gmscPlan,
+		MSISDN:                    msisdn,
+		MSISDNNature:              msisdnNature,
+		MSISDNPlan:                msisdnPlan,
+		InterrogationType:         InterrogationType(it),
+		GmscOrGsmSCFAddress:       gmsc,
+		GmscOrGsmSCFAddressNature: gmscNature,
+		GmscOrGsmSCFAddressPlan:   gmscPlan,
 	}
 
 	// CugCheckInfo
@@ -242,10 +238,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// NumberOfForwarding — 1..5 per TS 29.002.
 	if arg.NumberOfForwarding != nil {
-		v, err := narrowInt64Range(*arg.NumberOfForwarding, 1, 5, "NumberOfForwarding")
-		if err != nil {
-			return nil, err
-		}
+		v := int(*arg.NumberOfForwarding)
 		s.NumberOfForwarding = &v
 	}
 
@@ -254,26 +247,21 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// OrCapability — 1..127 per TS 29.002.
 	if arg.OrCapability != nil {
-		v, err := narrowInt64Range(*arg.OrCapability, 1, 127, "OrCapability")
-		if err != nil {
-			return nil, err
-		}
+		v := int(*arg.OrCapability)
 		s.OrCapability = &v
 	}
 
 	// CallReferenceNumber — OCTET STRING (SIZE(1..8)) per TS 29.002.
 	if arg.CallReferenceNumber != nil {
-		if len(*arg.CallReferenceNumber) < 1 || len(*arg.CallReferenceNumber) > 8 {
-			return nil, fmt.Errorf("CallReferenceNumber must be 1..8 octets, got %d", len(*arg.CallReferenceNumber))
-		}
 		s.CallReferenceNumber = HexBytes(*arg.CallReferenceNumber)
 	}
 
-	// ForwardingReason — 0..2 per TS 29.002.
+	// ForwardingReason — 0..2 (3GPP TS 29.002 V19.1.0 §17.7.3).
 	if arg.ForwardingReason != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		v, err := narrowInt64Range(int64(*arg.ForwardingReason), 0, 2, "ForwardingReason")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("ForwardingReason: %w: %w", ErrSriForwardingReasonInvalid, err)
 		}
 		fr := ForwardingReason(v)
 		s.ForwardingReason = &fr
@@ -299,12 +287,20 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// NetworkSignalInfo
 	if arg.NetworkSignalInfo != nil {
-		s.NetworkSignalInfo = convertWireToExternalSignalInfo(arg.NetworkSignalInfo)
+		v, err := convertWireToExternalSignalInfo(arg.NetworkSignalInfo)
+		if err != nil {
+			return nil, fmt.Errorf("decoding NetworkSignalInfo: %w", err)
+		}
+		s.NetworkSignalInfo = v
 	}
 
 	// NetworkSignalInfo2
 	if arg.NetworkSignalInfo2 != nil {
-		s.NetworkSignalInfo2 = convertWireToExternalSignalInfo(arg.NetworkSignalInfo2)
+		v, err := convertWireToExternalSignalInfo(arg.NetworkSignalInfo2)
+		if err != nil {
+			return nil, fmt.Errorf("decoding NetworkSignalInfo2: %w", err)
+		}
+		s.NetworkSignalInfo2 = v
 	}
 
 	// CamelInfo
@@ -323,15 +319,11 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	// CcbsCall
 	s.CcbsCall = nullPtrToBool(arg.CcbsCall)
 
-	// SupportedCCBSPhase — INTEGER (1..127) per TS 29.002 MAP-CH-DataTypes.
-	// Exception handling: "If received values 2-127 shall be mapped on to
-	// value 1." We surface the received value as-is to the caller; mapping
-	// is a semantic/application-layer concern, not a protocol-decode one.
+	// SupportedCCBS-Phase, 3GPP TS 29.002 V19.1.0 §17.7.3: "If received
+	// values 2-127 shall be mapped on to value 1." The codec has already
+	// enforced INTEGER (1..127).
 	if arg.SupportedCCBSPhase != nil {
-		v, err := narrowInt64Range(*arg.SupportedCCBSPhase, 1, 127, "SupportedCCBSPhase")
-		if err != nil {
-			return nil, err
-		}
+		v := int(min(*arg.SupportedCCBSPhase, 1))
 		s.SupportedCCBSPhase = &v
 	}
 
@@ -342,18 +334,14 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// IstSupportIndicator — ENUMERATED { basicISTSupported(0),
 	// istCommandSupported(1), ... } per TS 29.002. Spec exception:
-	// "reception of values > 1 shall be mapped to istCommandSupported".
+	// "reception of values > 1 shall be mapped to ' istCommandSupported '".
 	// Apply the mapping in int64 space first so wire values that exceed
-	// platform int still satisfy the spec mandate on 32-bit builds.
+	// platform int satisfy the spec mandate on 32-bit builds.
 	if arg.IstSupportIndicator != nil {
-		v64 := int64(*arg.IstSupportIndicator)
-		if v64 < 0 {
-			return nil, fmt.Errorf("IstSupportIndicator cannot be negative: %d", v64)
+		v, err := istSupportIndicatorFromWire(*arg.IstSupportIndicator)
+		if err != nil {
+			return nil, fmt.Errorf("IstSupportIndicator: %w", err)
 		}
-		if v64 > 1 {
-			v64 = 1 // per TS 29.002 exception handling
-		}
-		v := int(v64) // post-mapping value is always 0 or 1
 		s.IstSupportIndicator = &v
 	}
 
@@ -378,7 +366,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	s.GsmSCFInitiatedCall = nullPtrToBool(arg.GsmSCFInitiatedCall)
 
 	// SuppressMTSS
-	if arg.SuppressMTSS != nil && arg.SuppressMTSS.BitLength > 0 {
+	if arg.SuppressMTSS != nil {
 		s.SuppressMTSS = convertBitStringToSuppressMTSS(*arg.SuppressMTSS)
 	}
 
@@ -387,10 +375,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
 	if arg.CallPriority != nil {
-		v, err := narrowInt64Range(int64(*arg.CallPriority), 0, 15, "CallPriority")
-		if err != nil {
-			return nil, err
-		}
+		v := int(*arg.CallPriority)
 		s.CallPriority = &v
 	}
 
@@ -400,13 +385,18 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 // --- SRI Response (SendRoutingInfoRes) full converters ---
 
 func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
-	imsiBytes, err := tbcd.Encode(s.IMSI)
-	if err != nil {
-		return nil, fmt.Errorf(errEncodingIMSI, err)
-	}
+	out := &gsm_map.SendRoutingInfoRes{}
 
-	out := &gsm_map.SendRoutingInfoRes{
-		Imsi: (*gsm_map.IMSI)(&imsiBytes),
+	// 3GPP TS 29.002 V19.1.0 §17.7.3: "IMSI must be present if
+	// SendRoutingInfoRes is not segmented. If the TC-Result-NL segmentation
+	// option is taken the IMSI must be present in one segmented transmission
+	// of SendRoutingInfoRes." A message may be any segment, so "" is absent.
+	if s.IMSI != "" {
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
+		if err != nil {
+			return nil, fmt.Errorf(errEncodingIMSI, err)
+		}
+		out.Imsi = &imsiBytes
 	}
 
 	// ExtendedRoutingInfo
@@ -436,10 +426,10 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 	}
 
 	// SsList
-	if len(s.SsList) > 0 {
-		out.SsList = make(gsm_map.SSList, len(s.SsList))
+	if s.SsList != nil {
+		out.SsList = &gsm_map.SSList{Values: make([]gsm_map.SSCode, len(s.SsList))}
 		for i, c := range s.SsList {
-			out.SsList[i] = gsm_map.SSCode{byte(c)}
+			out.SsList.Values[i] = gsm_map.SSCode{byte(c)}
 		}
 	}
 
@@ -457,11 +447,11 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// VmscAddress
 	if s.VmscAddress != "" {
-		enc, err := encodeAddressField(s.VmscAddress, s.VmscNature, s.VmscPlan)
+		enc, err := encodeAddressField(s.VmscAddress, s.VmscAddressNature, s.VmscAddressPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding VmscAddress: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(enc)
+		v := enc
 		out.VmscAddress = &v
 	}
 
@@ -481,17 +471,18 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding MSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(enc)
+		v := enc
 		out.Msisdn = &v
 	}
 
 	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if s.NumberPortabilityStatus != nil {
+		// Sender accepts defined values; receivers ignore unknown values (3GPP TS 29.002 V19.1.0 §17.7.1).
 		switch *s.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
 		default:
-			return nil, fmt.Errorf("NumberPortabilityStatus has undefined value %d", *s.NumberPortabilityStatus)
+			return nil, fmt.Errorf("NumberPortabilityStatus=%d: %w", *s.NumberPortabilityStatus, ErrNumberPortabilityStatusInvalid)
 		}
 		v := *s.NumberPortabilityStatus
 		out.NumberPortabilityStatus = &v
@@ -523,9 +514,9 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// SsList2
 	if len(s.SsList2) > 0 {
-		out.SsList2 = make(gsm_map.SSList, len(s.SsList2))
+		out.SsList2 = &gsm_map.SSList{Values: make([]gsm_map.SSCode, len(s.SsList2))}
 		for i, c := range s.SsList2 {
-			out.SsList2[i] = gsm_map.SSCode{byte(c)}
+			out.SsList2.Values[i] = gsm_map.SSCode{byte(c)}
 		}
 	}
 
@@ -546,8 +537,9 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// UnavailabilityCause — 1..6 per TS 29.002.
 	if s.UnavailabilityCause != nil {
+		// Sender accepts only defined values; other received values make the service unavailable (3GPP TS 29.002 V19.1.0 §17.7.3).
 		if *s.UnavailabilityCause < 1 || *s.UnavailabilityCause > 6 {
-			return nil, fmt.Errorf("UnavailabilityCause out of range 1..6: %d", *s.UnavailabilityCause)
+			return nil, fmt.Errorf("UnavailabilityCause: %w (got %d)", ErrUnavailabilityCauseInvalid, *s.UnavailabilityCause)
 		}
 		v := *s.UnavailabilityCause
 		out.UnavailabilityCause = &v
@@ -558,7 +550,11 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// GsmBearerCapability
 	if s.GsmBearerCapability != nil {
-		out.GsmBearerCapability = convertExternalSignalInfoToWire(s.GsmBearerCapability)
+		v, err := convertExternalSignalInfoToWire(s.GsmBearerCapability)
+		if err != nil {
+			return nil, fmt.Errorf("encoding GsmBearerCapability: %w", err)
+		}
+		out.GsmBearerCapability = v
 	}
 
 	return out, nil
@@ -569,7 +565,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// Imsi
 	if res.Imsi != nil {
-		imsi, err := tbcd.Decode(*res.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *res.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMSI: %w", err)
 		}
@@ -603,11 +599,12 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	}
 
 	// SsList — each SS-Code is OCTET STRING (SIZE(1)) per 3GPP TS 29.002.
-	if len(res.SsList) > 0 {
-		out.SsList = make([]SsCode, len(res.SsList))
-		for i, c := range res.SsList {
+	if res.SsList != nil && len(res.SsList.Values) > 0 {
+		out.SsList = make([]SsCode, len(res.SsList.Values))
+		for i, c := range res.SsList.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(c) != 1 {
-				return nil, fmt.Errorf("SsList[%d]: SS-Code must be exactly 1 octet, got %d", i, len(c))
+				return nil, fmt.Errorf("SsList[%d] length %d: %w", i, len(c), ErrSriSsListSsCodeInvalidLength)
 			}
 			out.SsList[i] = SsCode(c[0])
 		}
@@ -627,13 +624,13 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// VmscAddress
 	if res.VmscAddress != nil {
-		digits, nat, pl, err := decodeAddressField(*res.VmscAddress)
+		digits, nat, pl, err := decodeAddressWithDigits(*res.VmscAddress, ErrSriRespVmscAddressDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding VmscAddress: %w", err)
 		}
 		out.VmscAddress = digits
-		out.VmscNature = nat
-		out.VmscPlan = pl
+		out.VmscAddressNature = nat
+		out.VmscAddressPlan = pl
 	}
 
 	// NaeaPreferredCI
@@ -648,7 +645,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// Msisdn
 	if res.Msisdn != nil {
-		digits, nat, pl, err := decodeAddressField(*res.Msisdn)
+		digits, nat, pl, err := decodeAddressWithDigits(*res.Msisdn, ErrSriRespMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MSISDN: %w", err)
 		}
@@ -659,11 +656,10 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// NumberPortabilityStatus — ENUMERATED { 0, 1, 2, 4, 5 } per TS 29.002.
 	// Spec exception: "reception of other values than the ones listed the
-	// receiver shall ignore the whole NumberPortabilityStatus parameter".
-	// Match against the defined set in int64 space so wire values that
-	// exceed platform int are also treated as unknown (ignored), not as
-	// decode errors — consistent with the spec's "ignore" mandate.
+	// receiver shall ignore the whole NumberPortabilityStatus;".
+	// Ignore values outside the defined set (3GPP TS 29.002 V19.1.0 §17.7.1).
 	if res.NumberPortabilityStatus != nil {
+		// Unknown extensions are ignored per 3GPP TS 29.002 V19.1.0 §17.7.1.
 		switch *res.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut,
 			MnpForeignNumberPortedToForeignNetwork,
@@ -682,12 +678,12 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	out.IstAlertTimer = istAlert
 
 	// SupportedCamelPhasesInVMSC
-	if res.SupportedCamelPhasesInVMSC != nil && res.SupportedCamelPhasesInVMSC.BitLength > 0 {
+	if res.SupportedCamelPhasesInVMSC != nil {
 		out.SupportedCamelPhasesInVMSC = convertBitStringToCamelPhases(*res.SupportedCamelPhasesInVMSC)
 	}
 
 	// OfferedCamel4CSIsInVMSC
-	if res.OfferedCamel4CSIsInVMSC != nil && res.OfferedCamel4CSIsInVMSC.BitLength > 0 {
+	if res.OfferedCamel4CSIsInVMSC != nil {
 		out.OfferedCamel4CSIsInVMSC = convertBitStringToOfferedCamel4CSIs(*res.OfferedCamel4CSIsInVMSC)
 	}
 
@@ -701,11 +697,12 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	}
 
 	// SsList2
-	if len(res.SsList2) > 0 {
-		out.SsList2 = make([]SsCode, len(res.SsList2))
-		for i, c := range res.SsList2 {
+	if res.SsList2 != nil && len(res.SsList2.Values) > 0 {
+		out.SsList2 = make([]SsCode, len(res.SsList2.Values))
+		for i, c := range res.SsList2.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(c) != 1 {
-				return nil, fmt.Errorf("SsList2[%d]: SS-Code must be exactly 1 octet, got %d", i, len(c))
+				return nil, fmt.Errorf("SsList2[%d] length %d: %w", i, len(c), ErrSriSsList2SsCodeInvalidLength)
 			}
 			out.SsList2[i] = SsCode(c[0])
 		}
@@ -721,25 +718,18 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	}
 
 	// AllowedServices
-	if res.AllowedServices != nil && res.AllowedServices.BitLength > 0 {
+	if res.AllowedServices != nil {
 		out.AllowedServices = convertBitStringToAllowedServices(*res.AllowedServices)
 	}
 
 	// UnavailabilityCause — ENUMERATED 1..6 (extensible) per TS 29.002.
 	// Spec exception: "Reception of other values than the ones listed shall
 	// result in the service being unavailable for that call." The protocol
-	// decode surfaces the raw value; treating unknown causes as
+	// decode surfaces the raw value, any value including a negative one
+	// (3GPP TS 29.002 V19.1.0 §17.7.3); treating unknown causes as
 	// service-unavailable is an application-layer concern.
 	if res.UnavailabilityCause != nil {
-		v64 := int64(*res.UnavailabilityCause)
-		if v64 < 0 {
-			return nil, fmt.Errorf("UnavailabilityCause cannot be negative: %d", v64)
-		}
-		v, err := narrowInt64(v64)
-		if err != nil {
-			return nil, fmt.Errorf("UnavailabilityCause: %w", err)
-		}
-		uc := UnavailabilityCause(v)
+		uc := *res.UnavailabilityCause
 		out.UnavailabilityCause = &uc
 	}
 
@@ -748,7 +738,11 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// GsmBearerCapability
 	if res.GsmBearerCapability != nil {
-		out.GsmBearerCapability = convertWireToExternalSignalInfo(res.GsmBearerCapability)
+		v, err := convertWireToExternalSignalInfo(res.GsmBearerCapability)
+		if err != nil {
+			return nil, fmt.Errorf("decoding GsmBearerCapability: %w", err)
+		}
+		out.GsmBearerCapability = v
 	}
 
 	return out, nil

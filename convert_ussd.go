@@ -12,21 +12,12 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// wireUSSDDataCodingScheme converts the one-octet wire USSD-DataCodingScheme
-// (SIZE (1), §17.7.4) into its uint8 form.
-func wireUSSDDataCodingScheme(b gsm_map.USSDDataCodingScheme) (USSDDataCodingScheme, error) {
-	if len(b) != 1 {
-		return 0, fmt.Errorf("USSD-DataCodingScheme has %d octets: %w", len(b), ErrUSSDDataCodingSchemeInvalidSize)
-	}
-	return USSDDataCodingScheme(b[0]), nil
-}
-
-// validateAlertingPatternToWire accepts the seven values defined in
+// validateAlertingPatternToWire accepts the eight values defined in
 // 3GPP TS 29.002 V19.1.0 §17.7.8; decode is lenient, encode is strict.
 func validateAlertingPatternToWire(p AlertingPattern) error {
 	switch p {
 	case AlertingLevel0, AlertingLevel1, AlertingLevel2,
-		AlertingCategory1, AlertingCategory2, AlertingCategory3, AlertingCategory4:
+		AlertingCategory1, AlertingCategory2, AlertingCategory3, AlertingCategory4, AlertingCategory5:
 		return nil
 	}
 	return fmt.Errorf("value 0x%02X: %w", uint8(p), ErrAlertingPatternReserved)
@@ -51,7 +42,7 @@ func convertUSSDArgToWire(a *USSDArg) (*gsm_map.USSDArg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding USSDArg.MSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(enc)
+		v := enc
 		out.Msisdn = &v
 	}
 	return out, nil
@@ -61,23 +52,17 @@ func convertWireToUSSDArg(w *gsm_map.USSDArg) (*USSDArg, error) {
 	if w == nil {
 		return nil, ErrUSSDArgNil
 	}
-	dcs, err := wireUSSDDataCodingScheme(w.UssdDataCodingScheme)
-	if err != nil {
-		return nil, fmt.Errorf("USSDArg.DataCodingScheme: %w", err)
-	}
+	dcs := USSDDataCodingScheme(w.UssdDataCodingScheme[0])
 	out := &USSDArg{
 		DataCodingScheme: dcs,
-		USSDString:       slices.Clone([]byte(w.UssdString)),
+		USSDString:       slices.Clone(w.UssdString),
 	}
 	if w.AlertingPattern != nil {
-		if len(*w.AlertingPattern) != 1 {
-			return nil, fmt.Errorf("USSDArg.AlertingPattern has %d octets: %w", len(*w.AlertingPattern), ErrAlertingPatternInvalidSize)
-		}
 		p := AlertingPattern((*w.AlertingPattern)[0])
 		out.AlertingPattern = &p
 	}
 	if w.Msisdn != nil {
-		digits, nature, plan, err := decodeAddressField([]byte(*w.Msisdn))
+		digits, nature, plan, err := decodeAddressField(*w.Msisdn)
 		if err != nil {
 			return nil, fmt.Errorf("decoding USSDArg.MSISDN: %w", err)
 		}
@@ -105,12 +90,9 @@ func convertWireToUSSDRes(w *gsm_map.USSDRes) (*USSDRes, error) {
 	if w == nil {
 		return nil, ErrUSSDResNil
 	}
-	dcs, err := wireUSSDDataCodingScheme(w.UssdDataCodingScheme)
-	if err != nil {
-		return nil, fmt.Errorf("USSDRes.DataCodingScheme: %w", err)
-	}
+	dcs := USSDDataCodingScheme(w.UssdDataCodingScheme[0])
 	return &USSDRes{
 		DataCodingScheme: dcs,
-		USSDString:       slices.Clone([]byte(w.UssdString)),
+		USSDString:       slices.Clone(w.UssdString),
 	}, nil
 }

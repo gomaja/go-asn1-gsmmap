@@ -75,19 +75,10 @@ func TestSLRLCSEventString(t *testing.T) {
 // the range bounds match the spec (shares maxReportingAmount).
 func TestSLRSequenceNumberAlias(t *testing.T) {
 	var s SequenceNumber = 100
-	if int64(s) != 100 {
+	if s != 100 {
 		t.Fatalf("SequenceNumber alias: want 100, got %d", s)
 	}
-	if SequenceNumberMin != 1 {
-		t.Errorf("SequenceNumberMin: want 1, got %d", SequenceNumberMin)
-	}
-	if SequenceNumberMax != 8639999 {
-		t.Errorf("SequenceNumberMax: want 8639999 (maxReportingAmount), got %d", SequenceNumberMax)
-	}
-	// Direct comparison without casts.
-	if s < SequenceNumberMin || s > SequenceNumberMax {
-		t.Error("range check: 100 should be in [Min..Max]")
-	}
+
 }
 
 // Sentinel errors must be defined, distinct, and detectable through
@@ -95,14 +86,7 @@ func TestSLRSequenceNumberAlias(t *testing.T) {
 func TestSLRSentinelErrors(t *testing.T) {
 	sentinels := []error{
 		ErrLCSEventInvalid,
-		ErrSequenceNumberOutOfRange,
-		ErrLCSLocationInfoNetworkNodeEmpty,
-		ErrLCSLocationInfoNetworkNodeDecodedEmpty,
-		ErrLCSLocationInfoLMSIInvalidSize,
-		ErrLCSLocationInfoMmeNameSize,
-		ErrLCSLocationInfoAaaServerNameSize,
-		ErrLCSLocationInfoSgsnNameSize,
-		ErrLCSLocationInfoSgsnRealmSize,
+		ErrLCSLocationInfoNetworkNodeNumberEmpty,
 	}
 	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {

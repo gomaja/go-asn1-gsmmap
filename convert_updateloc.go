@@ -4,45 +4,41 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // --- UpdateLocation ---
 
 func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, error) {
-	// imsi, msc-Number, vlr-Number are all non-OPTIONAL in
-	// UpdateLocationArg per MAP-MS-DataTypes.asn:256-259. Reject empty
-	// caller input explicitly so malformed wire bytes never reach the peer.
-	if u.IMSI == "" {
-		return nil, ErrUpdateLocationMissingIMSI
+	// imsi, msc-Number and vlr-Number are mandatory in UpdateLocationArg
+	// (3GPP TS 29.002 V19.1.0 §17.7.1). An empty IMSI fails in
+	// encodeIdentityDigits with ErrIdentityEmpty.
+	if u.MscNumber == "" {
+		return nil, ErrUpdateLocationMissingMscNumber
 	}
-	if u.MSCNumber == "" {
-		return nil, ErrUpdateLocationMissingMSCNumber
-	}
-	if u.VLRNumber == "" {
-		return nil, ErrUpdateLocationMissingVLRNumber
+	if u.VlrNumber == "" {
+		return nil, ErrUpdateLocationMissingVlrNumber
 	}
 
-	imsiBytes, err := tbcd.Encode(u.IMSI)
+	imsiBytes, err := encodeIdentityDigits(identityIMSI, u.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
 
-	mscNumber, err := encodeAddressField(u.MSCNumber, u.MSCNature, u.MSCPlan)
+	mscNumber, err := encodeAddressField(u.MscNumber, u.MscNumberNature, u.MscNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding MSCNumber: %w", err)
+		return nil, fmt.Errorf("encoding MscNumber: %w", err)
 	}
 
-	vlrNumber, err := encodeAddressField(u.VLRNumber, u.VLRNature, u.VLRPlan)
+	vlrNumber, err := encodeAddressField(u.VlrNumber, u.VlrNumberNature, u.VlrNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding VLRNumber: %w", err)
+		return nil, fmt.Errorf("encoding VlrNumber: %w", err)
 	}
 
 	arg := &gsm_map.UpdateLocationArg{
-		Imsi:      gsm_map.IMSI(imsiBytes),
-		MscNumber: gsm_map.ISDNAddressString(mscNumber),
-		VlrNumber: gsm_map.ISDNAddressString(vlrNumber),
+		Imsi:      imsiBytes,
+		MscNumber: mscNumber,
+		VlrNumber: vlrNumber,
 	}
 
 	if u.VlrCapability != nil {
@@ -61,8 +57,9 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		vlrCap.SolsaSupportIndicator = boolToNullPtr(u.VlrCapability.SolsaSupportIndicator)
 
 		if u.VlrCapability.IstSupportIndicator != nil {
+			// Sender accepts defined values; receivers map values above 1 to istCommandSupported (3GPP TS 29.002 V19.1.0 §17.7.1).
 			if *u.VlrCapability.IstSupportIndicator < 0 || *u.VlrCapability.IstSupportIndicator > 1 {
-				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator out of range 0..1: %d", *u.VlrCapability.IstSupportIndicator)
+				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *u.VlrCapability.IstSupportIndicator)
 			}
 			v := gsm_map.ISTSupportIndicator(int64(*u.VlrCapability.IstSupportIndicator))
 			vlrCap.IstSupportIndicator = &v
@@ -98,9 +95,6 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 
 	// Optional fields.
 	if len(u.LMSI) > 0 {
-		if len(u.LMSI) != 4 {
-			return nil, fmt.Errorf("UpdateLocation: LMSI must be exactly 4 octets, got %d", len(u.LMSI))
-		}
 		v := gsm_map.LMSI(u.LMSI)
 		arg.Lmsi = &v
 	}
@@ -113,7 +107,7 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		if err != nil {
 			return nil, fmt.Errorf("encoding VGmlcAddress: %w", err)
 		}
-		v := gsm_map.GSNAddress(gsnAddr)
+		v := gsnAddr
 		arg.VGmlcAddress = &v
 	}
 
@@ -126,30 +120,31 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	}
 
 	if len(u.PagingArea) > 0 {
-		pa := make(gsm_map.PagingArea, len(u.PagingArea))
+		pa := gsm_map.PagingArea{Values: make([]gsm_map.LocationArea, len(u.PagingArea))}
 		for i, raw := range u.PagingArea {
 			// Each raw HexBytes is BER-encoded LocationArea CHOICE.
 			var la gsm_map.LocationArea
 			if err := la.UnmarshalBER(raw); err != nil {
 				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
 			}
-			pa[i] = la
+			pa.Values[i] = la
 		}
-		arg.PagingArea = pa
+		arg.PagingArea = &pa
 	}
 
 	arg.SkipSubscriberDataUpdate = boolToNullPtr(u.SkipSubscriberDataUpdate)
 	arg.RestorationIndicator = boolToNullPtr(u.RestorationIndicator)
 
-	if len(u.EplmnList) > 0 {
-		list := make(gsm_map.EPLMNList, len(u.EplmnList))
+	if u.EplmnList != nil {
+		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
+				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
 			}
-			list[i] = gsm_map.PLMNId(raw)
+			list.Values[i] = gsm_map.PLMNId(raw)
 		}
-		arg.EplmnList = list
+		arg.EplmnList = &list
 	}
 
 	if u.MmeDiameterAddress != nil {
@@ -160,39 +155,39 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 }
 
 func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation, error) {
-	imsi, err := tbcd.Decode(arg.Imsi)
+	imsi, err := decodeIdentityDigits(identityIMSI, arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
-	msc, mscNature, mscPlan, err := decodeAddressField(arg.MscNumber)
+	msc, mscNature, mscPlan, err := decodeAddressWithDigits(arg.MscNumber, ErrUpdateLocationMissingMscNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding MSCNumber: %w", err)
+		return nil, fmt.Errorf("decoding MscNumber: %w", err)
 	}
 
-	vlr, vlrNature, vlrPlan, err := decodeAddressField(arg.VlrNumber)
+	vlr, vlrNature, vlrPlan, err := decodeAddressWithDigits(arg.VlrNumber, ErrUpdateLocationMissingVlrNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding VLRNumber: %w", err)
+		return nil, fmt.Errorf("decoding VlrNumber: %w", err)
 	}
 
 	u := &UpdateLocation{
-		IMSI:      imsi,
-		MSCNumber: msc,
-		MSCNature: mscNature,
-		MSCPlan:   mscPlan,
-		VLRNumber: vlr,
-		VLRNature: vlrNature,
-		VLRPlan:   vlrPlan,
+		IMSI:            imsi,
+		MscNumber:       msc,
+		MscNumberNature: mscNature,
+		MscNumberPlan:   mscPlan,
+		VlrNumber:       vlr,
+		VlrNumberNature: vlrNature,
+		VlrNumberPlan:   vlrPlan,
 	}
 
 	if arg.VlrCapability != nil {
 		vlrCap := &VlrCapability{}
 
-		if arg.VlrCapability.SupportedCamelPhases != nil && arg.VlrCapability.SupportedCamelPhases.BitLength > 0 {
+		if arg.VlrCapability.SupportedCamelPhases != nil {
 			vlrCap.SupportedCamelPhases = convertBitStringToCamelPhases(*arg.VlrCapability.SupportedCamelPhases)
 		}
 
-		if arg.VlrCapability.SupportedLCSCapabilitySets != nil && arg.VlrCapability.SupportedLCSCapabilitySets.BitLength > 0 {
+		if arg.VlrCapability.SupportedLCSCapabilitySets != nil {
 			vlrCap.SupportedLCSCapabilitySets = convertBitStringToLCSCaps(*arg.VlrCapability.SupportedLCSCapabilitySets)
 		}
 
@@ -200,18 +195,14 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 		// IstSupportIndicator — ENUMERATED { basicISTSupported(0),
 		// istCommandSupported(1), ... } per TS 29.002. Spec exception:
-		// "reception of values > 1 shall be mapped to 'istCommandSupported'".
+		// "reception of values > 1 shall be mapped to ' istCommandSupported '".
 		// Apply the mapping in int64 space first so wire values that exceed
-		// platform int still satisfy the spec mandate on 32-bit builds.
+		// platform int satisfy the spec mandate on 32-bit builds.
 		if arg.VlrCapability.IstSupportIndicator != nil {
-			v64 := int64(*arg.VlrCapability.IstSupportIndicator)
-			if v64 < 0 {
-				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator cannot be negative: %d", v64)
+			v, err := istSupportIndicatorFromWire(*arg.VlrCapability.IstSupportIndicator)
+			if err != nil {
+				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w", err)
 			}
-			if v64 > 1 {
-				v64 = 1 // per TS 29.002 exception handling
-			}
-			v := int(v64) // post-mapping value is always 0 or 1
 			vlrCap.IstSupportIndicator = &v
 		}
 
@@ -225,14 +216,11 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 		vlrCap.LongFTNSupported = nullPtrToBool(arg.VlrCapability.LongFTNSupported)
 
-		if arg.VlrCapability.OfferedCamel4CSIs != nil && arg.VlrCapability.OfferedCamel4CSIs.BitLength > 0 {
+		if arg.VlrCapability.OfferedCamel4CSIs != nil {
 			vlrCap.OfferedCamel4CSIs = convertBitStringToOfferedCamel4CSIs(*arg.VlrCapability.OfferedCamel4CSIs)
 		}
 
-		if arg.VlrCapability.SupportedRATTypesIndicator != nil && arg.VlrCapability.SupportedRATTypesIndicator.BitLength > 0 {
-			if arg.VlrCapability.SupportedRATTypesIndicator.BitLength < 2 || arg.VlrCapability.SupportedRATTypesIndicator.BitLength > 8 {
-				return nil, fmt.Errorf("UpdateLocation: SupportedRATTypes BitLength must be 2..8, got %d", arg.VlrCapability.SupportedRATTypesIndicator.BitLength)
-			}
+		if arg.VlrCapability.SupportedRATTypesIndicator != nil {
 			vlrCap.SupportedRATTypesIndicator = convertBitStringToSupportedRATTypes(*arg.VlrCapability.SupportedRATTypesIndicator)
 		}
 
@@ -246,9 +234,6 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 	// Optional fields.
 	if arg.Lmsi != nil {
-		if len(*arg.Lmsi) != 4 {
-			return nil, fmt.Errorf("UpdateLocation: LMSI must be exactly 4 octets, got %d", len(*arg.Lmsi))
-		}
 		u.LMSI = HexBytes(*arg.Lmsi)
 	}
 
@@ -271,9 +256,9 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		u.AddInfo = ai
 	}
 
-	if len(arg.PagingArea) > 0 {
-		pa := make([]HexBytes, len(arg.PagingArea))
-		for i, la := range arg.PagingArea {
+	if arg.PagingArea != nil && len(arg.PagingArea.Values) > 0 {
+		pa := make([]HexBytes, len(arg.PagingArea.Values))
+		for i, la := range arg.PagingArea.Values {
 			encoded, err := la.MarshalDER()
 			if err != nil {
 				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
@@ -286,11 +271,12 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 	u.SkipSubscriberDataUpdate = nullPtrToBool(arg.SkipSubscriberDataUpdate)
 	u.RestorationIndicator = nullPtrToBool(arg.RestorationIndicator)
 
-	if len(arg.EplmnList) > 0 {
-		list := make([]HexBytes, len(arg.EplmnList))
-		for i, plmn := range arg.EplmnList {
+	if arg.EplmnList != nil && len(arg.EplmnList.Values) > 0 {
+		list := make([]HexBytes, len(arg.EplmnList.Values))
+		for i, plmn := range arg.EplmnList.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
+				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
 			}
 			list[i] = HexBytes(plmn)
 		}
@@ -307,13 +293,16 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 // --- UpdateLocationRes ---
 
 func convertUpdateLocationResToRes(u *UpdateLocationRes) (*gsm_map.UpdateLocationRes, error) {
-	hlr, err := encodeAddressField(u.HLRNumber, u.HLRNumberNature, u.HLRNumberPlan)
+	if u.HlrNumber == "" {
+		return nil, ErrUpdateLocationResMissingHlrNumber
+	}
+	hlr, err := encodeAddressField(u.HlrNumber, u.HlrNumberNature, u.HlrNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding HLRNumber: %w", err)
+		return nil, fmt.Errorf("encoding HlrNumber: %w", err)
 	}
 
 	res := &gsm_map.UpdateLocationRes{
-		HlrNumber:            gsm_map.ISDNAddressString(hlr),
+		HlrNumber:            hlr,
 		AddCapability:        boolToNullPtr(u.AddCapability),
 		PagingAreaCapability: boolToNullPtr(u.PagingAreaCapability),
 	}
@@ -321,15 +310,15 @@ func convertUpdateLocationResToRes(u *UpdateLocationRes) (*gsm_map.UpdateLocatio
 }
 
 func convertResToUpdateLocationRes(res *gsm_map.UpdateLocationRes) (*UpdateLocationRes, error) {
-	hlr, nature, plan, err := decodeAddressField(res.HlrNumber)
+	hlr, nature, plan, err := decodeAddressWithDigits(res.HlrNumber, ErrUpdateLocationResMissingHlrNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding HLRNumber: %w", err)
+		return nil, fmt.Errorf("decoding HlrNumber: %w", err)
 	}
 
 	return &UpdateLocationRes{
-		HLRNumber:            hlr,
-		HLRNumberNature:      nature,
-		HLRNumberPlan:        plan,
+		HlrNumber:            hlr,
+		HlrNumberNature:      nature,
+		HlrNumberPlan:        plan,
 		AddCapability:        nullPtrToBool(res.AddCapability),
 		PagingAreaCapability: nullPtrToBool(res.PagingAreaCapability),
 	}, nil

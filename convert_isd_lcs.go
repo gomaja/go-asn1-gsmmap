@@ -7,7 +7,7 @@ import (
 )
 
 // ============================================================================
-// LCSClientExternalID — TS 29.002 MAP-CommonDataTypes.asn (gsm_map.LCSClientExternalID)
+// LCSClientExternalID — TS 29.002 §17.7.8 (gsm_map.LCSClientExternalID)
 // ============================================================================
 
 func convertLCSClientExternalIDToWire(c *LCSClientExternalID) (*gsm_map.LCSClientExternalID, error) {
@@ -20,7 +20,7 @@ func convertLCSClientExternalIDToWire(c *LCSClientExternalID) (*gsm_map.LCSClien
 		if err != nil {
 			return nil, fmt.Errorf("encoding LCSClientExternalID.ExternalAddress: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.ExternalAddress = &v
 	}
 	return out, nil
@@ -32,12 +32,9 @@ func convertWireToLCSClientExternalID(w *gsm_map.LCSClientExternalID) (*LCSClien
 	}
 	out := &LCSClientExternalID{}
 	if w.ExternalAddress != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.ExternalAddress))
+		s, nature, plan, err := decodeAddressWithDigits(*w.ExternalAddress, ErrLCSClientExternalIDExternalAddressDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding LCSClientExternalID.ExternalAddress: %w", err)
-		}
-		if s == "" {
-			return nil, fmt.Errorf("decoding LCSClientExternalID.ExternalAddress: present wire field decoded to empty digits")
 		}
 		out.ExternalAddress = s
 		out.ExternalAddressNature = nature
@@ -47,8 +44,55 @@ func convertWireToLCSClientExternalID(w *gsm_map.LCSClientExternalID) (*LCSClien
 }
 
 // ============================================================================
+// GMLC-Restriction / NotificationToMSUser — 3GPP TS 29.002 V19.1.0 §17.7.1
+// ============================================================================
+
+// isValidGMLCRestriction reports whether v is a listed GMLC-Restriction.
+func isValidGMLCRestriction(v GMLCRestriction) bool {
+	return v == GMLCRestrictionGmlcList || v == GMLCRestrictionHomeCountry
+}
+
+// isValidNotificationToMSUser reports whether v is a listed
+// NotificationToMSUser, locationNotAllowed included.
+func isValidNotificationToMSUser(v NotificationToMSUser) bool {
+	switch v {
+	case NotifyLocationAllowed,
+		NotifyAndVerifyLocationAllowedIfNoResponse,
+		NotifyAndVerifyLocationNotAllowedIfNoResponse,
+		NotificationLocationNotAllowed:
+		return true
+	}
+	return false
+}
+
+// gmlcRestrictionFromWire applies 3GPP TS 29.002 V19.1.0 §17.7.1
+// GMLC-Restriction: "At reception of any other value than the ones listed
+// the receiver shall ignore GMLC-Restriction." The parameter is OPTIONAL in
+// every container, so an ignored one decodes as absent (nil).
+func gmlcRestrictionFromWire(w *gsm_map.GMLCRestriction) *GMLCRestriction {
+	if w == nil || !isValidGMLCRestriction(*w) {
+		return nil
+	}
+	v := *w
+	return &v
+}
+
+// notificationToMSUserFromWire applies 3GPP TS 29.002 V19.1.0 §17.7.1
+// NotificationToMSUser: "At reception of any other value than the ones
+// listed the receiver shall ignore NotificationToMSUser." The parameter is
+// OPTIONAL in every container, so an ignored one decodes as absent (nil),
+// and the TS 23.271 default applies as when it is not received.
+func notificationToMSUserFromWire(w *gsm_map.NotificationToMSUser) *NotificationToMSUser {
+	if w == nil || !isValidNotificationToMSUser(*w) {
+		return nil
+	}
+	v := *w
+	return &v
+}
+
+// ============================================================================
 // ExternalClient / ExternalClientList / ExtExternalClientList
-// — TS 29.002 MAP-MS-DataTypes.asn:2003-2018
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertExternalClientToWire(c *ExternalClient) (*gsm_map.ExternalClient, error) {
@@ -59,23 +103,19 @@ func convertExternalClientToWire(c *ExternalClient) (*gsm_map.ExternalClient, er
 	if err != nil {
 		return nil, fmt.Errorf("ExternalClient.ClientIdentity: %w", err)
 	}
-	if c.GmlcRestriction != nil {
-		if v := *c.GmlcRestriction; v < 0 || v > 1 {
-			return nil, fmt.Errorf("ExternalClient.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, v)
-		}
+	if c.GmlcRestriction != nil && !isValidGMLCRestriction(*c.GmlcRestriction) {
+		return nil, fmt.Errorf("ExternalClient.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, *c.GmlcRestriction)
 	}
-	if c.NotificationToMSUser != nil {
-		if v := *c.NotificationToMSUser; v < 0 || v > 3 {
-			return nil, fmt.Errorf("ExternalClient.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
+	if c.NotificationToMSUser != nil && !isValidNotificationToMSUser(*c.NotificationToMSUser) {
+		return nil, fmt.Errorf("ExternalClient.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, *c.NotificationToMSUser)
 	}
 	out := &gsm_map.ExternalClient{ClientIdentity: *id}
 	if c.GmlcRestriction != nil {
-		v := gsm_map.GMLCRestriction(*c.GmlcRestriction)
+		v := *c.GmlcRestriction
 		out.GmlcRestriction = &v
 	}
 	if c.NotificationToMSUser != nil {
-		v := gsm_map.NotificationToMSUser(*c.NotificationToMSUser)
+		v := *c.NotificationToMSUser
 		out.NotificationToMSUser = &v
 	}
 	return out, nil
@@ -89,51 +129,36 @@ func convertWireToExternalClient(w *gsm_map.ExternalClient) (*ExternalClient, er
 	if err != nil {
 		return nil, fmt.Errorf("ExternalClient.ClientIdentity: %w", err)
 	}
-	out := &ExternalClient{ClientIdentity: *id}
-	if w.GmlcRestriction != nil {
-		v := GMLCRestriction(*w.GmlcRestriction)
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("ExternalClient.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, v)
-		}
-		out.GmlcRestriction = &v
-	}
-	if w.NotificationToMSUser != nil {
-		v := NotificationToMSUser(*w.NotificationToMSUser)
-		if v < 0 || v > 3 {
-			return nil, fmt.Errorf("ExternalClient.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
-		out.NotificationToMSUser = &v
-	}
-	return out, nil
+	return &ExternalClient{
+		ClientIdentity:       *id,
+		GmlcRestriction:      gmlcRestrictionFromWire(w.GmlcRestriction),
+		NotificationToMSUser: notificationToMSUserFromWire(w.NotificationToMSUser),
+	}, nil
 }
 
-func convertExternalClientListToWire(list ExternalClientList) (gsm_map.ExternalClientList, error) {
+func convertExternalClientListToWire(list ExternalClientList) (*gsm_map.ExternalClientList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) > gsm_map.MaxNumOfExternalClient {
-		return nil, fmt.Errorf("%w (got %d)", ErrExternalClientListSize, len(list))
-	}
-	out := make(gsm_map.ExternalClientList, len(list))
+
+	out := gsm_map.ExternalClientList{Values: make([]gsm_map.ExternalClient, len(list))}
 	for i, c := range list {
 		w, err := convertExternalClientToWire(&c)
 		if err != nil {
 			return nil, fmt.Errorf("ExternalClientList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToExternalClientList(w gsm_map.ExternalClientList) (ExternalClientList, error) {
+func convertWireToExternalClientList(w *gsm_map.ExternalClientList) (ExternalClientList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) > gsm_map.MaxNumOfExternalClient {
-		return nil, fmt.Errorf("%w (got %d)", ErrExternalClientListSize, len(w))
-	}
-	out := make(ExternalClientList, len(w))
-	for i, c := range w {
+
+	out := make(ExternalClientList, len(w.Values))
+	for i, c := range w.Values {
 		v, err := convertWireToExternalClient(&c)
 		if err != nil {
 			return nil, fmt.Errorf("ExternalClientList[%d]: %w", i, err)
@@ -143,33 +168,29 @@ func convertWireToExternalClientList(w gsm_map.ExternalClientList) (ExternalClie
 	return out, nil
 }
 
-func convertExtExternalClientListToWire(list ExtExternalClientList) (gsm_map.ExtExternalClientList, error) {
+func convertExtExternalClientListToWire(list ExtExternalClientList) (*gsm_map.ExtExternalClientList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfExtExternalClient {
-		return nil, fmt.Errorf("%w (got %d)", ErrExtExternalClientListSize, len(list))
-	}
-	out := make(gsm_map.ExtExternalClientList, len(list))
+
+	out := gsm_map.ExtExternalClientList{Values: make([]gsm_map.ExternalClient, len(list))}
 	for i, c := range list {
 		w, err := convertExternalClientToWire(&c)
 		if err != nil {
 			return nil, fmt.Errorf("ExtExternalClientList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToExtExternalClientList(w gsm_map.ExtExternalClientList) (ExtExternalClientList, error) {
+func convertWireToExtExternalClientList(w *gsm_map.ExtExternalClientList) (ExtExternalClientList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfExtExternalClient {
-		return nil, fmt.Errorf("%w (got %d)", ErrExtExternalClientListSize, len(w))
-	}
-	out := make(ExtExternalClientList, len(w))
-	for i, c := range w {
+
+	out := make(ExtExternalClientList, len(w.Values))
+	for i, c := range w.Values {
 		v, err := convertWireToExternalClient(&c)
 		if err != nil {
 			return nil, fmt.Errorf("ExtExternalClientList[%d]: %w", i, err)
@@ -180,161 +201,122 @@ func convertWireToExtExternalClientList(w gsm_map.ExtExternalClientList) (ExtExt
 }
 
 // ============================================================================
-// PLMNClientList — TS 29.002 MAP-MS-DataTypes.asn:2008
+// PLMNClientList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
-func convertPLMNClientListToWire(list PLMNClientList) (gsm_map.PLMNClientList, error) {
+func convertPLMNClientListToWire(list PLMNClientList) (*gsm_map.PLMNClientList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfPLMNClient {
-		return nil, fmt.Errorf("%w (got %d)", ErrPLMNClientListSize, len(list))
-	}
-	out := make(gsm_map.PLMNClientList, len(list))
+
+	out := gsm_map.PLMNClientList{Values: make([]gsm_map.LCSClientInternalID, len(list))}
 	for i, v := range list {
 		if v < LCSClientBroadcastService || v > LCSClientTargetMSsubscribedService {
 			return nil, fmt.Errorf("PLMNClientList[%d]: %w (got %d)", i, ErrLCSClientInternalIDInvalid, v)
 		}
-		out[i] = gsm_map.LCSClientInternalID(v)
+		out.Values[i] = v
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToPLMNClientList(w gsm_map.PLMNClientList) (PLMNClientList, error) {
+func convertWireToPLMNClientList(w *gsm_map.PLMNClientList) PLMNClientList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfPLMNClient {
-		return nil, fmt.Errorf("%w (got %d)", ErrPLMNClientListSize, len(w))
-	}
-	out := make(PLMNClientList, len(w))
-	for i, v := range w {
-		lv := LCSClientInternalID(v)
-		if lv < LCSClientBroadcastService || lv > LCSClientTargetMSsubscribedService {
-			return nil, fmt.Errorf("PLMNClientList[%d]: %w (got %d)", i, ErrLCSClientInternalIDInvalid, lv)
-		}
-		out[i] = lv
-	}
-	return out, nil
+
+	out := make(PLMNClientList, len(w.Values))
+	// LCSClientInternalID is extensible (3GPP TS 29.002 V19.1.0 §17.7.8), so
+	// an unlisted value is kept (§17.1.4); Marshal sends only listed values.
+	copy(out, w.Values)
+	return out
 }
 
 // ============================================================================
-// ServiceType / ServiceTypeList — TS 29.002 MAP-MS-DataTypes.asn:2045-2056
+// ServiceType / ServiceTypeList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertServiceTypeToWire(s *ServiceType) (*gsm_map.ServiceType, error) {
 	if s == nil {
 		return nil, nil
 	}
-	if s.ServiceTypeIdentity < 0 || s.ServiceTypeIdentity > 127 {
-		return nil, fmt.Errorf("%w (got %d)", ErrServiceTypeIdentityRange, s.ServiceTypeIdentity)
+
+	if s.GmlcRestriction != nil && !isValidGMLCRestriction(*s.GmlcRestriction) {
+		return nil, fmt.Errorf("ServiceType.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, *s.GmlcRestriction)
 	}
+	if s.NotificationToMSUser != nil && !isValidNotificationToMSUser(*s.NotificationToMSUser) {
+		return nil, fmt.Errorf("ServiceType.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, *s.NotificationToMSUser)
+	}
+	out := &gsm_map.ServiceType{ServiceTypeIdentity: s.ServiceTypeIdentity}
 	if s.GmlcRestriction != nil {
-		if v := *s.GmlcRestriction; v < 0 || v > 1 {
-			return nil, fmt.Errorf("ServiceType.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, v)
-		}
-	}
-	if s.NotificationToMSUser != nil {
-		if v := *s.NotificationToMSUser; v < 0 || v > 3 {
-			return nil, fmt.Errorf("ServiceType.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
-	}
-	out := &gsm_map.ServiceType{ServiceTypeIdentity: gsm_map.LCSServiceTypeID(s.ServiceTypeIdentity)}
-	if s.GmlcRestriction != nil {
-		v := gsm_map.GMLCRestriction(*s.GmlcRestriction)
+		v := *s.GmlcRestriction
 		out.GmlcRestriction = &v
 	}
 	if s.NotificationToMSUser != nil {
-		v := gsm_map.NotificationToMSUser(*s.NotificationToMSUser)
+		v := *s.NotificationToMSUser
 		out.NotificationToMSUser = &v
 	}
 	return out, nil
 }
 
-func convertWireToServiceType(w *gsm_map.ServiceType) (*ServiceType, error) {
+func convertWireToServiceType(w *gsm_map.ServiceType) *ServiceType {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
-	if int64(w.ServiceTypeIdentity) < 0 || int64(w.ServiceTypeIdentity) > 127 {
-		return nil, fmt.Errorf("%w (got %d)", ErrServiceTypeIdentityRange, w.ServiceTypeIdentity)
+
+	return &ServiceType{
+		ServiceTypeIdentity:  w.ServiceTypeIdentity,
+		GmlcRestriction:      gmlcRestrictionFromWire(w.GmlcRestriction),
+		NotificationToMSUser: notificationToMSUserFromWire(w.NotificationToMSUser),
 	}
-	out := &ServiceType{ServiceTypeIdentity: int64(w.ServiceTypeIdentity)}
-	if w.GmlcRestriction != nil {
-		v := GMLCRestriction(*w.GmlcRestriction)
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("ServiceType.GmlcRestriction: %w (got %d)", ErrGMLCRestrictionInvalid, v)
-		}
-		out.GmlcRestriction = &v
-	}
-	if w.NotificationToMSUser != nil {
-		v := NotificationToMSUser(*w.NotificationToMSUser)
-		if v < 0 || v > 3 {
-			return nil, fmt.Errorf("ServiceType.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
-		out.NotificationToMSUser = &v
-	}
-	return out, nil
 }
 
-func convertServiceTypeListToWire(list ServiceTypeList) (gsm_map.ServiceTypeList, error) {
+func convertServiceTypeListToWire(list ServiceTypeList) (*gsm_map.ServiceTypeList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfServiceType {
-		return nil, fmt.Errorf("%w (got %d)", ErrServiceTypeListSize, len(list))
-	}
-	out := make(gsm_map.ServiceTypeList, len(list))
+
+	out := gsm_map.ServiceTypeList{Values: make([]gsm_map.ServiceType, len(list))}
 	for i, s := range list {
 		w, err := convertServiceTypeToWire(&s)
 		if err != nil {
 			return nil, fmt.Errorf("ServiceTypeList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToServiceTypeList(w gsm_map.ServiceTypeList) (ServiceTypeList, error) {
+func convertWireToServiceTypeList(w *gsm_map.ServiceTypeList) ServiceTypeList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfServiceType {
-		return nil, fmt.Errorf("%w (got %d)", ErrServiceTypeListSize, len(w))
+
+	out := make(ServiceTypeList, len(w.Values))
+	for i, s := range w.Values {
+		out[i] = *convertWireToServiceType(&s)
 	}
-	out := make(ServiceTypeList, len(w))
-	for i, s := range w {
-		v, err := convertWireToServiceType(&s)
-		if err != nil {
-			return nil, fmt.Errorf("ServiceTypeList[%d]: %w", i, err)
-		}
-		out[i] = *v
-	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
 // LCSPrivacyClass / LCSPrivacyExceptionList
-// — TS 29.002 MAP-MS-DataTypes.asn:1971-1996
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertLCSPrivacyClassToWire(c *LCSPrivacyClass) (*gsm_map.LCSPrivacyClass, error) {
 	if c == nil {
 		return nil, nil
 	}
-	if err := validateExtSSStatus(c.SsStatus, "LCSPrivacyClass.SsStatus"); err != nil {
-		return nil, err
-	}
-	if c.NotificationToMSUser != nil {
-		if v := *c.NotificationToMSUser; v < 0 || v > 3 {
-			return nil, fmt.Errorf("LCSPrivacyClass.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
+
+	if c.NotificationToMSUser != nil && !isValidNotificationToMSUser(*c.NotificationToMSUser) {
+		return nil, fmt.Errorf("LCSPrivacyClass.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, *c.NotificationToMSUser)
 	}
 	out := &gsm_map.LCSPrivacyClass{
 		SsCode:   gsm_map.SSCode{byte(c.SsCode)},
 		SsStatus: gsm_map.ExtSSStatus(c.SsStatus),
 	}
 	if c.NotificationToMSUser != nil {
-		v := gsm_map.NotificationToMSUser(*c.NotificationToMSUser)
+		v := *c.NotificationToMSUser
 		out.NotificationToMSUser = &v
 	}
 	if c.ExternalClientList != nil {
@@ -372,22 +354,11 @@ func convertWireToLCSPrivacyClass(w *gsm_map.LCSPrivacyClass) (*LCSPrivacyClass,
 	if w == nil {
 		return nil, nil
 	}
-	if err := validateExtSSStatus(HexBytes(w.SsStatus), "LCSPrivacyClass.SsStatus"); err != nil {
-		return nil, err
-	}
-	if len(w.SsCode) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrLCSPrivacyClassSsCodeInvalidSize, len(w.SsCode))
-	}
+
 	out := &LCSPrivacyClass{
-		SsCode:   SsCode(w.SsCode[0]),
-		SsStatus: HexBytes(w.SsStatus),
-	}
-	if w.NotificationToMSUser != nil {
-		v := NotificationToMSUser(*w.NotificationToMSUser)
-		if v < 0 || v > 3 {
-			return nil, fmt.Errorf("LCSPrivacyClass.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, v)
-		}
-		out.NotificationToMSUser = &v
+		SsCode:               SsCode(w.SsCode[0]),
+		SsStatus:             HexBytes(w.SsStatus),
+		NotificationToMSUser: notificationToMSUserFromWire(w.NotificationToMSUser),
 	}
 	if w.ExternalClientList != nil {
 		l, err := convertWireToExternalClientList(w.ExternalClientList)
@@ -397,11 +368,7 @@ func convertWireToLCSPrivacyClass(w *gsm_map.LCSPrivacyClass) (*LCSPrivacyClass,
 		out.ExternalClientList = l
 	}
 	if w.PlmnClientList != nil {
-		l, err := convertWireToPLMNClientList(w.PlmnClientList)
-		if err != nil {
-			return nil, fmt.Errorf("LCSPrivacyClass.PlmnClientList: %w", err)
-		}
-		out.PlmnClientList = l
+		out.PlmnClientList = convertWireToPLMNClientList(w.PlmnClientList)
 	}
 	if w.ExtExternalClientList != nil {
 		l, err := convertWireToExtExternalClientList(w.ExtExternalClientList)
@@ -411,42 +378,34 @@ func convertWireToLCSPrivacyClass(w *gsm_map.LCSPrivacyClass) (*LCSPrivacyClass,
 		out.ExtExternalClientList = l
 	}
 	if w.ServiceTypeList != nil {
-		l, err := convertWireToServiceTypeList(w.ServiceTypeList)
-		if err != nil {
-			return nil, fmt.Errorf("LCSPrivacyClass.ServiceTypeList: %w", err)
-		}
-		out.ServiceTypeList = l
+		out.ServiceTypeList = convertWireToServiceTypeList(w.ServiceTypeList)
 	}
 	return out, nil
 }
 
-func convertLCSPrivacyExceptionListToWire(list LCSPrivacyExceptionList) (gsm_map.LCSPrivacyExceptionList, error) {
+func convertLCSPrivacyExceptionListToWire(list LCSPrivacyExceptionList) (*gsm_map.LCSPrivacyExceptionList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfPrivacyClass {
-		return nil, fmt.Errorf("%w (got %d)", ErrLCSPrivacyExceptionListSize, len(list))
-	}
-	out := make(gsm_map.LCSPrivacyExceptionList, len(list))
+
+	out := gsm_map.LCSPrivacyExceptionList{Values: make([]gsm_map.LCSPrivacyClass, len(list))}
 	for i, c := range list {
 		w, err := convertLCSPrivacyClassToWire(&c)
 		if err != nil {
 			return nil, fmt.Errorf("LCSPrivacyExceptionList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToLCSPrivacyExceptionList(w gsm_map.LCSPrivacyExceptionList) (LCSPrivacyExceptionList, error) {
+func convertWireToLCSPrivacyExceptionList(w *gsm_map.LCSPrivacyExceptionList) (LCSPrivacyExceptionList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfPrivacyClass {
-		return nil, fmt.Errorf("%w (got %d)", ErrLCSPrivacyExceptionListSize, len(w))
-	}
-	out := make(LCSPrivacyExceptionList, len(w))
-	for i, c := range w {
+
+	out := make(LCSPrivacyExceptionList, len(w.Values))
+	for i, c := range w.Values {
 		v, err := convertWireToLCSPrivacyClass(&c)
 		if err != nil {
 			return nil, fmt.Errorf("LCSPrivacyExceptionList[%d]: %w", i, err)
@@ -457,122 +416,105 @@ func convertWireToLCSPrivacyExceptionList(w gsm_map.LCSPrivacyExceptionList) (LC
 }
 
 // ============================================================================
-// MOLRClass / MOLRList — TS 29.002 MAP-MS-DataTypes.asn:2059-2068
+// MOLRClass / MOLRList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
-func convertMOLRClassToWire(c *MOLRClass) (*gsm_map.MOLRClass, error) {
+func convertMOLRClassToWire(c *MOLRClass) *gsm_map.MOLRClass {
 	if c == nil {
-		return nil, nil
+		return nil
 	}
-	if err := validateExtSSStatus(c.SsStatus, "MOLRClass.SsStatus"); err != nil {
-		return nil, err
-	}
+
 	return &gsm_map.MOLRClass{
 		SsCode:   gsm_map.SSCode{byte(c.SsCode)},
 		SsStatus: gsm_map.ExtSSStatus(c.SsStatus),
-	}, nil
+	}
 }
 
-func convertWireToMOLRClass(w *gsm_map.MOLRClass) (*MOLRClass, error) {
+func convertWireToMOLRClass(w *gsm_map.MOLRClass) *MOLRClass {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
-	if err := validateExtSSStatus(HexBytes(w.SsStatus), "MOLRClass.SsStatus"); err != nil {
-		return nil, err
-	}
-	if len(w.SsCode) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrMOLRClassSsCodeInvalidSize, len(w.SsCode))
-	}
+
 	return &MOLRClass{
 		SsCode:   SsCode(w.SsCode[0]),
 		SsStatus: HexBytes(w.SsStatus),
-	}, nil
+	}
 }
 
-func convertMOLRListToWire(list MOLRList) (gsm_map.MOLRList, error) {
+func convertMOLRListToWire(list MOLRList) *gsm_map.MOLRList {
 	if list == nil {
-		return nil, nil
+		return nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfMOLRClass {
-		return nil, fmt.Errorf("%w (got %d)", ErrMOLRListSize, len(list))
-	}
-	out := make(gsm_map.MOLRList, len(list))
+
+	out := gsm_map.MOLRList{Values: make([]gsm_map.MOLRClass, len(list))}
 	for i, c := range list {
-		w, err := convertMOLRClassToWire(&c)
-		if err != nil {
-			return nil, fmt.Errorf("MOLRList[%d]: %w", i, err)
-		}
-		out[i] = *w
+		out.Values[i] = *convertMOLRClassToWire(&c)
 	}
-	return out, nil
+	return &out
 }
 
-func convertWireToMOLRList(w gsm_map.MOLRList) (MOLRList, error) {
+func convertWireToMOLRList(w *gsm_map.MOLRList) MOLRList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfMOLRClass {
-		return nil, fmt.Errorf("%w (got %d)", ErrMOLRListSize, len(w))
+
+	out := make(MOLRList, len(w.Values))
+	for i, c := range w.Values {
+		out[i] = *convertWireToMOLRClass(&c)
 	}
-	out := make(MOLRList, len(w))
-	for i, c := range w {
-		v, err := convertWireToMOLRClass(&c)
-		if err != nil {
-			return nil, fmt.Errorf("MOLRList[%d]: %w", i, err)
-		}
-		out[i] = *v
-	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
-// GMLCList — TS 29.002 MAP-MS-DataTypes.asn:1503
+// GMLCList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
-func convertGMLCListToWire(list GMLCList) (gsm_map.GMLCList, error) {
+func convertGMLCListToWire(list GMLCList) (*gsm_map.GMLCList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfGMLC {
-		return nil, fmt.Errorf("%w (got %d)", ErrGMLCListSize, len(list))
-	}
-	out := make(gsm_map.GMLCList, len(list))
+
+	out := gsm_map.GMLCList{Values: make([]gsm_map.ISDNAddressString, len(list))}
 	for i, a := range list {
-		if a.Address == "" {
-			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCAddressEmpty)
+		if a.Digits == "" {
+			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCListEntryEmpty)
 		}
-		isdn, err := encodeAddressField(a.Address, a.Nature, a.Plan)
+		isdn, err := encodeAddressField(a.Digits, a.Nature, a.Plan)
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
 		}
-		out[i] = gsm_map.ISDNAddressString(isdn)
+		if !isISDNAddressStringSize(len(isdn)) {
+			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(isdn), ErrGMLCListEntryInvalidSize)
+		}
+		out.Values[i] = isdn
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToGMLCList(w gsm_map.GMLCList) (GMLCList, error) {
+func convertWireToGMLCList(w *gsm_map.GMLCList) (GMLCList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfGMLC {
-		return nil, fmt.Errorf("%w (got %d)", ErrGMLCListSize, len(w))
-	}
-	out := make(GMLCList, len(w))
-	for i, a := range w {
-		s, nature, plan, err := decodeAddressField([]byte(a))
+
+	out := make(GMLCList, len(w.Values))
+	for i, a := range w.Values {
+		if !isISDNAddressStringSize(len(a)) {
+			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(a), ErrGMLCListEntryInvalidSize)
+		}
+		s, nature, plan, err := decodeAddressField(a)
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
 		}
 		if s == "" {
-			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCAddressEmpty)
+			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCListEntryEmpty)
 		}
-		out[i] = GMLCAddress{Address: s, Nature: nature, Plan: plan}
+		out[i] = ISDNNumber{Digits: s, Nature: nature, Plan: plan}
 	}
 	return out, nil
 }
 
 // ============================================================================
-// LCSInformation — TS 29.002 MAP-MS-DataTypes.asn:1490
+// LCSInformation — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertLCSInformationToWire(l *LCSInformation) (*gsm_map.LCSInformation, error) {
@@ -595,13 +537,15 @@ func convertLCSInformationToWire(l *LCSInformation) (*gsm_map.LCSInformation, er
 		out.LcsPrivacyExceptionList = pe
 	}
 	if l.MolrList != nil {
-		ml, err := convertMOLRListToWire(l.MolrList)
-		if err != nil {
-			return nil, err
-		}
-		out.MolrList = ml
+		out.MolrList = convertMOLRListToWire(l.MolrList)
 	}
 	if l.AddLcsPrivacyExceptionList != nil {
+		if len(l.LcsPrivacyExceptionList) != maxNumOfPrivacyClass {
+			return nil, ErrLCSAddPrivacyExceptionListNotAllowed
+		}
+		if err := checkPrivacyClassSSCodesDistinct(l.LcsPrivacyExceptionList, l.AddLcsPrivacyExceptionList); err != nil {
+			return nil, err
+		}
 		al, err := convertLCSPrivacyExceptionListToWire(l.AddLcsPrivacyExceptionList)
 		if err != nil {
 			return nil, fmt.Errorf("LCSInformation.AddLcsPrivacyExceptionList: %w", err)
@@ -631,18 +575,38 @@ func convertWireToLCSInformation(w *gsm_map.LCSInformation) (*LCSInformation, er
 		out.LcsPrivacyExceptionList = pe
 	}
 	if w.MolrList != nil {
-		ml, err := convertWireToMOLRList(w.MolrList)
-		if err != nil {
-			return nil, err
-		}
-		out.MolrList = ml
+		out.MolrList = convertWireToMOLRList(w.MolrList)
 	}
-	if w.AddLcsPrivacyExceptionList != nil {
+	// "If the mentioned condition is not satisfied the receiving node shall
+	// discard add-lcs-PrivacyExceptionList" (see
+	// ErrLCSAddPrivacyExceptionListNotAllowed).
+	if w.AddLcsPrivacyExceptionList != nil && len(out.LcsPrivacyExceptionList) == maxNumOfPrivacyClass {
 		al, err := convertWireToLCSPrivacyExceptionList(w.AddLcsPrivacyExceptionList)
 		if err != nil {
 			return nil, fmt.Errorf("LCSInformation.AddLcsPrivacyExceptionList: %w", err)
 		}
+		if err := checkPrivacyClassSSCodesDistinct(out.LcsPrivacyExceptionList, al); err != nil {
+			return nil, err
+		}
 		out.AddLcsPrivacyExceptionList = al
 	}
 	return out, nil
+}
+
+// maxNumOfPrivacyClass is the LCS-PrivacyExceptionList bound, and the
+// number of classes lcs-PrivacyExceptionList must hold before
+// add-lcs-PrivacyExceptionList may be sent (3GPP TS 29.002 V19.1.0 §17.7.1).
+const maxNumOfPrivacyClass = 4
+
+// checkPrivacyClassSSCodesDistinct returns ErrLCSPrivacyClassDuplicateSSCode
+// when an SS-Code of add is also in list.
+func checkPrivacyClassSSCodesDistinct(list, add LCSPrivacyExceptionList) error {
+	for i, a := range add {
+		for _, c := range list {
+			if a.SsCode == c.SsCode {
+				return fmt.Errorf("LCSInformation.AddLcsPrivacyExceptionList[%d] SS-Code 0x%02X: %w", i, uint8(a.SsCode), ErrLCSPrivacyClassDuplicateSSCode)
+			}
+		}
+	}
+	return nil
 }

@@ -36,10 +36,7 @@ func TestAreaRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToArea(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToArea(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -58,20 +55,20 @@ func TestAreaOutOfRangeTypeRejected(t *testing.T) {
 }
 
 func TestAreaIdentificationSizeRejected(t *testing.T) {
-	_, err := convertAreaToWire(&Area{
+	_, err := strictWire(convertAreaToWire(&Area{
 		AreaType:           AreaTypeCountryCode,
 		AreaIdentification: HexBytes{0x01}, // too small (min 2)
-	})
-	if !errors.Is(err, ErrAreaIdentificationSize) {
-		t.Errorf("encode 1 octet: want ErrAreaIdentificationSize, got %v", err)
+	}))
+	if !matchesConstraint(err, "areaIdentification", "SIZE (2..7)") {
+		t.Errorf("encode 1 octet: want BER constraint error, got %v", err)
 	}
 	tooBig := make(HexBytes, 8) // too big (max 7)
-	_, err = convertAreaToWire(&Area{
+	_, err = strictWire(convertAreaToWire(&Area{
 		AreaType:           AreaTypeCountryCode,
 		AreaIdentification: tooBig,
-	})
-	if !errors.Is(err, ErrAreaIdentificationSize) {
-		t.Errorf("encode 8 octets: want ErrAreaIdentificationSize, got %v", err)
+	}))
+	if !matchesConstraint(err, "areaIdentification", "SIZE (2..7)") {
+		t.Errorf("encode 8 octets: want BER constraint error, got %v", err)
 	}
 }
 
@@ -88,30 +85,27 @@ func TestAreaListRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode: %v", err)
 	}
-	out, err := convertWireToAreaList(wire)
-	if err != nil {
-		t.Fatalf("decode: %v", err)
-	}
+	out := convertWireToAreaList(wire)
 	if !reflect.DeepEqual(in, out) {
 		t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", in, out)
 	}
 }
 
 func TestAreaListEmptyRejected(t *testing.T) {
-	_, err := convertAreaListToWire(AreaList{})
-	if !errors.Is(err, ErrAreaListSize) {
-		t.Errorf("want ErrAreaListSize for empty list, got %v", err)
+	_, err := strictWire(convertAreaListToWire(AreaList{}))
+	if !matchesConstraint(err, "areaList", "SIZE (1..10)") {
+		t.Errorf("want BER constraint error for empty list, got %v", err)
 	}
 }
 
 func TestAreaListOversizedRejected(t *testing.T) {
-	tooMany := make(AreaList, AreaListMaxEntries+1)
+	tooMany := make(AreaList, 10+1)
 	for i := range tooMany {
 		tooMany[i] = Area{AreaType: AreaTypeCountryCode, AreaIdentification: HexBytes{0x01, 0x02}}
 	}
-	_, err := convertAreaListToWire(tooMany)
-	if !errors.Is(err, ErrAreaListSize) {
-		t.Errorf("want ErrAreaListSize for 11 entries, got %v", err)
+	_, err := strictWire(convertAreaListToWire(tooMany))
+	if !matchesConstraint(err, "areaList", "SIZE (1..10)") {
+		t.Errorf("want BER constraint error for 11 entries, got %v", err)
 	}
 }
 
@@ -148,10 +142,7 @@ func TestAreaEventInfoRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToAreaEventInfo(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToAreaEventInfo(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -161,25 +152,25 @@ func TestAreaEventInfoRoundTrip(t *testing.T) {
 
 func TestAreaEventInfoIntervalTimeOutOfRangeRejected(t *testing.T) {
 	bad := IntervalTime(0) // below min
-	_, err := convertAreaEventInfoToWire(&AreaEventInfo{
+	_, err := strictWire(convertAreaEventInfoToWire(&AreaEventInfo{
 		AreaDefinition: AreaDefinition{
 			AreaList: AreaList{{AreaType: AreaTypeCountryCode, AreaIdentification: HexBytes{0x01, 0x02}}},
 		},
 		IntervalTime: &bad,
-	})
-	if !errors.Is(err, ErrIntervalTimeOutOfRange) {
-		t.Errorf("encode IntervalTime=0: want ErrIntervalTimeOutOfRange, got %v", err)
+	}))
+	if !matchesConstraint(err, "intervalTime", "(1..32767)") {
+		t.Errorf("encode IntervalTime=0: want BER constraint error, got %v", err)
 	}
 
-	tooBig := IntervalTime(IntervalTimeMax + 1)
-	_, err = convertAreaEventInfoToWire(&AreaEventInfo{
+	tooBig := IntervalTime(32767 + 1)
+	_, err = strictWire(convertAreaEventInfoToWire(&AreaEventInfo{
 		AreaDefinition: AreaDefinition{
 			AreaList: AreaList{{AreaType: AreaTypeCountryCode, AreaIdentification: HexBytes{0x01, 0x02}}},
 		},
 		IntervalTime: &tooBig,
-	})
-	if !errors.Is(err, ErrIntervalTimeOutOfRange) {
-		t.Errorf("encode IntervalTime=32768: want ErrIntervalTimeOutOfRange, got %v", err)
+	}))
+	if !matchesConstraint(err, "intervalTime", "(1..32767)") {
+		t.Errorf("encode IntervalTime=32768: want BER constraint error, got %v", err)
 	}
 }
 
@@ -231,27 +222,33 @@ func TestPeriodicLDRInfoRoundTrip(t *testing.T) {
 
 func TestPeriodicLDRInfoOutOfRangeRejected(t *testing.T) {
 	cases := []struct {
-		name    string
-		in      *PeriodicLDRInfo
-		wantErr error
+		name string
+		in   *PeriodicLDRInfo
+		path string
 	}{
-		{"amount below min", &PeriodicLDRInfo{ReportingAmount: 0, ReportingInterval: 1}, ErrReportingAmountOutOfRange},
-		{"amount above max", &PeriodicLDRInfo{ReportingAmount: ReportingAmountMax + 1, ReportingInterval: 1}, ErrReportingAmountOutOfRange},
-		{"interval below min", &PeriodicLDRInfo{ReportingAmount: 1, ReportingInterval: 0}, ErrReportingIntervalOutOfRange},
-		{"interval above max", &PeriodicLDRInfo{ReportingAmount: 1, ReportingInterval: ReportingIntervalMax + 1}, ErrReportingIntervalOutOfRange},
+		{"amount below min", &PeriodicLDRInfo{ReportingAmount: 0, ReportingInterval: 1}, "reportingAmount"},
+		{"amount above max", &PeriodicLDRInfo{ReportingAmount: 8639999 + 1, ReportingInterval: 1}, "reportingAmount"},
+		{"interval below min", &PeriodicLDRInfo{ReportingAmount: 1, ReportingInterval: 0}, "reportingInterval"},
+		{"interval above max", &PeriodicLDRInfo{ReportingAmount: 1, ReportingInterval: 8639999 + 1}, "reportingInterval"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := convertPeriodicLDRInfoToWire(tc.in)
-			if !errors.Is(err, tc.wantErr) {
-				t.Errorf("want %v, got %v", tc.wantErr, err)
+			// Start with a valid gsmmap value so the BER range check is isolated
+			// from the converter's reporting product limit.
+			wire, err := convertPeriodicLDRInfoToWire(&PeriodicLDRInfo{ReportingAmount: 1, ReportingInterval: 1})
+			if err != nil {
+				t.Fatal(err)
 			}
+			wire.ReportingAmount = tc.in.ReportingAmount
+			wire.ReportingInterval = tc.in.ReportingInterval
+			_, err = strictWire(wire, nil)
+			wantConstraintError(t, err, tc.path, "(1..8639999)")
 		})
 	}
 }
 
 // Spec-mandated cap: ReportingAmount × ReportingInterval ≤ 8639999
-// (TS 29.002 MAP-LCS-DataTypes.asn:375-376).
+// (3GPP TS 29.002 V19.1.0 §17.7.13).
 func TestPeriodicLDRInfoProductCapRejected(t *testing.T) {
 	in := &PeriodicLDRInfo{ReportingAmount: 1000, ReportingInterval: 10000} // 10,000,000 > cap
 	_, err := convertPeriodicLDRInfoToWire(in)
@@ -294,10 +291,7 @@ func TestReportingPLMNRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToReportingPLMN(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToReportingPLMN(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -306,11 +300,11 @@ func TestReportingPLMNRoundTrip(t *testing.T) {
 }
 
 func TestReportingPLMNInvalidPlmnIdRejected(t *testing.T) {
-	_, err := convertReportingPLMNToWire(&ReportingPLMN{
+	_, err := strictWire(convertReportingPLMNToWire(&ReportingPLMN{
 		PlmnId: HexBytes{0x01, 0x02}, // too short (must be exactly 3)
-	})
-	if !errors.Is(err, ErrPlmnIdInvalidSize) {
-		t.Errorf("want ErrPlmnIdInvalidSize, got %v", err)
+	}))
+	if !matchesConstraint(err, "plmn-Id", "SIZE (3)") {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -351,10 +345,7 @@ func TestReportingPLMNListRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToReportingPLMNList(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToReportingPLMNList(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -363,22 +354,22 @@ func TestReportingPLMNListRoundTrip(t *testing.T) {
 }
 
 func TestReportingPLMNListEmptyListRejected(t *testing.T) {
-	_, err := convertReportingPLMNListToWire(&ReportingPLMNList{
+	_, err := strictWire(convertReportingPLMNListToWire(&ReportingPLMNList{
 		PlmnList: PLMNList{},
-	})
-	if !errors.Is(err, ErrPLMNListSize) {
-		t.Errorf("want ErrPLMNListSize for empty list, got %v", err)
+	}))
+	if !matchesConstraint(err, "plmn-List", "SIZE (1..20)") {
+		t.Errorf("want BER constraint error for empty list, got %v", err)
 	}
 }
 
 func TestReportingPLMNListOversizedRejected(t *testing.T) {
-	tooMany := make(PLMNList, PLMNListMaxEntries+1)
+	tooMany := make(PLMNList, 20+1)
 	for i := range tooMany {
 		tooMany[i] = ReportingPLMN{PlmnId: HexBytes{0x32, 0xf4, 0x10}}
 	}
-	_, err := convertReportingPLMNListToWire(&ReportingPLMNList{PlmnList: tooMany})
-	if !errors.Is(err, ErrPLMNListSize) {
-		t.Errorf("want ErrPLMNListSize for 21 entries, got %v", err)
+	_, err := strictWire(convertReportingPLMNListToWire(&ReportingPLMNList{PlmnList: tooMany}))
+	if !matchesConstraint(err, "plmn-List", "SIZE (1..20)") {
+		t.Errorf("want BER constraint error for 21 entries, got %v", err)
 	}
 }
 
@@ -403,23 +394,23 @@ func TestPSLAreaPeriodicNilPassThrough(t *testing.T) {
 	}
 
 	// Decode-side nil pass-through.
-	if out, err := convertWireToArea(nil); err != nil || out != nil {
-		t.Errorf("WireToArea nil: got out=%v err=%v", out, err)
+	if out := convertWireToArea(nil); out != nil {
+		t.Errorf("WireToArea nil: got out=%v", out)
 	}
-	if out, err := convertWireToAreaDefinition(nil); err != nil || out != nil {
-		t.Errorf("WireToAreaDefinition nil: got out=%v err=%v", out, err)
+	if out := convertWireToAreaDefinition(nil); out != nil {
+		t.Errorf("WireToAreaDefinition nil: got out=%v", out)
 	}
-	if out, err := convertWireToAreaEventInfo(nil); err != nil || out != nil {
-		t.Errorf("WireToAreaEventInfo nil: got out=%v err=%v", out, err)
+	if out := convertWireToAreaEventInfo(nil); out != nil {
+		t.Errorf("WireToAreaEventInfo nil: got out=%v", out)
 	}
 	if out, err := convertWireToPeriodicLDRInfo(nil); err != nil || out != nil {
 		t.Errorf("WireToPeriodicLDRInfo nil: got out=%v err=%v", out, err)
 	}
-	if out, err := convertWireToReportingPLMN(nil); err != nil || out != nil {
-		t.Errorf("WireToReportingPLMN nil: got out=%v err=%v", out, err)
+	if out := convertWireToReportingPLMN(nil); out != nil {
+		t.Errorf("WireToReportingPLMN nil: got out=%v", out)
 	}
-	if out, err := convertWireToReportingPLMNList(nil); err != nil || out != nil {
-		t.Errorf("WireToReportingPLMNList nil: got out=%v err=%v", out, err)
+	if out := convertWireToReportingPLMNList(nil); out != nil {
+		t.Errorf("WireToReportingPLMNList nil: got out=%v", out)
 	}
 }
 
@@ -429,47 +420,38 @@ func TestPSLAreaPeriodicNilPassThrough(t *testing.T) {
 // TestAreaOutOfRangeTypeRejected, TestAreaEventInfoOccurrenceInfoOutOfRangeRejected,
 // and TestReportingPLMNRanTechnologyOutOfRangeRejected.)
 func TestPSLAreaPeriodicDecoderLenientForExtensibleEnums(t *testing.T) {
-	// AreaType — extensible (TS 29.002:337).
+	// AreaType — extensible (3GPP TS 29.002 V19.1.0 §17.7.13).
 	w := &gsm_map.Area{
 		AreaType:           gsm_map.AreaType(99),
 		AreaIdentification: gsm_map.AreaIdentification{0x01, 0x02},
 	}
-	got, err := convertWireToArea(w)
-	if err != nil {
-		t.Fatalf("AreaType=99 decode: unexpected error %v", err)
-	}
+	got := convertWireToArea(w)
 	if int64(got.AreaType) != 99 {
 		t.Errorf("AreaType not preserved: want 99, got %d", got.AreaType)
 	}
 
-	// OccurrenceInfo — extensible (TS 29.002:361).
+	// OccurrenceInfo — extensible (3GPP TS 29.002 V19.1.0 §17.7.13).
 	occ := gsm_map.OccurrenceInfo(99)
 	wAEI := &gsm_map.AreaEventInfo{
 		AreaDefinition: gsm_map.AreaDefinition{
-			AreaList: gsm_map.AreaList{
+			AreaList: &gsm_map.AreaList{Values: []gsm_map.Area{
 				{AreaType: gsm_map.AreaTypeCountryCode, AreaIdentification: gsm_map.AreaIdentification{0x01, 0x02}},
-			},
+			}},
 		},
 		OccurrenceInfo: &occ,
 	}
-	gotAEI, err := convertWireToAreaEventInfo(wAEI)
-	if err != nil {
-		t.Fatalf("OccurrenceInfo=99 decode: unexpected error %v", err)
-	}
+	gotAEI := convertWireToAreaEventInfo(wAEI)
 	if gotAEI.OccurrenceInfo == nil || int64(*gotAEI.OccurrenceInfo) != 99 {
 		t.Errorf("OccurrenceInfo not preserved: got %v", gotAEI.OccurrenceInfo)
 	}
 
-	// RANTechnology — extensible (TS 29.002:420).
+	// RANTechnology — extensible (3GPP TS 29.002 V19.1.0 §17.7.13).
 	tech := gsm_map.RANTechnology(99)
 	wRP := &gsm_map.ReportingPLMN{
 		PlmnId:        gsm_map.PLMNId{0x32, 0xf4, 0x10},
 		RanTechnology: &tech,
 	}
-	gotRP, err := convertWireToReportingPLMN(wRP)
-	if err != nil {
-		t.Fatalf("RanTechnology=99 decode: unexpected error %v", err)
-	}
+	gotRP := convertWireToReportingPLMN(wRP)
 	if gotRP.RanTechnology == nil || int64(*gotRP.RanTechnology) != 99 {
 		t.Errorf("RanTechnology not preserved: got %v", gotRP.RanTechnology)
 	}

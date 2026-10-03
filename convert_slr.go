@@ -13,28 +13,16 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// diameterIdentityMinLen / diameterIdentityMaxLen (9..255 per RFC 6733,
-// TS 29.002 MAP-MS-DataTypes.asn:1434) are defined in convert_psl_res.go.
-
 // ============================================================================
-// LCSLocationInfo — TS 29.002 MAP-LCS-DataTypes.asn
+// LCSLocationInfo — TS 29.002 §17.7.13
 // ============================================================================
-
-// validateDiameterIdentity checks an optional DiameterIdentity FQDN
-// field (9..255 octets); empty/nil is treated as absent by the caller.
-func validateDiameterIdentity(b HexBytes, sentinel error) error {
-	if len(b) < diameterIdentityMinLen || len(b) > diameterIdentityMaxLen {
-		return fmt.Errorf("len=%d: %w", len(b), sentinel)
-	}
-	return nil
-}
 
 func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo, error) {
 	if l == nil {
 		return nil, nil
 	}
 	if l.NetworkNodeNumber == "" {
-		return nil, ErrLCSLocationInfoNetworkNodeEmpty
+		return nil, ErrLCSLocationInfoNetworkNodeNumberEmpty
 	}
 	nodeWire, err := encodeAddressField(l.NetworkNodeNumber, l.NetworkNodeNumberNature, l.NetworkNodeNumberPlan)
 	if err != nil {
@@ -42,13 +30,10 @@ func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo,
 	}
 
 	out := &gsm_map.LCSLocationInfo{
-		NetworkNodeNumber: gsm_map.ISDNAddressString(nodeWire),
+		NetworkNodeNumber: nodeWire,
 	}
 
 	if len(l.LMSI) > 0 {
-		if len(l.LMSI) != 4 {
-			return nil, fmt.Errorf("LCSLocationInfo.LMSI len=%d: %w", len(l.LMSI), ErrLCSLocationInfoLMSIInvalidSize)
-		}
 		v := gsm_map.LMSI(l.LMSI)
 		out.Lmsi = &v
 	}
@@ -70,30 +55,18 @@ func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo,
 		out.AdditionalLCSCapabilitySets = &bs
 	}
 	if len(l.MmeName) > 0 {
-		if err := validateDiameterIdentity(l.MmeName, ErrLCSLocationInfoMmeNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.MmeName: %w", err)
-		}
 		v := gsm_map.DiameterIdentity(l.MmeName)
 		out.MmeName = &v
 	}
 	if len(l.AaaServerName) > 0 {
-		if err := validateDiameterIdentity(l.AaaServerName, ErrLCSLocationInfoAaaServerNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.AaaServerName: %w", err)
-		}
 		v := gsm_map.DiameterIdentity(l.AaaServerName)
 		out.AaaServerName = &v
 	}
 	if len(l.SgsnName) > 0 {
-		if err := validateDiameterIdentity(l.SgsnName, ErrLCSLocationInfoSgsnNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.SgsnName: %w", err)
-		}
 		v := gsm_map.DiameterIdentity(l.SgsnName)
 		out.SgsnName = &v
 	}
 	if len(l.SgsnRealm) > 0 {
-		if err := validateDiameterIdentity(l.SgsnRealm, ErrLCSLocationInfoSgsnRealmSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.SgsnRealm: %w", err)
-		}
 		v := gsm_map.DiameterIdentity(l.SgsnRealm)
 		out.SgsnRealm = &v
 	}
@@ -104,12 +77,12 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 	if w == nil {
 		return nil, nil
 	}
-	node, nature, plan, err := decodeAddressField([]byte(w.NetworkNodeNumber))
+	node, nature, plan, err := decodeAddressField(w.NetworkNodeNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding LCSLocationInfo.NetworkNodeNumber: %w", err)
 	}
 	if node == "" {
-		return nil, ErrLCSLocationInfoNetworkNodeDecodedEmpty
+		return nil, ErrLCSLocationInfoNetworkNodeNumberEmpty
 	}
 
 	out := &LCSLocationInfo{
@@ -119,9 +92,6 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 	}
 
 	if w.Lmsi != nil {
-		if len(*w.Lmsi) != 4 {
-			return nil, fmt.Errorf("LCSLocationInfo.LMSI len=%d: %w", len(*w.Lmsi), ErrLCSLocationInfoLMSIInvalidSize)
-		}
 		out.LMSI = HexBytes(*w.Lmsi)
 	}
 	out.GprsNodeIndicator = nullPtrToBool(w.GprsNodeIndicator)
@@ -133,10 +103,8 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 		}
 		out.AdditionalNumber = an
 	}
-	// Guard with BitLength > 0 so a present-but-empty BIT STRING is
-	// treated as absent — a zero-length wire value can't round-trip
-	// through the struct-of-bools surrogate. Matches the existing
-	// pattern in convert_updateloc.go / convert_updategprsloc.go.
+	// Direct wire conversion treats zero-length capability sets as absent;
+	// BER enforces SIZE (2..16) (3GPP TS 29.002 V19.1.0 §17.7.1).
 	if w.SupportedLCSCapabilitySets != nil && w.SupportedLCSCapabilitySets.BitLength > 0 {
 		out.SupportedLCSCapabilitySets = convertBitStringToLCSCaps(*w.SupportedLCSCapabilitySets)
 	}
@@ -145,43 +113,43 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 	}
 	if w.MmeName != nil {
 		mme := HexBytes(*w.MmeName)
-		if err := validateDiameterIdentity(mme, ErrLCSLocationInfoMmeNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.MmeName: %w", err)
-		}
+
 		out.MmeName = mme
 	}
 	if w.AaaServerName != nil {
 		aaa := HexBytes(*w.AaaServerName)
-		if err := validateDiameterIdentity(aaa, ErrLCSLocationInfoAaaServerNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.AaaServerName: %w", err)
-		}
+
 		out.AaaServerName = aaa
 	}
 	if w.SgsnName != nil {
 		sgsn := HexBytes(*w.SgsnName)
-		if err := validateDiameterIdentity(sgsn, ErrLCSLocationInfoSgsnNameSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.SgsnName: %w", err)
-		}
+
 		out.SgsnName = sgsn
 	}
 	if w.SgsnRealm != nil {
 		realm := HexBytes(*w.SgsnRealm)
-		if err := validateDiameterIdentity(realm, ErrLCSLocationInfoSgsnRealmSize); err != nil {
-			return nil, fmt.Errorf("LCSLocationInfo.SgsnRealm: %w", err)
-		}
+
 		out.SgsnRealm = realm
 	}
 	return out, nil
 }
 
 // ============================================================================
-// DeferredmtLrData — TS 29.002 MAP-LCS-DataTypes.asn:673
+// DeferredmtLrData — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 //
 // LcsLocationInfo may be present only if TerminationCause indicates
 // mt-lrRestart per spec. That invariant is the caller's responsibility;
 // the codec preserves whatever is set, since intermediaries may relay
 // data they don't fully validate.
+
+// isRecognizedTerminationCause reports whether v is one of the
+// TerminationCause values 3GPP TS 29.002 V19.1.0 §17.7.13 lists, normal(0)
+// to networkTermination(9). The encoder sends only these; the decoder treats
+// any other value as errorundefined(1).
+func isRecognizedTerminationCause(v TerminationCause) bool {
+	return v >= TerminationNormal && v <= TerminationNetworkTermination
+}
 
 func convertDeferredmtLrDataToWire(d *DeferredmtLrData) (*gsm_map.DeferredmtLrData, error) {
 	if d == nil {
@@ -193,9 +161,7 @@ func convertDeferredmtLrDataToWire(d *DeferredmtLrData) (*gsm_map.DeferredmtLrDa
 	}
 	if d.TerminationCause != nil {
 		v := *d.TerminationCause
-		// TerminationCause is extensible (TS 29.002:696); encoder
-		// strict (0..9), decoder lenient.
-		if int64(v) < 0 || int64(v) > 9 {
+		if !isRecognizedTerminationCause(v) {
 			return nil, fmt.Errorf("DeferredmtLrData.TerminationCause=%d: %w", v, ErrTerminationCauseInvalid)
 		}
 		out.TerminationCause = &v
@@ -214,15 +180,18 @@ func convertWireToDeferredmtLrData(w *gsm_map.DeferredmtLrData) (*DeferredmtLrDa
 	if w == nil {
 		return nil, nil
 	}
-	det, err := convertBitStringToDeferredLocationEventType(w.DeferredLocationEventType)
-	if err != nil {
-		return nil, fmt.Errorf("DeferredmtLrData.DeferredLocationEventType: %w", err)
-	}
+	det := convertBitStringToDeferredLocationEventType(w.DeferredLocationEventType)
 	out := &DeferredmtLrData{
 		DeferredLocationEventType: *det,
 	}
 	if w.TerminationCause != nil {
+		// 3GPP TS 29.002 V19.1.0 §17.7.13 TerminationCause: "an
+		// unrecognized value shall be treated the same as value 1
+		// (errorundefined)".
 		v := *w.TerminationCause
+		if !isRecognizedTerminationCause(v) {
+			v = TerminationErrorundefined
+		}
 		out.TerminationCause = &v
 	}
 	if w.LcsLocationInfo != nil {

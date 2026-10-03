@@ -3,8 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -46,11 +44,11 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 	}
 
 	if s.IMEI != "" {
-		imeiBytes, err := tbcd.Encode(s.IMEI)
+		imeiBytes, err := encodeIdentityDigits(identityIMEI, s.IMEI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding IMEI: %w", err)
 		}
-		imei := gsm_map.IMEI(imeiBytes)
+		imei := imeiBytes
 		si.Imei = &imei
 	}
 
@@ -73,8 +71,9 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 
 	// ImsVoiceOverPSSessionsIndication — 0..2 per TS 29.002.
 	if s.ImsVoiceOverPSSessionsIndication != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *s.ImsVoiceOverPSSessionsIndication < 0 || *s.ImsVoiceOverPSSessionsIndication > 2 {
-			return nil, fmt.Errorf("ImsVoiceOverPSSessionsIndication out of range 0..2: %d", *s.ImsVoiceOverPSSessionsIndication)
+			return nil, fmt.Errorf("ImsVoiceOverPSSessionsIndication=%d: %w", *s.ImsVoiceOverPSSessionsIndication, ErrImsVoiceOverPSSessionsIndicationInvalid)
 		}
 		v := *s.ImsVoiceOverPSSessionsIndication
 		si.ImsVoiceOverPSSessionsIndication = &v
@@ -85,11 +84,13 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 		si.LastUEActivityTime = &t
 	}
 
-	// LastRATType — Used-RAT-Type per TS 29.002 MAP-MS-DataTypes.asn:582.
-	// Spec marks the enum extensible (`...`), so unknown values are
-	// preserved through the codec (Postel's law).
+	// LastRATType — Used-RAT-Type per 3GPP TS 29.002 V19.1.0 §17.7.1.
+	// Spec marks the enum extensible (`...`): only a listed value is sent.
 	if s.LastRATType != nil {
 		v := *s.LastRATType
+		if !isListedUsedRATType(v) {
+			return nil, fmt.Errorf("LastRATType=%d: %w", v, ErrUsedRATTypeInvalid)
+		}
 		si.LastRATType = &v
 	}
 
@@ -116,8 +117,9 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 
 	// DaylightSavingTime — 0..2 per TS 29.002.
 	if s.DaylightSavingTime != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *s.DaylightSavingTime < 0 || *s.DaylightSavingTime > 2 {
-			return nil, fmt.Errorf("DaylightSavingTime out of range 0..2: %d", *s.DaylightSavingTime)
+			return nil, fmt.Errorf("DaylightSavingTime=%d: %w", *s.DaylightSavingTime, ErrDaylightSavingTimeInvalid)
 		}
 		dst := gsm_map.DaylightSavingTime(*s.DaylightSavingTime)
 		si.DaylightSavingTime = &dst
@@ -173,10 +175,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	// the wire it must be exactly 8 octets — empty/non-8-octet IMEI is
 	// a spec violation, not "absent".
 	if si.Imei != nil {
-		if len(*si.Imei) != 8 {
-			return nil, fmt.Errorf("IMEI: TBCD-STRING must be exactly 8 octets, got %d", len(*si.Imei))
-		}
-		imei, err := tbcd.Decode(*si.Imei)
+		imei, err := decodeIdentityDigits(identityIMEI, *si.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMEI: %w", err)
 		}
@@ -184,7 +183,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	}
 
 	if si.MsClassmark2 != nil {
-		out.MsClassmark2 = []byte(*si.MsClassmark2)
+		out.MsClassmark2 = *si.MsClassmark2
 	}
 
 	if si.GprsMSClass != nil {
@@ -201,20 +200,22 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 
 	// ImsVoiceOverPSSessionsIndication — 0..2 per TS 29.002.
 	if si.ImsVoiceOverPSSessionsIndication != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		v, err := narrowInt64Range(int64(*si.ImsVoiceOverPSSessionsIndication), 0, 2, "ImsVoiceOverPSSessionsIndication")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("ImsVoiceOverPSSessionsIndication: %w: %w", ErrImsVoiceOverPSSessionsIndicationInvalid, err)
 		}
 		iv := ImsVoiceOverPSSessionsIndication(v)
 		out.ImsVoiceOverPSSessionsIndication = &iv
 	}
 
 	if si.LastUEActivityTime != nil {
-		out.LastUEActivityTime = []byte(*si.LastUEActivityTime)
+		out.LastUEActivityTime = *si.LastUEActivityTime
 	}
 
-	// LastRATType — Used-RAT-Type per TS 29.002 (extensible enum;
-	// preserve unknown values per Postel's law).
+	// LastRATType — Used-RAT-Type per TS 29.002 (extensible enum): an
+	// unknown value is kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal
+	// refuses it.
 	if si.LastRATType != nil {
 		v := *si.LastRATType
 		out.LastRATType = &v
@@ -237,14 +238,15 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	}
 
 	if si.TimeZone != nil {
-		out.TimeZone = []byte(*si.TimeZone)
+		out.TimeZone = *si.TimeZone
 	}
 
 	// DaylightSavingTime — 0..2 per TS 29.002.
 	if si.DaylightSavingTime != nil {
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		v, err := narrowInt64Range(int64(*si.DaylightSavingTime), 0, 2, "DaylightSavingTime")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("DaylightSavingTime: %w: %w", ErrDaylightSavingTimeInvalid, err)
 		}
 		out.DaylightSavingTime = &v
 	}
@@ -292,10 +294,10 @@ func psSubscriberStateCount(p *PsSubscriberState) int {
 func convertPsSubscriberStateToWire(p *PsSubscriberState) (*gsm_map.PSSubscriberState, error) {
 	n := psSubscriberStateCount(p)
 	if n == 0 {
-		return nil, ErrAtiPsSubscriberStateNoAlternative
+		return nil, ErrPsSubscriberStateNoAlternative
 	}
 	if n > 1 {
-		return nil, ErrAtiPsSubscriberStateMultipleAlternatives
+		return nil, ErrPsSubscriberStateMultipleAlternatives
 	}
 
 	switch {
@@ -326,14 +328,15 @@ func convertPsSubscriberStateToWire(p *PsSubscriberState) (*gsm_map.PSSubscriber
 		v := gsm_map.NewPSSubscriberStatePsPDPActiveReachableForPaging(list)
 		return &v, nil
 	case p.NetDetNotReachable != nil:
-		// NotReachableReason — 0..3 per TS 29.002.
+		// NotReachableReason — 0..3 (3GPP TS 29.002 V19.1.0 §17.7.1).
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *p.NetDetNotReachable < 0 || *p.NetDetNotReachable > 3 {
-			return nil, fmt.Errorf("PsSubscriberState.NetDetNotReachable out of range 0..3: %d", *p.NetDetNotReachable)
+			return nil, fmt.Errorf("PsSubscriberState.NetDetNotReachable=%d: %w", *p.NetDetNotReachable, ErrPsSubscriberStateNetDetNotReachableInvalid)
 		}
 		v := gsm_map.NewPSSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(int64(*p.NetDetNotReachable)))
 		return &v, nil
 	}
-	return nil, ErrAtiPsSubscriberStateNoAlternative
+	return nil, ErrPsSubscriberStateNoAlternative
 }
 
 func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriberState, error) {
@@ -360,34 +363,31 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 		}
 		out.PsPDPActiveReachableForPaging = enc
 	case gsm_map.PSSubscriberStateChoiceNetDetNotReachable:
-		if w.NetDetNotReachable == nil {
-			return nil, fmt.Errorf("PsSubscriberState: NetDetNotReachable alternative selected but reason is nil")
-		}
 		// NotReachableReason — 0..3 per TS 29.002 (msPurged / imsiDetached /
 		// restrictedArea / notRegistered).
+		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		v, err := narrowInt64Range(int64(*w.NetDetNotReachable), 0, 3, "PsSubscriberState.NetDetNotReachable")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("PsSubscriberState.NetDetNotReachable: %w: %w", ErrPsSubscriberStateNetDetNotReachableInvalid, err)
 		}
 		out.NetDetNotReachable = &v
 	default:
-		return nil, fmt.Errorf("PsSubscriberState: unknown CHOICE value %d", w.Choice)
+		return nil, fmt.Errorf("%w: PsSubscriberState: unknown CHOICE value %d", ErrPsSubscriberStateUnknownAlternative, w.Choice)
 	}
 	return out, nil
 }
 
 // encodePDPContextInfoList serializes each gsm_map.PDPContextInfo entry to
 // its BER-encoded bytes, keeping them opaque from the caller's perspective.
-// Enforces PDP-ContextInfoList SIZE(1..50) strictly — callers only invoke
-// this when the list CHOICE alternative is selected, so an empty list is
-// a spec violation, not "absent".
-func encodePDPContextInfoList(list gsm_map.PDPContextInfoList) ([]HexBytes, error) {
-	if len(list) < 1 || len(list) > 50 {
-		return nil, fmt.Errorf("PDPContextInfoList: must contain 1..50 entries when present, got %d", len(list))
+// Each entry is checked by the strict BER codec when it is marshalled.
+func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, error) {
+	if list == nil {
+		list = &gsm_map.PDPContextInfoList{}
 	}
-	out := make([]HexBytes, len(list))
-	for i := range list {
-		ctx := list[i]
+
+	out := make([]HexBytes, len(list.Values))
+	for i := range list.Values {
+		ctx := list.Values[i]
 		enc, err := ctx.MarshalBER()
 		if err != nil {
 			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
@@ -398,21 +398,18 @@ func encodePDPContextInfoList(list gsm_map.PDPContextInfoList) ([]HexBytes, erro
 }
 
 // decodePDPContextInfoList deserializes each opaque PDPContextInfo entry
-// back into its gsm_map.PDPContextInfo struct. Enforces SIZE(1..50) strictly
-// (callers only invoke this when the list CHOICE alternative is selected).
-func decodePDPContextInfoList(list []HexBytes) (gsm_map.PDPContextInfoList, error) {
-	if len(list) < 1 || len(list) > 50 {
-		return nil, fmt.Errorf("PDPContextInfoList: must contain 1..50 entries when present, got %d", len(list))
-	}
-	out := make(gsm_map.PDPContextInfoList, len(list))
+// back into its gsm_map.PDPContextInfo struct. The list size is checked
+// when its containing value is marshalled.
+func decodePDPContextInfoList(list []HexBytes) (*gsm_map.PDPContextInfoList, error) {
+	out := gsm_map.PDPContextInfoList{Values: make([]gsm_map.PDPContextInfo, len(list))}
 	for i, b := range list {
 		var ctx gsm_map.PDPContextInfo
 		if err := ctx.UnmarshalBER(b); err != nil {
 			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
 		}
-		out[i] = ctx
+		out.Values[i] = ctx
 	}
-	return out, nil
+	return &out, nil
 }
 
 // --- MNPInfoRes (opCode 71) ---
@@ -426,11 +423,11 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 	}
 
 	if m.IMSI != "" {
-		b, err := tbcd.Encode(m.IMSI)
+		b, err := encodeIdentityDigits(identityIMSI, m.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
-		imsi := gsm_map.IMSI(b)
+		imsi := b
 		out.Imsi = &imsi
 	}
 
@@ -439,17 +436,18 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding MSISDN: %w", err)
 		}
-		as := gsm_map.ISDNAddressString(enc)
+		as := enc
 		out.Msisdn = &as
 	}
 
 	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if m.NumberPortabilityStatus != nil {
+		// Sender accepts defined values; receivers ignore unknown values (3GPP TS 29.002 V19.1.0 §17.7.1).
 		switch *m.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
 		default:
-			return nil, fmt.Errorf("MnpInfoRes: NumberPortabilityStatus has undefined value %d", *m.NumberPortabilityStatus)
+			return nil, fmt.Errorf("MnpInfoRes.NumberPortabilityStatus=%d: %w", *m.NumberPortabilityStatus, ErrNumberPortabilityStatusInvalid)
 		}
 		v := *m.NumberPortabilityStatus
 		out.NumberPortabilityStatus = &v
@@ -462,11 +460,11 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	out := &MnpInfoRes{}
 
 	if w.RouteingNumber != nil {
-		out.RouteingNumber = []byte(*w.RouteingNumber)
+		out.RouteingNumber = *w.RouteingNumber
 	}
 
 	if w.Imsi != nil && len(*w.Imsi) > 0 {
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMSI: %w", err)
 		}
@@ -474,7 +472,7 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	}
 
 	if w.Msisdn != nil {
-		digits, nat, pl, err := decodeAddressField(*w.Msisdn)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.Msisdn, ErrMnpInfoResMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MSISDN: %w", err)
 		}
@@ -486,10 +484,8 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	if w.NumberPortabilityStatus != nil {
 		// NumberPortabilityStatus — ENUMERATED { 0, 1, 2, 4, 5 } per TS 29.002.
 		// Spec exception: "reception of other values than the ones listed the
-		// receiver shall ignore the whole NumberPortabilityStatus parameter".
-		// Match against the defined set in int64 space so wire values that
-		// exceed platform int are also treated as unknown (ignored), not as
-		// decode errors — consistent with the spec's "ignore" mandate.
+		// receiver shall ignore the whole NumberPortabilityStatus;".
+		// Unknown extensions are ignored per 3GPP TS 29.002 V19.1.0 §17.7.1.
 		switch *w.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut,
 			MnpForeignNumberPortedToForeignNetwork,
@@ -518,10 +514,10 @@ func convertGprsMSClassToWire(g *GprsMSClass) *gsm_map.GPRSMSClass {
 
 func convertWireToGprsMSClass(w *gsm_map.GPRSMSClass) *GprsMSClass {
 	out := &GprsMSClass{
-		MSNetworkCapability: []byte(w.MSNetworkCapability),
+		MSNetworkCapability: w.MSNetworkCapability,
 	}
 	if w.MSRadioAccessCapability != nil {
-		out.MSRadioAccessCapability = []byte(*w.MSRadioAccessCapability)
+		out.MSRadioAccessCapability = *w.MSRadioAccessCapability
 	}
 	return out
 }
@@ -529,21 +525,11 @@ func convertWireToGprsMSClass(w *gsm_map.GPRSMSClass) *GprsMSClass {
 // --- UserCSGInformation (opCode 71) ---
 
 func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInformation, error) {
-	if u.CsgIDBits < 0 {
-		return nil, fmt.Errorf("CsgIDBits (%d) must be non-negative", u.CsgIDBits)
+	csgID, err := bitStringToWire("UserCSGInformation.CsgID", u.CsgID, u.CsgIDBits)
+	if err != nil {
+		return nil, err
 	}
-	if len(u.CsgID) > 0 && u.CsgIDBits == 0 {
-		return nil, fmt.Errorf("CsgIDBits must be set when CsgID has bytes (got len %d)", len(u.CsgID))
-	}
-	if u.CsgIDBits > len(u.CsgID)*8 {
-		return nil, fmt.Errorf("CsgIDBits (%d) exceeds len(CsgID)*8 (%d)", u.CsgIDBits, len(u.CsgID)*8)
-	}
-	out := &gsm_map.UserCSGInformation{
-		CsgId: runtime.BitString{
-			Bytes:     append([]byte(nil), u.CsgID...),
-			BitLength: u.CsgIDBits,
-		},
-	}
+	out := &gsm_map.UserCSGInformation{CsgId: csgID}
 	if u.AccessMode != nil {
 		out.AccessMode = []byte(u.AccessMode)
 	}
@@ -555,19 +541,26 @@ func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInf
 
 func convertWireToUserCSGInformation(w *gsm_map.UserCSGInformation) *UserCSGInformation {
 	out := &UserCSGInformation{
-		CsgID:     append([]byte(nil), w.CsgId.Bytes...),
+		CsgID:     bitStringFromWire(w.CsgId),
 		CsgIDBits: w.CsgId.BitLength,
 	}
 	if w.AccessMode != nil {
-		out.AccessMode = []byte(w.AccessMode)
+		out.AccessMode = w.AccessMode
 	}
 	if w.Cmi != nil {
-		out.CMI = []byte(w.Cmi)
+		out.CMI = w.Cmi
 	}
 	return out
 }
 
 // --- LocationInformation5GS (opCode 71) ---
+
+// isListedUsedRATType reports whether v is one of the Used-RAT-Type values
+// of 3GPP TS 29.002 V19.1.0 §17.7.1, utran (0) to nb-iot (5). The type is
+// extensible: the decoders keep any other value (§17.1.4).
+func isListedUsedRATType(v UsedRatType) bool {
+	return v >= UsedRatUTRAN && v <= UsedRatNBIOT
+}
 
 func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.LocationInformation5GS, error) {
 	out := &gsm_map.LocationInformation5GS{}
@@ -587,7 +580,7 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 		if err != nil {
 			return nil, fmt.Errorf("encoding GeographicalInformation: %w", err)
 		}
-		gi := gsm_map.GeographicalInformation(raw)
+		gi := raw
 		out.GeographicalInformation = &gi
 	}
 
@@ -614,9 +607,6 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.VplmnID != nil {
-		if len(l.VplmnID) != 3 {
-			return nil, fmt.Errorf("LocationInformation5GS: VplmnID must be exactly 3 octets, got %d", len(l.VplmnID))
-		}
 		p := gsm_map.PLMNId(l.VplmnID)
 		out.VplmnId = &p
 	}
@@ -626,10 +616,13 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 		out.LocaltimeZone = &tz
 	}
 
-	// RatType — Used-RAT-Type per TS 29.002 (extensible enum;
-	// preserve unknown values per Postel's law).
+	// RatType — Used-RAT-Type per TS 29.002 (extensible enum): only a
+	// listed value is sent.
 	if l.RatType != nil {
 		v := *l.RatType
+		if !isListedUsedRATType(v) {
+			return nil, fmt.Errorf("LocationInformation5GS.RatType=%d: %w", v, ErrUsedRATTypeInvalid)
+		}
 		out.RatType = &v
 	}
 
@@ -645,15 +638,15 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 	out := &LocationInformation5GS{}
 
 	if w.NrCellGlobalIdentity != nil {
-		out.NrCellGlobalIdentity = []byte(*w.NrCellGlobalIdentity)
+		out.NrCellGlobalIdentity = *w.NrCellGlobalIdentity
 	}
 
 	if w.EUtranCellGlobalIdentity != nil {
-		out.EUtranCellGlobalIdentity = []byte(*w.EUtranCellGlobalIdentity)
+		out.EUtranCellGlobalIdentity = *w.EUtranCellGlobalIdentity
 	}
 
 	if w.GeographicalInformation != nil {
-		gi, err := DecodeGeographicalInfo([]byte(*w.GeographicalInformation))
+		gi, err := DecodeGeographicalInfo(*w.GeographicalInformation)
 		if err != nil {
 			return nil, fmt.Errorf("decoding GeographicalInformation: %w", err)
 		}
@@ -661,15 +654,15 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 	}
 
 	if w.GeodeticInformation != nil {
-		out.GeodeticInformation = []byte(*w.GeodeticInformation)
+		out.GeodeticInformation = *w.GeodeticInformation
 	}
 
 	if w.AmfAddress != nil {
-		out.AmfAddress = []byte(*w.AmfAddress)
+		out.AmfAddress = *w.AmfAddress
 	}
 
 	if w.TrackingAreaIdentity != nil {
-		out.TrackingAreaIdentity = []byte(*w.TrackingAreaIdentity)
+		out.TrackingAreaIdentity = *w.TrackingAreaIdentity
 	}
 
 	out.CurrentLocationRetrieved = nullPtrToBool(w.CurrentLocationRetrieved)
@@ -680,26 +673,24 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 	}
 
 	if w.VplmnId != nil {
-		p := []byte(*w.VplmnId)
-		if len(p) != 3 {
-			return nil, fmt.Errorf("LocationInformation5GS: VplmnID must be exactly 3 octets, got %d", len(p))
-		}
+		p := *w.VplmnId
+
 		out.VplmnID = p
 	}
 
 	if w.LocaltimeZone != nil {
-		out.LocalTimeZone = []byte(*w.LocaltimeZone)
+		out.LocalTimeZone = *w.LocaltimeZone
 	}
 
-	// RatType — Used-RAT-Type per TS 29.002 (extensible enum;
-	// preserve unknown values per Postel's law).
+	// RatType — Used-RAT-Type per TS 29.002 (extensible enum): an unknown
+	// value is kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	if w.RatType != nil {
 		v := *w.RatType
 		out.RatType = &v
 	}
 
 	if w.NrTrackingAreaIdentity != nil {
-		out.NrTrackingAreaIdentity = []byte(*w.NrTrackingAreaIdentity)
+		out.NrTrackingAreaIdentity = *w.NrTrackingAreaIdentity
 	}
 
 	return out, nil

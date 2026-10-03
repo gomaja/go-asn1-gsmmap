@@ -3,8 +3,8 @@ module github.com/gomaja/go-asn1-gsmmap
 go 1.25.4
 
 require (
-	github.com/gomaja/go-asn1 v0.0.0-20260929180321-5f9ce3a46527
-	github.com/gomaja/go-sms v0.0.0-20260928185505-66af3bfd4fa8
+	github.com/gomaja/go-asn1 v0.0.0-20261002200527-7e24ee33010e
+	github.com/gomaja/go-sms v0.0.0-20261002213211-02959b2bed2e
 	github.com/google/go-cmp v0.7.0
 )
 

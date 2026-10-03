@@ -97,8 +97,8 @@ func TestMapErrorParamZeroValues(t *testing.T) {
 	}
 
 	var rna RoamingNotAllowedParam
-	if rna.RoamingNotAllowedCause != 0 {
-		t.Error("RoamingNotAllowedParam zero: cause should be 0")
+	if rna.RoamingNotAllowedCause != nil {
+		t.Error("RoamingNotAllowedParam zero: cause should be nil")
 	}
 	if rna.AdditionalRoamingNotAllowedCause != nil {
 		t.Error("RoamingNotAllowedParam zero: additional cause should be nil")

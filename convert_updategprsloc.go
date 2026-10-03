@@ -4,28 +4,23 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // --- UpdateGprsLocation ---
 
 func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsLocationArg, error) {
-	if u.IMSI == "" {
-		return nil, fmt.Errorf("UpdateGprsLocation: IMSI is mandatory and must be non-empty")
+	if u.SgsnNumber == "" {
+		return nil, ErrUpdateGprsLocationMissingSgsnNumber
 	}
-	if u.SGSNNumber == "" {
-		return nil, fmt.Errorf("UpdateGprsLocation: SGSNNumber is mandatory and must be non-empty")
-	}
-	imsiBytes, err := tbcd.Encode(u.IMSI)
+	imsiBytes, err := encodeIdentityDigits(identityIMSI, u.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
 
-	sgsnNumber, err := encodeAddressField(u.SGSNNumber, u.SGSNNature, u.SGSNPlan)
+	sgsnNumber, err := encodeAddressField(u.SgsnNumber, u.SgsnNumberNature, u.SgsnNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding SGSNNumber: %w", err)
+		return nil, fmt.Errorf("encoding SgsnNumber: %w", err)
 	}
 
 	sgsnAddr, err := gsn.Build(u.SGSNAddress)
@@ -34,9 +29,9 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	}
 
 	arg := &gsm_map.UpdateGprsLocationArg{
-		Imsi:        gsm_map.IMSI(imsiBytes),
-		SgsnNumber:  gsm_map.ISDNAddressString(sgsnNumber),
-		SgsnAddress: gsm_map.GSNAddress(sgsnAddr),
+		Imsi:        imsiBytes,
+		SgsnNumber:  sgsnNumber,
+		SgsnAddress: sgsnAddr,
 	}
 
 	if u.SGSNCapability != nil {
@@ -57,7 +52,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		if err != nil {
 			return nil, fmt.Errorf("encoding VGmlcAddress: %w", err)
 		}
-		v := gsm_map.GSNAddress(gsnAddr)
+		v := gsnAddr
 		arg.VGmlcAddress = &v
 	}
 
@@ -83,10 +78,13 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	arg.ServingNodeTypeIndicator = boolToNullPtr(u.ServingNodeTypeIndicator)
 	arg.SkipSubscriberDataUpdate = boolToNullPtr(u.SkipSubscriberDataUpdate)
 
-	// [8] usedRatType — Used-RAT-Type per TS 29.002 (extensible enum;
-	// preserve unknown values per Postel's law).
+	// [8] usedRatType — Used-RAT-Type per TS 29.002 (extensible enum):
+	// only a listed value is sent.
 	if u.UsedRatType != nil {
 		v := *u.UsedRatType
+		if !isListedUsedRATType(v) {
+			return nil, fmt.Errorf("UsedRatType=%d: %w", v, ErrUsedRATTypeInvalid)
+		}
 		arg.UsedRATType = &v
 	}
 
@@ -97,22 +95,26 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	arg.EpsSubscriptionDataNotNeeded = boolToNullPtr(u.EpsSubscriptionDataNotNeeded)
 
 	// [14] ue-SRVCC-Capability — extensible enum per TS 29.002
-	// MAP-MS-DataTypes.asn:690; preserve unknown values per Postel's law.
+	// 3GPP TS 29.002 V19.1.0 §17.7.1: only a listed value is sent.
 	if u.UeSrvccCapability != nil {
 		v := *u.UeSrvccCapability
+		if v != UeSrvccNotSupported && v != UeSrvccSupported {
+			return nil, fmt.Errorf("UeSrvccCapability=%d: %w", v, ErrUESRVCCCapabilityInvalid)
+		}
 		arg.UeSrvccCapability = &v
 	}
 
 	// [15] eplmn-List
-	if len(u.EplmnList) > 0 {
-		list := make(gsm_map.EPLMNList, len(u.EplmnList))
+	if u.EplmnList != nil {
+		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
+				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
 			}
-			list[i] = gsm_map.PLMNId(raw)
+			list.Values[i] = gsm_map.PLMNId(raw)
 		}
-		arg.EplmnList = list
+		arg.EplmnList = &list
 	}
 
 	// [16] mme-Number-for-MT-SMS
@@ -121,20 +123,25 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		if err != nil {
 			return nil, fmt.Errorf("encoding MmeNumberForMTSMS: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(mme)
+		v := mme
 		arg.MmeNumberforMTSMS = &v
 	}
 
 	// [17] smsRegisterRequest — extensible enum per TS 29.002
-	// MAP-MS-DataTypes.asn:576; preserve unknown values per Postel's law.
+	// 3GPP TS 29.002 V19.1.0 §17.7.1; preserve unknown values per Postel's law.
 	if u.SmsRegisterRequest != nil {
 		v := *u.SmsRegisterRequest
+		// SMSRegisterRequest is extensible: only a listed value is sent.
+		if v < SmsRegistrationRequired || v > SmsRegistrationNoPreference {
+			return nil, fmt.Errorf("SmsRegisterRequest=%d: %w", v, ErrSMSRegisterRequestInvalid)
+		}
 		arg.SmsRegisterRequest = &v
 	}
 
 	arg.SmsOnly = boolToNullPtr(u.SmsOnly)
 
-	// [19]/[20] DiameterIdentity
+	// [19] names the SGSN by FQDN; [20] carries an FQDN or realm
+	// (RFC 6733 §4.3.1).
 	if len(u.SgsnName) > 0 {
 		v := gsm_map.DiameterIdentity(u.SgsnName)
 		arg.SgsnName = &v
@@ -148,38 +155,33 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	arg.RemovalofMMERegistrationforSMS = boolToNullPtr(u.RemovalofMMERegistrationforSMS)
 
 	// [23] adjacentPLMNList
-	if len(u.AdjacentPLMNList) > 0 {
-		list := make(gsm_map.AdjacentPLMNList, len(u.AdjacentPLMNList))
+	if u.AdjacentPLMNList != nil {
+		list := gsm_map.AdjacentPLMNList{Values: make([]gsm_map.PLMNId, len(u.AdjacentPLMNList))}
 		for i, raw := range u.AdjacentPLMNList {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
+				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
 			}
-			list[i] = gsm_map.PLMNId(raw)
+			list.Values[i] = gsm_map.PLMNId(raw)
 		}
-		arg.AdjacentPLMNList = list
+		arg.AdjacentPLMNList = &list
 	}
 
 	return arg, nil
 }
 
 func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*UpdateGprsLocation, error) {
-	if len(arg.Imsi) == 0 {
-		return nil, fmt.Errorf("UpdateGprsLocation: IMSI is mandatory and must be non-empty")
-	}
-	imsi, err := tbcd.Decode(arg.Imsi)
+	imsi, err := decodeIdentityDigits(identityIMSI, arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
-	}
-	if imsi == "" {
-		return nil, fmt.Errorf("UpdateGprsLocation: IMSI decoded to empty string")
 	}
 
 	sgsnNum, sgsnNature, sgsnPlan, err := decodeAddressField(arg.SgsnNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding SGSNNumber: %w", err)
+		return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 	}
 	if sgsnNum == "" {
-		return nil, fmt.Errorf("UpdateGprsLocation: SGSNNumber decoded to empty string")
+		return nil, ErrUpdateGprsLocationMissingSgsnNumber
 	}
 
 	sgsnAddr, err := gsn.Parse(arg.SgsnAddress)
@@ -188,11 +190,11 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	}
 
 	u := &UpdateGprsLocation{
-		IMSI:        imsi,
-		SGSNNumber:  sgsnNum,
-		SGSNNature:  sgsnNature,
-		SGSNPlan:    sgsnPlan,
-		SGSNAddress: sgsnAddr,
+		IMSI:             imsi,
+		SgsnNumber:       sgsnNum,
+		SgsnNumberNature: sgsnNature,
+		SgsnNumberPlan:   sgsnPlan,
+		SGSNAddress:      sgsnAddr,
 	}
 
 	if arg.SgsnCapability != nil {
@@ -233,8 +235,8 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.ServingNodeTypeIndicator = nullPtrToBool(arg.ServingNodeTypeIndicator)
 	u.SkipSubscriberDataUpdate = nullPtrToBool(arg.SkipSubscriberDataUpdate)
 
-	// UsedRATType — extensible enum per TS 29.002; preserve unknown
-	// values per Postel's law.
+	// UsedRATType — extensible enum per TS 29.002; an unknown value is kept
+	// (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	if arg.UsedRATType != nil {
 		v := *arg.UsedRATType
 		u.UsedRatType = &v
@@ -246,18 +248,19 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.UeReachableIndicator = nullPtrToBool(arg.UeReachableIndicator)
 	u.EpsSubscriptionDataNotNeeded = nullPtrToBool(arg.EpsSubscriptionDataNotNeeded)
 
-	// UeSrvccCapability — extensible enum per TS 29.002; preserve unknown
-	// values per Postel's law.
+	// UeSrvccCapability — extensible enum per TS 29.002; an unknown value is
+	// kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	if arg.UeSrvccCapability != nil {
 		v := *arg.UeSrvccCapability
 		u.UeSrvccCapability = &v
 	}
 
-	if len(arg.EplmnList) > 0 {
-		list := make([]HexBytes, len(arg.EplmnList))
-		for i, plmn := range arg.EplmnList {
+	if arg.EplmnList != nil && len(arg.EplmnList.Values) > 0 {
+		list := make([]HexBytes, len(arg.EplmnList.Values))
+		for i, plmn := range arg.EplmnList.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
+				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
 			}
 			list[i] = HexBytes(plmn)
 		}
@@ -265,7 +268,7 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	}
 
 	if arg.MmeNumberforMTSMS != nil {
-		mme, nature, plan, err := decodeAddressField(*arg.MmeNumberforMTSMS)
+		mme, nature, plan, err := decodeAddressWithDigits(*arg.MmeNumberforMTSMS, ErrUpdateGprsLocationMmeNumberForMTSMSDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MmeNumberForMTSMS: %w", err)
 		}
@@ -274,8 +277,8 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 		u.MmeNumberForMTSMSPlan = plan
 	}
 
-	// SmsRegisterRequest — extensible enum per TS 29.002; preserve unknown
-	// values per Postel's law.
+	// SmsRegisterRequest — extensible enum per TS 29.002; an unknown value
+	// is kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal refuses it.
 	if arg.SmsRegisterRequest != nil {
 		v := *arg.SmsRegisterRequest
 		u.SmsRegisterRequest = &v
@@ -293,11 +296,12 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	u.LgdSupportIndicator = nullPtrToBool(arg.LgdSupportIndicator)
 	u.RemovalofMMERegistrationforSMS = nullPtrToBool(arg.RemovalofMMERegistrationforSMS)
 
-	if len(arg.AdjacentPLMNList) > 0 {
-		list := make([]HexBytes, len(arg.AdjacentPLMNList))
-		for i, plmn := range arg.AdjacentPLMNList {
+	if arg.AdjacentPLMNList != nil && len(arg.AdjacentPLMNList.Values) > 0 {
+		list := make([]HexBytes, len(arg.AdjacentPLMNList.Values))
+		for i, plmn := range arg.AdjacentPLMNList.Values {
+			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
+				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
 			}
 			list[i] = HexBytes(plmn)
 		}
@@ -346,11 +350,8 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 		out.SupportedRATTypesIndicator = &bs
 	}
 
-	if s.SupportedFeaturesBits > 0 {
-		if len(s.SupportedFeatures) == 0 || s.SupportedFeaturesBits > len(s.SupportedFeatures)*8 {
-			return nil, fmt.Errorf("SGSNCapability: SupportedFeaturesBits (%d) inconsistent with bytes (%d)", s.SupportedFeaturesBits, len(s.SupportedFeatures))
-		}
-		bs := runtime.BitString{Bytes: append([]byte(nil), s.SupportedFeatures...), BitLength: s.SupportedFeaturesBits}
+	if s.SupportedFeatures != nil {
+		bs := convertSupportedFeaturesToBitString(s.SupportedFeatures)
 		out.SupportedFeatures = &bs
 	}
 
@@ -366,11 +367,8 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	out.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions = boolToNullPtr(s.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions)
 	out.ResetIdsSupported = boolToNullPtr(s.ResetIdsSupported)
 
-	if s.ExtSupportedFeaturesBits > 0 {
-		if len(s.ExtSupportedFeatures) == 0 || s.ExtSupportedFeaturesBits > len(s.ExtSupportedFeatures)*8 {
-			return nil, fmt.Errorf("SGSNCapability: ExtSupportedFeaturesBits (%d) inconsistent with bytes (%d)", s.ExtSupportedFeaturesBits, len(s.ExtSupportedFeatures))
-		}
-		bs := runtime.BitString{Bytes: append([]byte(nil), s.ExtSupportedFeatures...), BitLength: s.ExtSupportedFeaturesBits}
+	if s.ExtSupportedFeatures != nil {
+		bs := convertExtSupportedFeaturesToBitString(s.ExtSupportedFeatures)
 		out.ExtSupportedFeatures = &bs
 	}
 
@@ -392,35 +390,26 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 
 	out.GprsEnhancementsSupportIndicator = nullPtrToBool(w.GprsEnhancementsSupportIndicator)
 
-	if w.SupportedCamelPhases != nil && w.SupportedCamelPhases.BitLength > 0 {
+	if w.SupportedCamelPhases != nil {
 		out.SupportedCamelPhases = convertBitStringToCamelPhases(*w.SupportedCamelPhases)
 	}
 
-	if w.SupportedLCSCapabilitySets != nil && w.SupportedLCSCapabilitySets.BitLength > 0 {
+	if w.SupportedLCSCapabilitySets != nil {
 		out.SupportedLCSCapabilitySets = convertBitStringToLCSCaps(*w.SupportedLCSCapabilitySets)
 	}
 
-	if w.OfferedCamel4CSIs != nil && w.OfferedCamel4CSIs.BitLength > 0 {
+	if w.OfferedCamel4CSIs != nil {
 		out.OfferedCamel4CSIs = convertBitStringToOfferedCamel4CSIs(*w.OfferedCamel4CSIs)
 	}
 
 	out.SmsCallBarringSupportIndicator = nullPtrToBool(w.SmsCallBarringSupportIndicator)
 
-	if w.SupportedRATTypesIndicator != nil && w.SupportedRATTypesIndicator.BitLength > 0 {
-		if w.SupportedRATTypesIndicator.BitLength < 2 || w.SupportedRATTypesIndicator.BitLength > 8 {
-			return nil, fmt.Errorf("SGSNCapability: SupportedRATTypes BitLength must be 2..8, got %d", w.SupportedRATTypesIndicator.BitLength)
-		}
+	if w.SupportedRATTypesIndicator != nil {
 		out.SupportedRATTypesIndicator = convertBitStringToSupportedRATTypes(*w.SupportedRATTypesIndicator)
 	}
 
-	if w.SupportedFeatures != nil && w.SupportedFeatures.BitLength > 0 {
-		// BitString capacity must be consistent with Bytes length.
-		if int64(w.SupportedFeatures.BitLength) > int64(len(w.SupportedFeatures.Bytes))*8 {
-			return nil, fmt.Errorf("SGSNCapability: SupportedFeatures BitLength %d exceeds len(Bytes)*8 = %d",
-				w.SupportedFeatures.BitLength, len(w.SupportedFeatures.Bytes)*8)
-		}
-		out.SupportedFeatures = HexBytes(append([]byte(nil), w.SupportedFeatures.Bytes...))
-		out.SupportedFeaturesBits = w.SupportedFeatures.BitLength
+	if w.SupportedFeatures != nil {
+		out.SupportedFeatures = convertBitStringToSupportedFeatures(*w.SupportedFeatures)
 	}
 
 	out.TAdsDataRetrieval = nullPtrToBool(w.TAdsDataRetrieval)
@@ -435,13 +424,8 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 	out.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions = nullPtrToBool(w.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions)
 	out.ResetIdsSupported = nullPtrToBool(w.ResetIdsSupported)
 
-	if w.ExtSupportedFeatures != nil && w.ExtSupportedFeatures.BitLength > 0 {
-		if int64(w.ExtSupportedFeatures.BitLength) > int64(len(w.ExtSupportedFeatures.Bytes))*8 {
-			return nil, fmt.Errorf("SGSNCapability: ExtSupportedFeatures BitLength %d exceeds len(Bytes)*8 = %d",
-				w.ExtSupportedFeatures.BitLength, len(w.ExtSupportedFeatures.Bytes)*8)
-		}
-		out.ExtSupportedFeatures = HexBytes(append([]byte(nil), w.ExtSupportedFeatures.Bytes...))
-		out.ExtSupportedFeaturesBits = w.ExtSupportedFeatures.BitLength
+	if w.ExtSupportedFeatures != nil {
+		out.ExtSupportedFeatures = convertBitStringToExtSupportedFeatures(*w.ExtSupportedFeatures)
 	}
 
 	return out, nil
@@ -451,12 +435,12 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 
 func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 	hasPdn := e.PdnGwUpdate != nil
-	hasIsr := e.IsrInformationBits > 0
+	hasIsr := e.IsrInformationBits != 0 || len(e.IsrInformation) > 0
 	if hasPdn && hasIsr {
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrEpsInfoMultipleAlternatives
 	}
 	if !hasPdn && !hasIsr {
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrEpsInfoNoAlternative
 	}
 	if hasPdn {
 		pgu, err := convertPdnGwUpdateToWire(e.PdnGwUpdate)
@@ -466,14 +450,11 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 		v := gsm_map.NewEPSInfoPdnGwUpdate(*pgu)
 		return &v, nil
 	}
-	// IsrInformation is BIT STRING (SIZE(1..8)) per TS 29.002.
-	if e.IsrInformationBits < 1 || e.IsrInformationBits > 8 {
-		return nil, fmt.Errorf("EpsInfo: IsrInformationBits must be 1..8, got %d", e.IsrInformationBits)
+	// IsrInformation is BIT STRING (SIZE(3..8)) per TS 29.002 §17.7.1.
+	bs, err := bitStringToWire("EpsInfo.IsrInformation", e.IsrInformation, e.IsrInformationBits)
+	if err != nil {
+		return nil, err
 	}
-	if len(e.IsrInformation) == 0 || e.IsrInformationBits > len(e.IsrInformation)*8 {
-		return nil, fmt.Errorf("EpsInfo: IsrInformationBits (%d) inconsistent with bytes (%d)", e.IsrInformationBits, len(e.IsrInformation))
-	}
-	bs := runtime.BitString{Bytes: append([]byte(nil), e.IsrInformation...), BitLength: e.IsrInformationBits}
 	v := gsm_map.NewEPSInfoIsrInformation(bs)
 	return &v, nil
 }
@@ -481,39 +462,26 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 	switch w.Choice {
 	case gsm_map.EPSInfoChoicePdnGwUpdate:
-		if w.PdnGwUpdate == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		pgw, err := convertWireToPdnGwUpdate(w.PdnGwUpdate)
 		if err != nil {
 			return nil, err
 		}
 		return &EpsInfo{PdnGwUpdate: pgw}, nil
 	case gsm_map.EPSInfoChoiceIsrInformation:
-		if w.IsrInformation == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
-		// IsrInformation is BIT STRING (SIZE(1..8)) per TS 29.002.
 		bits := w.IsrInformation.BitLength
-		if bits < 1 || bits > 8 {
-			return nil, fmt.Errorf("IsrInformation BitLength must be 1..8, got %d", bits)
-		}
-		if int64(bits) > int64(len(w.IsrInformation.Bytes))*8 {
-			return nil, fmt.Errorf("IsrInformation BitLength %d exceeds len(Bytes)*8 = %d", bits, len(w.IsrInformation.Bytes)*8)
-		}
 		return &EpsInfo{
-			IsrInformation:     HexBytes(append([]byte(nil), w.IsrInformation.Bytes...)),
+			IsrInformation:     bitStringFromWire(*w.IsrInformation),
 			IsrInformationBits: bits,
 		}, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrEpsInfoUnknownAlternative
 	}
 }
 
 func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 	out := &gsm_map.PDNGWUpdate{}
 	if len(p.APN) > 0 {
-		apn := gsm_map.APN(append([]byte(nil), p.APN...))
+		apn := append([]byte(nil), p.APN...)
 		out.Apn = &apn
 	}
 	if p.PdnGwIdentity != nil {
@@ -524,17 +492,14 @@ func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 		out.PdnGwIdentity = id
 	}
 	if p.ContextID != nil {
-		if *p.ContextID < 1 || *p.ContextID > 50 {
-			return nil, fmt.Errorf("ContextId out of range 1..50: %d", *p.ContextID)
-		}
-		v := gsm_map.ContextId(int64(*p.ContextID))
+		v := int64(*p.ContextID)
 		out.ContextId = &v
 	}
 	return out, nil
 }
 
-// convertWireToPdnGwUpdate decodes a wire PDNGWUpdate, validating
-// ContextId per TS 29.272 (1..50 context range).
+// convertWireToPdnGwUpdate copies a wire PDNGWUpdate. ContextId has
+// range 1..50 in 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) (*PdnGwUpdate, error) {
 	out := &PdnGwUpdate{}
 	if w.Apn != nil {
@@ -548,10 +513,7 @@ func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) (*PdnGwUpdate, error) {
 		out.PdnGwIdentity = pid
 	}
 	if w.ContextId != nil {
-		v, err := narrowInt64Range(*w.ContextId, 1, 50, "ContextId")
-		if err != nil {
-			return nil, err
-		}
+		v := int(*w.ContextId)
 		out.ContextID = &v
 	}
 	return out, nil
@@ -559,25 +521,25 @@ func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) (*PdnGwUpdate, error) {
 
 func convertPdnGwIdentityToWire(p *PdnGwIdentity) (*gsm_map.PDNGWIdentity, error) {
 	if len(p.IPv4Address) > 0 && len(p.IPv4Address) != 4 {
-		return nil, fmt.Errorf("PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", len(p.IPv4Address))
+		return nil, fmt.Errorf("%w: PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", ErrPdnGwIdentityIPv4AddressInvalidLength, len(p.IPv4Address))
 	}
 	if len(p.IPv6Address) > 0 && len(p.IPv6Address) != 16 {
-		return nil, fmt.Errorf("PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", len(p.IPv6Address))
+		return nil, fmt.Errorf("%w: PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", ErrPdnGwIdentityIPv6AddressInvalidLength, len(p.IPv6Address))
 	}
 	if len(p.IPv4Address) == 0 && len(p.IPv6Address) == 0 && len(p.Name) == 0 {
-		return nil, fmt.Errorf("PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be set")
+		return nil, fmt.Errorf("%w: PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be set", ErrPdnGwIdentityAddressMissing)
 	}
 	out := &gsm_map.PDNGWIdentity{}
 	if len(p.IPv4Address) > 0 {
-		v := gsm_map.PDPAddress(append([]byte(nil), p.IPv4Address...))
+		v := append([]byte(nil), p.IPv4Address...)
 		out.PdnGwIpv4Address = &v
 	}
 	if len(p.IPv6Address) > 0 {
-		v := gsm_map.PDPAddress(append([]byte(nil), p.IPv6Address...))
+		v := append([]byte(nil), p.IPv6Address...)
 		out.PdnGwIpv6Address = &v
 	}
 	if len(p.Name) > 0 {
-		v := gsm_map.FQDN(append([]byte(nil), p.Name...))
+		v := append([]byte(nil), p.Name...)
 		out.PdnGwName = &v
 	}
 	return out, nil
@@ -591,14 +553,14 @@ func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error
 	if w.PdnGwIpv4Address != nil {
 		ip4 := append([]byte(nil), (*w.PdnGwIpv4Address)...)
 		if len(ip4) != 4 {
-			return nil, fmt.Errorf("PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", len(ip4))
+			return nil, fmt.Errorf("%w: PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", ErrPdnGwIdentityIPv4AddressInvalidLength, len(ip4))
 		}
 		out.IPv4Address = HexBytes(ip4)
 	}
 	if w.PdnGwIpv6Address != nil {
 		ip6 := append([]byte(nil), (*w.PdnGwIpv6Address)...)
 		if len(ip6) != 16 {
-			return nil, fmt.Errorf("PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", len(ip6))
+			return nil, fmt.Errorf("%w: PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", ErrPdnGwIdentityIPv6AddressInvalidLength, len(ip6))
 		}
 		out.IPv6Address = HexBytes(ip6)
 	}
@@ -606,7 +568,7 @@ func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error
 		out.Name = HexBytes(append([]byte(nil), (*w.PdnGwName)...))
 	}
 	if len(out.IPv4Address) == 0 && len(out.IPv6Address) == 0 && len(out.Name) == 0 {
-		return nil, fmt.Errorf("PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be present")
+		return nil, fmt.Errorf("%w: PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be present", ErrPdnGwIdentityAddressMissing)
 	}
 	return out, nil
 }
@@ -614,16 +576,16 @@ func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error
 // --- UpdateGprsLocationRes ---
 
 func convertUpdateGprsLocationResToRes(u *UpdateGprsLocationRes) (*gsm_map.UpdateGprsLocationRes, error) {
-	if u.HLRNumber == "" {
-		return nil, fmt.Errorf("UpdateGprsLocationRes: HLRNumber is mandatory and must be non-empty")
+	if u.HlrNumber == "" {
+		return nil, ErrUpdateGprsLocationResMissingHlrNumber
 	}
-	hlr, err := encodeAddressField(u.HLRNumber, u.HLRNumberNature, u.HLRNumberPlan)
+	hlr, err := encodeAddressField(u.HlrNumber, u.HlrNumberNature, u.HlrNumberPlan)
 	if err != nil {
-		return nil, fmt.Errorf("encoding HLRNumber: %w", err)
+		return nil, fmt.Errorf("encoding HlrNumber: %w", err)
 	}
 
 	return &gsm_map.UpdateGprsLocationRes{
-		HlrNumber:                  gsm_map.ISDNAddressString(hlr),
+		HlrNumber:                  hlr,
 		AddCapability:              boolToNullPtr(u.AddCapability),
 		SgsnMmeSeparationSupported: boolToNullPtr(u.SgsnMmeSeparationSupported),
 		MmeRegisteredforSMS:        boolToNullPtr(u.MmeRegisteredforSMS),
@@ -633,16 +595,16 @@ func convertUpdateGprsLocationResToRes(u *UpdateGprsLocationRes) (*gsm_map.Updat
 func convertResToUpdateGprsLocationRes(res *gsm_map.UpdateGprsLocationRes) (*UpdateGprsLocationRes, error) {
 	hlr, nature, plan, err := decodeAddressField(res.HlrNumber)
 	if err != nil {
-		return nil, fmt.Errorf("decoding HLRNumber: %w", err)
+		return nil, fmt.Errorf("decoding HlrNumber: %w", err)
 	}
 	if hlr == "" {
-		return nil, fmt.Errorf("UpdateGprsLocationRes: HLRNumber is mandatory and must be non-empty")
+		return nil, ErrUpdateGprsLocationResMissingHlrNumber
 	}
 
 	return &UpdateGprsLocationRes{
-		HLRNumber:                  hlr,
-		HLRNumberNature:            nature,
-		HLRNumberPlan:              plan,
+		HlrNumber:                  hlr,
+		HlrNumberNature:            nature,
+		HlrNumberPlan:              plan,
 		AddCapability:              nullPtrToBool(res.AddCapability),
 		SgsnMmeSeparationSupported: nullPtrToBool(res.SgsnMmeSeparationSupported),
 		MmeRegisteredforSMS:        nullPtrToBool(res.MmeRegisteredforSMS),

@@ -7,7 +7,7 @@ import (
 )
 
 func validateMtForwardSMArgTPDU(p tpdu.TPDU) error {
-	// 3GPP TS 29.002 v19.1.0 MAP-SM-DataTypes.asn defines
+	// 3GPP TS 29.002 v19.1.0 §17.7.6 defines
 	// MT-ForwardSM-Arg sm-RP-UI as SignalInfo. Its SMS TPDU must be
 	// SC-to-MS per 3GPP TS 23.040 v19.0.0 clause 9.2.2.
 	smsType := p.SmsType()
@@ -20,7 +20,7 @@ func validateMtForwardSMArgTPDU(p tpdu.TPDU) error {
 }
 
 func validateMoForwardSMArgTPDU(p tpdu.TPDU) error {
-	// 3GPP TS 29.002 v19.1.0 MAP-SM-DataTypes.asn defines
+	// 3GPP TS 29.002 v19.1.0 §17.7.6 defines
 	// MO-ForwardSM-Arg sm-RP-UI as SignalInfo. Its SMS TPDU must be
 	// MS-to-SC per 3GPP TS 23.040 v19.0.0 clause 9.2.2.
 	smsType := p.SmsType()

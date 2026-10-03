@@ -3,15 +3,22 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // --- SRI-SM ---
 
+// isDefinedSmRpMti reports whether v is an SM-RP-MTI value 3GPP TS 29.002
+// V19.1.0 §17.7.6 defines: 0 (SMS Deliver) or 1 (SMS Status Report). The
+// other values of INTEGER (0..10) are reserved; the encoder rejects them and
+// the decoder discards them.
+func isDefinedSmRpMti(v gsm_map.SMRPMTI) bool {
+	return v == 0 || v == 1
+}
+
 func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 	// msisdn and serviceCentreAddress are non-OPTIONAL in
-	// RoutingInfoForSM-Arg per MAP-SM-DataTypes.asn:63-66.
+	// RoutingInfoForSM-Arg per 3GPP TS 29.002 V19.1.0 §17.7.6.
 	if s.MSISDN == "" {
 		return nil, ErrSriSmMissingMSISDN
 	}
@@ -24,15 +31,15 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 		return nil, fmt.Errorf("encoding MSISDN: %w", err)
 	}
 
-	sca, err := encodeAddressField(s.ServiceCentreAddress, s.SCANature, s.SCAPlan)
+	sca, err := encodeAddressField(s.ServiceCentreAddress, s.ServiceCentreAddressNature, s.ServiceCentreAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding ServiceCentreAddress: %w", err)
 	}
 
 	arg := &gsm_map.RoutingInfoForSMArg{
-		Msisdn:               gsm_map.ISDNAddressString(msisdn),
+		Msisdn:               msisdn,
 		SmRPPRI:              s.SmRpPri,
-		ServiceCentreAddress: gsm_map.AddressString(sca),
+		ServiceCentreAddress: sca,
 	}
 
 	// Optional fields (post-extension marker).
@@ -40,6 +47,9 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 
 	if s.SmRpMti != nil {
 		v := gsm_map.SMRPMTI(*s.SmRpMti)
+		if !isDefinedSmRpMti(v) {
+			return nil, fmt.Errorf("%w (got %d)", ErrSriSmInvalidSmRpMti, *s.SmRpMti)
+		}
 		arg.SmRPMTI = &v
 	}
 
@@ -50,17 +60,22 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 
 	if s.SmDeliveryNotIntended != nil {
 		v := *s.SmDeliveryNotIntended
+		// SM-DeliveryNotIntended is extensible: only a listed value is sent;
+		// the decoder keeps any other (3GPP TS 29.002 V19.1.0 §17.1.4).
+		if v != SmDeliveryOnlyIMSIRequested && v != SmDeliveryOnlyMCCMNCRequested {
+			return nil, fmt.Errorf("SmDeliveryNotIntended=%d: %w", v, ErrSMDeliveryNotIntendedInvalid)
+		}
 		arg.SmDeliveryNotIntended = &v
 	}
 
 	arg.IpSmGwGuidanceIndicator = boolToNullPtr(s.IpSmGwGuidanceIndicator)
 
 	if s.IMSI != "" {
-		imsiBytes, err := tbcd.Encode(s.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding IMSI: %w", err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		arg.Imsi = &v
 	}
 
@@ -81,35 +96,35 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 }
 
 func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
-	msisdn, msisdnNature, msisdnPlan, err := decodeAddressField(arg.Msisdn)
+	msisdn, msisdnNature, msisdnPlan, err := decodeAddressWithDigits(arg.Msisdn, ErrSriSmMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
 
-	sca, scaNature, scaPlan, err := decodeAddressField(arg.ServiceCentreAddress)
+	sca, scaNature, scaPlan, err := decodeAddressWithDigits(arg.ServiceCentreAddress, ErrSriSmMissingServiceCentreAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ServiceCentreAddress: %w", err)
 	}
 
 	s := &SriSm{
-		MSISDN:               msisdn,
-		MSISDNNature:         msisdnNature,
-		MSISDNPlan:           msisdnPlan,
-		SmRpPri:              arg.SmRPPRI,
-		ServiceCentreAddress: sca,
-		SCANature:            scaNature,
-		SCAPlan:              scaPlan,
+		MSISDN:                     msisdn,
+		MSISDNNature:               msisdnNature,
+		MSISDNPlan:                 msisdnPlan,
+		SmRpPri:                    arg.SmRPPRI,
+		ServiceCentreAddress:       sca,
+		ServiceCentreAddressNature: scaNature,
+		ServiceCentreAddressPlan:   scaPlan,
 	}
 
 	// Optional fields (post-extension marker).
 	s.GprsSupportIndicator = nullPtrToBool(arg.GprsSupportIndicator)
 
-	// SmRPMTI — 0..10 per TS 29.002.
-	if arg.SmRPMTI != nil {
-		v, err := narrowInt64Range(int64(*arg.SmRPMTI), 0, 10, "SmRPMTI")
-		if err != nil {
-			return nil, err
-		}
+	// SM-RP-MTI, 3GPP TS 29.002 V19.1.0 §17.7.6: values other than 0 (SMS
+	// Deliver) and 1 (SMS Status Report) "are reserved for future use and
+	// shall be discarded if received". The parameter is OPTIONAL, so a
+	// discarded one decodes as absent.
+	if arg.SmRPMTI != nil && isDefinedSmRpMti(*arg.SmRPMTI) {
+		v := int(*arg.SmRPMTI)
 		s.SmRpMti = &v
 	}
 
@@ -118,14 +133,14 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 	}
 
 	if arg.SmDeliveryNotIntended != nil {
-		v := SmDeliveryNotIntended(*arg.SmDeliveryNotIntended)
+		v := *arg.SmDeliveryNotIntended
 		s.SmDeliveryNotIntended = &v
 	}
 
 	s.IpSmGwGuidanceIndicator = nullPtrToBool(arg.IpSmGwGuidanceIndicator)
 
 	if arg.Imsi != nil {
-		imsi, err := tbcd.Decode(*arg.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *arg.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding optional IMSI: %w", err)
 		}
@@ -151,7 +166,10 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 // --- SRI-SM Response ---
 
 func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
-	imsiBytes, err := tbcd.Encode(s.IMSI)
+	if s.LocationInfoWithLMSI.NetworkNodeNumber == "" {
+		return nil, ErrSriSmRespMissingNetworkNodeNumber
+	}
+	imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -166,14 +184,11 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	}
 
 	li := gsm_map.LocationInfoWithLMSI{
-		NetworkNodeNumber: gsm_map.ISDNAddressString(nnn),
+		NetworkNodeNumber: nnn,
 	}
 
 	// LMSI must be exactly 4 octets when present (3GPP TS 29.002).
 	if len(s.LocationInfoWithLMSI.LMSI) > 0 {
-		if len(s.LocationInfoWithLMSI.LMSI) != 4 {
-			return nil, fmt.Errorf("LocationInfoWithLMSI.LMSI must be exactly 4 octets, got %d", len(s.LocationInfoWithLMSI.LMSI))
-		}
 		v := gsm_map.LMSI(s.LocationInfoWithLMSI.LMSI)
 		li.Lmsi = &v
 	}
@@ -223,7 +238,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding Smsf3gppNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		li.Smsf3gppNumber = &v
 	}
 
@@ -238,7 +253,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding SmsfNon3gppNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		li.SmsfNon3gppNumber = &v
 	}
 
@@ -254,7 +269,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	li.SmsfNon3gppAddressIndicator = boolToNullPtr(s.LocationInfoWithLMSI.SmsfNon3gppAddressIndicator)
 
 	out := &gsm_map.RoutingInfoForSMRes{
-		Imsi:                 gsm_map.IMSI(imsiBytes),
+		Imsi:                 imsiBytes,
 		LocationInfoWithLMSI: li,
 	}
 
@@ -271,12 +286,12 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 }
 
 func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error) {
-	imsi, err := tbcd.Decode(res.Imsi)
+	imsi, err := decodeIdentityDigits(identityIMSI, res.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
-	nnn, nnnNature, nnnPlan, err := decodeAddressField(res.LocationInfoWithLMSI.NetworkNodeNumber)
+	nnn, nnnNature, nnnPlan, err := decodeAddressWithDigits(res.LocationInfoWithLMSI.NetworkNodeNumber, ErrSriSmRespMissingNetworkNodeNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding NetworkNodeNumber: %w", err)
 	}
@@ -289,9 +304,6 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 
 	// LMSI
 	if res.LocationInfoWithLMSI.Lmsi != nil {
-		if len(*res.LocationInfoWithLMSI.Lmsi) != 4 {
-			return nil, fmt.Errorf("LocationInfoWithLMSI.LMSI must be exactly 4 octets, got %d", len(*res.LocationInfoWithLMSI.Lmsi))
-		}
 		li.LMSI = HexBytes(*res.LocationInfoWithLMSI.Lmsi)
 	}
 
@@ -336,7 +348,7 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 
 	// Smsf3gppNumber
 	if res.LocationInfoWithLMSI.Smsf3gppNumber != nil {
-		num, nature, plan, err := decodeAddressField(*res.LocationInfoWithLMSI.Smsf3gppNumber)
+		num, nature, plan, err := decodeAddressWithDigits(*res.LocationInfoWithLMSI.Smsf3gppNumber, ErrSriSmRespSmsf3gppNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding Smsf3gppNumber: %w", err)
 		}
@@ -352,7 +364,7 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 
 	// SmsfNon3gppNumber
 	if res.LocationInfoWithLMSI.SmsfNon3gppNumber != nil {
-		num, nature, plan, err := decodeAddressField(*res.LocationInfoWithLMSI.SmsfNon3gppNumber)
+		num, nature, plan, err := decodeAddressWithDigits(*res.LocationInfoWithLMSI.SmsfNon3gppNumber, ErrSriSmRespSmsfNon3gppNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmsfNon3gppNumber: %w", err)
 		}

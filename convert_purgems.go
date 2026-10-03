@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -12,36 +11,32 @@ import (
 // convertPurgeMSToArg converts the public PurgeMS into the wire-level
 // gsm_map.PurgeMSArg.
 func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
-	if p.IMSI == "" {
-		return nil, ErrPurgeMSMissingIMSI
-	}
-
-	imsiBytes, err := tbcd.Encode(p.IMSI)
+	imsiBytes, err := encodeIdentityDigits(identityIMSI, p.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
 
 	arg := &gsm_map.PurgeMSArg{
-		Imsi: gsm_map.IMSI(imsiBytes),
+		Imsi: imsiBytes,
 	}
 
 	// [0] VLR-Number
-	if p.VLRNumber != "" {
-		encoded, err := encodeAddressField(p.VLRNumber, p.VLRNature, p.VLRPlan)
+	if p.VlrNumber != "" {
+		encoded, err := encodeAddressField(p.VlrNumber, p.VlrNumberNature, p.VlrNumberPlan)
 		if err != nil {
-			return nil, fmt.Errorf("encoding VLRNumber: %w", err)
+			return nil, fmt.Errorf("encoding VlrNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.VlrNumber = &v
 	}
 
 	// [1] SGSN-Number
-	if p.SGSNNumber != "" {
-		encoded, err := encodeAddressField(p.SGSNNumber, p.SGSNNature, p.SGSNPlan)
+	if p.SgsnNumber != "" {
+		encoded, err := encodeAddressField(p.SgsnNumber, p.SgsnNumberNature, p.SgsnNumberPlan)
 		if err != nil {
-			return nil, fmt.Errorf("encoding SGSNNumber: %w", err)
+			return nil, fmt.Errorf("encoding SgsnNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.SgsnNumber = &v
 	}
 
@@ -78,11 +73,7 @@ func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
 // convertArgToPurgeMS converts a wire-level gsm_map.PurgeMSArg back into the
 // public PurgeMS type.
 func convertArgToPurgeMS(arg *gsm_map.PurgeMSArg) (*PurgeMS, error) {
-	if len(arg.Imsi) == 0 {
-		return nil, ErrPurgeMSMissingIMSI
-	}
-
-	imsi, err := tbcd.Decode(arg.Imsi)
+	imsi, err := decodeIdentityDigits(identityIMSI, arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
@@ -90,23 +81,23 @@ func convertArgToPurgeMS(arg *gsm_map.PurgeMSArg) (*PurgeMS, error) {
 	out := &PurgeMS{IMSI: imsi}
 
 	if arg.VlrNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.VlrNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.VlrNumber, ErrPurgeMSVlrNumberDecodedEmpty)
 		if err != nil {
-			return nil, fmt.Errorf("decoding VLRNumber: %w", err)
+			return nil, fmt.Errorf("decoding VlrNumber: %w", err)
 		}
-		out.VLRNumber = digits
-		out.VLRNature = nature
-		out.VLRPlan = plan
+		out.VlrNumber = digits
+		out.VlrNumberNature = nature
+		out.VlrNumberPlan = plan
 	}
 
 	if arg.SgsnNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.SgsnNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.SgsnNumber, ErrPurgeMSSgsnNumberDecodedEmpty)
 		if err != nil {
-			return nil, fmt.Errorf("decoding SGSNNumber: %w", err)
+			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
-		out.SGSNNumber = digits
-		out.SGSNNature = nature
-		out.SGSNPlan = plan
+		out.SgsnNumber = digits
+		out.SgsnNumberNature = nature
+		out.SgsnNumberPlan = plan
 	}
 
 	if arg.LocationInformation != nil {

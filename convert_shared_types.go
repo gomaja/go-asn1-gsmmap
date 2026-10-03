@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // --- SRI-SM helper converters ---
@@ -15,23 +13,23 @@ func convertAdditionalNumberToWire(a *AdditionalNumber) (*gsm_map.AdditionalNumb
 	hasSgsn := a.SgsnNumber != ""
 	switch {
 	case hasMsc && hasSgsn:
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrAdditionalNumberMultipleAlternatives
 	case hasMsc:
 		encoded, err := encodeAddressField(a.MscNumber, a.MscNumberNature, a.MscNumberPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding MscNumber: %w", err)
 		}
-		v := gsm_map.NewAdditionalNumberMscNumber(gsm_map.ISDNAddressString(encoded))
+		v := gsm_map.NewAdditionalNumberMscNumber(encoded)
 		return &v, nil
 	case hasSgsn:
 		encoded, err := encodeAddressField(a.SgsnNumber, a.SgsnNumberNature, a.SgsnNumberPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding SgsnNumber: %w", err)
 		}
-		v := gsm_map.NewAdditionalNumberSgsnNumber(gsm_map.ISDNAddressString(encoded))
+		v := gsm_map.NewAdditionalNumberSgsnNumber(encoded)
 		return &v, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrAdditionalNumberNoAlternative
 	}
 }
 
@@ -39,10 +37,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 	an := &AdditionalNumber{}
 	switch w.Choice {
 	case gsm_map.AdditionalNumberChoiceMscNumber:
-		if w.MscNumber == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
-		num, nature, plan, err := decodeAddressField(*w.MscNumber)
+		num, nature, plan, err := decodeAddressWithDigits(*w.MscNumber, ErrAdditionalNumberMscNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MscNumber: %w", err)
 		}
@@ -50,10 +45,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		an.MscNumberNature = nature
 		an.MscNumberPlan = plan
 	case gsm_map.AdditionalNumberChoiceSgsnNumber:
-		if w.SgsnNumber == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
-		num, nature, plan, err := decodeAddressField(*w.SgsnNumber)
+		num, nature, plan, err := decodeAddressWithDigits(*w.SgsnNumber, ErrAdditionalNumberSgsnNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
@@ -61,7 +53,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		an.SgsnNumberNature = nature
 		an.SgsnNumberPlan = plan
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrAdditionalNumberUnknownAlternative
 	}
 	return an, nil
 }
@@ -87,8 +79,16 @@ func convertCorrelationIDToWire(c *SriSmCorrelationID) (*gsm_map.CorrelationID, 
 	out := &gsm_map.CorrelationID{
 		SipUriB: gsm_map.SIPURI(c.SipUriB),
 	}
-	if len(c.HlrID) > 0 {
-		v := gsm_map.HLRId(c.HlrID)
+	if c.HlrID != "" {
+		// HLR-Id ::= IMSI (3GPP TS 29.002 V19.1.0 §17.7.8). An HLR id
+		// consists "of the leading digits of the IMSI (MCC + MNC + leading
+		// digits of MSIN)" (3GPP TS 23.003 V20.1.0 §5.2), at least one MSIN
+		// digit included, so the IMSI digit rule applies.
+		hlr, err := encodeIdentityDigits(identityIMSI, c.HlrID)
+		if err != nil {
+			return nil, fmt.Errorf("encoding CorrelationID.HlrID: %w", err)
+		}
+		v := hlr
 		out.HlrId = &v
 	}
 	if len(c.SipUriA) > 0 {
@@ -109,7 +109,11 @@ func convertWireToCorrelationID(w *gsm_map.CorrelationID) (*SriSmCorrelationID, 
 		SipUriB: HexBytes(w.SipUriB),
 	}
 	if w.HlrId != nil {
-		c.HlrID = HexBytes(*w.HlrId)
+		hlr, err := decodeIdentityDigits(identityIMSI, *w.HlrId)
+		if err != nil {
+			return nil, fmt.Errorf("decoding CorrelationID.HlrID: %w", err)
+		}
+		c.HlrID = hlr
 	}
 	if w.SipUriA != nil {
 		c.SipUriA = HexBytes(*w.SipUriA)
@@ -118,30 +122,17 @@ func convertWireToCorrelationID(w *gsm_map.CorrelationID) (*SriSmCorrelationID, 
 }
 
 func convertIpSmGwGuidanceToWire(g *IpSmGwGuidance) (*gsm_map.IPSMGWGuidance, error) {
-	if g.MinimumDeliveryTimeValue < MinSmDeliveryTimer || g.MinimumDeliveryTimeValue > MaxSmDeliveryTimer ||
-		g.RecommendedDeliveryTimeValue < MinSmDeliveryTimer || g.RecommendedDeliveryTimeValue > MaxSmDeliveryTimer {
-		return nil, ErrSriSmInvalidDeliveryTimerValue
-	}
 	return &gsm_map.IPSMGWGuidance{
 		MinimumDeliveryTimeValue:     gsm_map.SMDeliveryTimerValue(g.MinimumDeliveryTimeValue),
 		RecommendedDeliveryTimeValue: gsm_map.SMDeliveryTimerValue(g.RecommendedDeliveryTimeValue),
 	}, nil
 }
 
-// convertWireToIpSmGwGuidance decodes IPSMGWGuidance, enforcing the same
-// MinSmDeliveryTimer..MaxSmDeliveryTimer range as the encoder on each timer.
+// convertWireToIpSmGwGuidance decodes IPSMGWGuidance.
 func convertWireToIpSmGwGuidance(w *gsm_map.IPSMGWGuidance) (*IpSmGwGuidance, error) {
-	mdt, err := narrowInt64Range(int64(w.MinimumDeliveryTimeValue), MinSmDeliveryTimer, MaxSmDeliveryTimer, "IpSmGwGuidance.MinimumDeliveryTimeValue")
-	if err != nil {
-		return nil, err
-	}
-	rdt, err := narrowInt64Range(int64(w.RecommendedDeliveryTimeValue), MinSmDeliveryTimer, MaxSmDeliveryTimer, "IpSmGwGuidance.RecommendedDeliveryTimeValue")
-	if err != nil {
-		return nil, err
-	}
 	return &IpSmGwGuidance{
-		MinimumDeliveryTimeValue:     mdt,
-		RecommendedDeliveryTimeValue: rdt,
+		MinimumDeliveryTimeValue:     int(w.MinimumDeliveryTimeValue),
+		RecommendedDeliveryTimeValue: int(w.RecommendedDeliveryTimeValue),
 	}, nil
 }
 
@@ -165,34 +156,32 @@ func convertSuperChargerInfoToWire(s *SuperChargerInfo) (*gsm_map.SuperChargerIn
 }
 
 func convertWireToSuperChargerInfo(w *gsm_map.SuperChargerInfo) (*SuperChargerInfo, error) {
-	if w.SendSubscriberData != nil && w.SubscriberDataStored != nil {
-		return nil, ErrSuperChargerInfoMultipleAlternatives
-	}
 	out := &SuperChargerInfo{}
-	if w.SendSubscriberData != nil {
+	switch w.Choice {
+	case gsm_map.SuperChargerInfoChoiceSendSubscriberData:
 		out.SendSubscriberData = true
-	} else if w.SubscriberDataStored != nil {
+	case gsm_map.SuperChargerInfoChoiceSubscriberDataStored:
 		out.SubscriberDataStored = HexBytes(*w.SubscriberDataStored)
-	} else {
-		return nil, ErrSuperChargerInfoNoAlternative
+	default:
+		return nil, ErrSuperChargerInfoUnknownAlternative
 	}
 	return out, nil
 }
 
 func convertAddInfoToWire(a *AddInfo) (*gsm_map.ADDInfo, error) {
-	imeisvBytes, err := tbcd.Encode(a.IMEISV)
+	imeisvBytes, err := encodeIdentityDigits(identityIMEISV, a.IMEISV)
 	if err != nil {
 		return nil, fmt.Errorf("encoding IMEISV: %w", err)
 	}
 	out := &gsm_map.ADDInfo{
-		Imeisv:                   gsm_map.IMEI(imeisvBytes),
+		Imeisv:                   imeisvBytes,
 		SkipSubscriberDataUpdate: boolToNullPtr(a.SkipSubscriberDataUpdate),
 	}
 	return out, nil
 }
 
 func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
-	imeisv, err := tbcd.Decode(w.Imeisv)
+	imeisv, err := decodeIdentityDigits(identityIMEISV, w.Imeisv)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMEISV: %w", err)
 	}
@@ -200,6 +189,21 @@ func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
 		IMEISV:                   imeisv,
 		SkipSubscriberDataUpdate: nullPtrToBool(w.SkipSubscriberDataUpdate),
 	}, nil
+}
+
+// istSupportIndicatorFromWire decodes an IST-SupportIndicator (SendRoutingInfo
+// and UpdateLocation VLR-Capability). 3GPP TS 29.002 V19.1.0 §17.7.1:
+// "reception of values > 1 shall be mapped to ' istCommandSupported '". The
+// mapping runs on the int64 wire value so a value beyond a 32-bit int
+// maps. A negative value lies outside the rule; the type is extensible, so
+// it is kept (§17.1.4). Only a value the platform int cannot hold is an
+// error.
+func istSupportIndicatorFromWire(w gsm_map.ISTSupportIndicator) (int, error) {
+	v := int64(w)
+	if v > 1 {
+		v = 1
+	}
+	return narrowInt64(v)
 }
 
 // --- SRI nested SEQUENCE helpers ---
@@ -211,7 +215,7 @@ func convertForwardingDataToWire(f *ForwardingData) (*gsm_map.ForwardingData, er
 		if err != nil {
 			return nil, fmt.Errorf("encoding ForwardedToNumber: %w", err)
 		}
-		as := gsm_map.ISDNAddressString(enc)
+		as := enc
 		out.ForwardedToNumber = &as
 	}
 	if len(f.ForwardedToSubaddress) > 0 {
@@ -222,8 +226,12 @@ func convertForwardingDataToWire(f *ForwardingData) (*gsm_map.ForwardingData, er
 		fo := gsm_map.ForwardingOptions(f.ForwardingOptions)
 		out.ForwardingOptions = &fo
 	}
-	if len(f.LongForwardedToNumber) > 0 {
-		ln := gsm_map.FTNAddressString(f.LongForwardedToNumber)
+	if f.LongForwardedToNumber != "" {
+		enc, err := encodeAddressField(f.LongForwardedToNumber, f.LongForwardedToNumberNature, f.LongForwardedToNumberPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding LongForwardedToNumber: %w", err)
+		}
+		ln := enc
 		out.LongForwardedToNumber = &ln
 	}
 	return out, nil
@@ -232,7 +240,7 @@ func convertForwardingDataToWire(f *ForwardingData) (*gsm_map.ForwardingData, er
 func convertWireToForwardingData(w *gsm_map.ForwardingData) (*ForwardingData, error) {
 	out := &ForwardingData{}
 	if w.ForwardedToNumber != nil {
-		digits, nat, pl, err := decodeAddressField(*w.ForwardedToNumber)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.ForwardedToNumber, ErrForwardingDataForwardedToNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ForwardedToNumber: %w", err)
 		}
@@ -247,7 +255,13 @@ func convertWireToForwardingData(w *gsm_map.ForwardingData) (*ForwardingData, er
 		out.ForwardingOptions = HexBytes(*w.ForwardingOptions)
 	}
 	if w.LongForwardedToNumber != nil {
-		out.LongForwardedToNumber = HexBytes(*w.LongForwardedToNumber)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.LongForwardedToNumber, ErrForwardingDataLongForwardedToNumberDecodedEmpty)
+		if err != nil {
+			return nil, fmt.Errorf("decoding LongForwardedToNumber: %w", err)
+		}
+		out.LongForwardedToNumber = digits
+		out.LongForwardedToNumberNature = nat
+		out.LongForwardedToNumberPlan = pl
 	}
 	return out, nil
 }
@@ -287,7 +301,7 @@ func convertExtBasicServiceCodeToWire(e *ExtBasicServiceCode) (*gsm_map.ExtBasic
 	hasTele := len(e.ExtTeleservice) > 0
 	switch {
 	case hasBearer && hasTele:
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrExtBasicServiceCodeMultipleAlternatives
 	case hasBearer:
 		v := gsm_map.NewExtBasicServiceCodeExtBearerService(gsm_map.ExtBearerServiceCode(e.ExtBearerService))
 		return &v, nil
@@ -295,24 +309,18 @@ func convertExtBasicServiceCodeToWire(e *ExtBasicServiceCode) (*gsm_map.ExtBasic
 		v := gsm_map.NewExtBasicServiceCodeExtTeleservice(gsm_map.ExtTeleserviceCode(e.ExtTeleservice))
 		return &v, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrExtBasicServiceCodeNoAlternative
 	}
 }
 
 func convertWireToExtBasicServiceCode(w *gsm_map.ExtBasicServiceCode) (*ExtBasicServiceCode, error) {
 	switch w.Choice {
 	case gsm_map.ExtBasicServiceCodeChoiceExtBearerService:
-		if w.ExtBearerService == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		return &ExtBasicServiceCode{ExtBearerService: HexBytes(*w.ExtBearerService)}, nil
 	case gsm_map.ExtBasicServiceCodeChoiceExtTeleservice:
-		if w.ExtTeleservice == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		return &ExtBasicServiceCode{ExtTeleservice: HexBytes(*w.ExtTeleservice)}, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrExtBasicServiceCodeUnknownAlternative
 	}
 }
 
@@ -321,13 +329,13 @@ func convertRoutingInfoToWire(r *RoutingInfo) (*gsm_map.RoutingInfo, error) {
 	hasFwd := r.ForwardingData != nil
 	switch {
 	case hasRoaming && hasFwd:
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrRoutingInfoMultipleAlternatives
 	case hasRoaming:
 		enc, err := encodeAddressField(r.RoamingNumber, r.RoamingNumberNature, r.RoamingNumberPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding RoamingNumber: %w", err)
 		}
-		v := gsm_map.NewRoutingInfoRoamingNumber(gsm_map.ISDNAddressString(enc))
+		v := gsm_map.NewRoutingInfoRoamingNumber(enc)
 		return &v, nil
 	case hasFwd:
 		fw, err := convertForwardingDataToWire(r.ForwardingData)
@@ -337,32 +345,26 @@ func convertRoutingInfoToWire(r *RoutingInfo) (*gsm_map.RoutingInfo, error) {
 		v := gsm_map.NewRoutingInfoForwardingData(*fw)
 		return &v, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrRoutingInfoNoAlternative
 	}
 }
 
 func convertWireToRoutingInfo(w *gsm_map.RoutingInfo) (*RoutingInfo, error) {
 	switch w.Choice {
 	case gsm_map.RoutingInfoChoiceRoamingNumber:
-		if w.RoamingNumber == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
-		digits, nat, pl, err := decodeAddressField(*w.RoamingNumber)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.RoamingNumber, ErrRoutingInfoRoamingNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding RoamingNumber: %w", err)
 		}
 		return &RoutingInfo{RoamingNumber: digits, RoamingNumberNature: nat, RoamingNumberPlan: pl}, nil
 	case gsm_map.RoutingInfoChoiceForwardingData:
-		if w.ForwardingData == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		fd, err := convertWireToForwardingData(w.ForwardingData)
 		if err != nil {
 			return nil, err
 		}
 		return &RoutingInfo{ForwardingData: fd}, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrRoutingInfoUnknownAlternative
 	}
 }
 
@@ -371,7 +373,7 @@ func convertExtendedRoutingInfoToWire(e *ExtendedRoutingInfo) (*gsm_map.Extended
 	hasCamel := e.CamelRoutingInfo != nil
 	switch {
 	case hasRI && hasCamel:
-		return nil, ErrSriChoiceMultipleAlternatives
+		return nil, ErrExtendedRoutingInfoMultipleAlternatives
 	case hasRI:
 		ri, err := convertRoutingInfoToWire(e.RoutingInfo)
 		if err != nil {
@@ -387,32 +389,26 @@ func convertExtendedRoutingInfoToWire(e *ExtendedRoutingInfo) (*gsm_map.Extended
 		v := gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(*cri)
 		return &v, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrExtendedRoutingInfoNoAlternative
 	}
 }
 
 func convertWireToExtendedRoutingInfo(w *gsm_map.ExtendedRoutingInfo) (*ExtendedRoutingInfo, error) {
 	switch w.Choice {
 	case gsm_map.ExtendedRoutingInfoChoiceRoutingInfo:
-		if w.RoutingInfo == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		ri, err := convertWireToRoutingInfo(w.RoutingInfo)
 		if err != nil {
 			return nil, err
 		}
 		return &ExtendedRoutingInfo{RoutingInfo: ri}, nil
 	case gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo:
-		if w.CamelRoutingInfo == nil {
-			return nil, ErrSriChoiceNoAlternative
-		}
 		cri, err := convertWireToCamelRoutingInfo(w.CamelRoutingInfo)
 		if err != nil {
 			return nil, err
 		}
 		return &ExtendedRoutingInfo{CamelRoutingInfo: cri}, nil
 	default:
-		return nil, ErrSriChoiceNoAlternative
+		return nil, ErrExtendedRoutingInfoUnknownAlternative
 	}
 }
 
@@ -450,28 +446,63 @@ func convertWireToCamelRoutingInfo(w *gsm_map.CamelRoutingInfo) (*CamelRoutingIn
 
 // --- SRI remaining helpers ---
 
-func convertExternalSignalInfoToWire(e *ExternalSignalInfo) *gsm_map.ExternalSignalInfo {
-	return &gsm_map.ExternalSignalInfo{
-		ProtocolId: gsm_map.ProtocolId(int64(e.ProtocolID)),
-		SignalInfo: gsm_map.SignalInfo(e.SignalInfo),
-	}
+// isListedProtocolID reports whether v is one of the ProtocolId values of
+// 3GPP TS 29.002 V19.1.0 §17.7.8, gsm-0408 (1) to ets-300102-1 (4). The type
+// is not extensible.
+// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+func isListedProtocolID(v gsm_map.ProtocolId) bool {
+	return v >= gsm_map.ProtocolIdGsm0408 && v <= gsm_map.ProtocolIdEts3001021
 }
 
-func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) *ExternalSignalInfo {
+// convertExternalSignalInfoToWire encodes an ExternalSignalInfo. Besides an
+// unlisted ProtocolID it rejects gsm-BSSMAP (3): 3GPP TS 29.002 V19.1.0
+// §17.7.8 ProtocolId, "Value 3 is reserved and must not be used".
+func convertExternalSignalInfoToWire(e *ExternalSignalInfo) (*gsm_map.ExternalSignalInfo, error) {
+	id := gsm_map.ProtocolId(int64(e.ProtocolID))
+	if !isListedProtocolID(id) {
+		return nil, fmt.Errorf("ProtocolID=%d: %w", e.ProtocolID, ErrProtocolIDInvalid)
+	}
+	if id == gsm_map.ProtocolIdGsmBSSMAP {
+		return nil, fmt.Errorf("ProtocolID=%d: %w", e.ProtocolID, ErrProtocolIDReserved)
+	}
+	return &gsm_map.ExternalSignalInfo{
+		ProtocolId: id,
+		SignalInfo: gsm_map.SignalInfo(e.SignalInfo),
+	}, nil
+}
+
+// convertWireToExternalSignalInfo decodes an ExternalSignalInfo. It rejects
+// an unlisted ProtocolId and keeps the listed gsm-BSSMAP (3), whose "must
+// not be used" binds the sender.
+func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) (*ExternalSignalInfo, error) {
+	if !isListedProtocolID(w.ProtocolId) {
+		return nil, fmt.Errorf("ProtocolId=%d: %w", w.ProtocolId, ErrProtocolIDInvalid)
+	}
 	return &ExternalSignalInfo{
 		ProtocolID: int(w.ProtocolId),
 		SignalInfo: HexBytes(w.SignalInfo),
-	}
+	}, nil
 }
 
-func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) *gsm_map.ExtExternalSignalInfo {
+func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) (*gsm_map.ExtExternalSignalInfo, error) {
+	if gsm_map.ExtProtocolId(e.ExtProtocolID) != gsm_map.ExtProtocolIdEts300356 {
+		return nil, fmt.Errorf("%w (got %d)", ErrExtProtocolIDInvalid, e.ExtProtocolID)
+	}
 	return &gsm_map.ExtExternalSignalInfo{
-		ExtProtocolId: gsm_map.ExtProtocolId(int64(e.ExtProtocolID)),
+		ExtProtocolId: gsm_map.ExtProtocolIdEts300356,
 		SignalInfo:    gsm_map.SignalInfo(e.SignalInfo),
-	}
+	}, nil
 }
 
+// convertWireToExtExternalSignalInfo decodes an Ext-ExternalSignalInfo. 3GPP
+// TS 29.002 V19.1.0 §17.7.8 Ext-ProtocolId: "For Ext-ExternalSignalInfo
+// sequences containing this parameter with any other value than the ones
+// listed the receiver shall ignore the whole Ext-ExternalSignalInfo
+// sequence." It returns nil for such a sequence.
 func convertWireToExtExternalSignalInfo(w *gsm_map.ExtExternalSignalInfo) *ExtExternalSignalInfo {
+	if w.ExtProtocolId != gsm_map.ExtProtocolIdEts300356 {
+		return nil
+	}
 	return &ExtExternalSignalInfo{
 		ExtProtocolID: int(w.ExtProtocolId),
 		SignalInfo:    HexBytes(w.SignalInfo),

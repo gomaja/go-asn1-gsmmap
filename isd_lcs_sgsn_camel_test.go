@@ -106,23 +106,23 @@ func TestExternalClientList_OverMax(t *testing.T) {
 	for i := range too {
 		too[i] = makeExternalClient()
 	}
-	_, err := convertExternalClientListToWire(too)
-	if !errors.Is(err, ErrExternalClientListSize) {
-		t.Fatalf("want ErrExternalClientListSize, got %v", err)
+	_, err := strictWire(convertExternalClientListToWire(too))
+	if !matchesConstraint(err, "externalClientList", "SIZE (0..5)") {
+		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
 
 func TestExtExternalClientList_BoundsRejected(t *testing.T) {
-	_, err := convertExtExternalClientListToWire(ExtExternalClientList{})
-	if !errors.Is(err, ErrExtExternalClientListSize) {
+	_, err := strictWire(convertExtExternalClientListToWire(ExtExternalClientList{}))
+	if !matchesConstraint(err, "ext-externalClientList", "SIZE (1..35)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(ExtExternalClientList, 36)
 	for i := range too {
 		too[i] = makeExternalClient()
 	}
-	_, err = convertExtExternalClientListToWire(too)
-	if !errors.Is(err, ErrExtExternalClientListSize) {
+	_, err = strictWire(convertExtExternalClientListToWire(too))
+	if !matchesConstraint(err, "ext-externalClientList", "SIZE (1..35)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -133,23 +133,20 @@ func TestPLMNClientList_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
-	out, err := convertWireToPLMNClientList(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	out := convertWireToPLMNClientList(w)
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch")
 	}
 }
 
 func TestPLMNClientList_BoundsRejected(t *testing.T) {
-	_, err := convertPLMNClientListToWire(PLMNClientList{})
-	if !errors.Is(err, ErrPLMNClientListSize) {
+	_, err := strictWire(convertPLMNClientListToWire(PLMNClientList{}))
+	if !matchesConstraint(err, "plmnClientList", "SIZE (1..5)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(PLMNClientList, 6)
-	_, err = convertPLMNClientListToWire(too)
-	if !errors.Is(err, ErrPLMNClientListSize) {
+	_, err = strictWire(convertPLMNClientListToWire(too))
+	if !matchesConstraint(err, "plmnClientList", "SIZE (1..5)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -172,26 +169,23 @@ func TestServiceType_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
-	out, err := convertWireToServiceType(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	out := convertWireToServiceType(w)
 	if !reflect.DeepEqual(&in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, *out)
 	}
 }
 
 func TestServiceTypeList_BoundsRejected(t *testing.T) {
-	_, err := convertServiceTypeListToWire(ServiceTypeList{})
-	if !errors.Is(err, ErrServiceTypeListSize) {
+	_, err := strictWire(convertServiceTypeListToWire(ServiceTypeList{}))
+	if !matchesConstraint(err, "serviceTypeList", "SIZE (1..32)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(ServiceTypeList, 33)
 	for i := range too {
 		too[i] = ServiceType{ServiceTypeIdentity: int64(i)}
 	}
-	_, err = convertServiceTypeListToWire(too)
-	if !errors.Is(err, ErrServiceTypeListSize) {
+	_, err = strictWire(convertServiceTypeListToWire(too))
+	if !matchesConstraint(err, "serviceTypeList", "SIZE (1..32)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -230,23 +224,23 @@ func TestLCSPrivacyClass_RoundTrip(t *testing.T) {
 func TestLCSPrivacyClass_SsStatusInvalid(t *testing.T) {
 	in := makeLCSPrivacyClass()
 	in.SsStatus = HexBytes{}
-	_, err := convertLCSPrivacyClassToWire(&in)
-	if !errors.Is(err, ErrExtSSStatusInvalidSize) {
-		t.Fatalf("want ErrExtSSStatusInvalidSize, got %v", err)
+	_, err := strictWire(convertLCSPrivacyClassToWire(&in))
+	if !matchesConstraint(err, "ss-Status", "SIZE (1..5)") {
+		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
 
 func TestLCSPrivacyExceptionList_BoundsRejected(t *testing.T) {
-	_, err := convertLCSPrivacyExceptionListToWire(LCSPrivacyExceptionList{})
-	if !errors.Is(err, ErrLCSPrivacyExceptionListSize) {
+	_, err := strictWire(convertLCSPrivacyExceptionListToWire(LCSPrivacyExceptionList{}))
+	if !matchesConstraint(err, "lcs-PrivacyExceptionList", "SIZE (1..4)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(LCSPrivacyExceptionList, 5)
 	for i := range too {
 		too[i] = makeLCSPrivacyClass()
 	}
-	_, err = convertLCSPrivacyExceptionListToWire(too)
-	if !errors.Is(err, ErrLCSPrivacyExceptionListSize) {
+	_, err = strictWire(convertLCSPrivacyExceptionListToWire(too))
+	if !matchesConstraint(err, "lcs-PrivacyExceptionList", "SIZE (1..4)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -257,30 +251,24 @@ func TestLCSPrivacyExceptionList_BoundsRejected(t *testing.T) {
 
 func TestMOLRClass_RoundTrip(t *testing.T) {
 	in := MOLRClass{SsCode: SsCode(0x42), SsStatus: HexBytes{0x01}}
-	w, err := convertMOLRClassToWire(&in)
-	if err != nil {
-		t.Fatalf("toWire: %v", err)
-	}
-	out, err := convertWireToMOLRClass(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	w := convertMOLRClassToWire(&in)
+	out := convertWireToMOLRClass(w)
 	if !reflect.DeepEqual(&in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, *out)
 	}
 }
 
 func TestMOLRList_BoundsRejected(t *testing.T) {
-	_, err := convertMOLRListToWire(MOLRList{})
-	if !errors.Is(err, ErrMOLRListSize) {
+	_, err := strictWire(convertMOLRListToWire(MOLRList{}), nil)
+	if !matchesConstraint(err, "molr-List", "SIZE (1..3)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(MOLRList, 4)
 	for i := range too {
 		too[i] = MOLRClass{SsCode: SsCode(byte(i)), SsStatus: HexBytes{0x01}}
 	}
-	_, err = convertMOLRListToWire(too)
-	if !errors.Is(err, ErrMOLRListSize) {
+	_, err = strictWire(convertMOLRListToWire(too), nil)
+	if !matchesConstraint(err, "molr-List", "SIZE (1..3)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -291,8 +279,8 @@ func TestMOLRList_BoundsRejected(t *testing.T) {
 
 func TestGMLCList_RoundTrip(t *testing.T) {
 	in := GMLCList{
-		{Address: "31611111111", Nature: 0x10, Plan: 0x01},
-		{Address: "31622222222", Nature: 0x10, Plan: 0x01},
+		{Digits: "31611111111", Nature: 0x10, Plan: 0x01},
+		{Digits: "31622222222", Nature: 0x10, Plan: 0x01},
 	}
 	w, err := convertGMLCListToWire(in)
 	if err != nil {
@@ -308,16 +296,16 @@ func TestGMLCList_RoundTrip(t *testing.T) {
 }
 
 func TestGMLCList_BoundsRejected(t *testing.T) {
-	_, err := convertGMLCListToWire(GMLCList{})
-	if !errors.Is(err, ErrGMLCListSize) {
+	_, err := strictWire(convertGMLCListToWire(GMLCList{}))
+	if !matchesConstraint(err, "gmlc-List", "SIZE (1..5)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(GMLCList, 6)
 	for i := range too {
-		too[i] = GMLCAddress{Address: "31611111111", Nature: 0x10, Plan: 0x01}
+		too[i] = ISDNNumber{Digits: "31611111111", Nature: 0x10, Plan: 0x01}
 	}
-	_, err = convertGMLCListToWire(too)
-	if !errors.Is(err, ErrGMLCListSize) {
+	_, err = strictWire(convertGMLCListToWire(too))
+	if !matchesConstraint(err, "gmlc-List", "SIZE (1..5)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}
 }
@@ -328,7 +316,7 @@ func TestGMLCList_BoundsRejected(t *testing.T) {
 
 func TestLCSInformation_FullRoundTrip(t *testing.T) {
 	in := &LCSInformation{
-		GmlcList:                GMLCList{{Address: "31611111111", Nature: 0x10, Plan: 0x01}},
+		GmlcList:                GMLCList{{Digits: "31611111111", Nature: 0x10, Plan: 0x01}},
 		LcsPrivacyExceptionList: LCSPrivacyExceptionList{makeLCSPrivacyClass()},
 		MolrList:                MOLRList{{SsCode: SsCode(0x42), SsStatus: HexBytes{0x01}}},
 	}
@@ -391,7 +379,7 @@ func TestGPRSCamelTDPData_RoundTrip(t *testing.T) {
 }
 
 func TestGPRSCamelTDPData_DefaultGPRSHandlingLenientRemap(t *testing.T) {
-	// Per TS 29.002 MAP-MS-DataTypes.asn:1638-1640 spec exception clause:
+	// Per 3GPP TS 29.002 V19.1.0 §17.7.1 spec exception clause:
 	//   - values 2..31 → continueTransaction(0)
 	//   - values >31   → releaseTransaction(1)
 	addr, _ := encodeAddressField("31611111111", 0x10, 0x01)
@@ -409,7 +397,7 @@ func TestGPRSCamelTDPData_DefaultGPRSHandlingLenientRemap(t *testing.T) {
 		w := &gsm_map.GPRSCamelTDPData{
 			GprsTriggerDetectionPoint: gsm_map.GPRSTriggerDetectionPointAttach,
 			ServiceKey:                gsm_map.ServiceKey(1),
-			GsmSCFAddress:             gsm_map.ISDNAddressString(addr),
+			GsmSCFAddress:             addr,
 			DefaultSessionHandling:    gsm_map.DefaultGPRSHandling(tc.wire),
 		}
 		out, err := convertWireToGPRSCamelTDPData(w)
@@ -426,9 +414,9 @@ func TestGPRSCamelTDPData_ServiceKeyRange(t *testing.T) {
 	for _, sk := range []int64{-1, 2147483648, 1 << 40} {
 		in := makeGPRSCamelTDPData()
 		in.ServiceKey = sk
-		_, err := convertGPRSCamelTDPDataToWire(&in)
-		if !errors.Is(err, ErrCamelInvalidServiceKey) {
-			t.Fatalf("encode sk=%d: want ErrCamelInvalidServiceKey, got %v", sk, err)
+		_, err := strictWire(convertGPRSCamelTDPDataToWire(&in))
+		if !matchesConstraint(err, "serviceKey", "(0..2147483647)") {
+			t.Fatalf("encode sk=%d: want BER constraint error, got %v", sk, err)
 		}
 	}
 }
@@ -446,9 +434,9 @@ func TestMGCSI_ServiceKeyRange(t *testing.T) {
 	for _, sk := range []int64{-1, 2147483648, 1 << 40} {
 		in := makeMGCSI()
 		in.ServiceKey = sk
-		_, err := convertMGCSIToWire(in)
-		if !errors.Is(err, ErrCamelInvalidServiceKey) {
-			t.Fatalf("encode sk=%d: want ErrCamelInvalidServiceKey, got %v", sk, err)
+		_, err := strictWire(convertMGCSIToWire(in))
+		if !matchesConstraint(err, "serviceKey", "(0..2147483647)") {
+			t.Fatalf("encode sk=%d: want BER constraint error, got %v", sk, err)
 		}
 	}
 }
@@ -458,10 +446,7 @@ func TestLCSPrivacyClass_SsCodeStrictSize(t *testing.T) {
 		SsCode:   gsm_map.SSCode{0x21, 0x42}, // 2 octets — should be 1
 		SsStatus: gsm_map.ExtSSStatus{0x01},
 	}
-	_, err := convertWireToLCSPrivacyClass(w)
-	if !errors.Is(err, ErrLCSPrivacyClassSsCodeInvalidSize) {
-		t.Fatalf("want ErrLCSPrivacyClassSsCodeInvalidSize, got %v", err)
-	}
+	wantConstraintError(t, strictDecodeWire(w), "ss-Code", "SIZE (1)")
 }
 
 func TestMOLRClass_SsCodeStrictSize(t *testing.T) {
@@ -469,54 +454,56 @@ func TestMOLRClass_SsCodeStrictSize(t *testing.T) {
 		SsCode:   gsm_map.SSCode{0x21, 0x42},
 		SsStatus: gsm_map.ExtSSStatus{0x01},
 	}
-	_, err := convertWireToMOLRClass(w)
-	if !errors.Is(err, ErrMOLRClassSsCodeInvalidSize) {
-		t.Fatalf("want ErrMOLRClassSsCodeInvalidSize, got %v", err)
-	}
+	wantConstraintError(t, strictDecodeWire(w), "ss-Code", "SIZE (1)")
 }
 
 func TestGMLCAddress_EmptyRejected(t *testing.T) {
-	in := GMLCList{{Address: "", Nature: 0x10, Plan: 0x01}}
+	in := GMLCList{{Digits: "", Nature: 0x10, Plan: 0x01}}
 	_, err := convertGMLCListToWire(in)
-	if !errors.Is(err, ErrGMLCAddressEmpty) {
-		t.Fatalf("encode empty: want ErrGMLCAddressEmpty, got %v", err)
+	if !errors.Is(err, ErrGMLCListEntryEmpty) {
+		t.Fatalf("encode empty: want ErrGMLCListEntryEmpty, got %v", err)
 	}
 }
 
 func TestSGSNCAMELSubscriptionInfo_MtSmsCAMELTDPCriteriaListSize(t *testing.T) {
+	// MT-smsCAMELTDP-Criteria carries only sms-DeliveryRequest (2),
+	// 3GPP TS 29.002 V19.1.0 §17.7.1.
 	tdp := MTSmsCAMELTDPCriteria{
-		SmsTriggerDetectionPoint: SMSTriggerDetectionPoint(1),
+		SmsTriggerDetectionPoint: SMSTriggerDetectionPoint(2),
 	}
 	in := &SGSNCAMELSubscriptionInfo{
 		MtSmsCAMELTDPCriteriaList: []MTSmsCAMELTDPCriteria{},
 	}
-	_, err := convertSGSNCAMELSubscriptionInfoToWire(in)
-	if !errors.Is(err, ErrSGSNMtSmsCAMELTDPCriteriaListSize) {
-		t.Fatalf("empty: want ErrSGSNMtSmsCAMELTDPCriteriaListSize, got %v", err)
+	_, err := strictWire(convertSGSNCAMELSubscriptionInfoToWire(in))
+	if !matchesConstraint(err, "mt-smsCAMELTDP-CriteriaList", "SIZE (1..10)") {
+		t.Fatalf("empty: want BER constraint error, got %v", err)
 	}
 	too := make([]MTSmsCAMELTDPCriteria, 11)
 	for i := range too {
 		too[i] = tdp
 	}
 	in.MtSmsCAMELTDPCriteriaList = too
-	_, err = convertSGSNCAMELSubscriptionInfoToWire(in)
-	if !errors.Is(err, ErrSGSNMtSmsCAMELTDPCriteriaListSize) {
-		t.Fatalf("over-max: want ErrSGSNMtSmsCAMELTDPCriteriaListSize, got %v", err)
+	_, err = strictWire(convertSGSNCAMELSubscriptionInfoToWire(in))
+	if !matchesConstraint(err, "mt-smsCAMELTDP-CriteriaList", "SIZE (1..10)") {
+		t.Fatalf("over-max: want BER constraint error, got %v", err)
 	}
 }
 
 func TestGPRSCamelTDPDataList_BoundsRejected(t *testing.T) {
-	_, err := convertGPRSCamelTDPDataListToWire(GPRSCamelTDPDataList{})
-	if !errors.Is(err, ErrGPRSCamelTDPDataListSize) {
+	_, err := strictWire(convertGPRSCamelTDPDataListToWire(GPRSCamelTDPDataList{}))
+	if !matchesConstraint(err, "gprs-CamelTDPDataList", "SIZE (1..10)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
+	// Five TDPs are listed, so a longer list repeats one, which the
+	// one-instance rule (3GPP TS 29.002 V19.1.0 §17.7.1) rejects before
+	// the codec's SIZE (1..10).
 	too := make(GPRSCamelTDPDataList, 11)
 	for i := range too {
 		too[i] = makeGPRSCamelTDPData()
 	}
-	_, err = convertGPRSCamelTDPDataListToWire(too)
-	if !errors.Is(err, ErrGPRSCamelTDPDataListSize) {
-		t.Fatalf("over-max: want size err, got %v", err)
+	_, err = strictWire(convertGPRSCamelTDPDataListToWire(too))
+	if !errors.Is(err, ErrCamelDuplicateTriggerDetectionPoint) {
+		t.Fatalf("over-max: want ErrCamelDuplicateTriggerDetectionPoint, got %v", err)
 	}
 }
 
@@ -529,8 +516,6 @@ func TestGPRSCSI_RoundTrip(t *testing.T) {
 	in := &GPRSCSI{
 		GprsCamelTDPDataList:    GPRSCamelTDPDataList{makeGPRSCamelTDPData()},
 		CamelCapabilityHandling: &phase,
-		NotificationToCSE:       true,
-		CsiActive:               true,
 	}
 	w, err := convertGPRSCSIToWire(in)
 	if err != nil {
@@ -542,25 +527,6 @@ func TestGPRSCSI_RoundTrip(t *testing.T) {
 	}
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, out)
-	}
-}
-
-func TestGPRSCSI_RequiresBothListAndPhase(t *testing.T) {
-	// Per TS 29.002 MAP-MS-DataTypes.asn:1615-1616, when GPRS-CSI is
-	// present BOTH GprsCamelTDPDataList AND CamelCapabilityHandling
-	// SHALL be present.
-	phase := 2
-	cases := []*GPRSCSI{
-		{GprsCamelTDPDataList: GPRSCamelTDPDataList{makeGPRSCamelTDPData()}}, // missing phase
-		{CamelCapabilityHandling: &phase},                                    // missing list
-		{},                                                                   // both missing
-		{NotificationToCSE: true},                                            // both missing, only NULL flag set
-	}
-	for i, c := range cases {
-		_, err := convertGPRSCSIToWire(c)
-		if !errors.Is(err, ErrGPRSCSIRequiresTDPListAndPhase) {
-			t.Fatalf("case %d: want ErrGPRSCSIRequiresTDPListAndPhase, got %v", i, err)
-		}
 	}
 }
 
@@ -584,12 +550,11 @@ func TestGPRSCSI_PhaseOutOfRange(t *testing.T) {
 
 func makeMGCSI() *MGCSI {
 	return &MGCSI{
-		MobilityTriggers:    []HexBytes{{0x01}, {0x02}, {0x03}},
+		MobilityTriggers:    []MMCode{MMCodeRouteingAreaUpdateInSameSGSN, MMCodeGPRSAttach, MMCodeNetworkInitiatedGPRSDetach},
 		ServiceKey:          7,
 		GsmSCFAddress:       "31633333333",
 		GsmSCFAddressNature: 0x10,
 		GsmSCFAddressPlan:   0x01,
-		NotificationToCSE:   true,
 	}
 }
 
@@ -610,26 +575,28 @@ func TestMGCSI_RoundTrip(t *testing.T) {
 
 func TestMGCSI_MobilityTriggersBoundsRejected(t *testing.T) {
 	in := makeMGCSI()
-	in.MobilityTriggers = []HexBytes{}
-	_, err := convertMGCSIToWire(in)
-	if !errors.Is(err, ErrMobilityTriggersSize) {
-		t.Fatalf("empty: want ErrMobilityTriggersSize, got %v", err)
+	in.MobilityTriggers = []MMCode{}
+	_, err := strictWire(convertMGCSIToWire(in))
+	if !matchesConstraint(err, "mobilityTriggers", "SIZE (1..10)") {
+		t.Fatalf("empty: want BER constraint error, got %v", err)
 	}
-	in.MobilityTriggers = make([]HexBytes, 11)
+	in.MobilityTriggers = make([]MMCode, 11)
 	for i := range in.MobilityTriggers {
-		in.MobilityTriggers[i] = HexBytes{byte(i)}
+		in.MobilityTriggers[i] = MMCodeGPRSAttach
 	}
-	_, err = convertMGCSIToWire(in)
-	if !errors.Is(err, ErrMobilityTriggersSize) {
-		t.Fatalf("over-max: want ErrMobilityTriggersSize, got %v", err)
+	_, err = strictWire(convertMGCSIToWire(in))
+	if !matchesConstraint(err, "mobilityTriggers", "SIZE (1..10)") {
+		t.Fatalf("over-max: want BER constraint error, got %v", err)
 	}
 }
 
 func TestMGCSI_MMCodeWrongSize(t *testing.T) {
-	in := makeMGCSI()
-	in.MobilityTriggers[0] = HexBytes{0x01, 0x02} // not 1 octet
-	_, err := convertMGCSIToWire(in)
-	if !errors.Is(err, ErrMMCodeInvalidSize) {
+	w, err := convertMGCSIToWire(makeMGCSI())
+	if err != nil {
+		t.Fatal(err)
+	}
+	w.MobilityTriggers.Values[0] = gsm_map.MMCode{0x80, 0x81} // not 1 octet
+	if _, err := convertWireToMGCSI(w); !errors.Is(err, ErrMMCodeInvalidSize) {
 		t.Fatalf("want ErrMMCodeInvalidSize, got %v", err)
 	}
 }

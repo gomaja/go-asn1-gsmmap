@@ -12,7 +12,7 @@ import (
 
 func TestInsertSubscriberDataArg_MinimalRoundTrip(t *testing.T) {
 	in := &InsertSubscriberDataArg{
-		IMSI: HexBytes{0x12, 0x34, 0x56, 0x78, 0x90}, // opaque BCD
+		IMSI: "2143658709",
 	}
 	encoded, err := in.Marshal()
 	if err != nil {
@@ -29,7 +29,7 @@ func TestInsertSubscriberDataArg_MinimalRoundTrip(t *testing.T) {
 
 func TestInsertSubscriberDataArg_MSISDNRoundTrip(t *testing.T) {
 	in := &InsertSubscriberDataArg{
-		IMSI:         HexBytes{0x12, 0x34, 0x56},
+		IMSI:         "214365",
 		MSISDN:       "31611111111",
 		MSISDNNature: 0x10, // International
 		MSISDNPlan:   0x01, // ISDN
@@ -51,7 +51,7 @@ func TestInsertSubscriberDataArg_NULLFlagsRoundTrip(t *testing.T) {
 	// Exercise the dozen-or-so OPTIONAL NULL bool flags to confirm the
 	// encode/decode pair via boolToNullPtr/nullPtrToBool round-trips.
 	in := &InsertSubscriberDataArg{
-		IMSI: HexBytes{0x12, 0x34, 0x56},
+		IMSI: "214365",
 		RoamingRestrictionDueToUnsupportedFeature: true,
 		LmuIndicator:                          true,
 		UeReachabilityRequestIndicator:        true,
@@ -78,7 +78,7 @@ func TestInsertSubscriberDataArg_NULLFlagsRoundTrip(t *testing.T) {
 
 func TestInsertSubscriberDataArg_OdbAndZoneCodeRoundTrip(t *testing.T) {
 	in := &InsertSubscriberDataArg{
-		IMSI: HexBytes{0x12, 0x34, 0x56},
+		IMSI: "214365",
 		OdbData: &ODBData{
 			OdbGeneralData: &ODBGeneralData{AllOGCallsBarred: true},
 		},
@@ -108,7 +108,7 @@ func TestInsertSubscriberDataArg_GprsAndLsaRoundTrip(t *testing.T) {
 		Apn:           HexBytes{'a', 'p', 'n'},
 	}
 	in := &InsertSubscriberDataArg{
-		IMSI: HexBytes{0x12, 0x34, 0x56},
+		IMSI: "214365",
 		GprsSubscriptionData: &GPRSSubscriptionData{
 			GprsDataList: GPRSDataList{pdp},
 		},
@@ -145,7 +145,7 @@ func TestInsertSubscriberDataArg_EpsAndCsgRoundTrip(t *testing.T) {
 		},
 	}
 	in := &InsertSubscriberDataArg{
-		IMSI: HexBytes{0x12, 0x34, 0x56},
+		IMSI: "214365",
 		EpsSubscriptionData: &EPSSubscriptionData{
 			ApnConfigurationProfile: &APNConfigurationProfile{
 				DefaultContext: 1,
@@ -153,8 +153,8 @@ func TestInsertSubscriberDataArg_EpsAndCsgRoundTrip(t *testing.T) {
 			},
 		},
 		CsgSubscriptionDataList: CSGSubscriptionDataList{{
-			CsgId:          HexBytes{0x12, 0x34, 0x56, 0x60},
-			CsgIdBitLength: 27,
+			CsgID:     HexBytes{0x12, 0x34, 0x56, 0x60},
+			CsgIDBits: 27,
 		}},
 	}
 	encoded, err := in.Marshal()
@@ -173,9 +173,9 @@ func TestInsertSubscriberDataArg_EpsAndCsgRoundTrip(t *testing.T) {
 func TestInsertSubscriberDataArg_LcsAndSgsnCamelRoundTrip(t *testing.T) {
 	phase := 4
 	in := &InsertSubscriberDataArg{
-		IMSI: HexBytes{0x12, 0x34, 0x56},
+		IMSI: "214365",
 		LcsInformation: &LCSInformation{
-			GmlcList: GMLCList{{Address: "31622222222", Nature: 0x10, Plan: 0x01}},
+			GmlcList: GMLCList{{Digits: "31622222222", Nature: 0x10, Plan: 0x01}},
 		},
 		SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{
 			GprsCSI: &GPRSCSI{
@@ -206,7 +206,7 @@ func TestInsertSubscriberDataArg_LcsAndSgsnCamelRoundTrip(t *testing.T) {
 
 func TestInsertSubscriberDataArg_PR_E1aSubtypesRoundTrip(t *testing.T) {
 	in := &InsertSubscriberDataArg{
-		IMSI: HexBytes{0x12, 0x34, 0x56},
+		IMSI: "214365",
 		McSSInfo: &MCSSInfo{
 			SsCode:   SsCode(0x21),
 			SsStatus: HexBytes{0x01},
@@ -245,7 +245,7 @@ func TestInsertSubscriberDataArg_PR_E1aSubtypesRoundTrip(t *testing.T) {
 
 func TestInsertSubscriberDataArg_ServiceListsRoundTrip(t *testing.T) {
 	in := &InsertSubscriberDataArg{
-		IMSI:              HexBytes{0x12, 0x34, 0x56},
+		IMSI:              "214365",
 		BearerServiceList: []HexBytes{{0x10}, {0x20, 0x30}},
 		TeleserviceList:   []HexBytes{{0x11}, {0x21}},
 	}
@@ -324,9 +324,11 @@ func TestInsertSubscriberDataRes_NilRejected(t *testing.T) {
 
 func TestInsertSubscriberDataArg_ListCardinalityRejected(t *testing.T) {
 	cases := []struct {
-		name string
-		mut  func(*InsertSubscriberDataArg)
-		want error
+		name       string
+		mut        func(*InsertSubscriberDataArg)
+		want       error
+		path       string
+		constraint string
 	}{
 		{"BearerServiceList over-max", func(a *InsertSubscriberDataArg) {
 			too := make([]HexBytes, 51)
@@ -334,30 +336,30 @@ func TestInsertSubscriberDataArg_ListCardinalityRejected(t *testing.T) {
 				too[i] = HexBytes{0x10}
 			}
 			a.BearerServiceList = too
-		}, ErrIsdBearerServiceListSize},
+		}, nil, "bearerServiceList", "SIZE (1..50)"},
 		{"BearerServiceList empty", func(a *InsertSubscriberDataArg) {
 			a.BearerServiceList = []HexBytes{}
-		}, ErrIsdBearerServiceListSize},
+		}, nil, "bearerServiceList", "SIZE (1..50)"},
 		{"TeleserviceList over-max", func(a *InsertSubscriberDataArg) {
 			too := make([]HexBytes, 21)
 			for i := range too {
 				too[i] = HexBytes{0x11}
 			}
 			a.TeleserviceList = too
-		}, ErrIsdTeleserviceListSize},
+		}, nil, "teleserviceList", "SIZE (1..20)"},
 		{"TeleserviceList empty", func(a *InsertSubscriberDataArg) {
 			a.TeleserviceList = []HexBytes{}
-		}, ErrIsdTeleserviceListSize},
+		}, nil, "teleserviceList", "SIZE (1..20)"},
 		{"ProvisionedSS empty", func(a *InsertSubscriberDataArg) {
 			a.ProvisionedSS = []ExtSSInfo{}
-		}, ErrIsdProvisionedSSListSize},
+		}, nil, "provisionedSS", "SIZE (1..30)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			in := &InsertSubscriberDataArg{IMSI: HexBytes{0x12, 0x34, 0x56}}
+			in := &InsertSubscriberDataArg{IMSI: "214365"}
 			tc.mut(in)
 			_, err := in.Marshal()
-			if !errors.Is(err, tc.want) {
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Fatalf("want %v, got %v", tc.want, err)
 			}
 		})
@@ -365,23 +367,23 @@ func TestInsertSubscriberDataArg_ListCardinalityRejected(t *testing.T) {
 }
 
 func TestInsertSubscriberDataArg_IMSISizeRejected(t *testing.T) {
-	for _, size := range []int{1, 2, 9, 12} {
-		in := &InsertSubscriberDataArg{IMSI: make(HexBytes, size)}
+	for _, digits := range []string{"12", "1234", "12345", "1234567890123456"} {
+		in := &InsertSubscriberDataArg{IMSI: digits}
 		_, err := in.Marshal()
-		if !errors.Is(err, ErrIsdIMSIInvalidSize) {
-			t.Fatalf("size=%d: want ErrIsdIMSIInvalidSize, got %v", size, err)
+		if !errors.Is(err, ErrIMSIInvalidLength) {
+			t.Fatalf("%d digits: want ErrIMSIInvalidLength, got %v", len(digits), err)
 		}
 	}
 }
 
 func TestInsertSubscriberDataArg_MmeNameFQDNValidation(t *testing.T) {
 	in := &InsertSubscriberDataArg{
-		IMSI:    HexBytes{0x12, 0x34, 0x56},
+		IMSI:    "214365",
 		MmeName: HexBytes("short"), // < 9 octets
 	}
 	_, err := in.Marshal()
-	if !errors.Is(err, ErrFQDNInvalidSize) {
-		t.Fatalf("want ErrFQDNInvalidSize, got %v", err)
+	if !matchesConstraint(err, "mme-Name", "SIZE (9..255)") {
+		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -400,23 +402,25 @@ func TestInsertSubscriberDataArg_NilSentinel(t *testing.T) {
 
 func TestInsertSubscriberDataArg_BadFieldSizes(t *testing.T) {
 	cases := []struct {
-		name string
-		mut  func(*InsertSubscriberDataArg)
-		want error
+		name       string
+		mut        func(*InsertSubscriberDataArg)
+		want       error
+		path       string
+		constraint string
 	}{
-		{"Category wrong size", func(a *InsertSubscriberDataArg) { a.Category = HexBytes{0x01, 0x02} }, ErrIsdCategoryInvalidSize},
-		{"ChargingChars wrong size", func(a *InsertSubscriberDataArg) { a.ChargingCharacteristics = HexBytes{0x01} }, ErrIsdChargingCharsInvalidSize},
-		{"CsAllocationRetentionPriority wrong", func(a *InsertSubscriberDataArg) { a.CsAllocationRetentionPriority = HexBytes{0x01, 0x02} }, ErrIsdCsAllocRetentionInvalidSize},
-		{"AgeIndicator over-max", func(a *InsertSubscriberDataArg) { a.SuperChargerSupportedInHLR = make(HexBytes, 7) }, ErrIsdAgeIndicatorInvalidSize},
-		{"BearerServiceList entry too long", func(a *InsertSubscriberDataArg) { a.BearerServiceList = []HexBytes{make(HexBytes, 6)} }, ErrIsdBearerServiceCodeSize},
-		{"TeleserviceList entry empty", func(a *InsertSubscriberDataArg) { a.TeleserviceList = []HexBytes{{}} }, ErrIsdTeleserviceCodeSize},
+		{"Category wrong size", func(a *InsertSubscriberDataArg) { a.Category = HexBytes{0x01, 0x02} }, nil, "category", "SIZE (1)"},
+		{"ChargingChars wrong size", func(a *InsertSubscriberDataArg) { a.ChargingCharacteristics = HexBytes{0x01} }, nil, "chargingCharacteristics", "SIZE (2)"},
+		{"CsAllocationRetentionPriority wrong", func(a *InsertSubscriberDataArg) { a.CsAllocationRetentionPriority = HexBytes{0x01, 0x02} }, nil, "cs-AllocationRetentionPriority", "SIZE (1)"},
+		{"AgeIndicator over-max", func(a *InsertSubscriberDataArg) { a.SuperChargerSupportedInHLR = make(HexBytes, 7) }, nil, "superChargerSupportedInHLR", "SIZE (1..6)"},
+		{"BearerServiceList entry too long", func(a *InsertSubscriberDataArg) { a.BearerServiceList = []HexBytes{make(HexBytes, 6)} }, ErrIsdBearerServiceCodeSize, "", ""},
+		{"TeleserviceList entry empty", func(a *InsertSubscriberDataArg) { a.TeleserviceList = []HexBytes{{}} }, ErrIsdTeleserviceCodeSize, "", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			in := &InsertSubscriberDataArg{IMSI: HexBytes{0x12, 0x34, 0x56}}
+			in := &InsertSubscriberDataArg{IMSI: "214365"}
 			tc.mut(in)
 			_, err := in.Marshal()
-			if !errors.Is(err, tc.want) {
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Fatalf("want %v, got %v", tc.want, err)
 			}
 		})

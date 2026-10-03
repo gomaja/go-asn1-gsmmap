@@ -7,7 +7,6 @@
 package gsmmap
 
 import (
-	"errors"
 	"reflect"
 	"testing"
 )
@@ -67,9 +66,9 @@ func TestSLRArgRoundTrip(t *testing.T) {
 			LcsClientID:           LCSClientID{LcsClientType: LCSClientTypePlmnOperatorServices},
 			LcsLocationInfo:       LCSLocationInfo{NetworkNodeNumber: "31650000000", NetworkNodeNumberNature: 0x10, NetworkNodeNumberPlan: 0x01},
 			IMSI:                  "204080000000001",
-			IMEI:                  "490154203237518",
+			IMEI:                  "490154203237510",
 			LocationEstimate:      HexBytes{0x04, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60},
-			AgeOfLocationEstimate: &age,
+			AgeOfLocationEstimate: func() *int { v := int(age); return &v }(),
 		}},
 		{"CGI cell id", &SubscriberLocationReportArg{
 			LcsEvent:        LCSEventMoLr,
@@ -173,36 +172,38 @@ func TestSLRArgBERRoundTrip(t *testing.T) {
 
 func TestSLRArgEncodeNegative(t *testing.T) {
 	cases := []struct {
-		name string
-		mut  func(a *SubscriberLocationReportArg)
-		want error
+		name       string
+		mut        func(a *SubscriberLocationReportArg)
+		want       error
+		path       string
+		constraint string
 	}{
-		{"nil arg", nil, ErrSLRArgNil},
-		{"LcsEvent out of range", func(a *SubscriberLocationReportArg) { a.LcsEvent = LCSEvent(99) }, ErrLCSEventInvalid},
-		{"LcsClientType out of range", func(a *SubscriberLocationReportArg) { a.LcsClientID.LcsClientType = LCSClientType(99) }, ErrLCSClientTypeInvalid},
-		{"LcsLocationInfo empty node", func(a *SubscriberLocationReportArg) { a.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeEmpty},
-		{"IMSI too short", func(a *SubscriberLocationReportArg) { a.IMSI = "1234" }, ErrSLRArgIMSIInvalidSize},
-		{"IMSI too long", func(a *SubscriberLocationReportArg) { a.IMSI = "1234567890123456" }, ErrSLRArgIMSIInvalidSize},
-		{"IMEI wrong length", func(a *SubscriberLocationReportArg) { a.IMEI = "12345" }, ErrSLRArgIMEIInvalidSize},
-		{"LocationEstimate too long", func(a *SubscriberLocationReportArg) { a.LocationEstimate = make(HexBytes, 21) }, ErrExtGeographicalInformationSize},
-		{"AddLocationEstimate too long", func(a *SubscriberLocationReportArg) { a.AddLocationEstimate = make(HexBytes, 92) }, ErrAddGeographicalInformationSize},
-		{"LcsReferenceNumber wrong size", func(a *SubscriberLocationReportArg) { a.LcsReferenceNumber = HexBytes{0x01, 0x02} }, ErrLCSReferenceNumberInvalidSize},
-		{"GeranPositioningData too short", func(a *SubscriberLocationReportArg) { a.GeranPositioningData = HexBytes{0x01} }, ErrPositioningDataInformationSize},
-		{"UtranPositioningData too short", func(a *SubscriberLocationReportArg) { a.UtranPositioningData = HexBytes{0x01, 0x02} }, ErrUtranPositioningDataInfoSize},
-		{"CellGlobalId wrong size", func(a *SubscriberLocationReportArg) { a.CellGlobalId = HexBytes{0x01} }, ErrPSLResCellGlobalIdSize},
+		{"nil arg", nil, ErrSLRArgNil, "", ""},
+		{"LcsEvent out of range", func(a *SubscriberLocationReportArg) { a.LcsEvent = LCSEvent(99) }, ErrLCSEventInvalid, "", ""},
+		{"LcsClientType out of range", func(a *SubscriberLocationReportArg) { a.LcsClientID.LcsClientType = LCSClientType(99) }, ErrLCSClientTypeInvalid, "", ""},
+		{"LcsLocationInfo empty node", func(a *SubscriberLocationReportArg) { a.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeNumberEmpty, "", ""},
+		{"IMSI too short", func(a *SubscriberLocationReportArg) { a.IMSI = "1234" }, ErrIMSIInvalidLength, "", ""},
+		{"IMSI too long", func(a *SubscriberLocationReportArg) { a.IMSI = "1234567890123456" }, ErrIMSIInvalidLength, "", ""},
+		{"IMEI wrong length", func(a *SubscriberLocationReportArg) { a.IMEI = "12345" }, ErrIMEIInvalidLength, "", ""},
+		{"LocationEstimate too long", func(a *SubscriberLocationReportArg) { a.LocationEstimate = make(HexBytes, 21) }, nil, "locationEstimate", "SIZE (1..20)"},
+		{"AddLocationEstimate too long", func(a *SubscriberLocationReportArg) { a.AddLocationEstimate = make(HexBytes, 92) }, nil, "add-LocationEstimate", "SIZE (1..91)"},
+		{"LcsReferenceNumber wrong size", func(a *SubscriberLocationReportArg) { a.LcsReferenceNumber = HexBytes{0x01, 0x02} }, nil, "lcs-ReferenceNumber", "SIZE (1)"},
+		{"GeranPositioningData too short", func(a *SubscriberLocationReportArg) { a.GeranPositioningData = HexBytes{0x01} }, nil, "geranPositioningData", "SIZE (2..10)"},
+		{"UtranPositioningData too short", func(a *SubscriberLocationReportArg) { a.UtranPositioningData = HexBytes{0x01, 0x02} }, nil, "utranPositioningData", "SIZE (3..11)"},
+		{"CellGlobalId wrong size", func(a *SubscriberLocationReportArg) { a.CellGlobalId = HexBytes{0x01} }, nil, "cellGlobalIdOrServiceAreaIdFixedLength", "SIZE (7)"},
 		{"CGI and LAI both set", func(a *SubscriberLocationReportArg) {
 			a.CellGlobalId = make(HexBytes, 7)
 			a.LAI = make(HexBytes, 5)
-		}, ErrSLRArgCellGlobalIdAndLAIMutex},
-		{"LcsServiceTypeID out of range", func(a *SubscriberLocationReportArg) { v := int64(128); a.LcsServiceTypeID = &v }, ErrSLRArgLcsServiceTypeIDOutOfRange},
+		}, ErrCellGlobalIdOrServiceAreaIdOrLAIMultipleAlternatives, "", ""},
+		{"LcsServiceTypeID out of range", func(a *SubscriberLocationReportArg) { v := int64(128); a.LcsServiceTypeID = &v }, nil, "lcsServiceTypeID", "(0..127)"},
 		{"AccuracyFulfilmentIndicator out of range", func(a *SubscriberLocationReportArg) {
 			v := AccuracyFulfilmentIndicator(9)
 			a.AccuracyFulfilmentIndicator = &v
-		}, ErrAccuracyFulfilmentIndicatorInvalid},
-		{"VelocityEstimate too short", func(a *SubscriberLocationReportArg) { a.VelocityEstimate = HexBytes{0x01} }, ErrVelocityEstimateSize},
-		{"SequenceNumber too low", func(a *SubscriberLocationReportArg) { v := SequenceNumber(0); a.SequenceNumber = &v }, ErrSequenceNumberOutOfRange},
-		{"SequenceNumber too high", func(a *SubscriberLocationReportArg) { v := SequenceNumber(8640000); a.SequenceNumber = &v }, ErrSequenceNumberOutOfRange},
-		{"UtranBaroPressureMeas out of range", func(a *SubscriberLocationReportArg) { v := UtranBaroPressureMeas(1); a.UtranBaroPressureMeas = &v }, ErrUtranBaroPressureMeasOutOfRange},
+		}, ErrAccuracyFulfilmentIndicatorInvalid, "", ""},
+		{"VelocityEstimate too short", func(a *SubscriberLocationReportArg) { a.VelocityEstimate = HexBytes{0x01} }, nil, "velocityEstimate", "SIZE (4..7)"},
+		{"SequenceNumber too low", func(a *SubscriberLocationReportArg) { v := SequenceNumber(0); a.SequenceNumber = &v }, nil, "sequenceNumber", "(1..8639999)"},
+		{"SequenceNumber too high", func(a *SubscriberLocationReportArg) { v := SequenceNumber(8640000); a.SequenceNumber = &v }, nil, "sequenceNumber", "(1..8639999)"},
+		{"UtranBaroPressureMeas out of range", func(a *SubscriberLocationReportArg) { v := UtranBaroPressureMeas(1); a.UtranBaroPressureMeas = &v }, nil, "utranBaroPressureMeas", "(30000..115000)"},
 	}
 
 	for _, tc := range cases {
@@ -212,8 +213,8 @@ func TestSLRArgEncodeNegative(t *testing.T) {
 				in = minimalSLRArg()
 				tc.mut(in)
 			}
-			_, err := convertSubscriberLocationReportArgToWire(in)
-			if !errors.Is(err, tc.want) {
+			_, err := strictWire(convertSubscriberLocationReportArgToWire(in))
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Errorf("want errors.Is(_, %v), got %v", tc.want, err)
 			}
 		})

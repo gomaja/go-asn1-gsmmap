@@ -101,7 +101,7 @@ func parseUnknownSubscriberParam(data []byte) (*UnknownSubscriberParam, error) {
 }
 
 // parseCallBarredParam decodes BER-encoded bytes into a CallBarredParam
-// (errorCode 13). Handles both legacy (CallBarringCause alone) and
+// (errorCode 13). Handles both the bare CallBarringCause and
 // extensible (ExtensibleCallBarredParam) CHOICE variants.
 func parseCallBarredParam(data []byte) (*CallBarredParam, error) {
 	var w gsm_map.CallBarredParam
@@ -112,7 +112,7 @@ func parseCallBarredParam(data []byte) (*CallBarredParam, error) {
 }
 
 // parseSystemFailureParam decodes BER-encoded bytes into a
-// SystemFailureParam (errorCode 34). Handles both legacy (NetworkResource
+// SystemFailureParam (errorCode 34). Handles both the bare NetworkResource
 // alone) and extensible (ExtensibleSystemFailureParam) CHOICE variants.
 func parseSystemFailureParam(data []byte) (*SystemFailureParam, error) {
 	var w gsm_map.SystemFailureParam

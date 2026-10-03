@@ -136,47 +136,49 @@ func TestPDPContext_ContextIdOutOfRange(t *testing.T) {
 	for _, id := range []int{0, 51, 100} {
 		in := makePDPContext()
 		in.PdpContextId = id
-		_, err := convertPDPContextToWire(&in)
-		if !errors.Is(err, ErrPDPContextIdOutOfRange) {
-			t.Fatalf("id=%d: want ErrPDPContextIdOutOfRange, got %v", id, err)
+		_, err := strictWire(convertPDPContextToWire(&in))
+		if !matchesConstraint(err, "pdp-ContextId", "(1..50)") {
+			t.Fatalf("id=%d: want BER constraint error, got %v", id, err)
 		}
 	}
 }
 
 func TestPDPContext_FieldSizeViolations(t *testing.T) {
 	cases := []struct {
-		name string
-		mut  func(*PDPContext)
-		want error
+		name       string
+		mut        func(*PDPContext)
+		want       error
+		path       string
+		constraint string
 	}{
-		{"PdpType wrong size", func(p *PDPContext) { p.PdpType = HexBytes{0x01} }, ErrPDPTypeInvalidSize},
-		{"QosSubscribed empty", func(p *PDPContext) { p.QosSubscribed = HexBytes{} }, ErrQoSSubscribedInvalidSize},
-		{"QosSubscribed too short", func(p *PDPContext) { p.QosSubscribed = HexBytes{0x01, 0x02} }, ErrQoSSubscribedInvalidSize},
-		{"QosSubscribed too long", func(p *PDPContext) { p.QosSubscribed = HexBytes{0x01, 0x02, 0x03, 0x04} }, ErrQoSSubscribedInvalidSize},
-		{"ExtQoSSubscribed empty", func(p *PDPContext) { p.ExtQoSSubscribed = HexBytes{} }, ErrExtQoSSubscribedInvalidSize},
-		{"ExtQoSSubscribed too long", func(p *PDPContext) { p.ExtQoSSubscribed = make(HexBytes, 10) }, ErrExtQoSSubscribedInvalidSize},
-		{"Ext2QoSSubscribed empty", func(p *PDPContext) { p.Ext2QoSSubscribed = HexBytes{} }, ErrExt2QoSSubscribedInvalidSize},
-		{"Ext2QoSSubscribed too long", func(p *PDPContext) { p.Ext2QoSSubscribed = HexBytes{0x01, 0x02, 0x03, 0x04} }, ErrExt2QoSSubscribedInvalidSize},
-		{"Ext3QoSSubscribed empty", func(p *PDPContext) { p.Ext3QoSSubscribed = HexBytes{} }, ErrExt3QoSSubscribedInvalidSize},
-		{"Ext3QoSSubscribed too long", func(p *PDPContext) { p.Ext3QoSSubscribed = HexBytes{0x01, 0x02, 0x03} }, ErrExt3QoSSubscribedInvalidSize},
-		{"Ext4QoSSubscribed empty", func(p *PDPContext) { p.Ext4QoSSubscribed = HexBytes{} }, ErrExt4QoSSubscribedInvalidSize},
-		{"Ext4QoSSubscribed too long", func(p *PDPContext) { p.Ext4QoSSubscribed = HexBytes{0x01, 0x02} }, ErrExt4QoSSubscribedInvalidSize},
-		{"PdpAddress empty", func(p *PDPContext) { p.PdpAddress = HexBytes{} }, ErrPDPAddressInvalidSize},
-		{"PdpAddress too long", func(p *PDPContext) { p.PdpAddress = make(HexBytes, 17) }, ErrPDPAddressInvalidSize},
-		{"ExtPdpType wrong", func(p *PDPContext) { p.ExtPdpType = HexBytes{0x01} }, ErrExtPDPTypeInvalidSize},
-		{"ExtPdpAddress too long", func(p *PDPContext) { p.ExtPdpAddress = make(HexBytes, 17) }, ErrExtPDPAddressInvalidSize},
-		{"PdpChargingChars wrong", func(p *PDPContext) { p.PdpChargingCharacteristics = HexBytes{0x01} }, ErrPDPChargingCharsInvalidSize},
-		{"ApnOiReplacement too short", func(p *PDPContext) { p.ApnOiReplacement = HexBytes("short") }, ErrAPNOIReplacementInvalidSize},
-		{"RestorationPriority wrong", func(p *PDPContext) { p.RestorationPriority = HexBytes{0x01, 0x02} }, ErrRestorationPriorityInvalidSize},
-		{"SCEFID too short", func(p *PDPContext) { p.SCEFID = HexBytes("short") }, ErrFQDNInvalidSize},
-		{"Apn too short", func(p *PDPContext) { p.Apn = HexBytes{'a'} }, ErrAPNInvalidSize},
+		{"PdpType wrong size", func(p *PDPContext) { p.PdpType = HexBytes{0x01} }, nil, "pdp-Type", "SIZE (2)"},
+		{"QosSubscribed empty", func(p *PDPContext) { p.QosSubscribed = HexBytes{} }, nil, "qos-Subscribed", "SIZE (3)"},
+		{"QosSubscribed too short", func(p *PDPContext) { p.QosSubscribed = HexBytes{0x01, 0x02} }, nil, "qos-Subscribed", "SIZE (3)"},
+		{"QosSubscribed too long", func(p *PDPContext) { p.QosSubscribed = HexBytes{0x01, 0x02, 0x03, 0x04} }, nil, "qos-Subscribed", "SIZE (3)"},
+		{"ExtQoSSubscribed empty", func(p *PDPContext) { p.ExtQoSSubscribed = HexBytes{} }, nil, "ext-QoS-Subscribed", "SIZE (1..9)"},
+		{"ExtQoSSubscribed too long", func(p *PDPContext) { p.ExtQoSSubscribed = make(HexBytes, 10) }, nil, "ext-QoS-Subscribed", "SIZE (1..9)"},
+		{"Ext2QoSSubscribed empty", func(p *PDPContext) { p.Ext2QoSSubscribed = HexBytes{} }, nil, "ext2-QoS-Subscribed", "SIZE (1..3)"},
+		{"Ext2QoSSubscribed too long", func(p *PDPContext) { p.Ext2QoSSubscribed = HexBytes{0x01, 0x02, 0x03, 0x04} }, nil, "ext2-QoS-Subscribed", "SIZE (1..3)"},
+		{"Ext3QoSSubscribed empty", func(p *PDPContext) { p.Ext3QoSSubscribed = HexBytes{} }, nil, "ext3-QoS-Subscribed", "SIZE (1..2)"},
+		{"Ext3QoSSubscribed too long", func(p *PDPContext) { p.Ext3QoSSubscribed = HexBytes{0x01, 0x02, 0x03} }, nil, "ext3-QoS-Subscribed", "SIZE (1..2)"},
+		{"Ext4QoSSubscribed empty", func(p *PDPContext) { p.Ext4QoSSubscribed = HexBytes{} }, nil, "ext4-QoS-Subscribed", "SIZE (1)"},
+		{"Ext4QoSSubscribed too long", func(p *PDPContext) { p.Ext4QoSSubscribed = HexBytes{0x01, 0x02} }, nil, "ext4-QoS-Subscribed", "SIZE (1)"},
+		{"PdpAddress empty", func(p *PDPContext) { p.PdpAddress = HexBytes{} }, nil, "pdp-Address", "SIZE (1..16)"},
+		{"PdpAddress too long", func(p *PDPContext) { p.PdpAddress = make(HexBytes, 17) }, nil, "pdp-Address", "SIZE (1..16)"},
+		{"ExtPdpType wrong", func(p *PDPContext) { p.ExtPdpType = HexBytes{0x01} }, nil, "ext-pdp-Type", "SIZE (2)"},
+		{"ExtPdpAddress too long", func(p *PDPContext) { p.ExtPdpAddress = make(HexBytes, 17) }, nil, "ext-pdp-Address", "SIZE (1..16)"},
+		{"PdpChargingChars wrong", func(p *PDPContext) { p.PdpChargingCharacteristics = HexBytes{0x01} }, nil, "pdp-ChargingCharacteristics", "SIZE (2)"},
+		{"ApnOiReplacement too short", func(p *PDPContext) { p.ApnOiReplacement = HexBytes("short") }, nil, "apn-oi-Replacement", "SIZE (9..100)"},
+		{"RestorationPriority wrong", func(p *PDPContext) { p.RestorationPriority = HexBytes{0x01, 0x02} }, nil, "restoration-Priority", "SIZE (1)"},
+		{"SCEFID too short", func(p *PDPContext) { p.SCEFID = HexBytes("short") }, nil, "sCEF-ID", "SIZE (9..255)"},
+		{"Apn too short", func(p *PDPContext) { p.Apn = HexBytes{'a'} }, nil, "apn", "SIZE (2..63)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := makePDPContext()
 			tc.mut(&in)
-			_, err := convertPDPContextToWire(&in)
-			if !errors.Is(err, tc.want) {
+			_, err := strictWire(convertPDPContextToWire(&in))
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Fatalf("want %v, got %v", tc.want, err)
 			}
 		})
@@ -184,19 +186,16 @@ func TestPDPContext_FieldSizeViolations(t *testing.T) {
 }
 
 func TestPDPContext_DecoderRejectsContextIdOutOfRange(t *testing.T) {
-	// Codec symmetry: `errors.Is(err, ErrPDPContextIdOutOfRange)` must hold
-	// on the decode path too, not just on encode (coderabbit #33 finding).
+	// Strict decoding must report the context ID range violation as precisely
+	// as strict encoding does.
 	for _, id := range []int64{0, 51, 100} {
 		w := &gsm_map.PDPContext{
-			PdpContextId:  gsm_map.ContextId(id),
+			PdpContextId:  id,
 			PdpType:       gsm_map.PDPType{0xf1, 0x21},
 			QosSubscribed: gsm_map.QoSSubscribed{0x09, 0x00, 0x00},
 			Apn:           gsm_map.APN{'a', 'p'},
 		}
-		_, err := convertWireToPDPContext(w)
-		if !errors.Is(err, ErrPDPContextIdOutOfRange) {
-			t.Fatalf("id=%d decode: want ErrPDPContextIdOutOfRange, got %v", id, err)
-		}
+		wantConstraintError(t, strictDecodeWire(w), "pdp-ContextId", "(1..50)")
 	}
 }
 
@@ -287,8 +286,8 @@ func TestGPRSDataList_RoundTrip(t *testing.T) {
 }
 
 func TestGPRSDataList_BoundsRejected(t *testing.T) {
-	_, err := convertGPRSDataListToWire(GPRSDataList{})
-	if !errors.Is(err, ErrGPRSDataListSize) {
+	_, err := strictWire(convertGPRSDataListToWire(GPRSDataList{}))
+	if !matchesConstraint(err, "gprsDataList", "SIZE (1..50)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
 	too := make(GPRSDataList, 51)
@@ -297,8 +296,8 @@ func TestGPRSDataList_BoundsRejected(t *testing.T) {
 		p.PdpContextId = (i % 50) + 1
 		too[i] = p
 	}
-	_, err = convertGPRSDataListToWire(too)
-	if !errors.Is(err, ErrGPRSDataListSize) {
+	_, err = strictWire(convertGPRSDataListToWire(too))
+	if !matchesConstraint(err, "gprsDataList", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
 }
@@ -340,9 +339,9 @@ func TestGPRSSubscriptionData_BadAPNOI(t *testing.T) {
 		GprsDataList:     GPRSDataList{makePDPContext()},
 		ApnOiReplacement: HexBytes("short"),
 	}
-	_, err := convertGPRSSubscriptionDataToWire(in)
-	if !errors.Is(err, ErrAPNOIReplacementInvalidSize) {
-		t.Fatalf("want ErrAPNOIReplacementInvalidSize, got %v", err)
+	_, err := strictWire(convertGPRSSubscriptionDataToWire(in))
+	if !matchesConstraint(err, "apn-oi-Replacement", "SIZE (9..100)") {
+		t.Fatalf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -375,20 +374,21 @@ func TestLSAData_RoundTrip(t *testing.T) {
 
 func TestLSAData_FieldSize(t *testing.T) {
 	cases := []struct {
-		mut  func(*LSAData)
-		want error
+		mut        func(*LSAData)
+		path       string
+		constraint string
 	}{
-		{func(l *LSAData) { l.LsaIdentity = HexBytes{0x01} }, ErrLSAIdentityInvalidSize},
-		{func(l *LSAData) { l.LsaIdentity = HexBytes{0x01, 0x02, 0x03, 0x04} }, ErrLSAIdentityInvalidSize},
-		{func(l *LSAData) { l.LsaAttributes = HexBytes{} }, ErrLSAAttributesInvalidSize},
-		{func(l *LSAData) { l.LsaAttributes = HexBytes{0x01, 0x02} }, ErrLSAAttributesInvalidSize},
+		{func(l *LSAData) { l.LsaIdentity = HexBytes{0x01} }, "lsaIdentity", "SIZE (3)"},
+		{func(l *LSAData) { l.LsaIdentity = HexBytes{0x01, 0x02, 0x03, 0x04} }, "lsaIdentity", "SIZE (3)"},
+		{func(l *LSAData) { l.LsaAttributes = HexBytes{} }, "lsaAttributes", "SIZE (1)"},
+		{func(l *LSAData) { l.LsaAttributes = HexBytes{0x01, 0x02} }, "lsaAttributes", "SIZE (1)"},
 	}
 	for _, tc := range cases {
 		in := makeLSAData()
 		tc.mut(&in)
-		_, err := convertLSADataToWire(&in)
-		if !errors.Is(err, tc.want) {
-			t.Fatalf("want %v, got %v", tc.want, err)
+		_, err := strictWire(convertLSADataToWire(&in))
+		if !matchesConstraint(err, tc.path, tc.constraint) {
+			t.Fatalf("want %s %s, got %v", tc.path, tc.constraint, err)
 		}
 	}
 }
@@ -409,16 +409,16 @@ func TestLSADataList_RoundTrip(t *testing.T) {
 }
 
 func TestLSADataList_BoundsRejected(t *testing.T) {
-	_, err := convertLSADataListToWire(LSADataList{})
-	if !errors.Is(err, ErrLSADataListSize) {
+	_, err := strictWire(convertLSADataListToWire(LSADataList{}))
+	if !matchesConstraint(err, "lsaDataList", "SIZE (1..20)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
 	too := make(LSADataList, 21)
 	for i := range too {
 		too[i] = makeLSAData()
 	}
-	_, err = convertLSADataListToWire(too)
-	if !errors.Is(err, ErrLSADataListSize) {
+	_, err = strictWire(convertLSADataListToWire(too))
+	if !matchesConstraint(err, "lsaDataList", "SIZE (1..20)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
 }

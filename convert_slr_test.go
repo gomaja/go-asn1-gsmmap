@@ -121,20 +121,20 @@ func TestLCSLocationInfoNilPassesThrough(t *testing.T) {
 
 func TestLCSLocationInfoEmptyNetworkNodeRejected(t *testing.T) {
 	_, err := convertLCSLocationInfoToWire(&LCSLocationInfo{})
-	if !errors.Is(err, ErrLCSLocationInfoNetworkNodeEmpty) {
-		t.Errorf("encode empty NetworkNodeNumber: want ErrLCSLocationInfoNetworkNodeEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSLocationInfoNetworkNodeNumberEmpty) {
+		t.Errorf("encode empty NetworkNodeNumber: want ErrLCSLocationInfoNetworkNodeNumberEmpty, got %v", err)
 	}
 }
 
 func TestLCSLocationInfoLMSISizeRejected(t *testing.T) {
-	_, err := convertLCSLocationInfoToWire(&LCSLocationInfo{
+	_, err := strictWire(convertLCSLocationInfoToWire(&LCSLocationInfo{
 		NetworkNodeNumber:       "31650000000",
 		NetworkNodeNumberNature: 0x10,
 		NetworkNodeNumberPlan:   0x01,
 		LMSI:                    HexBytes{0x01, 0x02, 0x03}, // 3 octets, must be 4
-	})
-	if !errors.Is(err, ErrLCSLocationInfoLMSIInvalidSize) {
-		t.Errorf("encode LMSI=3: want ErrLCSLocationInfoLMSIInvalidSize, got %v", err)
+	}))
+	if !matchesConstraint(err, "lmsi", "SIZE (4)") {
+		t.Errorf("encode LMSI=3: want BER constraint error, got %v", err)
 	}
 }
 
@@ -147,21 +147,23 @@ func TestLCSLocationInfoDiameterIdentitySizeRejected(t *testing.T) {
 		}
 	}
 	cases := []struct {
-		name    string
-		mutate  func(*LCSLocationInfo)
-		wantErr error
+		name       string
+		mutate     func(*LCSLocationInfo)
+		wantErr    error
+		path       string
+		constraint string
 	}{
-		{"MmeName too short", func(l *LCSLocationInfo) { l.MmeName = HexBytes("short") }, ErrLCSLocationInfoMmeNameSize},
-		{"AaaServerName too short", func(l *LCSLocationInfo) { l.AaaServerName = HexBytes("short") }, ErrLCSLocationInfoAaaServerNameSize},
-		{"SgsnName too short", func(l *LCSLocationInfo) { l.SgsnName = HexBytes("short") }, ErrLCSLocationInfoSgsnNameSize},
-		{"SgsnRealm too short", func(l *LCSLocationInfo) { l.SgsnRealm = HexBytes("short") }, ErrLCSLocationInfoSgsnRealmSize},
+		{"MmeName too short", func(l *LCSLocationInfo) { l.MmeName = HexBytes("short") }, nil, "mme-Name", "SIZE (9..255)"},
+		{"AaaServerName too short", func(l *LCSLocationInfo) { l.AaaServerName = HexBytes("short") }, nil, "aaa-Server-Name", "SIZE (9..255)"},
+		{"SgsnName too short", func(l *LCSLocationInfo) { l.SgsnName = HexBytes("short") }, nil, "sgsn-Name", "SIZE (9..255)"},
+		{"SgsnRealm too short", func(l *LCSLocationInfo) { l.SgsnRealm = HexBytes("short") }, nil, "sgsn-Realm", "SIZE (9..255)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := base()
 			tc.mutate(in)
-			_, err := convertLCSLocationInfoToWire(in)
-			if !errors.Is(err, tc.wantErr) {
+			_, err := strictWire(convertLCSLocationInfoToWire(in))
+			if !matchesExpected(err, tc.wantErr, tc.path, tc.constraint) {
 				t.Errorf("want %v, got %v", tc.wantErr, err)
 			}
 		})
@@ -196,8 +198,8 @@ func TestLCSLocationInfoWireEmptyNodeDecodedEmptyRejected(t *testing.T) {
 	emptyAddr := gsm_map.ISDNAddressString{0x91} // header-only, no digits
 	w := &gsm_map.LCSLocationInfo{NetworkNodeNumber: emptyAddr}
 	_, err := convertWireToLCSLocationInfo(w)
-	if !errors.Is(err, ErrLCSLocationInfoNetworkNodeDecodedEmpty) {
-		t.Errorf("want ErrLCSLocationInfoNetworkNodeDecodedEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSLocationInfoNetworkNodeNumberEmpty) {
+		t.Errorf("want ErrLCSLocationInfoNetworkNodeNumberEmpty, got %v", err)
 	}
 }
 
@@ -262,22 +264,5 @@ func TestDeferredmtLrDataTerminationCauseOutOfRangeRejected(t *testing.T) {
 	})
 	if !errors.Is(err, ErrTerminationCauseInvalid) {
 		t.Errorf("want ErrTerminationCauseInvalid, got %v", err)
-	}
-}
-
-// TerminationCause is extensible — decoder preserves unknown values
-// per Postel even though the encoder rejects them.
-func TestDeferredmtLrDataTerminationCauseDecoderLenient(t *testing.T) {
-	bad := gsm_map.TerminationCause(99)
-	w := &gsm_map.DeferredmtLrData{
-		DeferredLocationEventType: convertDeferredLocationEventTypeToBitString(&DeferredLocationEventType{MsAvailable: true}),
-		TerminationCause:          &bad,
-	}
-	out, err := convertWireToDeferredmtLrData(w)
-	if err != nil {
-		t.Fatalf("decode TerminationCause=99: unexpected error %v", err)
-	}
-	if out.TerminationCause == nil || int64(*out.TerminationCause) != 99 {
-		t.Errorf("decoder leniency: want 99 preserved, got %v", out.TerminationCause)
 	}
 }

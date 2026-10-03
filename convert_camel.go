@@ -2,6 +2,7 @@ package gsmmap
 
 import (
 	"fmt"
+	"slices"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
@@ -9,8 +10,7 @@ import (
 // --- CAMEL subscription info converters ---
 //
 // Full field-for-field conversion between the public CAMEL types and the
-// go-asn1 wire types. Replaces the earlier opaque-HexBytes stubs that
-// silently dropped CAMEL subscription data on round-trip.
+// go-asn1 wire types. Nested CAMEL subscription fields are converted to and from the wire types.
 
 // isValidOBcsmTDP reports whether v is a defined originating BCSM TDP.
 func isValidOBcsmTDP(v OBcsmTriggerDetectionPoint) bool {
@@ -57,15 +57,89 @@ func isValidMatchType(v MatchType) bool {
 	return false
 }
 
-// validateCamelCapabilityHandling enforces the 1..4 phase range.
+// validateCamelCapabilityHandling enforces the 1..4 phase range on encode:
+// a sender uses only the defined CAMEL phases 1 to 4.
 func validateCamelCapabilityHandling(p *int) error {
 	if p == nil {
 		return nil
 	}
 	if *p < 1 || *p > 4 {
-		return ErrCamelInvalidCamelCapabilityHandling
+		return fmt.Errorf("%w (got %d)", ErrCamelCapabilityHandlingOutOfRange, *p)
 	}
 	return nil
+}
+
+// camelCapabilityHandlingFromWire applies 3GPP TS 29.002 V19.1.0 §17.7.1
+// CamelCapabilityHandling: "reception of values greater than 4 shall be
+// treated as CAMEL phase 4." The codec has already enforced INTEGER (1..16).
+func camelCapabilityHandlingFromWire(w gsm_map.CamelCapabilityHandling) *int {
+	v := int(min(w, 4))
+	return &v
+}
+
+// defaultCallHandlingFromWire applies 3GPP TS 29.002 V19.1.0 §17.7.1
+// DefaultCallHandling: "reception of values in range 2-31 shall be treated
+// as "continueCall"" and "reception of values greater than 31 shall be
+// treated as "releaseCall"". A negative value lies outside both ranges; the
+// type is extensible, so it is kept (§17.1.4) and Marshal rejects it.
+func defaultCallHandlingFromWire(w DefaultCallHandling) DefaultCallHandling {
+	switch {
+	case w <= DefaultCallHandlingReleaseCall:
+		return w
+	case w <= 31:
+		return DefaultCallHandlingContinueCall
+	default:
+		return DefaultCallHandlingReleaseCall
+	}
+}
+
+// convertIgnorableWireList converts each wire entry with conv, keeping the
+// entries conv returns and dropping those the receiver ignores (conv returns
+// nil). It returns nil when every entry is ignored. Errors carry field and
+// the wire index.
+func convertIgnorableWireList[W, T any](field string, ws []W, conv func(*W) (*T, error)) ([]T, error) {
+	var out []T
+	for i := range ws {
+		v, err := conv(&ws[i])
+		if err != nil {
+			return nil, fmt.Errorf("%s[%d]: %w", field, i, err)
+		}
+		if v != nil {
+			out = append(out, *v)
+		}
+	}
+	return out, nil
+}
+
+// checkTDPOnce records tdp in seen and reports
+// ErrCamelDuplicateTriggerDetectionPoint when an earlier entry of the list
+// had it: 3GPP TS 29.002 V19.1.0 §17.7.1 "O-BcsmCamelTDPDataList shall not
+// contain more than one instance of O-BcsmCamelTDPData containing the same
+// value for o-BcsmTriggerDetectionPoint", and the same for
+// T-BcsmCamelTDPDataList, SMS-CAMEL-TDP-DataList and GPRS-CamelTDPDataList.
+func checkTDPOnce[K ~int64](seen map[K]bool, tdp K) error {
+	if seen[tdp] {
+		return fmt.Errorf("%w (got %d)", ErrCamelDuplicateTriggerDetectionPoint, tdp)
+	}
+	seen[tdp] = true
+	return nil
+}
+
+// convertTDPDataWireList is convertIgnorableWireList for a CAMEL TDP data
+// list: no two kept entries may share a trigger detection point (tdp, see
+// checkTDPOnce). Entries the receiver ignores do not count.
+func convertTDPDataWireList[W, T any, K ~int64](field string, ws []W, conv func(*W) (*T, error), tdp func(*T) K) ([]T, error) {
+	seen := map[K]bool{}
+	return convertIgnorableWireList(field, ws, func(w *W) (*T, error) {
+		v, err := conv(w)
+		if err != nil || v == nil {
+			return v, err
+		}
+		if err := checkTDPOnce(seen, tdp(v)); err != nil {
+			return nil, err
+		}
+		return v, nil
+	})
 }
 
 // convertOBcsmTDPDataToWire encodes a single O-BCSM TDP entry.
@@ -73,9 +147,7 @@ func convertOBcsmTDPDataToWire(d *OBcsmCamelTDPData) (gsm_map.OBcsmCamelTDPData,
 	if !isValidOBcsmTDP(d.OBcsmTriggerDetectionPoint) {
 		return gsm_map.OBcsmCamelTDPData{}, ErrCamelInvalidOTriggerPoint
 	}
-	if d.ServiceKey < 0 || d.ServiceKey > 2147483647 {
-		return gsm_map.OBcsmCamelTDPData{}, ErrCamelInvalidServiceKey
-	}
+
 	if d.GsmSCFAddress == "" {
 		return gsm_map.OBcsmCamelTDPData{}, ErrCamelMissingGsmSCFAddress
 	}
@@ -88,37 +160,33 @@ func convertOBcsmTDPDataToWire(d *OBcsmCamelTDPData) (gsm_map.OBcsmCamelTDPData,
 	}
 	return gsm_map.OBcsmCamelTDPData{
 		OBcsmTriggerDetectionPoint: d.OBcsmTriggerDetectionPoint,
-		ServiceKey:                 gsm_map.ServiceKey(d.ServiceKey),
-		GsmSCFAddress:              gsm_map.ISDNAddressString(addr),
+		ServiceKey:                 d.ServiceKey,
+		GsmSCFAddress:              addr,
 		DefaultCallHandling:        d.DefaultCallHandling,
 	}, nil
 }
 
-// convertWireToOBcsmTDPData decodes a single wire O-BCSM TDP entry.
-// Mirrors the encoder's range/mandatory checks to reject malformed peer
-// input rather than silently surfacing an invalid struct to the caller.
-func convertWireToOBcsmTDPData(w *gsm_map.OBcsmCamelTDPData) (OBcsmCamelTDPData, error) {
-	tdp := OBcsmTriggerDetectionPoint(w.OBcsmTriggerDetectionPoint)
-	if !isValidOBcsmTDP(tdp) {
-		return OBcsmCamelTDPData{}, ErrCamelInvalidOTriggerPoint
+// convertWireToOBcsmTDPData decodes a single wire O-BCSM TDP entry. It
+// returns nil, without examining the other fields, for an entry the
+// receiver ignores: 3GPP TS 29.002 V19.1.0 §17.7.1
+// O-BcsmTriggerDetectionPoint, "For O-BcsmCamelTDPData sequences containing
+// this parameter with any other value than the ones listed the receiver
+// shall ignore the whole O-BcsmCamelTDPData sequence."
+func convertWireToOBcsmTDPData(w *gsm_map.OBcsmCamelTDPData) (*OBcsmCamelTDPData, error) {
+	if !isValidOBcsmTDP(w.OBcsmTriggerDetectionPoint) {
+		return nil, nil
 	}
-	sk := int64(w.ServiceKey)
-	if sk < 0 || sk > 2147483647 {
-		return OBcsmCamelTDPData{}, ErrCamelInvalidServiceKey
-	}
-	dch := DefaultCallHandling(w.DefaultCallHandling)
-	if !isValidDefaultCallHandling(dch) {
-		return OBcsmCamelTDPData{}, ErrCamelInvalidDefaultCallHandling
-	}
+	sk := w.ServiceKey
+	dch := defaultCallHandlingFromWire(w.DefaultCallHandling)
 	digits, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
-		return OBcsmCamelTDPData{}, fmt.Errorf("decoding GsmSCFAddress: %w", err)
+		return nil, fmt.Errorf("decoding GsmSCFAddress: %w", err)
 	}
 	if digits == "" {
-		return OBcsmCamelTDPData{}, ErrCamelMissingGsmSCFAddress
+		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	return OBcsmCamelTDPData{
-		OBcsmTriggerDetectionPoint: tdp,
+	return &OBcsmCamelTDPData{
+		OBcsmTriggerDetectionPoint: w.OBcsmTriggerDetectionPoint,
 		ServiceKey:                 sk,
 		GsmSCFAddress:              digits,
 		GsmSCFAddressNature:        nature,
@@ -132,9 +200,7 @@ func convertTBcsmTDPDataToWire(d *TBcsmCamelTDPData) (gsm_map.TBcsmCamelTDPData,
 	if !isValidTBcsmTDP(d.TBcsmTriggerDetectionPoint) {
 		return gsm_map.TBcsmCamelTDPData{}, ErrCamelInvalidTTriggerPoint
 	}
-	if d.ServiceKey < 0 || d.ServiceKey > 2147483647 {
-		return gsm_map.TBcsmCamelTDPData{}, ErrCamelInvalidServiceKey
-	}
+
 	if d.GsmSCFAddress == "" {
 		return gsm_map.TBcsmCamelTDPData{}, ErrCamelMissingGsmSCFAddress
 	}
@@ -147,35 +213,33 @@ func convertTBcsmTDPDataToWire(d *TBcsmCamelTDPData) (gsm_map.TBcsmCamelTDPData,
 	}
 	return gsm_map.TBcsmCamelTDPData{
 		TBcsmTriggerDetectionPoint: d.TBcsmTriggerDetectionPoint,
-		ServiceKey:                 gsm_map.ServiceKey(d.ServiceKey),
-		GsmSCFAddress:              gsm_map.ISDNAddressString(addr),
+		ServiceKey:                 d.ServiceKey,
+		GsmSCFAddress:              addr,
 		DefaultCallHandling:        d.DefaultCallHandling,
 	}, nil
 }
 
-// convertWireToTBcsmTDPData decodes a single wire T-BCSM TDP entry.
-func convertWireToTBcsmTDPData(w *gsm_map.TBcsmCamelTDPData) (TBcsmCamelTDPData, error) {
-	tdp := TBcsmTriggerDetectionPoint(w.TBcsmTriggerDetectionPoint)
-	if !isValidTBcsmTDP(tdp) {
-		return TBcsmCamelTDPData{}, ErrCamelInvalidTTriggerPoint
+// convertWireToTBcsmTDPData decodes a single wire T-BCSM TDP entry. It
+// returns nil, without examining the other fields, for an entry the
+// receiver ignores: 3GPP TS 29.002 V19.1.0 §17.7.1
+// T-BcsmTriggerDetectionPoint, "For T-BcsmCamelTDPData sequences containing
+// this parameter with any other value than the ones listed above, the
+// receiver shall ignore the whole T-BcsmCamelTDPData sequence."
+func convertWireToTBcsmTDPData(w *gsm_map.TBcsmCamelTDPData) (*TBcsmCamelTDPData, error) {
+	if !isValidTBcsmTDP(w.TBcsmTriggerDetectionPoint) {
+		return nil, nil
 	}
-	sk := int64(w.ServiceKey)
-	if sk < 0 || sk > 2147483647 {
-		return TBcsmCamelTDPData{}, ErrCamelInvalidServiceKey
-	}
-	dch := DefaultCallHandling(w.DefaultCallHandling)
-	if !isValidDefaultCallHandling(dch) {
-		return TBcsmCamelTDPData{}, ErrCamelInvalidDefaultCallHandling
-	}
+	sk := w.ServiceKey
+	dch := defaultCallHandlingFromWire(w.DefaultCallHandling)
 	digits, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
-		return TBcsmCamelTDPData{}, fmt.Errorf("decoding GsmSCFAddress: %w", err)
+		return nil, fmt.Errorf("decoding GsmSCFAddress: %w", err)
 	}
 	if digits == "" {
-		return TBcsmCamelTDPData{}, ErrCamelMissingGsmSCFAddress
+		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	return TBcsmCamelTDPData{
-		TBcsmTriggerDetectionPoint: tdp,
+	return &TBcsmCamelTDPData{
+		TBcsmTriggerDetectionPoint: w.TBcsmTriggerDetectionPoint,
 		ServiceKey:                 sk,
 		GsmSCFAddress:              digits,
 		GsmSCFAddressNature:        nature,
@@ -196,8 +260,8 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 	out := &gsm_map.DestinationNumberCriteria{
 		MatchType: c.MatchType,
 	}
-	if len(c.DestinationNumberList) > 0 {
-		list := make(gsm_map.DestinationNumberList, len(c.DestinationNumberList))
+	if c.DestinationNumberList != nil {
+		list := gsm_map.DestinationNumberList{Values: make([]gsm_map.ISDNAddressString, len(c.DestinationNumberList))}
 		for i, n := range c.DestinationNumberList {
 			if n.Digits == "" {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, ErrCamelMissingDestinationNumber)
@@ -206,19 +270,19 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
 			}
-			list[i] = gsm_map.ISDNAddressString(enc)
-		}
-		out.DestinationNumberList = list
-	}
-	if len(c.DestinationNumberLengthList) > 0 {
-		list := make(gsm_map.DestinationNumberLengthList, len(c.DestinationNumberLengthList))
-		for i, l := range c.DestinationNumberLengthList {
-			if l < 1 || l > 15 {
-				return nil, fmt.Errorf("DestinationNumberLengthList[%d]: %w", i, ErrCamelInvalidDestinationNumberLength)
+			if !isISDNAddressStringSize(len(enc)) {
+				return nil, fmt.Errorf("DestinationNumberList[%d]: %d octets: %w", i, len(enc), ErrDestinationNumberInvalidSize)
 			}
-			list[i] = int64(l)
+			list.Values[i] = enc
 		}
-		out.DestinationNumberLengthList = list
+		out.DestinationNumberList = &list
+	}
+	if c.DestinationNumberLengthList != nil {
+		list := gsm_map.DestinationNumberLengthList{Values: make([]int64, len(c.DestinationNumberLengthList))}
+		for i, l := range c.DestinationNumberLengthList {
+			list.Values[i] = int64(l)
+		}
+		out.DestinationNumberLengthList = &list
 	}
 	return out, nil
 }
@@ -227,17 +291,23 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 // Mirrors the encoder's "at least one list" rule so malformed peer input
 // can't produce a criteria SEQUENCE with neither list populated.
 func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria) (*DestinationNumberCriteria, error) {
-	mt := MatchType(w.MatchType)
+	mt := w.MatchType
 	if !isValidMatchType(mt) {
 		return nil, ErrCamelInvalidMatchType
 	}
-	if len(w.DestinationNumberList) == 0 && len(w.DestinationNumberLengthList) == 0 {
+	if (w.DestinationNumberList == nil || len(w.DestinationNumberList.Values) == 0) &&
+		(w.DestinationNumberLengthList == nil || len(w.DestinationNumberLengthList.Values) == 0) {
 		return nil, ErrCamelMissingDestinationNumberCriteria
 	}
 	out := &DestinationNumberCriteria{MatchType: mt}
-	if len(w.DestinationNumberList) > 0 {
-		list := make([]ISDNNumber, len(w.DestinationNumberList))
-		for i, n := range w.DestinationNumberList {
+	if w.DestinationNumberList != nil && len(w.DestinationNumberList.Values) > 0 {
+		list := make([]ISDNNumber, len(w.DestinationNumberList.Values))
+		for i, n := range w.DestinationNumberList.Values {
+			// ISDN-AddressString SIZE (1..9) is in §17.7.8;
+			// DestinationNumberCriteria's receiver rule is in §17.7.1.
+			if !isISDNAddressStringSize(len(n)) {
+				return nil, fmt.Errorf("DestinationNumberList[%d]: %d octets: %w", i, len(n), ErrDestinationNumberInvalidSize)
+			}
 			digits, nature, plan, err := decodeAddressField(n)
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
@@ -249,12 +319,9 @@ func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria
 		}
 		out.DestinationNumberList = list
 	}
-	if len(w.DestinationNumberLengthList) > 0 {
-		list := make([]int, len(w.DestinationNumberLengthList))
-		for i, l := range w.DestinationNumberLengthList {
-			if l < 1 || l > 15 {
-				return nil, fmt.Errorf("DestinationNumberLengthList[%d]: %w", i, ErrCamelInvalidDestinationNumberLength)
-			}
+	if w.DestinationNumberLengthList != nil && len(w.DestinationNumberLengthList.Values) > 0 {
+		list := make([]int, len(w.DestinationNumberLengthList.Values))
+		for i, l := range w.DestinationNumberLengthList.Values {
 			list[i] = int(l)
 		}
 		out.DestinationNumberLengthList = list
@@ -278,15 +345,15 @@ func convertOBcsmTDPCriteriaToWire(c *OBcsmCamelTDPCriteria) (gsm_map.OBcsmCamel
 		out.DestinationNumberCriteria = dnc
 	}
 	if len(c.BasicServiceCriteria) > 0 {
-		bsc := make(gsm_map.BasicServiceCriteria, len(c.BasicServiceCriteria))
+		bsc := gsm_map.BasicServiceCriteria{Values: make([]gsm_map.ExtBasicServiceCode, len(c.BasicServiceCriteria))}
 		for i := range c.BasicServiceCriteria {
 			wv, err := convertExtBasicServiceCodeToWire(&c.BasicServiceCriteria[i])
 			if err != nil {
 				return gsm_map.OBcsmCamelTDPCriteria{}, fmt.Errorf("BasicServiceCriteria[%d]: %w", i, err)
 			}
-			bsc[i] = *wv
+			bsc.Values[i] = *wv
 		}
-		out.BasicServiceCriteria = bsc
+		out.BasicServiceCriteria = &bsc
 	}
 	if c.CallTypeCriteria != nil {
 		if !isValidCallTypeCriteria(*c.CallTypeCriteria) {
@@ -296,70 +363,65 @@ func convertOBcsmTDPCriteriaToWire(c *OBcsmCamelTDPCriteria) (gsm_map.OBcsmCamel
 		out.CallTypeCriteria = &ctc
 	}
 	if len(c.OCauseValueCriteria) > 0 {
-		if len(c.OCauseValueCriteria) > 5 {
-			return gsm_map.OBcsmCamelTDPCriteria{}, ErrCamelInvalidCauseValueListSize
-		}
-		list := make(gsm_map.OCauseValueCriteria, len(c.OCauseValueCriteria))
+		list := gsm_map.OCauseValueCriteria{Values: make([]gsm_map.CauseValue, len(c.OCauseValueCriteria))}
 		for i, v := range c.OCauseValueCriteria {
 			if v < 0 || v > 127 {
 				return gsm_map.OBcsmCamelTDPCriteria{}, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
-			list[i] = gsm_map.CauseValue{byte(v)}
+			list.Values[i] = gsm_map.CauseValue{byte(v)}
 		}
-		out.OCauseValueCriteria = list
+		out.OCauseValueCriteria = &list
 	}
 	return out, nil
 }
 
-// convertWireToOBcsmTDPCriteria decodes an O-BCSM TDP criteria entry.
-func convertWireToOBcsmTDPCriteria(w *gsm_map.OBcsmCamelTDPCriteria) (OBcsmCamelTDPCriteria, error) {
-	tdp := OBcsmTriggerDetectionPoint(w.OBcsmTriggerDetectionPoint)
-	if !isValidOBcsmTDP(tdp) {
-		return OBcsmCamelTDPCriteria{}, ErrCamelInvalidOTriggerPoint
+// convertWireToOBcsmTDPCriteria decodes an O-BCSM TDP criteria entry. It
+// returns nil, without examining the other fields, for an entry the
+// receiver ignores: 3GPP TS 29.002 V19.1.0 §17.7.1
+// O-BcsmTriggerDetectionPoint, "For O-BcsmCamelTDP-Criteria sequences
+// containing this parameter with any other value than the ones listed the
+// receiver shall ignore the whole O-BcsmCamelTDP-Criteria sequence."
+func convertWireToOBcsmTDPCriteria(w *gsm_map.OBcsmCamelTDPCriteria) (*OBcsmCamelTDPCriteria, error) {
+	if !isValidOBcsmTDP(w.OBcsmTriggerDetectionPoint) {
+		return nil, nil
 	}
-	out := OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: tdp}
+	out := &OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: w.OBcsmTriggerDetectionPoint}
 	if w.DestinationNumberCriteria != nil {
 		dnc, err := convertWireToDestinationNumberCriteria(w.DestinationNumberCriteria)
 		if err != nil {
-			return OBcsmCamelTDPCriteria{}, fmt.Errorf("DestinationNumberCriteria: %w", err)
+			return nil, fmt.Errorf("DestinationNumberCriteria: %w", err)
 		}
 		out.DestinationNumberCriteria = dnc
 	}
-	if len(w.BasicServiceCriteria) > 0 {
-		bsc := make([]ExtBasicServiceCode, len(w.BasicServiceCriteria))
-		for i := range w.BasicServiceCriteria {
-			pv, err := convertWireToExtBasicServiceCode(&w.BasicServiceCriteria[i])
+	if w.BasicServiceCriteria != nil && len(w.BasicServiceCriteria.Values) > 0 {
+		bsc := make([]ExtBasicServiceCode, len(w.BasicServiceCriteria.Values))
+		for i := range w.BasicServiceCriteria.Values {
+			pv, err := convertWireToExtBasicServiceCode(&w.BasicServiceCriteria.Values[i])
 			if err != nil {
-				return OBcsmCamelTDPCriteria{}, fmt.Errorf("BasicServiceCriteria[%d]: %w", i, err)
+				return nil, fmt.Errorf("BasicServiceCriteria[%d]: %w", i, err)
 			}
 			bsc[i] = *pv
 		}
 		out.BasicServiceCriteria = bsc
 	}
 	if w.CallTypeCriteria != nil {
-		ctc := CallTypeCriteria(*w.CallTypeCriteria)
+		ctc := *w.CallTypeCriteria
 		if !isValidCallTypeCriteria(ctc) {
-			return OBcsmCamelTDPCriteria{}, ErrCamelInvalidCallTypeCriteria
+			return nil, ErrCamelInvalidCallTypeCriteria
 		}
 		out.CallTypeCriteria = &ctc
 	}
 	if w.OCauseValueCriteria != nil {
-		// OCauseValueCriteria is SIZE(1..5) per maxNumOfCAMEL-O-CauseValueCriteria;
-		// a non-nil empty slice means the tag was on the wire with zero elements,
-		// which violates the lower bound.
-		if len(w.OCauseValueCriteria) < 1 || len(w.OCauseValueCriteria) > 5 {
-			return OBcsmCamelTDPCriteria{}, ErrCamelInvalidCauseValueListSize
-		}
-		list := make([]int, len(w.OCauseValueCriteria))
-		for i, b := range w.OCauseValueCriteria {
+		list := make([]int, len(w.OCauseValueCriteria.Values))
+		for i, b := range w.OCauseValueCriteria.Values {
 			// CauseValue is OCTET STRING (SIZE(1)); reject any other length
 			// rather than silently normalising missing/extra octets.
 			if len(b) != 1 {
-				return OBcsmCamelTDPCriteria{}, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValueOctetLength)
+				return nil, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValueOctetLength)
 			}
 			v := int(b[0])
 			if v > 127 {
-				return OBcsmCamelTDPCriteria{}, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
+				return nil, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list[i] = v
 		}
@@ -377,43 +439,42 @@ func convertTBcsmTDPCriteriaToWire(c *TBcsmCamelTDPCriteria) (gsm_map.TBCSMCAMEL
 		TBCSMTriggerDetectionPoint: c.TBcsmTriggerDetectionPoint,
 	}
 	if len(c.BasicServiceCriteria) > 0 {
-		bsc := make(gsm_map.BasicServiceCriteria, len(c.BasicServiceCriteria))
+		bsc := gsm_map.BasicServiceCriteria{Values: make([]gsm_map.ExtBasicServiceCode, len(c.BasicServiceCriteria))}
 		for i := range c.BasicServiceCriteria {
 			wv, err := convertExtBasicServiceCodeToWire(&c.BasicServiceCriteria[i])
 			if err != nil {
 				return gsm_map.TBCSMCAMELTDPCriteria{}, fmt.Errorf("BasicServiceCriteria[%d]: %w", i, err)
 			}
-			bsc[i] = *wv
+			bsc.Values[i] = *wv
 		}
-		out.BasicServiceCriteria = bsc
+		out.BasicServiceCriteria = &bsc
 	}
 	if len(c.TCauseValueCriteria) > 0 {
-		if len(c.TCauseValueCriteria) > 5 {
-			return gsm_map.TBCSMCAMELTDPCriteria{}, ErrCamelInvalidCauseValueListSize
-		}
-		list := make(gsm_map.TCauseValueCriteria, len(c.TCauseValueCriteria))
+		list := gsm_map.TCauseValueCriteria{Values: make([]gsm_map.CauseValue, len(c.TCauseValueCriteria))}
 		for i, v := range c.TCauseValueCriteria {
 			if v < 0 || v > 127 {
 				return gsm_map.TBCSMCAMELTDPCriteria{}, fmt.Errorf("TCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
-			list[i] = gsm_map.CauseValue{byte(v)}
+			list.Values[i] = gsm_map.CauseValue{byte(v)}
 		}
-		out.TCauseValueCriteria = list
+		out.TCauseValueCriteria = &list
 	}
 	return out, nil
 }
 
 // convertWireToTBcsmTDPCriteria decodes a T-BCSM TDP criteria entry.
+//
+// T-BcsmTriggerDetectionPoint is extensible and its exception handling
+// (3GPP TS 29.002 V19.1.0 §17.7.1) covers only "T-BcsmCamelTDPData
+// sequences containing this parameter with any other value than the ones
+// listed above", so in T-BCSM-CAMEL-TDP-Criteria an unlisted value is kept
+// (§17.1.4); Marshal sends only the listed values.
 func convertWireToTBcsmTDPCriteria(w *gsm_map.TBCSMCAMELTDPCriteria) (TBcsmCamelTDPCriteria, error) {
-	tdp := TBcsmTriggerDetectionPoint(w.TBCSMTriggerDetectionPoint)
-	if !isValidTBcsmTDP(tdp) {
-		return TBcsmCamelTDPCriteria{}, ErrCamelInvalidTTriggerPoint
-	}
-	out := TBcsmCamelTDPCriteria{TBcsmTriggerDetectionPoint: tdp}
-	if len(w.BasicServiceCriteria) > 0 {
-		bsc := make([]ExtBasicServiceCode, len(w.BasicServiceCriteria))
-		for i := range w.BasicServiceCriteria {
-			pv, err := convertWireToExtBasicServiceCode(&w.BasicServiceCriteria[i])
+	out := TBcsmCamelTDPCriteria{TBcsmTriggerDetectionPoint: w.TBCSMTriggerDetectionPoint}
+	if w.BasicServiceCriteria != nil && len(w.BasicServiceCriteria.Values) > 0 {
+		bsc := make([]ExtBasicServiceCode, len(w.BasicServiceCriteria.Values))
+		for i := range w.BasicServiceCriteria.Values {
+			pv, err := convertWireToExtBasicServiceCode(&w.BasicServiceCriteria.Values[i])
 			if err != nil {
 				return TBcsmCamelTDPCriteria{}, fmt.Errorf("BasicServiceCriteria[%d]: %w", i, err)
 			}
@@ -422,11 +483,8 @@ func convertWireToTBcsmTDPCriteria(w *gsm_map.TBCSMCAMELTDPCriteria) (TBcsmCamel
 		out.BasicServiceCriteria = bsc
 	}
 	if w.TCauseValueCriteria != nil {
-		if len(w.TCauseValueCriteria) < 1 || len(w.TCauseValueCriteria) > 5 {
-			return TBcsmCamelTDPCriteria{}, ErrCamelInvalidCauseValueListSize
-		}
-		list := make([]int, len(w.TCauseValueCriteria))
-		for i, b := range w.TCauseValueCriteria {
+		list := make([]int, len(w.TCauseValueCriteria.Values))
+		for i, b := range w.TCauseValueCriteria.Values {
 			if len(b) != 1 {
 				return TBcsmCamelTDPCriteria{}, fmt.Errorf("TCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValueOctetLength)
 			}
@@ -443,112 +501,91 @@ func convertWireToTBcsmTDPCriteria(w *gsm_map.TBCSMCAMELTDPCriteria) (TBcsmCamel
 
 // convertOCSIToWire encodes an O-CSI.
 func convertOCSIToWire(o *OCSI) (*gsm_map.OCSI, error) {
-	if len(o.OBcsmCamelTDPDataList) < 1 || len(o.OBcsmCamelTDPDataList) > 10 {
-		return nil, ErrCamelInvalidTDPDataListSize
-	}
 	if err := validateCamelCapabilityHandling(o.CamelCapabilityHandling); err != nil {
 		return nil, err
 	}
-	list := make(gsm_map.OBcsmCamelTDPDataList, len(o.OBcsmCamelTDPDataList))
+	list := gsm_map.OBcsmCamelTDPDataList{Values: make([]gsm_map.OBcsmCamelTDPData, len(o.OBcsmCamelTDPDataList))}
+	seen := map[OBcsmTriggerDetectionPoint]bool{}
 	for i := range o.OBcsmCamelTDPDataList {
 		w, err := convertOBcsmTDPDataToWire(&o.OBcsmCamelTDPDataList[i])
 		if err != nil {
 			return nil, fmt.Errorf("OBcsmCamelTDPDataList[%d]: %w", i, err)
 		}
-		list[i] = w
+		if err := checkTDPOnce(seen, w.OBcsmTriggerDetectionPoint); err != nil {
+			return nil, fmt.Errorf("OBcsmCamelTDPDataList[%d]: %w", i, err)
+		}
+		list.Values[i] = w
 	}
-	out := &gsm_map.OCSI{OBcsmCamelTDPDataList: list}
+	out := &gsm_map.OCSI{OBcsmCamelTDPDataList: &list}
 	if o.CamelCapabilityHandling != nil {
-		v := gsm_map.CamelCapabilityHandling(int64(*o.CamelCapabilityHandling))
+		v := int64(*o.CamelCapabilityHandling)
 		out.CamelCapabilityHandling = &v
 	}
-	out.NotificationToCSE = boolToNullPtr(o.NotificationToCSE)
-	out.CsiActive = boolToNullPtr(o.CsiActive)
 	return out, nil
 }
 
-// convertWireToOCSI decodes a wire O-CSI.
+// convertWireToOCSI decodes a wire O-CSI. It returns nil when the receiver
+// ignores every O-BcsmCamelTDPData (convertWireToOBcsmTDPData): an O-CSI
+// arms its TDPs only through O-BcsmCamelTDPDataList, SIZE (1..10), so with
+// none left the receiver holds no O-CSI.
 func convertWireToOCSI(w *gsm_map.OCSI) (*OCSI, error) {
-	if len(w.OBcsmCamelTDPDataList) < 1 || len(w.OBcsmCamelTDPDataList) > 10 {
-		return nil, ErrCamelInvalidTDPDataListSize
+	list, err := convertTDPDataWireList("OBcsmCamelTDPDataList", w.OBcsmCamelTDPDataList.Values, convertWireToOBcsmTDPData,
+		func(d *OBcsmCamelTDPData) OBcsmTriggerDetectionPoint { return d.OBcsmTriggerDetectionPoint })
+	if err != nil {
+		return nil, err
 	}
-	out := &OCSI{
-		OBcsmCamelTDPDataList: make([]OBcsmCamelTDPData, len(w.OBcsmCamelTDPDataList)),
+	if list == nil {
+		return nil, nil
 	}
-	for i := range w.OBcsmCamelTDPDataList {
-		d, err := convertWireToOBcsmTDPData(&w.OBcsmCamelTDPDataList[i])
-		if err != nil {
-			return nil, fmt.Errorf("OBcsmCamelTDPDataList[%d]: %w", i, err)
-		}
-		out.OBcsmCamelTDPDataList[i] = d
-	}
+	out := &OCSI{OBcsmCamelTDPDataList: list}
 	if w.CamelCapabilityHandling != nil {
-		// Range-check the wire int64 before narrowing to Go int so 32-bit
-		// builds can't truncate out-of-range values into the valid 1..4
-		// window.
-		v64 := int64(*w.CamelCapabilityHandling)
-		if v64 < 1 || v64 > 4 {
-			return nil, ErrCamelInvalidCamelCapabilityHandling
-		}
-		v := int(v64)
-		out.CamelCapabilityHandling = &v
+		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
 	}
-	out.NotificationToCSE = nullPtrToBool(w.NotificationToCSE)
-	out.CsiActive = nullPtrToBool(w.CsiActive)
 	return out, nil
 }
 
 // convertTCSIToWire encodes a T-CSI.
 func convertTCSIToWire(t *TCSI) (*gsm_map.TCSI, error) {
-	if len(t.TBcsmCamelTDPDataList) < 1 || len(t.TBcsmCamelTDPDataList) > 10 {
-		return nil, ErrCamelInvalidTDPDataListSize
-	}
 	if err := validateCamelCapabilityHandling(t.CamelCapabilityHandling); err != nil {
 		return nil, err
 	}
-	list := make(gsm_map.TBcsmCamelTDPDataList, len(t.TBcsmCamelTDPDataList))
+	list := gsm_map.TBcsmCamelTDPDataList{Values: make([]gsm_map.TBcsmCamelTDPData, len(t.TBcsmCamelTDPDataList))}
+	seen := map[TBcsmTriggerDetectionPoint]bool{}
 	for i := range t.TBcsmCamelTDPDataList {
 		w, err := convertTBcsmTDPDataToWire(&t.TBcsmCamelTDPDataList[i])
 		if err != nil {
 			return nil, fmt.Errorf("TBcsmCamelTDPDataList[%d]: %w", i, err)
 		}
-		list[i] = w
+		if err := checkTDPOnce(seen, w.TBcsmTriggerDetectionPoint); err != nil {
+			return nil, fmt.Errorf("TBcsmCamelTDPDataList[%d]: %w", i, err)
+		}
+		list.Values[i] = w
 	}
-	out := &gsm_map.TCSI{TBcsmCamelTDPDataList: list}
+	out := &gsm_map.TCSI{TBcsmCamelTDPDataList: &list}
 	if t.CamelCapabilityHandling != nil {
-		v := gsm_map.CamelCapabilityHandling(int64(*t.CamelCapabilityHandling))
+		v := int64(*t.CamelCapabilityHandling)
 		out.CamelCapabilityHandling = &v
 	}
-	out.NotificationToCSE = boolToNullPtr(t.NotificationToCSE)
-	out.CsiActive = boolToNullPtr(t.CsiActive)
 	return out, nil
 }
 
-// convertWireToTCSI decodes a wire T-CSI.
+// convertWireToTCSI decodes a wire T-CSI or VT-CSI. It returns nil when the
+// receiver ignores every T-BcsmCamelTDPData (convertWireToTBcsmTDPData): a
+// T-CSI arms its TDPs only through T-BcsmCamelTDPDataList, SIZE (1..10), so
+// with none left the receiver holds no T-CSI.
 func convertWireToTCSI(w *gsm_map.TCSI) (*TCSI, error) {
-	if len(w.TBcsmCamelTDPDataList) < 1 || len(w.TBcsmCamelTDPDataList) > 10 {
-		return nil, ErrCamelInvalidTDPDataListSize
+	list, err := convertTDPDataWireList("TBcsmCamelTDPDataList", w.TBcsmCamelTDPDataList.Values, convertWireToTBcsmTDPData,
+		func(d *TBcsmCamelTDPData) TBcsmTriggerDetectionPoint { return d.TBcsmTriggerDetectionPoint })
+	if err != nil {
+		return nil, err
 	}
-	out := &TCSI{
-		TBcsmCamelTDPDataList: make([]TBcsmCamelTDPData, len(w.TBcsmCamelTDPDataList)),
+	if list == nil {
+		return nil, nil
 	}
-	for i := range w.TBcsmCamelTDPDataList {
-		d, err := convertWireToTBcsmTDPData(&w.TBcsmCamelTDPDataList[i])
-		if err != nil {
-			return nil, fmt.Errorf("TBcsmCamelTDPDataList[%d]: %w", i, err)
-		}
-		out.TBcsmCamelTDPDataList[i] = d
-	}
+	out := &TCSI{TBcsmCamelTDPDataList: list}
 	if w.CamelCapabilityHandling != nil {
-		v64 := int64(*w.CamelCapabilityHandling)
-		if v64 < 1 || v64 > 4 {
-			return nil, ErrCamelInvalidCamelCapabilityHandling
-		}
-		v := int(v64)
-		out.CamelCapabilityHandling = &v
+		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
 	}
-	out.NotificationToCSE = nullPtrToBool(w.NotificationToCSE)
-	out.CsiActive = nullPtrToBool(w.CsiActive)
 	return out, nil
 }
 
@@ -557,9 +594,7 @@ func convertDPAnalysedInfoCriteriumToWire(c *DPAnalysedInfoCriterium) (gsm_map.D
 	if c.DialledNumber == "" {
 		return gsm_map.DPAnalysedInfoCriterium{}, ErrCamelMissingDialledNumber
 	}
-	if c.ServiceKey < 0 || c.ServiceKey > 2147483647 {
-		return gsm_map.DPAnalysedInfoCriterium{}, ErrCamelInvalidServiceKey
-	}
+
 	if c.GsmSCFAddress == "" {
 		return gsm_map.DPAnalysedInfoCriterium{}, ErrCamelMissingGsmSCFAddress
 	}
@@ -575,23 +610,17 @@ func convertDPAnalysedInfoCriteriumToWire(c *DPAnalysedInfoCriterium) (gsm_map.D
 		return gsm_map.DPAnalysedInfoCriterium{}, fmt.Errorf("encoding GsmSCFAddress: %w", err)
 	}
 	return gsm_map.DPAnalysedInfoCriterium{
-		DialledNumber:       gsm_map.ISDNAddressString(dn),
-		ServiceKey:          gsm_map.ServiceKey(c.ServiceKey),
-		GsmSCFAddress:       gsm_map.ISDNAddressString(sc),
+		DialledNumber:       dn,
+		ServiceKey:          c.ServiceKey,
+		GsmSCFAddress:       sc,
 		DefaultCallHandling: c.DefaultCallHandling,
 	}, nil
 }
 
 // convertWireToDPAnalysedInfoCriterium decodes a single D-CSI entry.
 func convertWireToDPAnalysedInfoCriterium(w *gsm_map.DPAnalysedInfoCriterium) (DPAnalysedInfoCriterium, error) {
-	sk := int64(w.ServiceKey)
-	if sk < 0 || sk > 2147483647 {
-		return DPAnalysedInfoCriterium{}, ErrCamelInvalidServiceKey
-	}
-	dch := DefaultCallHandling(w.DefaultCallHandling)
-	if !isValidDefaultCallHandling(dch) {
-		return DPAnalysedInfoCriterium{}, ErrCamelInvalidDefaultCallHandling
-	}
+	sk := w.ServiceKey
+	dch := defaultCallHandlingFromWire(w.DefaultCallHandling)
 	dnDigits, dnNature, dnPlan, err := decodeAddressField(w.DialledNumber)
 	if err != nil {
 		return DPAnalysedInfoCriterium{}, fmt.Errorf("decoding DialledNumber: %w", err)
@@ -618,45 +647,71 @@ func convertWireToDPAnalysedInfoCriterium(w *gsm_map.DPAnalysedInfoCriterium) (D
 	}, nil
 }
 
+// D-CSI, SMS-CSI and GPRS-CSI may be segmented across the
+// InsertSubscriberData operations of one dialogue, and their presence rules
+// depend on the segment (3GPP TS 29.002 V19.1.0 §17.7.1):
+//
+//	D-CSI: "If D-CSI is segmented, then the first segment shall contain
+//	dp-AnalysedInfoCriteriaList and camelCapabilityHandling. Subsequent
+//	segments shall not contain camelCapabilityHandling, but may contain
+//	dp-AnalysedInfoCriteriaList."
+//
+//	SMS-CSI: "If SMS-CSI is segmented, sms-CAMEL-TDP-DataList and
+//	camelCapabilityHandling shall be present in the first segment"
+//
+//	GPRS-CSI: "If GPRS-CSI is segmented, gprs-CamelTDPDataList and
+//	camelCapabilityHandling shall be present in the first segment"
+//
+// A single message does not tell which segment it holds, so the converters
+// enforce neither presence nor absence of these components: an absent list
+// is a nil or empty public list and an absent camelCapabilityHandling a nil
+// CamelCapabilityHandling, in both directions. The presence rules apply to
+// the reassembled CSI and are the caller's to check. O-CSI and T-CSI "shall
+// not be segmented" and keep their rules.
+//
+// One D-CSI rule holds in every message: a D-CSI with
+// camelCapabilityHandling is unsegmented or the first segment, so it carries
+// dp-AnalysedInfoCriteriaList too (ErrCamelDCSICapabilityHandlingWithoutList).
+// SMS-CSI and GPRS-CSI do not keep camelCapabilityHandling out of subsequent
+// segments, so the same does not follow for them.
+
 // convertDCSIToWire encodes a D-CSI.
 func convertDCSIToWire(d *DCSI) (*gsm_map.DCSI, error) {
 	if err := validateCamelCapabilityHandling(d.CamelCapabilityHandling); err != nil {
 		return nil, err
 	}
+	if d.CamelCapabilityHandling != nil && len(d.DPAnalysedInfoCriteriaList) == 0 {
+		return nil, ErrCamelDCSICapabilityHandlingWithoutList
+	}
 	out := &gsm_map.DCSI{}
-	if len(d.DPAnalysedInfoCriteriaList) > 0 {
-		if len(d.DPAnalysedInfoCriteriaList) > 10 {
-			return nil, ErrCamelInvalidDPAnalysedInfoListSize
-		}
-		list := make(gsm_map.DPAnalysedInfoCriteriaList, len(d.DPAnalysedInfoCriteriaList))
+	if d.DPAnalysedInfoCriteriaList != nil {
+		list := gsm_map.DPAnalysedInfoCriteriaList{Values: make([]gsm_map.DPAnalysedInfoCriterium, len(d.DPAnalysedInfoCriteriaList))}
 		for i := range d.DPAnalysedInfoCriteriaList {
 			w, err := convertDPAnalysedInfoCriteriumToWire(&d.DPAnalysedInfoCriteriaList[i])
 			if err != nil {
 				return nil, fmt.Errorf("DPAnalysedInfoCriteriaList[%d]: %w", i, err)
 			}
-			list[i] = w
+			list.Values[i] = w
 		}
-		out.DpAnalysedInfoCriteriaList = list
+		out.DpAnalysedInfoCriteriaList = &list
 	}
 	if d.CamelCapabilityHandling != nil {
-		v := gsm_map.CamelCapabilityHandling(int64(*d.CamelCapabilityHandling))
-		out.CamelCapabilityHandling = &v
+		cch := int64(*d.CamelCapabilityHandling)
+		out.CamelCapabilityHandling = &cch
 	}
-	out.NotificationToCSE = boolToNullPtr(d.NotificationToCSE)
-	out.CsiActive = boolToNullPtr(d.CsiActive)
 	return out, nil
 }
 
 // convertWireToDCSI decodes a D-CSI.
 func convertWireToDCSI(w *gsm_map.DCSI) (*DCSI, error) {
+	if w.CamelCapabilityHandling != nil && (w.DpAnalysedInfoCriteriaList == nil || len(w.DpAnalysedInfoCriteriaList.Values) == 0) {
+		return nil, ErrCamelDCSICapabilityHandlingWithoutList
+	}
 	out := &DCSI{}
-	if w.DpAnalysedInfoCriteriaList != nil {
-		if len(w.DpAnalysedInfoCriteriaList) < 1 || len(w.DpAnalysedInfoCriteriaList) > 10 {
-			return nil, ErrCamelInvalidDPAnalysedInfoListSize
-		}
-		out.DPAnalysedInfoCriteriaList = make([]DPAnalysedInfoCriterium, len(w.DpAnalysedInfoCriteriaList))
-		for i := range w.DpAnalysedInfoCriteriaList {
-			c, err := convertWireToDPAnalysedInfoCriterium(&w.DpAnalysedInfoCriteriaList[i])
+	if w.DpAnalysedInfoCriteriaList != nil && len(w.DpAnalysedInfoCriteriaList.Values) > 0 {
+		out.DPAnalysedInfoCriteriaList = make([]DPAnalysedInfoCriterium, len(w.DpAnalysedInfoCriteriaList.Values))
+		for i := range w.DpAnalysedInfoCriteriaList.Values {
+			c, err := convertWireToDPAnalysedInfoCriterium(&w.DpAnalysedInfoCriteriaList.Values[i])
 			if err != nil {
 				return nil, fmt.Errorf("DpAnalysedInfoCriteriaList[%d]: %w", i, err)
 			}
@@ -664,21 +719,14 @@ func convertWireToDCSI(w *gsm_map.DCSI) (*DCSI, error) {
 		}
 	}
 	if w.CamelCapabilityHandling != nil {
-		v64 := int64(*w.CamelCapabilityHandling)
-		if v64 < 1 || v64 > 4 {
-			return nil, ErrCamelInvalidCamelCapabilityHandling
-		}
-		v := int(v64)
-		out.CamelCapabilityHandling = &v
+		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
 	}
-	out.NotificationToCSE = nullPtrToBool(w.NotificationToCSE)
-	out.CsiActive = nullPtrToBool(w.CsiActive)
 	return out, nil
 }
 
 // convertGmscCamelSubInfoToWire converts the public GmscCamelSubscriptionInfo
 // to its wire-level representation, including every nested CSI and criteria
-// list. Replaces the earlier stub that silently dropped all CAMEL data.
+// list.
 func convertGmscCamelSubInfoToWire(g *GmscCamelSubscriptionInfo) (gsm_map.GmscCamelSubscriptionInfo, error) {
 	out := gsm_map.GmscCamelSubscriptionInfo{}
 	if g.TCSI != nil {
@@ -702,40 +750,33 @@ func convertGmscCamelSubInfoToWire(g *GmscCamelSubscriptionInfo) (gsm_map.GmscCa
 		}
 		out.DCsi = d
 	}
-	if len(g.OBcsmCamelTDPCriteriaList) > 0 {
-		if len(g.OBcsmCamelTDPCriteriaList) > 10 {
-			return gsm_map.GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
-		}
-		list := make(gsm_map.OBcsmCamelTDPCriteriaList, len(g.OBcsmCamelTDPCriteriaList))
+	if g.OBcsmCamelTDPCriteriaList != nil {
+		list := gsm_map.OBcsmCamelTDPCriteriaList{Values: make([]gsm_map.OBcsmCamelTDPCriteria, len(g.OBcsmCamelTDPCriteriaList))}
 		for i := range g.OBcsmCamelTDPCriteriaList {
 			w, err := convertOBcsmTDPCriteriaToWire(&g.OBcsmCamelTDPCriteriaList[i])
 			if err != nil {
 				return gsm_map.GmscCamelSubscriptionInfo{}, fmt.Errorf("OBcsmCamelTDPCriteriaList[%d]: %w", i, err)
 			}
-			list[i] = w
+			list.Values[i] = w
 		}
-		out.OBcsmCamelTDPCriteriaList = list
+		out.OBcsmCamelTDPCriteriaList = &list
 	}
-	if len(g.TBcsmCamelTDPCriteriaList) > 0 {
-		if len(g.TBcsmCamelTDPCriteriaList) > 10 {
-			return gsm_map.GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
-		}
-		list := make(gsm_map.TBCSMCAMELTDPCriteriaList, len(g.TBcsmCamelTDPCriteriaList))
+	if g.TBcsmCamelTDPCriteriaList != nil {
+		list := gsm_map.TBCSMCAMELTDPCriteriaList{Values: make([]gsm_map.TBCSMCAMELTDPCriteria, len(g.TBcsmCamelTDPCriteriaList))}
 		for i := range g.TBcsmCamelTDPCriteriaList {
 			w, err := convertTBcsmTDPCriteriaToWire(&g.TBcsmCamelTDPCriteriaList[i])
 			if err != nil {
 				return gsm_map.GmscCamelSubscriptionInfo{}, fmt.Errorf("TBcsmCamelTDPCriteriaList[%d]: %w", i, err)
 			}
-			list[i] = w
+			list.Values[i] = w
 		}
-		out.TBCSMCAMELTDPCriteriaList = list
+		out.TBCSMCAMELTDPCriteriaList = &list
 	}
 	return out, nil
 }
 
 // convertWireToGmscCamelSubInfo converts a wire GmscCamelSubscriptionInfo back
-// into the public type. Replaces the earlier stub that silently dropped all
-// CAMEL data on decode.
+// into the public type.
 func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCamelSubscriptionInfo, error) {
 	out := GmscCamelSubscriptionInfo{}
 	if w.TCSI != nil {
@@ -760,26 +801,17 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 		out.DCSI = d
 	}
 	if w.OBcsmCamelTDPCriteriaList != nil {
-		if len(w.OBcsmCamelTDPCriteriaList) < 1 || len(w.OBcsmCamelTDPCriteriaList) > 10 {
-			return GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
-		}
-		list := make([]OBcsmCamelTDPCriteria, len(w.OBcsmCamelTDPCriteriaList))
-		for i := range w.OBcsmCamelTDPCriteriaList {
-			c, err := convertWireToOBcsmTDPCriteria(&w.OBcsmCamelTDPCriteriaList[i])
-			if err != nil {
-				return GmscCamelSubscriptionInfo{}, fmt.Errorf("OBcsmCamelTDPCriteriaList[%d]: %w", i, err)
-			}
-			list[i] = c
+		// Absent when the receiver ignores every entry.
+		list, err := convertIgnorableWireList("OBcsmCamelTDPCriteriaList", w.OBcsmCamelTDPCriteriaList.Values, convertWireToOBcsmTDPCriteria)
+		if err != nil {
+			return GmscCamelSubscriptionInfo{}, err
 		}
 		out.OBcsmCamelTDPCriteriaList = list
 	}
 	if w.TBCSMCAMELTDPCriteriaList != nil {
-		if len(w.TBCSMCAMELTDPCriteriaList) < 1 || len(w.TBCSMCAMELTDPCriteriaList) > 10 {
-			return GmscCamelSubscriptionInfo{}, ErrCamelInvalidCriteriaListSize
-		}
-		list := make([]TBcsmCamelTDPCriteria, len(w.TBCSMCAMELTDPCriteriaList))
-		for i := range w.TBCSMCAMELTDPCriteriaList {
-			c, err := convertWireToTBcsmTDPCriteria(&w.TBCSMCAMELTDPCriteriaList[i])
+		list := make([]TBcsmCamelTDPCriteria, len(w.TBCSMCAMELTDPCriteriaList.Values))
+		for i := range w.TBCSMCAMELTDPCriteriaList.Values {
+			c, err := convertWireToTBcsmTDPCriteria(&w.TBCSMCAMELTDPCriteriaList.Values[i])
 			if err != nil {
 				return GmscCamelSubscriptionInfo{}, fmt.Errorf("TBCSMCAMELTDPCriteriaList[%d]: %w", i, err)
 			}
@@ -790,54 +822,55 @@ func convertWireToGmscCamelSubInfo(w *gsm_map.GmscCamelSubscriptionInfo) (GmscCa
 	return out, nil
 }
 
-// --- VlrCamelSubscriptionInfo sub-types (MAP-MS-DataTypes.asn:2183) ---
+// --- VlrCamelSubscriptionInfo sub-types (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
-// maxNumOfCamelTDPData is the spec upper bound on CAMEL TDP data lists
-// and related criteria lists (O-BCSM / T-BCSM / SMS).
-const maxNumOfCamelTDPData = 10
+// isVLRSSEvent reports whether c is an SS-EventList code an SS-CSI sent to
+// the VLR may carry. 3GPP TS 29.002 V19.1.0 §17.7.1 SS-EventList defines
+// actions for ectSS-Code, multiPTYSS-Code, cdSS-Code and ccbsSS-Code: "all
+// other SS codes shall be ignored". "When SS-CSI is sent to the VLR, it
+// shall not contain a marking for ccbs. If the VLR receives SS-CSI
+// containing a marking for ccbs, the VLR shall discard the ccbs marking in
+// SS-CSI."
+func isVLRSSEvent(c SsCode) bool {
+	return c == SsCodeECT || c == SsCodeMultiPTY || c == SsCodeCD
+}
 
-// maxNumOfCamelSSEvents is the spec upper bound on SS-EventList.
-const maxNumOfCamelSSEvents = 10
-
-// maxNumOfMobilityTriggers is the spec upper bound on MobilityTriggers.
-const maxNumOfMobilityTriggers = 10
-
-// maxNumOfMTSmsCamelCriteria is the spec upper bound on MT-smsCAMELTDP-CriteriaList.
-const maxNumOfMTSmsCamelCriteria = 5
-
-// maxNumOfTPDUTypes is the spec upper bound on TPDUTypeCriterion.
-const maxNumOfTPDUTypes = 5
-
+// convertSSCSIToWire encodes the SS-CSI of a VlrCamelSubscriptionInfo, sent
+// to the VLR: SsEventList carries only the codes of isVLRSSEvent.
 func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
-	if len(s.SsEventList) < 1 || len(s.SsEventList) > maxNumOfCamelSSEvents {
-		return nil, ErrCamelInvalidSSEventListSize
-	}
 	if s.GsmSCFAddress == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	addr, err := encodeAddressField(s.GsmSCFAddress, s.GsmSCFNature, s.GsmSCFPlan)
+	addr, err := encodeAddressField(s.GsmSCFAddress, s.GsmSCFAddressNature, s.GsmSCFAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding SS-CSI.GsmSCFAddress: %w", err)
 	}
-	events := make(gsm_map.SSEventList, len(s.SsEventList))
+	events := gsm_map.SSEventList{Values: make([]gsm_map.SSCode, len(s.SsEventList))}
 	for i, c := range s.SsEventList {
-		events[i] = gsm_map.SSCode{byte(c)}
+		switch {
+		case c == SsCodeCCBS:
+			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]: %w", i, ErrSSCSICCBSToVLR)
+		case !isVLRSSEvent(c):
+			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]=0x%02x: %w", i, byte(c), ErrSSEventUnlisted)
+		}
+		events.Values[i] = gsm_map.SSCode{byte(c)}
 	}
 	return &gsm_map.SSCSI{
 		SsCamelData: gsm_map.SSCamelData{
-			SsEventList:   events,
-			GsmSCFAddress: gsm_map.ISDNAddressString(addr),
+			SsEventList:   &events,
+			GsmSCFAddress: addr,
 		},
-		NotificationToCSE: boolToNullPtr(s.NotificationToCSE),
-		CsiActive:         boolToNullPtr(s.CsiActive),
 	}, nil
 }
 
+// convertWireToSSCSI decodes the SS-CSI of a VlrCamelSubscriptionInfo,
+// received by the VLR: it drops every SsEventList code but those of
+// isVLRSSEvent. It returns nil when none is left: an SS-CSI arms its events
+// only through SS-EventList, SIZE (1..10), so with none left the receiver
+// holds no SS-CSI.
 func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 	events := w.SsCamelData.SsEventList
-	if len(events) < 1 || len(events) > maxNumOfCamelSSEvents {
-		return nil, ErrCamelInvalidSSEventListSize
-	}
+
 	digits, nat, plan, err := decodeAddressField(w.SsCamelData.GsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SS-CSI.GsmSCFAddress: %w", err)
@@ -845,58 +878,91 @@ func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 	if digits == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	ssList := make([]SsCode, len(events))
-	for i, b := range events {
+	var ssList []SsCode
+	for i, b := range events.Values {
+		// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 		if len(b) != 1 {
-			return nil, fmt.Errorf("SS-CSI.SsEventList[%d]: SsCode must be 1 octet, got %d", i, len(b))
+			return nil, fmt.Errorf("SS-CSI.SsEventList[%d] length %d: %w", i, len(b), ErrSsCSIEventListSsCodeInvalidLength)
 		}
-		ssList[i] = SsCode(b[0])
+		if c := SsCode(b[0]); isVLRSSEvent(c) {
+			ssList = append(ssList, c)
+		}
+	}
+	if ssList == nil {
+		return nil, nil
 	}
 	return &SSCSI{
-		SsEventList:       ssList,
-		GsmSCFAddress:     digits,
-		GsmSCFNature:      nat,
-		GsmSCFPlan:        plan,
-		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
-		CsiActive:         nullPtrToBool(w.CsiActive),
+		SsEventList:         ssList,
+		GsmSCFAddress:       digits,
+		GsmSCFAddressNature: nat,
+		GsmSCFAddressPlan:   plan,
 	}, nil
+}
+
+// isCSMMCode reports whether c is a CS domain MM-Code, the events an M-CSI
+// arms at the VLR (3GPP TS 29.002 V19.1.0 §17.7.1 MM-Code).
+func isCSMMCode(c MMCode) bool {
+	return c >= MMCodeLocationUpdateInSameVLR && c <= MMCodeNetworkInitiatedIMSIDetach
+}
+
+// isPSMMCode reports whether c is a PS domain MM-Code, the events an MG-CSI
+// arms at the SGSN (3GPP TS 29.002 V19.1.0 §17.7.1 MM-Code).
+func isPSMMCode(c MMCode) bool {
+	return c >= MMCodeRouteingAreaUpdateInSameSGSN && c <= MMCodeNetworkInitiatedTransferToMSNotReachableForPaging
+}
+
+// mmCodesFromWire decodes the MobilityTriggers of an M-CSI or MG-CSI,
+// keeping the MM-Codes listed for the receiving domain. 3GPP TS 29.002
+// V19.1.0 §17.7.1 MM-Code: "If the MSC receives any other MM-code than the
+// ones listed above for the CS domain, then the MSC shall ignore that
+// MM-code. If the SGSN receives any other MM-code than the ones listed above
+// for the PS domain, then the SGSN shall ignore that MM-code." It returns
+// nil when none is left.
+func mmCodesFromWire(field string, w *gsm_map.MobilityTriggers, listed func(MMCode) bool) ([]MMCode, error) {
+	if w == nil {
+		return nil, nil
+	}
+	var out []MMCode
+	for i, mm := range w.Values {
+		// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+		if len(mm) != 1 {
+			return nil, fmt.Errorf("%s[%d]: %w (got %d)", field, i, ErrMMCodeInvalidSize, len(mm))
+		}
+		if c := MMCode(mm[0]); listed(c) {
+			out = append(out, c)
+		}
+	}
+	return out, nil
 }
 
 func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
-	if len(m.MobilityTriggers) < 1 || len(m.MobilityTriggers) > maxNumOfMobilityTriggers {
-		return nil, ErrCamelInvalidMobilityTriggersSize
-	}
-	if m.ServiceKey < 0 || m.ServiceKey > 2147483647 {
-		return nil, ErrCamelInvalidServiceKey
-	}
 	if m.GsmSCFAddress == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	addr, err := encodeAddressField(m.GsmSCFAddress, m.GsmSCFNature, m.GsmSCFPlan)
+	addr, err := encodeAddressField(m.GsmSCFAddress, m.GsmSCFAddressNature, m.GsmSCFAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding M-CSI.GsmSCFAddress: %w", err)
 	}
-	triggers := make(gsm_map.MobilityTriggers, len(m.MobilityTriggers))
-	for i, b := range m.MobilityTriggers {
-		triggers[i] = gsm_map.MMCode{b}
+	triggers := gsm_map.MobilityTriggers{Values: make([]gsm_map.MMCode, len(m.MobilityTriggers))}
+	for i, c := range m.MobilityTriggers {
+		if !isCSMMCode(c) {
+			return nil, fmt.Errorf("M-CSI.MobilityTriggers[%d]=0x%02x: %w", i, byte(c), ErrMCSIMMCodeInvalid)
+		}
+		triggers.Values[i] = gsm_map.MMCode{byte(c)}
 	}
 	return &gsm_map.MCSI{
-		MobilityTriggers:  triggers,
-		ServiceKey:        gsm_map.ServiceKey(m.ServiceKey),
-		GsmSCFAddress:     gsm_map.ISDNAddressString(addr),
-		NotificationToCSE: boolToNullPtr(m.NotificationToCSE),
-		CsiActive:         boolToNullPtr(m.CsiActive),
+		MobilityTriggers: &triggers,
+		ServiceKey:       m.ServiceKey,
+		GsmSCFAddress:    addr,
 	}, nil
 }
 
+// convertWireToMCSI decodes an M-CSI received by the VLR. It returns nil
+// when the receiver ignores every MM-Code: an M-CSI arms its events only
+// through MobilityTriggers, SIZE (1..10), so with none left the receiver
+// holds no M-CSI.
 func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
-	if len(w.MobilityTriggers) < 1 || len(w.MobilityTriggers) > maxNumOfMobilityTriggers {
-		return nil, ErrCamelInvalidMobilityTriggersSize
-	}
-	sk := int64(w.ServiceKey)
-	if sk < 0 || sk > 2147483647 {
-		return nil, ErrCamelInvalidServiceKey
-	}
+	sk := w.ServiceKey
 	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding M-CSI.GsmSCFAddress: %w", err)
@@ -904,88 +970,112 @@ func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 	if digits == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	triggers := make([]byte, len(w.MobilityTriggers))
-	for i, mm := range w.MobilityTriggers {
-		if len(mm) != 1 {
-			return nil, fmt.Errorf("M-CSI.MobilityTriggers[%d]: %w", i, ErrCamelInvalidMobilityTriggerOctet)
-		}
-		triggers[i] = mm[0]
+	triggers, err := mmCodesFromWire("M-CSI.MobilityTriggers", w.MobilityTriggers, isCSMMCode)
+	if err != nil {
+		return nil, err
+	}
+	if triggers == nil {
+		return nil, nil
 	}
 	return &MCSI{
-		MobilityTriggers:  triggers,
-		ServiceKey:        sk,
-		GsmSCFAddress:     digits,
-		GsmSCFNature:      nat,
-		GsmSCFPlan:        plan,
-		NotificationToCSE: nullPtrToBool(w.NotificationToCSE),
-		CsiActive:         nullPtrToBool(w.CsiActive),
+		MobilityTriggers:    triggers,
+		ServiceKey:          sk,
+		GsmSCFAddress:       digits,
+		GsmSCFAddressNature: nat,
+		GsmSCFAddressPlan:   plan,
 	}, nil
 }
 
-func isValidSMSTriggerDetectionPoint(v SMSTriggerDetectionPoint) bool {
-	return v == SMSTriggerDetectionPointSmsCollectedInfo ||
-		v == SMSTriggerDetectionPointSmsDeliveryRequest
-}
+// The SMS trigger detection point an SMS-CSI or MT-smsCAMELTDP-Criteria
+// carries depends on where it sits; 3GPP TS 29.002 V19.1.0 §17.7.1
+// SMS-TriggerDetectionPoint has the receiver ignore any other value:
+//
+//	"If this parameter is received with any other value than
+//	sms-CollectedInfo in an SMS-CAMEL-TDP-Data sequence contained in
+//	mo-sms-CSI, then the receiver shall ignore the whole SMS-CAMEL-TDP-Data
+//	sequence."
+//
+//	"If this parameter is received with any other value than
+//	sms-DeliveryRequest in an SMS-CAMEL-TDP-Data sequence contained in
+//	mt-sms-CSI then the receiver shall ignore the whole SMS-CAMEL-TDP-Data
+//	sequence."
+//
+//	"If this parameter is received with any other value than
+//	sms-DeliveryRequest in an MT-smsCAMELTDP-Criteria sequence then the
+//	receiver shall ignore the whole MT-smsCAMELTDP-Criteria sequence."
+//
+// These subsume the clause's general rule for values other than the listed
+// ones. The encoders accept only the same value, so the wire never carries
+// an entry the receiver would drop.
+const (
+	// moSMSTriggerDetectionPoint is the TDP of every mo-sms-CSI entry.
+	moSMSTriggerDetectionPoint = SMSTriggerDetectionPointSmsCollectedInfo
+	// mtSMSTriggerDetectionPoint is the TDP of every mt-sms-CSI entry and
+	// of every MT-smsCAMELTDP-Criteria.
+	mtSMSTriggerDetectionPoint = SMSTriggerDetectionPointSmsDeliveryRequest
+)
 
 func isValidDefaultSMSHandling(v DefaultSMSHandling) bool {
 	return v == DefaultSMSHandlingContinueTransaction ||
 		v == DefaultSMSHandlingReleaseTransaction
 }
 
+// isValidMTSMSTPDUType reports whether v may appear in a TPDU-TypeCriterion.
+//
+// 3GPP TS 29.002 V19.1.0 §17.7.1 MT-SMS-TPDU-Type lists sms-DELIVER (0),
+// sms-SUBMIT-REPORT (1) and sms-STATUS-REPORT (2), then: "In CAMEL phase 4,
+// sms-SUBMIT-REPORT shall not be used and a received TPDU-TypeCriterion
+// sequence containing sms-SUBMIT-REPORT shall be wholly ignored."
+//
+// Every TPDU-TypeCriterion is in CAMEL phase 4. It exists only inside
+// MT-smsCAMELTDP-Criteria, and §8.8.1 introduces "TDP-Criteria for
+// MT-SMS-CSI" in CAMEL Phase 4 for both the VLR and the SGSN CAMEL
+// Subscription Info; a CamelCapabilityHandling above 4 is treated as phase
+// 4 (camelCapabilityHandlingFromWire). sms-SUBMIT-REPORT is therefore
+// excluded exactly like a value the type does not list: the encoder rejects
+// it and the decoder ignores the TPDU-TypeCriterion holding it.
 func isValidMTSMSTPDUType(v MTSMSTPDUType) bool {
 	return v == MTSMSTPDUTypeSmsDELIVER ||
-		v == MTSMSTPDUTypeSmsSUBMITREPORT ||
 		v == MTSMSTPDUTypeSmsSTATUSREPORT
 }
 
-func convertSMSCAMELTDPDataToWire(d *SMSCAMELTDPData) (gsm_map.SMSCAMELTDPData, error) {
-	if !isValidSMSTriggerDetectionPoint(d.SmsTriggerDetectionPoint) {
-		return gsm_map.SMSCAMELTDPData{}, ErrCamelInvalidSMSTriggerDetectionPoint
+// convertSMSCAMELTDPDataToWire encodes one SMS-CAMEL-TDP-Data of an SMS-CSI
+// whose only permitted trigger detection point is tdp.
+func convertSMSCAMELTDPDataToWire(d *SMSCAMELTDPData, tdp SMSTriggerDetectionPoint) (gsm_map.SMSCAMELTDPData, error) {
+	if d.SmsTriggerDetectionPoint != tdp {
+		return gsm_map.SMSCAMELTDPData{}, fmt.Errorf("%w (got %d)", ErrCamelInvalidSMSTriggerDetectionPoint, d.SmsTriggerDetectionPoint)
 	}
-	if d.ServiceKey < 0 || d.ServiceKey > 2147483647 {
-		return gsm_map.SMSCAMELTDPData{}, ErrCamelInvalidServiceKey
-	}
+
 	if d.GsmSCFAddress == "" {
 		return gsm_map.SMSCAMELTDPData{}, ErrCamelMissingGsmSCFAddress
 	}
 	if !isValidDefaultSMSHandling(d.DefaultSMSHandling) {
 		return gsm_map.SMSCAMELTDPData{}, ErrCamelInvalidDefaultSMSHandling
 	}
-	addr, err := encodeAddressField(d.GsmSCFAddress, d.GsmSCFNature, d.GsmSCFPlan)
+	addr, err := encodeAddressField(d.GsmSCFAddress, d.GsmSCFAddressNature, d.GsmSCFAddressPlan)
 	if err != nil {
 		return gsm_map.SMSCAMELTDPData{}, fmt.Errorf("encoding SMS-CAMEL-TDP-Data.GsmSCFAddress: %w", err)
 	}
 	return gsm_map.SMSCAMELTDPData{
 		SmsTriggerDetectionPoint: d.SmsTriggerDetectionPoint,
-		ServiceKey:               gsm_map.ServiceKey(d.ServiceKey),
-		GsmSCFAddress:            gsm_map.ISDNAddressString(addr),
+		ServiceKey:               d.ServiceKey,
+		GsmSCFAddress:            addr,
 		DefaultSMSHandling:       d.DefaultSMSHandling,
 	}, nil
 }
 
-// convertWireToSMSCAMELTDPData decodes an SMS-CAMEL-TDP-Data entry.
-// Per spec exception handling, the decoder applies the lenient rules
+// convertWireToSMSCAMELTDPData decodes an SMS-CAMEL-TDP-Data entry of an
+// SMS-CSI whose only permitted trigger detection point is tdp. It returns
+// nil, without examining the other fields, for an entry with any other
+// trigger detection point, which the receiver ignores (see
+// moSMSTriggerDetectionPoint). The decoder applies the lenient rules
 // documented on DefaultSMSHandling (values 2..31 → continueTransaction,
-// values >31 → releaseTransaction). An unknown SmsTriggerDetectionPoint
-// is treated strictly: it returns an error and the caller (the list
-// converter convertWireToSMSCSI) propagates it via fmt.Errorf, rejecting
-// the entire SMS-CSI sequence rather than silently dropping the entry.
-func convertWireToSMSCAMELTDPData(w *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData, error) {
-	// Narrow the int64 wire enum into Go int with overflow detection so
-	// crafted values like 1+2^32 can't wrap to a valid trigger on 32-bit
-	// builds before isValidSMSTriggerDetectionPoint runs.
-	tdpRaw, err := narrowInt64(int64(w.SmsTriggerDetectionPoint))
-	if err != nil {
-		return nil, fmt.Errorf("SmsTriggerDetectionPoint: %w", err)
+// values >31 → releaseTransaction).
+func convertWireToSMSCAMELTDPData(w *gsm_map.SMSCAMELTDPData, tdp SMSTriggerDetectionPoint) (*SMSCAMELTDPData, error) {
+	if w.SmsTriggerDetectionPoint != tdp {
+		return nil, nil
 	}
-	tdp := SMSTriggerDetectionPoint(tdpRaw)
-	if !isValidSMSTriggerDetectionPoint(tdp) {
-		return nil, ErrCamelInvalidSMSTriggerDetectionPoint
-	}
-	sk := int64(w.ServiceKey)
-	if sk < 0 || sk > 2147483647 {
-		return nil, ErrCamelInvalidServiceKey
-	}
+	sk := w.ServiceKey
 	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SMS-CAMEL-TDP-Data.GsmSCFAddress: %w", err)
@@ -993,157 +1083,129 @@ func convertWireToSMSCAMELTDPData(w *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData,
 	if digits == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	// DefaultSMSHandling lenient mapping per TS 29.002 §8.8.1:
-	//   0 = continueTransaction
-	//   1 = releaseTransaction
-	//   2..31 → continueTransaction
-	//   >31  → releaseTransaction
-	// Apply the mapping in int64 space first so a wire value larger than
-	// platform int (e.g. on a 32-bit build) still follows the spec's
-	// >31 → releaseTransaction rule instead of erroring on the narrow.
-	// The post-mapping value is always 0 or 1, which fits in int on every
-	// supported platform.
-	dsh64 := int64(w.DefaultSMSHandling)
-	var dsh DefaultSMSHandling
+	// DefaultSMS-Handling exception handling, 3GPP TS 29.002 V19.1.0
+	// §17.7.1: values 2..31 are treated as continueTransaction and values
+	// above 31 as releaseTransaction. A negative value lies outside both
+	// ranges; the type is extensible, so it is kept (§17.1.4) and Marshal
+	// rejects it.
+	dsh := w.DefaultSMSHandling
 	switch {
-	case dsh64 == 0:
+	case dsh >= 2 && dsh <= 31:
 		dsh = DefaultSMSHandlingContinueTransaction
-	case dsh64 == 1:
+	case dsh > 31:
 		dsh = DefaultSMSHandlingReleaseTransaction
-	case dsh64 >= 2 && dsh64 <= 31:
-		dsh = DefaultSMSHandlingContinueTransaction
-	case dsh64 > 31:
-		dsh = DefaultSMSHandlingReleaseTransaction
-	default:
-		// Negative values aren't covered by the spec exception clause;
-		// reject them.
-		return nil, ErrCamelInvalidDefaultSMSHandling
 	}
 	return &SMSCAMELTDPData{
-		SmsTriggerDetectionPoint: tdp,
+		SmsTriggerDetectionPoint: w.SmsTriggerDetectionPoint,
 		ServiceKey:               sk,
 		GsmSCFAddress:            digits,
-		GsmSCFNature:             nat,
-		GsmSCFPlan:               plan,
+		GsmSCFAddressNature:      nat,
+		GsmSCFAddressPlan:        plan,
 		DefaultSMSHandling:       dsh,
 	}, nil
 }
 
-func convertSMSCSIToWire(s *SMSCSI) (*gsm_map.SMSCSI, error) {
-	// Spec 8.8.1: both SmsCAMELTDPDataList and CamelCapabilityHandling
-	// shall be present in an SMS-CSI sequence. Encoder enforces that
-	// and distinguishes "missing" (a §8.8.1 violation) from "oversize"
-	// (a SIZE(1..10) violation).
-	if len(s.SmsCAMELTDPDataList) < 1 {
-		return nil, ErrCamelSMSCSIMissingTDPData
-	}
-	if len(s.SmsCAMELTDPDataList) > maxNumOfCamelTDPData {
-		return nil, ErrCamelInvalidSMSTDPDataListSize
-	}
-	if s.CamelCapabilityHandling == nil {
-		return nil, ErrCamelSMSCSIMissingCapabilityHandling
-	}
+// convertSMSCSIToWire encodes an SMS-CSI whose only permitted trigger
+// detection point is tdp: moSMSTriggerDetectionPoint for mo-sms-CSI,
+// mtSMSTriggerDetectionPoint for mt-sms-CSI. The list and
+// camelCapabilityHandling are encoded when set; their presence depends on
+// the segment (see convertDCSIToWire). More than maxNumOfCamelTDPData
+// entries is the codec's SIZE (1..10) violation.
+func convertSMSCSIToWire(s *SMSCSI, tdp SMSTriggerDetectionPoint) (*gsm_map.SMSCSI, error) {
 	if err := validateCamelCapabilityHandling(s.CamelCapabilityHandling); err != nil {
 		return nil, err
 	}
-	list := make(gsm_map.SMSCAMELTDPDataList, len(s.SmsCAMELTDPDataList))
-	for i := range s.SmsCAMELTDPDataList {
-		w, err := convertSMSCAMELTDPDataToWire(&s.SmsCAMELTDPDataList[i])
-		if err != nil {
-			return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
+	out := &gsm_map.SMSCSI{}
+	if s.SmsCAMELTDPDataList != nil {
+		list := gsm_map.SMSCAMELTDPDataList{Values: make([]gsm_map.SMSCAMELTDPData, len(s.SmsCAMELTDPDataList))}
+		seen := map[SMSTriggerDetectionPoint]bool{}
+		for i := range s.SmsCAMELTDPDataList {
+			w, err := convertSMSCAMELTDPDataToWire(&s.SmsCAMELTDPDataList[i], tdp)
+			if err != nil {
+				return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
+			}
+			if err := checkTDPOnce(seen, w.SmsTriggerDetectionPoint); err != nil {
+				return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
+			}
+			list.Values[i] = w
 		}
-		list[i] = w
+		out.SmsCAMELTDPDataList = &list
 	}
-	cch := gsm_map.CamelCapabilityHandling(int64(*s.CamelCapabilityHandling))
-	return &gsm_map.SMSCSI{
-		SmsCAMELTDPDataList:     list,
-		CamelCapabilityHandling: &cch,
-		NotificationToCSE:       boolToNullPtr(s.NotificationToCSE),
-		CsiActive:               boolToNullPtr(s.CsiActive),
-	}, nil
+	if s.CamelCapabilityHandling != nil {
+		cch := int64(*s.CamelCapabilityHandling)
+		out.CamelCapabilityHandling = &cch
+	}
+	return out, nil
 }
 
-func convertWireToSMSCSI(w *gsm_map.SMSCSI) (*SMSCSI, error) {
-	if len(w.SmsCAMELTDPDataList) < 1 {
-		return nil, ErrCamelSMSCSIMissingTDPData
-	}
-	if len(w.SmsCAMELTDPDataList) > maxNumOfCamelTDPData {
-		return nil, ErrCamelInvalidSMSTDPDataListSize
-	}
-	if w.CamelCapabilityHandling == nil {
-		return nil, ErrCamelSMSCSIMissingCapabilityHandling
-	}
-	v64 := int64(*w.CamelCapabilityHandling)
-	if v64 < 1 || v64 > 4 {
-		return nil, ErrCamelInvalidCamelCapabilityHandling
-	}
-	cch := int(v64)
-	list := make([]SMSCAMELTDPData, len(w.SmsCAMELTDPDataList))
-	for i := range w.SmsCAMELTDPDataList {
-		d, err := convertWireToSMSCAMELTDPData(&w.SmsCAMELTDPDataList[i])
-		if err != nil {
-			return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
+// convertWireToSMSCSI decodes an SMS-CSI whose only permitted trigger
+// detection point is tdp: moSMSTriggerDetectionPoint for mo-sms-CSI,
+// mtSMSTriggerDetectionPoint for mt-sms-CSI. An absent list, or one whose
+// every SMS-CAMEL-TDP-Data the receiver ignores, decodes to a nil list; the
+// rest of the CSI is kept, since another segment may carry the TDP data
+// (see convertDCSIToWire).
+func convertWireToSMSCSI(w *gsm_map.SMSCSI, tdp SMSTriggerDetectionPoint) (*SMSCSI, error) {
+	out := &SMSCSI{}
+	if w.SmsCAMELTDPDataList != nil {
+		decode := func(d *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData, error) {
+			return convertWireToSMSCAMELTDPData(d, tdp)
 		}
-		list[i] = *d
+		list, err := convertTDPDataWireList("SmsCAMELTDPDataList", w.SmsCAMELTDPDataList.Values, decode,
+			func(d *SMSCAMELTDPData) SMSTriggerDetectionPoint { return d.SmsTriggerDetectionPoint })
+		if err != nil {
+			return nil, err
+		}
+		out.SmsCAMELTDPDataList = list
 	}
-	return &SMSCSI{
-		SmsCAMELTDPDataList:     list,
-		CamelCapabilityHandling: &cch,
-		NotificationToCSE:       nullPtrToBool(w.NotificationToCSE),
-		CsiActive:               nullPtrToBool(w.CsiActive),
-	}, nil
+	if w.CamelCapabilityHandling != nil {
+		out.CamelCapabilityHandling = camelCapabilityHandlingFromWire(*w.CamelCapabilityHandling)
+	}
+	return out, nil
 }
 
 func convertMTSmsCAMELTDPCriteriaToWire(c *MTSmsCAMELTDPCriteria) (gsm_map.MTSmsCAMELTDPCriteria, error) {
-	if !isValidSMSTriggerDetectionPoint(c.SmsTriggerDetectionPoint) {
-		return gsm_map.MTSmsCAMELTDPCriteria{}, ErrCamelInvalidSMSTriggerDetectionPoint
+	if c.SmsTriggerDetectionPoint != mtSMSTriggerDetectionPoint {
+		return gsm_map.MTSmsCAMELTDPCriteria{}, fmt.Errorf("%w (got %d)", ErrCamelInvalidSMSTriggerDetectionPoint, c.SmsTriggerDetectionPoint)
 	}
 	out := gsm_map.MTSmsCAMELTDPCriteria{
 		SmsTriggerDetectionPoint: c.SmsTriggerDetectionPoint,
 	}
 	if c.TpduTypeCriterion != nil {
-		if len(c.TpduTypeCriterion) < 1 || len(c.TpduTypeCriterion) > maxNumOfTPDUTypes {
-			return gsm_map.MTSmsCAMELTDPCriteria{}, ErrCamelInvalidTPDUTypeCriterionSize
-		}
-		tpdu := make(gsm_map.TPDUTypeCriterion, len(c.TpduTypeCriterion))
+		tpdu := gsm_map.TPDUTypeCriterion{Values: make([]gsm_map.MTSMSTPDUType, len(c.TpduTypeCriterion))}
 		for i, t := range c.TpduTypeCriterion {
 			if !isValidMTSMSTPDUType(t) {
 				return gsm_map.MTSmsCAMELTDPCriteria{}, fmt.Errorf("TpduTypeCriterion[%d]: %w", i, ErrCamelInvalidMTSMSTPDUType)
 			}
-			tpdu[i] = t
+			tpdu.Values[i] = t
 		}
-		out.TpduTypeCriterion = tpdu
+		out.TpduTypeCriterion = &tpdu
 	}
 	return out, nil
 }
 
+// convertWireToMTSmsCAMELTDPCriteria decodes an MT-smsCAMELTDP-Criteria. It
+// returns nil for an entry whose trigger detection point is not
+// mtSMSTriggerDetectionPoint, which the receiver ignores.
 func convertWireToMTSmsCAMELTDPCriteria(w *gsm_map.MTSmsCAMELTDPCriteria) (*MTSmsCAMELTDPCriteria, error) {
-	tdpRaw, err := narrowInt64(int64(w.SmsTriggerDetectionPoint))
-	if err != nil {
-		return nil, fmt.Errorf("SmsTriggerDetectionPoint: %w", err)
+	if w.SmsTriggerDetectionPoint != mtSMSTriggerDetectionPoint {
+		return nil, nil
 	}
-	tdp := SMSTriggerDetectionPoint(tdpRaw)
-	if !isValidSMSTriggerDetectionPoint(tdp) {
-		return nil, ErrCamelInvalidSMSTriggerDetectionPoint
-	}
-	out := &MTSmsCAMELTDPCriteria{SmsTriggerDetectionPoint: tdp}
+	out := &MTSmsCAMELTDPCriteria{SmsTriggerDetectionPoint: w.SmsTriggerDetectionPoint}
 	if w.TpduTypeCriterion != nil {
-		if len(w.TpduTypeCriterion) < 1 || len(w.TpduTypeCriterion) > maxNumOfTPDUTypes {
-			return nil, ErrCamelInvalidTPDUTypeCriterionSize
-		}
-		tpdu := make([]MTSMSTPDUType, len(w.TpduTypeCriterion))
-		for i, t := range w.TpduTypeCriterion {
-			ttRaw, err := narrowInt64(int64(t))
-			if err != nil {
-				return nil, fmt.Errorf("TpduTypeCriterion[%d]: %w", i, err)
+		// 3GPP TS 29.002 V19.1.0 §17.7.1 MT-SMS-TPDU-Type: "For
+		// TPDU-TypeCriterion sequences containing this parameter with any
+		// other value than the ones listed above the receiver shall ignore
+		// the whole TPDU-TypeCriterion sequence." and "a received
+		// TPDU-TypeCriterion sequence containing sms-SUBMIT-REPORT shall be
+		// wholly ignored" in CAMEL phase 4 (isValidMTSMSTPDUType). The
+		// criterion is OPTIONAL, so ignoring it leaves the entry without one.
+		out.TpduTypeCriterion = slices.Clone(w.TpduTypeCriterion.Values)
+		for _, t := range out.TpduTypeCriterion {
+			if !isValidMTSMSTPDUType(t) {
+				out.TpduTypeCriterion = nil
+				break
 			}
-			tt := MTSMSTPDUType(ttRaw)
-			if !isValidMTSMSTPDUType(tt) {
-				return nil, fmt.Errorf("TpduTypeCriterion[%d]: %w", i, ErrCamelInvalidMTSMSTPDUType)
-			}
-			tpdu[i] = tt
 		}
-		out.TpduTypeCriterion = tpdu
 	}
 	return out, nil
 }
@@ -1165,20 +1227,15 @@ func convertVlrCamelSubscriptionInfoToWire(v *VlrCamelSubscriptionInfo) (*gsm_ma
 		out.SsCSI = w
 	}
 	if v.OBcsmCamelTDPCriteriaList != nil {
-		// Spec SIZE(1..10) — reject a non-nil empty list rather than
-		// silently omitting it.
-		if len(v.OBcsmCamelTDPCriteriaList) < 1 || len(v.OBcsmCamelTDPCriteriaList) > maxNumOfCamelTDPData {
-			return nil, ErrCamelInvalidCriteriaListSize
-		}
-		list := make(gsm_map.OBcsmCamelTDPCriteriaList, len(v.OBcsmCamelTDPCriteriaList))
+		list := gsm_map.OBcsmCamelTDPCriteriaList{Values: make([]gsm_map.OBcsmCamelTDPCriteria, len(v.OBcsmCamelTDPCriteriaList))}
 		for i := range v.OBcsmCamelTDPCriteriaList {
 			w, err := convertOBcsmTDPCriteriaToWire(&v.OBcsmCamelTDPCriteriaList[i])
 			if err != nil {
 				return nil, fmt.Errorf("OBcsmCamelTDPCriteriaList[%d]: %w", i, err)
 			}
-			list[i] = w
+			list.Values[i] = w
 		}
-		out.OBcsmCamelTDPCriteriaList = list
+		out.OBcsmCamelTDPCriteriaList = &list
 	}
 	out.TifCSI = boolToNullPtr(v.TifCSI)
 	if v.MCSI != nil {
@@ -1189,7 +1246,7 @@ func convertVlrCamelSubscriptionInfoToWire(v *VlrCamelSubscriptionInfo) (*gsm_ma
 		out.MCSI = w
 	}
 	if v.MoSmsCSI != nil {
-		w, err := convertSMSCSIToWire(v.MoSmsCSI)
+		w, err := convertSMSCSIToWire(v.MoSmsCSI, moSMSTriggerDetectionPoint)
 		if err != nil {
 			return nil, fmt.Errorf("MoSmsCSI: %w", err)
 		}
@@ -1203,18 +1260,15 @@ func convertVlrCamelSubscriptionInfoToWire(v *VlrCamelSubscriptionInfo) (*gsm_ma
 		out.VtCSI = w
 	}
 	if v.TBcsmCamelTDPCriteriaList != nil {
-		if len(v.TBcsmCamelTDPCriteriaList) < 1 || len(v.TBcsmCamelTDPCriteriaList) > maxNumOfCamelTDPData {
-			return nil, ErrCamelInvalidCriteriaListSize
-		}
-		list := make(gsm_map.TBCSMCAMELTDPCriteriaList, len(v.TBcsmCamelTDPCriteriaList))
+		list := gsm_map.TBCSMCAMELTDPCriteriaList{Values: make([]gsm_map.TBCSMCAMELTDPCriteria, len(v.TBcsmCamelTDPCriteriaList))}
 		for i := range v.TBcsmCamelTDPCriteriaList {
 			w, err := convertTBcsmTDPCriteriaToWire(&v.TBcsmCamelTDPCriteriaList[i])
 			if err != nil {
 				return nil, fmt.Errorf("TBcsmCamelTDPCriteriaList[%d]: %w", i, err)
 			}
-			list[i] = w
+			list.Values[i] = w
 		}
-		out.TBCSMCAMELTDPCriteriaList = list
+		out.TBCSMCAMELTDPCriteriaList = &list
 	}
 	if v.DCSI != nil {
 		w, err := convertDCSIToWire(v.DCSI)
@@ -1224,25 +1278,22 @@ func convertVlrCamelSubscriptionInfoToWire(v *VlrCamelSubscriptionInfo) (*gsm_ma
 		out.DCSI = w
 	}
 	if v.MtSmsCSI != nil {
-		w, err := convertSMSCSIToWire(v.MtSmsCSI)
+		w, err := convertSMSCSIToWire(v.MtSmsCSI, mtSMSTriggerDetectionPoint)
 		if err != nil {
 			return nil, fmt.Errorf("MtSmsCSI: %w", err)
 		}
 		out.MtSmsCSI = w
 	}
 	if v.MtSmsCAMELTDPCriteriaList != nil {
-		if len(v.MtSmsCAMELTDPCriteriaList) < 1 || len(v.MtSmsCAMELTDPCriteriaList) > maxNumOfMTSmsCamelCriteria {
-			return nil, ErrCamelInvalidMTSmsCAMELCriteriaSize
-		}
-		list := make(gsm_map.MTSmsCAMELTDPCriteriaList, len(v.MtSmsCAMELTDPCriteriaList))
+		list := gsm_map.MTSmsCAMELTDPCriteriaList{Values: make([]gsm_map.MTSmsCAMELTDPCriteria, len(v.MtSmsCAMELTDPCriteriaList))}
 		for i := range v.MtSmsCAMELTDPCriteriaList {
 			w, err := convertMTSmsCAMELTDPCriteriaToWire(&v.MtSmsCAMELTDPCriteriaList[i])
 			if err != nil {
 				return nil, fmt.Errorf("MtSmsCAMELTDPCriteriaList[%d]: %w", i, err)
 			}
-			list[i] = w
+			list.Values[i] = w
 		}
-		out.MtSmsCAMELTDPCriteriaList = list
+		out.MtSmsCAMELTDPCriteriaList = &list
 	}
 	return out, nil
 }
@@ -1264,18 +1315,10 @@ func convertWireToVlrCamelSubscriptionInfo(w *gsm_map.VlrCamelSubscriptionInfo) 
 		out.SsCSI = d
 	}
 	if w.OBcsmCamelTDPCriteriaList != nil {
-		// Per spec SIZE(1..10), a non-nil empty wire list is malformed.
-		// Match the encoder's strictness.
-		if len(w.OBcsmCamelTDPCriteriaList) < 1 || len(w.OBcsmCamelTDPCriteriaList) > maxNumOfCamelTDPData {
-			return nil, ErrCamelInvalidCriteriaListSize
-		}
-		list := make([]OBcsmCamelTDPCriteria, len(w.OBcsmCamelTDPCriteriaList))
-		for i := range w.OBcsmCamelTDPCriteriaList {
-			d, err := convertWireToOBcsmTDPCriteria(&w.OBcsmCamelTDPCriteriaList[i])
-			if err != nil {
-				return nil, fmt.Errorf("OBcsmCamelTDPCriteriaList[%d]: %w", i, err)
-			}
-			list[i] = d
+		// Absent when the receiver ignores every entry.
+		list, err := convertIgnorableWireList("OBcsmCamelTDPCriteriaList", w.OBcsmCamelTDPCriteriaList.Values, convertWireToOBcsmTDPCriteria)
+		if err != nil {
+			return nil, err
 		}
 		out.OBcsmCamelTDPCriteriaList = list
 	}
@@ -1287,7 +1330,7 @@ func convertWireToVlrCamelSubscriptionInfo(w *gsm_map.VlrCamelSubscriptionInfo) 
 		out.MCSI = d
 	}
 	if w.MoSmsCSI != nil {
-		d, err := convertWireToSMSCSI(w.MoSmsCSI)
+		d, err := convertWireToSMSCSI(w.MoSmsCSI, moSMSTriggerDetectionPoint)
 		if err != nil {
 			return nil, fmt.Errorf("MoSmsCSI: %w", err)
 		}
@@ -1301,12 +1344,9 @@ func convertWireToVlrCamelSubscriptionInfo(w *gsm_map.VlrCamelSubscriptionInfo) 
 		out.VtCSI = d
 	}
 	if w.TBCSMCAMELTDPCriteriaList != nil {
-		if len(w.TBCSMCAMELTDPCriteriaList) < 1 || len(w.TBCSMCAMELTDPCriteriaList) > maxNumOfCamelTDPData {
-			return nil, ErrCamelInvalidCriteriaListSize
-		}
-		list := make([]TBcsmCamelTDPCriteria, len(w.TBCSMCAMELTDPCriteriaList))
-		for i := range w.TBCSMCAMELTDPCriteriaList {
-			d, err := convertWireToTBcsmTDPCriteria(&w.TBCSMCAMELTDPCriteriaList[i])
+		list := make([]TBcsmCamelTDPCriteria, len(w.TBCSMCAMELTDPCriteriaList.Values))
+		for i := range w.TBCSMCAMELTDPCriteriaList.Values {
+			d, err := convertWireToTBcsmTDPCriteria(&w.TBCSMCAMELTDPCriteriaList.Values[i])
 			if err != nil {
 				return nil, fmt.Errorf("TBcsmCamelTDPCriteriaList[%d]: %w", i, err)
 			}
@@ -1322,23 +1362,17 @@ func convertWireToVlrCamelSubscriptionInfo(w *gsm_map.VlrCamelSubscriptionInfo) 
 		out.DCSI = d
 	}
 	if w.MtSmsCSI != nil {
-		d, err := convertWireToSMSCSI(w.MtSmsCSI)
+		d, err := convertWireToSMSCSI(w.MtSmsCSI, mtSMSTriggerDetectionPoint)
 		if err != nil {
 			return nil, fmt.Errorf("MtSmsCSI: %w", err)
 		}
 		out.MtSmsCSI = d
 	}
 	if w.MtSmsCAMELTDPCriteriaList != nil {
-		if len(w.MtSmsCAMELTDPCriteriaList) < 1 || len(w.MtSmsCAMELTDPCriteriaList) > maxNumOfMTSmsCamelCriteria {
-			return nil, ErrCamelInvalidMTSmsCAMELCriteriaSize
-		}
-		list := make([]MTSmsCAMELTDPCriteria, len(w.MtSmsCAMELTDPCriteriaList))
-		for i := range w.MtSmsCAMELTDPCriteriaList {
-			d, err := convertWireToMTSmsCAMELTDPCriteria(&w.MtSmsCAMELTDPCriteriaList[i])
-			if err != nil {
-				return nil, fmt.Errorf("MtSmsCAMELTDPCriteriaList[%d]: %w", i, err)
-			}
-			list[i] = *d
+		// Absent when the receiver ignores every entry.
+		list, err := convertIgnorableWireList("MtSmsCAMELTDPCriteriaList", w.MtSmsCAMELTDPCriteriaList.Values, convertWireToMTSmsCAMELTDPCriteria)
+		if err != nil {
+			return nil, err
 		}
 		out.MtSmsCAMELTDPCriteriaList = list
 	}

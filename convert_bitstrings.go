@@ -3,8 +3,43 @@
 package gsmmap
 
 import (
+	"fmt"
+
 	"github.com/gomaja/go-asn1/runtime"
 )
+
+// bitStringToWire builds the BIT STRING of a field the public type carries
+// as raw octets and a bit length. X.690 (02/2021) §8.6.2 carries a BIT
+// STRING of n bits in (n+7)/8 octets, the initial octet counting the unused
+// bits of the last one, so the octets must number exactly (bits+7)/8:
+// go-asn1 does not enforce BIT STRING bit length and byte consistency:
+// https://github.com/gomaja/go-asn1/issues/80. It encodes every octet given
+// with the unused-bit count of the bit length, and the receiver reads a
+// longer bit length. The SIZE of the bit length is the codec's check.
+func bitStringToWire(field string, octets []byte, bits int) (runtime.BitString, error) {
+	if bits < 0 || len(octets) != (bits+7)/8 {
+		return runtime.BitString{}, fmt.Errorf("%s: %d octets for %d bits: %w", field, len(octets), bits, ErrBitStringOctetsMismatch)
+	}
+	return runtime.BitString{Bytes: clearPaddingBits(octets, bits), BitLength: bits}, nil
+}
+
+// bitStringFromWire copies the octets of a decoded BIT STRING with the
+// unused bits of the last octet cleared.
+func bitStringFromWire(bs runtime.BitString) HexBytes {
+	return clearPaddingBits(bs.Bytes, bs.BitLength)
+}
+
+// clearPaddingBits copies the octets of a bits-long BIT STRING and clears
+// the unused bits of the last octet. BER leaves them unconstrained on
+// receipt (ITU-T X.690 §11.2.1 requires them to be zero only in DER and
+// CER), so they carry no value and are sent as zero.
+func clearPaddingBits(octets []byte, bits int) HexBytes {
+	out := append(HexBytes(nil), octets...)
+	if r := bits % 8; r != 0 && len(out) > 0 {
+		out[len(out)-1] &= 0xFF << uint(8-r)
+	}
+	return out
+}
 
 func convertCamelPhasesToBitString(cp *SupportedCamelPhases) runtime.BitString {
 	var b byte
@@ -29,9 +64,7 @@ func convertCamelPhasesToBitString(cp *SupportedCamelPhases) runtime.BitString {
 
 func convertBitStringToCamelPhases(bs runtime.BitString) *SupportedCamelPhases {
 	cp := &SupportedCamelPhases{}
-	if bs.BitLength > 0 {
-		cp.Phase1 = bs.Has(0)
-	}
+	cp.Phase1 = bs.Has(0)
 	if bs.BitLength > 1 {
 		cp.Phase2 = bs.Has(1)
 	}
@@ -70,9 +103,7 @@ func convertLCSCapsToBitString(lcs *SupportedLCSCapabilitySets) runtime.BitStrin
 
 func convertBitStringToLCSCaps(bs runtime.BitString) *SupportedLCSCapabilitySets {
 	lcs := &SupportedLCSCapabilitySets{}
-	if bs.BitLength > 0 {
-		lcs.LcsCapabilitySet1 = bs.Has(0)
-	}
+	lcs.LcsCapabilitySet1 = bs.Has(0)
 	if bs.BitLength > 1 {
 		lcs.LcsCapabilitySet2 = bs.Has(1)
 	}
@@ -103,9 +134,7 @@ func convertRequestedNodesToBitString(rn *RequestedNodes) runtime.BitString {
 
 func convertBitStringToRequestedNodes(bs runtime.BitString) *RequestedNodes {
 	rn := &RequestedNodes{}
-	if bs.BitLength > 0 {
-		rn.MME = bs.Has(0)
-	}
+	rn.MME = bs.Has(0)
 	if bs.BitLength > 1 {
 		rn.SGSN = bs.Has(1)
 	}
@@ -126,9 +155,7 @@ func convertAllowedServicesToBitString(a *AllowedServicesFlags) runtime.BitStrin
 
 func convertBitStringToAllowedServices(bs runtime.BitString) *AllowedServicesFlags {
 	a := &AllowedServicesFlags{}
-	if bs.BitLength > 0 {
-		a.FirstServiceAllowed = bs.Has(0)
-	}
+	a.FirstServiceAllowed = bs.Has(0)
 	if bs.BitLength > 1 {
 		a.SecondServiceAllowed = bs.Has(1)
 	}
@@ -149,9 +176,7 @@ func convertSuppressMTSSToBitString(s *SuppressMTSSFlags) runtime.BitString {
 
 func convertBitStringToSuppressMTSS(bs runtime.BitString) *SuppressMTSSFlags {
 	s := &SuppressMTSSFlags{}
-	if bs.BitLength > 0 {
-		s.SuppressCUG = bs.Has(0)
-	}
+	s.SuppressCUG = bs.Has(0)
 	if bs.BitLength > 1 {
 		s.SuppressCCBS = bs.Has(1)
 	}
@@ -188,9 +213,7 @@ func convertOfferedCamel4CSIsToBitString(o *OfferedCamel4CSIs) runtime.BitString
 
 func convertBitStringToOfferedCamel4CSIs(bs runtime.BitString) *OfferedCamel4CSIs {
 	o := &OfferedCamel4CSIs{}
-	if bs.BitLength > 0 {
-		o.OCSI = bs.Has(0)
-	}
+	o.OCSI = bs.Has(0)
 	if bs.BitLength > 1 {
 		o.DCSI = bs.Has(1)
 	}
@@ -235,9 +258,7 @@ func convertSupportedRATTypesToBitString(r *SupportedRATTypes) runtime.BitString
 
 func convertBitStringToSupportedRATTypes(bs runtime.BitString) *SupportedRATTypes {
 	r := &SupportedRATTypes{}
-	if bs.BitLength > 0 {
-		r.UTRAN = bs.Has(0)
-	}
+	r.UTRAN = bs.Has(0)
 	if bs.BitLength > 1 {
 		r.GERAN = bs.Has(1)
 	}
@@ -283,7 +304,7 @@ func packBits(set []bool, minBits int) runtime.BitString {
 	return runtime.BitString{Bytes: out, BitLength: bitLen}
 }
 
-// ODBGeneralData: 29 named bits (SIZE 15..32) per MAP-MS-DataTypes.asn:1776.
+// ODBGeneralData: 29 named bits (SIZE 15..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertODBGeneralDataToBitString(o *ODBGeneralData) runtime.BitString {
 	bits := []bool{
 		o.AllOGCallsBarred,                                                // 0
@@ -353,7 +374,7 @@ func convertBitStringToODBGeneralData(bs runtime.BitString) *ODBGeneralData {
 	return o
 }
 
-// ODBHPLMNData: 4 named bits (SIZE 4..32) per MAP-MS-DataTypes.asn:1812.
+// ODBHPLMNData: 4 named bits (SIZE 4..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertODBHPLMNDataToBitString(o *ODBHPLMNData) runtime.BitString {
 	bits := []bool{o.PLMNSpecificBarringType1, o.PLMNSpecificBarringType2, o.PLMNSpecificBarringType3, o.PLMNSpecificBarringType4}
 	return packBits(bits, 4)
@@ -368,7 +389,7 @@ func convertBitStringToODBHPLMNData(bs runtime.BitString) *ODBHPLMNData {
 	}
 }
 
-// AccessRestrictionData: 8 named bits (SIZE 2..8) per MAP-MS-DataTypes.asn:1454.
+// AccessRestrictionData: 8 named bits (SIZE 2..8) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertAccessRestrictionDataToBitString(a *AccessRestrictionData) runtime.BitString {
 	bits := []bool{
 		a.UtranNotAllowed, a.GeranNotAllowed, a.GanNotAllowed, a.IHSPAEvolutionNotAllowed,
@@ -390,7 +411,7 @@ func convertBitStringToAccessRestrictionData(bs runtime.BitString) *AccessRestri
 	}
 }
 
-// ExtAccessRestrictionData: 2 named bits (SIZE 1..32) per MAP-MS-DataTypes.asn:1471.
+// ExtAccessRestrictionData: 2 named bits (SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertExtAccessRestrictionDataToBitString(e *ExtAccessRestrictionData) runtime.BitString {
 	bits := []bool{e.NrAsSecondaryRATNotAllowed, e.UnlicensedSpectrumAsSecondaryRATNotAllowed}
 	return packBits(bits, 1)
@@ -403,7 +424,7 @@ func convertBitStringToExtAccessRestrictionData(bs runtime.BitString) *ExtAccess
 	}
 }
 
-// SupportedFeatures: 40 named bits (SIZE 26..40) per MAP-MS-DataTypes.asn:642.
+// SupportedFeatures: 40 named bits (SIZE 26..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertSupportedFeaturesToBitString(s *SupportedFeatures) runtime.BitString {
 	bits := []bool{
 		s.OdbAllApn, s.OdbHPLMNApn, s.OdbVPLMNApn, s.OdbAllOg, s.OdbAllInternationalOg,
@@ -417,11 +438,13 @@ func convertSupportedFeaturesToBitString(s *SupportedFeatures) runtime.BitString
 		s.GddInSGSN, s.SgsnCAMELCapability, s.PcscfRestoration, s.DedicatedCoreNetworks,
 		s.NonIPPDNTypeAPNs, s.NonIPPDPTypeAPNs, s.NrAsSecondaryRAT,
 	}
-	return packBits(bits, 26)
+	bs := packBits(bits, 26)
+	extendBitLength(&bs, s.BitLength)
+	return bs
 }
 
 func convertBitStringToSupportedFeatures(bs runtime.BitString) *SupportedFeatures {
-	return &SupportedFeatures{
+	out := &SupportedFeatures{
 		OdbAllApn:                           bs.Has(0),
 		OdbHPLMNApn:                         bs.Has(1),
 		OdbVPLMNApn:                         bs.Has(2),
@@ -463,21 +486,67 @@ func convertBitStringToSupportedFeatures(bs runtime.BitString) *SupportedFeature
 		NonIPPDPTypeAPNs:                  bs.Has(38),
 		NrAsSecondaryRAT:                  bs.Has(39),
 	}
+	if bs.BitLength > convertSupportedFeaturesToBitString(out).BitLength {
+		out.BitLength = bs.BitLength
+	}
+	return out
 }
 
-// ExtSupportedFeatures: 1 named bit (SIZE 1..40) per MAP-MS-DataTypes.asn:687.
+// ExtSupportedFeatures: bit 0 is named; positions 1..39 are
+// unnamed but valid (3GPP TS 29.002 V19.1.0 §17.7.1, SIZE (1..40)).
 func convertExtSupportedFeaturesToBitString(e *ExtSupportedFeatures) runtime.BitString {
-	bits := []bool{e.UnlicensedSpectrumAsSecondaryRAT}
-	return packBits(bits, 1)
+	bits := make([]bool, len(e.UnknownBits)*8)
+	if len(bits) == 0 {
+		bits = make([]bool, 1)
+	}
+	bits[0] = e.UnlicensedSpectrumAsSecondaryRAT
+	for i := 1; i < len(bits); i++ {
+		bits[i] = e.UnknownBits[i/8]&(0x80>>uint(i%8)) != 0
+	}
+	bs := packBits(bits, 1)
+	extendBitLength(&bs, e.BitLength)
+	return bs
 }
 
-func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedFeatures {
-	return &ExtSupportedFeatures{
-		UnlicensedSpectrumAsSecondaryRAT: bs.Has(0),
+// maxFeatureBits is the upper SIZE bound of SupportedFeatures and
+// Ext-SupportedFeatures, SIZE (26..40) and SIZE (1..40) (3GPP TS 29.002
+// V19.1.0 §17.7.1).
+const maxFeatureBits = 40
+
+// extendBitLength lengthens bs to bits with trailing zero bits. A length
+// beyond maxFeatureBits is set without octets, so the codec rejects it as
+// a SIZE violation instead of the encoder allocating for it.
+func extendBitLength(bs *runtime.BitString, bits int) {
+	if bits <= bs.BitLength {
+		return
+	}
+	bs.BitLength = bits
+	if bits <= maxFeatureBits {
+		bs.Bytes = append(bs.Bytes, make([]byte, (bits+7)/8-len(bs.Bytes))...)
 	}
 }
 
-// AdditionalSubscriptions: 3 named bits (SIZE 3..8) per MAP-MS-DataTypes.asn:2711.
+func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedFeatures {
+	out := &ExtSupportedFeatures{
+		UnlicensedSpectrumAsSecondaryRAT: bs.Has(0),
+	}
+	if len(bs.Bytes) > 0 {
+		out.UnknownBits = bitStringFromWire(bs)
+		out.UnknownBits[0] &^= 0x80
+		for len(out.UnknownBits) > 0 && out.UnknownBits[len(out.UnknownBits)-1] == 0 {
+			out.UnknownBits = out.UnknownBits[:len(out.UnknownBits)-1]
+		}
+		if len(out.UnknownBits) == 0 {
+			out.UnknownBits = nil
+		}
+	}
+	if bs.BitLength > convertExtSupportedFeaturesToBitString(out).BitLength {
+		out.BitLength = bs.BitLength
+	}
+	return out
+}
+
+// AdditionalSubscriptions: 3 named bits (SIZE 3..8) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // "Other bits than listed above shall be discarded" per spec.
 func convertAdditionalSubscriptionsToBitString(a *AdditionalSubscriptions) runtime.BitString {
 	bits := []bool{a.PrivilegedUplinkRequest, a.EmergencyUplinkRequest, a.EmergencyReset}

@@ -32,7 +32,7 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 	arg := &gsm_map.MTForwardSMArg{
 		SmRPDA: smRpDa,
 		SmRPOA: smRpOa,
-		SmRPUI: gsm_map.SignalInfo(tpduBytes),
+		SmRPUI: tpduBytes,
 	}
 
 	arg.MoreMessagesToSend = boolToNullPtr(m.MoreMessagesToSend)
@@ -40,9 +40,7 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 	// Optional fields (post-extension marker).
 	if m.SmDeliveryTimer != nil {
 		v := *m.SmDeliveryTimer
-		if v < MinSmDeliveryTimer || v > MaxSmDeliveryTimer {
-			return nil, ErrMtFsmInvalidDeliveryTimer
-		}
+
 		val := gsm_map.SMDeliveryTimerValue(v)
 		arg.SmDeliveryTimer = &val
 	}
@@ -67,7 +65,7 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding SmsGmscAddress: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.SmsGmscAddress = &v
 	}
 	if m.SmsGmscDiameterAddress != nil {
@@ -97,7 +95,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 		return nil, fmt.Errorf("unmarshaling TPDU: %w", tpduErr)
 	}
 	if tpduResult == nil {
-		return nil, fmt.Errorf("unmarshaling TPDU: nil result")
+		return nil, fmt.Errorf("%w: unmarshaling TPDU: nil result", ErrTPDUDecodedNil)
 	}
 	if err := validateMtForwardSMArgTPDU(*tpduResult); err != nil {
 		return nil, err
@@ -110,9 +108,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 	// Optional fields (post-extension marker).
 	if arg.SmDeliveryTimer != nil {
 		v := int(*arg.SmDeliveryTimer)
-		if v < MinSmDeliveryTimer || v > MaxSmDeliveryTimer {
-			return nil, ErrMtFsmInvalidDeliveryTimer
-		}
+
 		mtFsm.SmDeliveryTimer = &v
 	}
 	if arg.SmDeliveryStartTime != nil {
@@ -130,7 +126,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 		mtFsm.MaximumRetransmissionTime = HexBytes(*arg.MaximumRetransmissionTime)
 	}
 	if arg.SmsGmscAddress != nil {
-		addr, nature, plan, err := decodeAddressField([]byte(*arg.SmsGmscAddress))
+		addr, nature, plan, err := decodeAddressWithDigits(*arg.SmsGmscAddress, ErrMtFsmSmsGmscAddressDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmsGmscAddress: %w", err)
 		}

@@ -15,8 +15,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // SmDeliveryOutcome is a non-extensible ENUMERATED 0..2; validated on
@@ -67,7 +65,7 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 		return nil, ErrReportSMDeliveryStatusMSISDNEmpty
 	}
 	if r.ServiceCentreAddress == "" {
-		return nil, ErrReportSMDeliveryStatusSCAEmpty
+		return nil, ErrReportSMDeliveryStatusServiceCentreAddressEmpty
 	}
 	if err := validateSmDeliveryOutcome(r.SmDeliveryOutcome); err != nil {
 		return nil, fmt.Errorf("ReportSMDeliveryStatus.SmDeliveryOutcome: %w", err)
@@ -77,33 +75,23 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	if err != nil {
 		return nil, fmt.Errorf("encoding ReportSMDeliveryStatus.MSISDN: %w", err)
 	}
-	sca, err := encodeAddressField(r.ServiceCentreAddress, r.SCANature, r.SCAPlan)
+	sca, err := encodeAddressField(r.ServiceCentreAddress, r.ServiceCentreAddressNature, r.ServiceCentreAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding ReportSMDeliveryStatus.ServiceCentreAddress: %w", err)
 	}
 
 	out := &gsm_map.ReportSMDeliveryStatusArg{
-		Msisdn:               gsm_map.ISDNAddressString(msisdn),
-		ServiceCentreAddress: gsm_map.AddressString(sca),
+		Msisdn:               msisdn,
+		ServiceCentreAddress: sca,
 		SmDeliveryOutcome:    r.SmDeliveryOutcome,
 	}
 
 	// [0] / [5] / [8] / [14] / [17] absent-subscriber diagnostics.
-	if out.AbsentSubscriberDiagnosticSM, err = absentDiagToWire("ReportSMDeliveryStatus.AbsentSubscriberDiagnosticSM", r.AbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.AdditionalAbsentSubscriberDiagnosticSM, err = absentDiagToWire("ReportSMDeliveryStatus.AdditionalAbsentSubscriberDiagnosticSM", r.AdditionalAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.IpSmGwAbsentSubscriberDiagnosticSM, err = absentDiagToWire("ReportSMDeliveryStatus.IpSmGwAbsentSubscriberDiagnosticSM", r.IpSmGwAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.Smsf3gppAbsentSubscriberDiagSM, err = absentDiagToWire("ReportSMDeliveryStatus.Smsf3gppAbsentSubscriberDiagnosticSM", r.Smsf3gppAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.SmsfNon3gppAbsentSubscriberDiagSM, err = absentDiagToWire("ReportSMDeliveryStatus.SmsfNon3gppAbsentSubscriberDiagnosticSM", r.SmsfNon3gppAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
+	out.AbsentSubscriberDiagnosticSM = absentDiagToWire(r.AbsentSubscriberDiagnosticSM)
+	out.AdditionalAbsentSubscriberDiagnosticSM = absentDiagToWire(r.AdditionalAbsentSubscriberDiagnosticSM)
+	out.IpSmGwAbsentSubscriberDiagnosticSM = absentDiagToWire(r.IpSmGwAbsentSubscriberDiagnosticSM)
+	out.Smsf3gppAbsentSubscriberDiagSM = absentDiagToWire(r.Smsf3gppAbsentSubscriberDiagnosticSM)
+	out.SmsfNon3gppAbsentSubscriberDiagSM = absentDiagToWire(r.SmsfNon3gppAbsentSubscriberDiagnosticSM)
 
 	// [4] / [7] / [13] / [16] additional outcomes.
 	if out.AdditionalSMDeliveryOutcome, err = optOutcomeToWire(r.AdditionalSMDeliveryOutcome); err != nil {
@@ -127,17 +115,13 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	out.Smsf3gppDeliveryOutcomeIndicator = boolToNullPtr(r.Smsf3gppDeliveryOutcomeIndicator)
 	out.SmsfNon3gppDeliveryOutcomeIndicator = boolToNullPtr(r.SmsfNon3gppDeliveryOutcomeIndicator)
 
-	// [9] imsi (digit count bounded as elsewhere in the package:
-	// TBCD-STRING SIZE 3..8 octets = 5..15 BCD digits).
+	// [9] imsi
 	if r.IMSI != "" {
-		if len(r.IMSI) < pslIMSIDigitsMin || len(r.IMSI) > pslIMSIDigitsMax {
-			return nil, fmt.Errorf("ReportSMDeliveryStatus.IMSI digits=%d: %w", len(r.IMSI), ErrReportSMDeliveryStatusIMSIInvalidSize)
-		}
-		imsiBytes, err := tbcd.Encode(r.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, r.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ReportSMDeliveryStatus.IMSI: %w", err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		out.Imsi = &v
 	}
 	// [11] correlationID.
@@ -157,49 +141,39 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 		return nil, ErrReportSMDeliveryStatusNil
 	}
 
-	msisdn, mNature, mPlan, err := decodeAddressField([]byte(w.Msisdn))
+	msisdn, mNature, mPlan, err := decodeAddressField(w.Msisdn)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.MSISDN: %w", err)
 	}
 	if msisdn == "" {
-		return nil, ErrReportSMDeliveryStatusMSISDNDecodedEmpty
+		return nil, ErrReportSMDeliveryStatusMSISDNEmpty
 	}
-	sca, scaNature, scaPlan, err := decodeAddressField([]byte(w.ServiceCentreAddress))
+	sca, scaNature, scaPlan, err := decodeAddressField(w.ServiceCentreAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.ServiceCentreAddress: %w", err)
 	}
 	if sca == "" {
-		return nil, ErrReportSMDeliveryStatusSCADecodedEmpty
+		return nil, ErrReportSMDeliveryStatusServiceCentreAddressEmpty
 	}
 	if err := validateSmDeliveryOutcome(w.SmDeliveryOutcome); err != nil {
 		return nil, fmt.Errorf("ReportSMDeliveryStatus.SmDeliveryOutcome: %w", err)
 	}
 
 	out := &ReportSMDeliveryStatus{
-		MSISDN:               msisdn,
-		MSISDNNature:         mNature,
-		MSISDNPlan:           mPlan,
-		ServiceCentreAddress: sca,
-		SCANature:            scaNature,
-		SCAPlan:              scaPlan,
-		SmDeliveryOutcome:    w.SmDeliveryOutcome,
+		MSISDN:                     msisdn,
+		MSISDNNature:               mNature,
+		MSISDNPlan:                 mPlan,
+		ServiceCentreAddress:       sca,
+		ServiceCentreAddressNature: scaNature,
+		ServiceCentreAddressPlan:   scaPlan,
+		SmDeliveryOutcome:          w.SmDeliveryOutcome,
 	}
 
-	if out.AbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.AbsentSubscriberDiagnosticSM", w.AbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.AdditionalAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.AdditionalAbsentSubscriberDiagnosticSM", w.AdditionalAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.IpSmGwAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.IpSmGwAbsentSubscriberDiagnosticSM", w.IpSmGwAbsentSubscriberDiagnosticSM); err != nil {
-		return nil, err
-	}
-	if out.Smsf3gppAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.Smsf3gppAbsentSubscriberDiagnosticSM", w.Smsf3gppAbsentSubscriberDiagSM); err != nil {
-		return nil, err
-	}
-	if out.SmsfNon3gppAbsentSubscriberDiagnosticSM, err = absentDiagFromWire("ReportSMDeliveryStatus.SmsfNon3gppAbsentSubscriberDiagnosticSM", w.SmsfNon3gppAbsentSubscriberDiagSM); err != nil {
-		return nil, err
-	}
+	out.AbsentSubscriberDiagnosticSM = absentDiagFromWire(w.AbsentSubscriberDiagnosticSM)
+	out.AdditionalAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.AdditionalAbsentSubscriberDiagnosticSM)
+	out.IpSmGwAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.IpSmGwAbsentSubscriberDiagnosticSM)
+	out.Smsf3gppAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.Smsf3gppAbsentSubscriberDiagSM)
+	out.SmsfNon3gppAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.SmsfNon3gppAbsentSubscriberDiagSM)
 
 	if out.AdditionalSMDeliveryOutcome, err = optOutcomeFromWire(w.AdditionalSMDeliveryOutcome); err != nil {
 		return nil, fmt.Errorf("ReportSMDeliveryStatus.AdditionalSMDeliveryOutcome: %w", err)
@@ -222,15 +196,9 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 	out.SmsfNon3gppDeliveryOutcomeIndicator = nullPtrToBool(w.SmsfNon3gppDeliveryOutcomeIndicator)
 
 	if w.Imsi != nil {
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.IMSI: %w", err)
-		}
-		if imsi == "" {
-			return nil, ErrReportSMDeliveryStatusIMSIDecodedEmpty
-		}
-		if len(imsi) < pslIMSIDigitsMin || len(imsi) > pslIMSIDigitsMax {
-			return nil, fmt.Errorf("ReportSMDeliveryStatus.IMSI digits=%d: %w", len(imsi), ErrReportSMDeliveryStatusIMSIInvalidSize)
 		}
 		out.IMSI = imsi
 	}
@@ -259,7 +227,7 @@ func convertReportSMDeliveryStatusResToRes(r *ReportSMDeliveryStatusRes) (*gsm_m
 		if err != nil {
 			return nil, fmt.Errorf("encoding ReportSMDeliveryStatusRes.StoredMSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(enc)
+		v := enc
 		out.StoredMSISDN = &v
 	}
 	return out, nil
@@ -271,12 +239,12 @@ func convertResToReportSMDeliveryStatusRes(w *gsm_map.ReportSMDeliveryStatusRes)
 	}
 	out := &ReportSMDeliveryStatusRes{}
 	if w.StoredMSISDN != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.StoredMSISDN))
+		s, nature, plan, err := decodeAddressField(*w.StoredMSISDN)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ReportSMDeliveryStatusRes.StoredMSISDN: %w", err)
 		}
 		if s == "" {
-			return nil, ErrReportSMDeliveryStatusResStoredMSISDNEmpty
+			return nil, ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty
 		}
 		out.StoredMSISDN = s
 		out.StoredMSISDNNature = nature

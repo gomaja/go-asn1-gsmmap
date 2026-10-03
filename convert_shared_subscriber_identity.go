@@ -1,10 +1,9 @@
 // convert_shared_subscriber_identity.go
 //
 // Shared converter for the SubscriberIdentity CHOICE (IMSI or MSISDN)
-// per TS 29.002 MAP-CommonDataTypes.asn. Used by SendRoutingInfoForLCS
-// (opCode 85) and AnyTimeInterrogation (opCode 71). MSISDN carries its
-// AddressString Nature/Plan, so any MSISDN survives a decode→encode round
-// trip.
+// per 3GPP TS 29.002 V19.1.0 §17.7.8. Used by SendRoutingInfoForLCS
+// (opCode 85) and AnyTimeInterrogation (opCode 71). MSISDN nature and plan
+// are exposed with the decoded digits.
 
 package gsmmap
 
@@ -12,8 +11,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // convertSubscriberIdentityToWire encodes the SubscriberIdentity CHOICE.
@@ -23,47 +20,38 @@ func convertSubscriberIdentityToWire(s SubscriberIdentity) (gsm_map.SubscriberId
 	msisdnSet := s.MSISDN != ""
 	switch {
 	case !imsiSet && !msisdnSet:
-		return gsm_map.SubscriberIdentity{}, ErrSubscriberIdentityNoAlt
+		return gsm_map.SubscriberIdentity{}, ErrSubscriberIdentityNoAlternative
 	case imsiSet && msisdnSet:
-		return gsm_map.SubscriberIdentity{}, ErrSubscriberIdentityMultipleAlts
+		return gsm_map.SubscriberIdentity{}, ErrSubscriberIdentityMultipleAlternatives
 	}
 
 	if imsiSet {
-		imsiBytes, err := tbcd.Encode(s.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 		if err != nil {
 			return gsm_map.SubscriberIdentity{}, fmt.Errorf(errEncodingIMSI, err)
 		}
-		return gsm_map.NewSubscriberIdentityImsi(gsm_map.IMSI(imsiBytes)), nil
+		return gsm_map.NewSubscriberIdentityImsi(imsiBytes), nil
 	}
 	msisdnBytes, err := encodeAddressField(s.MSISDN, s.MSISDNNature, s.MSISDNPlan)
 	if err != nil {
 		return gsm_map.SubscriberIdentity{}, fmt.Errorf("encoding MSISDN: %w", err)
 	}
-	return gsm_map.NewSubscriberIdentityMsisdn(gsm_map.ISDNAddressString(msisdnBytes)), nil
+	return gsm_map.NewSubscriberIdentityMsisdn(msisdnBytes), nil
 }
 
 // convertWireToSubscriberIdentity decodes the SubscriberIdentity CHOICE.
-// A present-but-empty decoded value is rejected so the string-based
-// public type round-trips faithfully.
+// A present address that decodes to empty digits is rejected because the
+// public type uses an empty string to mean absence.
 func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberIdentity, error) {
 	var out SubscriberIdentity
 	switch w.Choice {
 	case gsm_map.SubscriberIdentityChoiceImsi:
-		if w.Imsi == nil {
-			return out, ErrSubscriberIdentityUnknownChoice
-		}
-		imsi, err := tbcd.Decode(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return out, fmt.Errorf("decoding SubscriberIdentity.IMSI: %w", err)
 		}
-		if imsi == "" {
-			return out, ErrSubscriberIdentityIMSIDecodedEmpty
-		}
 		out.IMSI = imsi
 	case gsm_map.SubscriberIdentityChoiceMsisdn:
-		if w.Msisdn == nil {
-			return out, ErrSubscriberIdentityUnknownChoice
-		}
 		msisdn, nature, plan, err := decodeAddressField(*w.Msisdn)
 		if err != nil {
 			return out, fmt.Errorf("decoding SubscriberIdentity.MSISDN: %w", err)
@@ -75,7 +63,7 @@ func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberId
 		out.MSISDNNature = nature
 		out.MSISDNPlan = plan
 	default:
-		return out, fmt.Errorf("SubscriberIdentity choice=%d: %w", w.Choice, ErrSubscriberIdentityUnknownChoice)
+		return out, fmt.Errorf("SubscriberIdentity choice=%d: %w", w.Choice, ErrSubscriberIdentityUnknownAlternative)
 	}
 	return out, nil
 }

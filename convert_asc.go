@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -24,22 +23,22 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 	if err != nil {
 		return nil, fmt.Errorf("encoding MSISDN: %w", err)
 	}
-	sca, err := encodeAddressField(a.ServiceCentreAddress, a.SCANature, a.SCAPlan)
+	sca, err := encodeAddressField(a.ServiceCentreAddress, a.ServiceCentreAddressNature, a.ServiceCentreAddressPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding ServiceCentreAddress: %w", err)
 	}
 
 	arg := &gsm_map.AlertServiceCentreArg{
-		Msisdn:               gsm_map.ISDNAddressString(msisdn),
-		ServiceCentreAddress: gsm_map.AddressString(sca),
+		Msisdn:               msisdn,
+		ServiceCentreAddress: sca,
 	}
 
 	if a.IMSI != "" {
-		imsiBytes, err := tbcd.Encode(a.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, a.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		arg.Imsi = &v
 	}
 
@@ -74,7 +73,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 		if err != nil {
 			return nil, fmt.Errorf("encoding NewSGSNNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.NewSGSNNumber = &v
 	}
 
@@ -87,7 +86,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 		if err != nil {
 			return nil, fmt.Errorf("encoding NewMMENumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.NewMMENumber = &v
 	}
 
@@ -100,7 +99,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 		if err != nil {
 			return nil, fmt.Errorf("encoding NewMSCNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.NewMSCNumber = &v
 	}
 
@@ -110,33 +109,26 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 // convertArgToAlertServiceCentre converts a wire-level
 // gsm_map.AlertServiceCentreArg back into the public AlertServiceCentre type.
 func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertServiceCentre, error) {
-	if len(arg.Msisdn) == 0 {
-		return nil, ErrAscMissingMSISDN
-	}
-	if len(arg.ServiceCentreAddress) == 0 {
-		return nil, ErrAscMissingServiceCentreAddress
-	}
-
-	msisdn, msisdnNature, msisdnPlan, err := decodeAddressField(arg.Msisdn)
+	msisdn, msisdnNature, msisdnPlan, err := decodeAddressWithDigits(arg.Msisdn, ErrAscMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
-	sca, scaNature, scaPlan, err := decodeAddressField(arg.ServiceCentreAddress)
+	sca, scaNature, scaPlan, err := decodeAddressWithDigits(arg.ServiceCentreAddress, ErrAscMissingServiceCentreAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ServiceCentreAddress: %w", err)
 	}
 
 	out := &AlertServiceCentre{
-		MSISDN:               msisdn,
-		MSISDNNature:         msisdnNature,
-		MSISDNPlan:           msisdnPlan,
-		ServiceCentreAddress: sca,
-		SCANature:            scaNature,
-		SCAPlan:              scaPlan,
+		MSISDN:                     msisdn,
+		MSISDNNature:               msisdnNature,
+		MSISDNPlan:                 msisdnPlan,
+		ServiceCentreAddress:       sca,
+		ServiceCentreAddressNature: scaNature,
+		ServiceCentreAddressPlan:   scaPlan,
 	}
 
 	if arg.Imsi != nil {
-		imsi, err := tbcd.Decode(*arg.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *arg.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding optional IMSI: %w", err)
 		}
@@ -168,7 +160,7 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	if arg.NewSGSNNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.NewSGSNNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.NewSGSNNumber, ErrAscNewSGSNNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding NewSGSNNumber: %w", err)
 		}
@@ -182,7 +174,7 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	if arg.NewMMENumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.NewMMENumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.NewMMENumber, ErrAscNewMMENumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding NewMMENumber: %w", err)
 		}
@@ -196,7 +188,7 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	if arg.NewMSCNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.NewMSCNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.NewMSCNumber, ErrAscNewMSCNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding NewMSCNumber: %w", err)
 		}

@@ -11,19 +11,14 @@
 package gsmmap
 
 import (
+	"bytes"
 	"fmt"
-	"strings"
 
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// groupIdFiller is the six-TBCD-nibble placeholder GroupId must carry
-// whenever the LongGroupId field is populated, per TS 29.002.
-const groupIdFiller = "ffffff"
-
-// --- ODB-Data (MAP-MS-DataTypes.asn:1770) ---
+// --- ODB-Data (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
 func convertODBDataToWire(o *ODBData) (*gsm_map.ODBData, error) {
 	if o.OdbGeneralData == nil {
@@ -49,31 +44,26 @@ func convertWireToODBData(w *gsm_map.ODBData) *ODBData {
 	return out
 }
 
-// --- ZoneCode / ZoneCodeList (MAP-MS-DataTypes.asn:2070) ---
+// --- ZoneCode / ZoneCodeList (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
-func convertZoneCodeListToWire(z ZoneCodeList) (gsm_map.ZoneCodeList, error) {
-	if len(z) < 1 || len(z) > MaxNumOfZoneCodes {
-		return nil, ErrZoneCodeListInvalidSize
-	}
-	out := make(gsm_map.ZoneCodeList, 0, len(z))
+func convertZoneCodeListToWire(z ZoneCodeList) (*gsm_map.ZoneCodeList, error) {
+	out := gsm_map.ZoneCodeList{Values: make([]gsm_map.ZoneCode, 0, len(z))}
 	for i, zc := range z {
 		if len(zc) != 2 {
 			return nil, fmt.Errorf("ZoneCodeList[%d]: %w", i, ErrZoneCodeInvalidSize)
 		}
-		out = append(out, gsm_map.ZoneCode(zc))
+		out.Values = append(out.Values, gsm_map.ZoneCode(zc))
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToZoneCodeList(w gsm_map.ZoneCodeList) (ZoneCodeList, error) {
+func convertWireToZoneCodeList(w *gsm_map.ZoneCodeList) (ZoneCodeList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfZoneCodes {
-		return nil, ErrZoneCodeListInvalidSize
-	}
-	out := make(ZoneCodeList, 0, len(w))
-	for i, zc := range w {
+
+	out := make(ZoneCodeList, 0, len(w.Values))
+	for i, zc := range w.Values {
 		if len(zc) != 2 {
 			return nil, fmt.Errorf("ZoneCodeList[%d]: %w", i, ErrZoneCodeInvalidSize)
 		}
@@ -82,7 +72,7 @@ func convertWireToZoneCodeList(w gsm_map.ZoneCodeList) (ZoneCodeList, error) {
 	return out, nil
 }
 
-// --- VoiceBroadcastData / VBSDataList (MAP-MS-DataTypes.asn:2685, 2717) ---
+// --- VoiceBroadcastData / VBSDataList (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
 func convertVoiceBroadcastDataToWire(v *VoiceBroadcastData) (*gsm_map.VoiceBroadcastData, error) {
 	gid, err := encodeGroupID(v.GroupId, v.LongGroupId != "")
@@ -104,41 +94,44 @@ func convertVoiceBroadcastDataToWire(v *VoiceBroadcastData) (*gsm_map.VoiceBroad
 }
 
 func convertWireToVoiceBroadcastData(w *gsm_map.VoiceBroadcastData) (*VoiceBroadcastData, error) {
+	gid, err := decodeGroupID(w.Groupid, w.LongGroupId != nil)
+	if err != nil {
+		return nil, fmt.Errorf("VoiceBroadcastData.GroupId: %w", err)
+	}
 	out := &VoiceBroadcastData{
-		GroupId:                  decodeGroupID(w.Groupid),
+		GroupId:                  gid,
 		BroadcastInitEntitlement: w.BroadcastInitEntitlement != nil,
 	}
 	if w.LongGroupId != nil {
-		out.LongGroupId = decodeLongGroupID(*w.LongGroupId)
+		lg, err := decodeLongGroupID(*w.LongGroupId)
+		if err != nil {
+			return nil, fmt.Errorf("VoiceBroadcastData.LongGroupId: %w", err)
+		}
+		out.LongGroupId = lg
 	}
 	return out, nil
 }
 
-func convertVBSDataListToWire(list VBSDataList) (gsm_map.VBSDataList, error) {
-	if len(list) < 1 || len(list) > MaxNumOfVBSGroupIds {
-		return nil, ErrVBSDataListInvalidSize
-	}
-	out := make(gsm_map.VBSDataList, 0, len(list))
+func convertVBSDataListToWire(list VBSDataList) (*gsm_map.VBSDataList, error) {
+	out := gsm_map.VBSDataList{Values: make([]gsm_map.VoiceBroadcastData, 0, len(list))}
 	for i := range list {
 		w, err := convertVoiceBroadcastDataToWire(&list[i])
 		if err != nil {
 			return nil, fmt.Errorf("VBSDataList[%d]: %w", i, err)
 		}
-		out = append(out, *w)
+		out.Values = append(out.Values, *w)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToVBSDataList(w gsm_map.VBSDataList) (VBSDataList, error) {
+func convertWireToVBSDataList(w *gsm_map.VBSDataList) (VBSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfVBSGroupIds {
-		return nil, ErrVBSDataListInvalidSize
-	}
-	out := make(VBSDataList, 0, len(w))
-	for i := range w {
-		v, err := convertWireToVoiceBroadcastData(&w[i])
+
+	out := make(VBSDataList, 0, len(w.Values))
+	for i := range w.Values {
+		v, err := convertWireToVoiceBroadcastData(&w.Values[i])
 		if err != nil {
 			return nil, fmt.Errorf("VBSDataList[%d]: %w", i, err)
 		}
@@ -147,7 +140,7 @@ func convertWireToVBSDataList(w gsm_map.VBSDataList) (VBSDataList, error) {
 	return out, nil
 }
 
-// --- VoiceGroupCallData / VGCSDataList (MAP-MS-DataTypes.asn:2688, 2695) ---
+// --- VoiceGroupCallData / VGCSDataList (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
 func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroupCallData, error) {
 	gid, err := encodeGroupID(v.GroupId, v.LongGroupId != "")
@@ -159,14 +152,11 @@ func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroup
 		bs := convertAdditionalSubscriptionsToBitString(v.AdditionalSubscriptions)
 		out.AdditionalSubscriptions = &bs
 	}
-	if len(v.AdditionalInfo) > 0 {
-		if len(v.AdditionalInfo) > MaxAdditionalInfoOctets {
-			return nil, fmt.Errorf("VoiceGroupCallData.AdditionalInfo: %w", ErrAdditionalInfoTooLong)
+	if len(v.AdditionalInfo) > 0 || v.AdditionalInfoBits != 0 {
+		bs, err := bitStringToWire("VoiceGroupCallData.AdditionalInfo", v.AdditionalInfo, v.AdditionalInfoBits)
+		if err != nil {
+			return nil, err
 		}
-		// AdditionalInfo is modeled as HexBytes per the public type's
-		// godoc — byte-aligned only. Set BitLength to len(bytes)*8;
-		// non-byte-aligned peer values are lossy on decode.
-		bs := runtime.BitString{Bytes: []byte(v.AdditionalInfo), BitLength: len(v.AdditionalInfo) * 8}
 		out.AdditionalInfo = &bs
 	}
 	if v.LongGroupId != "" {
@@ -180,61 +170,48 @@ func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroup
 }
 
 func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroupCallData, error) {
-	out := &VoiceGroupCallData{GroupId: decodeGroupID(w.GroupId)}
+	gid, err := decodeGroupID(w.GroupId, w.LongGroupId != nil)
+	if err != nil {
+		return nil, fmt.Errorf("VoiceGroupCallData.GroupId: %w", err)
+	}
+	out := &VoiceGroupCallData{GroupId: gid}
 	if w.AdditionalSubscriptions != nil {
 		out.AdditionalSubscriptions = convertBitStringToAdditionalSubscriptions(*w.AdditionalSubscriptions)
 	}
-	if w.AdditionalInfo != nil && w.AdditionalInfo.BitLength > 0 {
-		// Byte-aligned-only public type per the VoiceGroupCallData.Additional-
-		// Info godoc: take full octets only (BitLength / 8, floor),
-		// discarding any sub-byte trailing bits. A BitLength of 7 surfaces
-		// zero bytes; callers who need sub-byte handling should read the
-		// underlying BIT STRING directly.
-		byteLen := w.AdditionalInfo.BitLength / 8
-		// Spec max is 136 bits = 17 octets; reject larger inputs. Use the
-		// ceiling of BitLength to catch over-spec encodings that also
-		// carry sub-byte trailing bits.
-		if (w.AdditionalInfo.BitLength+7)/8 > MaxAdditionalInfoOctets {
-			return nil, fmt.Errorf("VoiceGroupCallData.AdditionalInfo: %w", ErrAdditionalInfoTooLong)
-		}
-		if byteLen > len(w.AdditionalInfo.Bytes) {
-			byteLen = len(w.AdditionalInfo.Bytes)
-		}
-		if byteLen > 0 {
-			out.AdditionalInfo = HexBytes(w.AdditionalInfo.Bytes[:byteLen])
-		}
+	if w.AdditionalInfo != nil {
+		out.AdditionalInfo = bitStringFromWire(*w.AdditionalInfo)
+		out.AdditionalInfoBits = w.AdditionalInfo.BitLength
 	}
 	if w.LongGroupId != nil {
-		out.LongGroupId = decodeLongGroupID(*w.LongGroupId)
+		lg, err := decodeLongGroupID(*w.LongGroupId)
+		if err != nil {
+			return nil, fmt.Errorf("VoiceGroupCallData.LongGroupId: %w", err)
+		}
+		out.LongGroupId = lg
 	}
 	return out, nil
 }
 
-func convertVGCSDataListToWire(list VGCSDataList) (gsm_map.VGCSDataList, error) {
-	if len(list) < 1 || len(list) > MaxNumOfVGCSGroupIds {
-		return nil, ErrVGCSDataListInvalidSize
-	}
-	out := make(gsm_map.VGCSDataList, 0, len(list))
+func convertVGCSDataListToWire(list VGCSDataList) (*gsm_map.VGCSDataList, error) {
+	out := gsm_map.VGCSDataList{Values: make([]gsm_map.VoiceGroupCallData, 0, len(list))}
 	for i := range list {
 		w, err := convertVoiceGroupCallDataToWire(&list[i])
 		if err != nil {
 			return nil, fmt.Errorf("VGCSDataList[%d]: %w", i, err)
 		}
-		out = append(out, *w)
+		out.Values = append(out.Values, *w)
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToVGCSDataList(w gsm_map.VGCSDataList) (VGCSDataList, error) {
+func convertWireToVGCSDataList(w *gsm_map.VGCSDataList) (VGCSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if len(w) < 1 || len(w) > MaxNumOfVGCSGroupIds {
-		return nil, ErrVGCSDataListInvalidSize
-	}
-	out := make(VGCSDataList, 0, len(w))
-	for i := range w {
-		v, err := convertWireToVoiceGroupCallData(&w[i])
+
+	out := make(VGCSDataList, 0, len(w.Values))
+	for i := range w.Values {
+		v, err := convertWireToVoiceGroupCallData(&w.Values[i])
 		if err != nil {
 			return nil, fmt.Errorf("VGCSDataList[%d]: %w", i, err)
 		}
@@ -243,68 +220,97 @@ func convertWireToVGCSDataList(w gsm_map.VGCSDataList) (VGCSDataList, error) {
 	return out, nil
 }
 
-// encodeGroupID enforces the TBCD GroupId invariants per TS 29.002:
+// encodeGroupID enforces the TBCD GroupId invariants per TS 29.002 V19.1.0
+// (MAP-MS-DataTypes):
+//
+//	GroupId ::= TBCD-STRING (SIZE (3))
+//	-- When Group-Id is less than six characters in length, the TBCD filler (1111)
+//	-- is used to fill unused half octets.
+//
+// and, on VoiceGroupCallData / VoiceBroadcastData,
+// "groupId shall be filled with six TBCD fillers (1111) if the longGroupId
+// is present". gid is the digit string (TBCD alphabet, 1..6 characters):
 //   - GroupId is mandatory when no LongGroupId is present;
-//   - when LongGroupId IS present, GroupId must be the six TBCD fillers
-//     "ffffff" (case-insensitive);
-//   - the encoded value must be exactly 3 octets (6 hex nibbles).
+//   - when LongGroupId IS present, gid must be empty and the wire carries
+//     the six fillers (three 0xFF octets);
+//   - the digits are padded with fillers to the 3-octet field size.
 func encodeGroupID(gid string, hasLong bool) (gsm_map.GroupId, error) {
 	if hasLong {
-		if !strings.EqualFold(gid, groupIdFiller) {
+		if gid != "" {
 			return nil, ErrGroupIdFillerRequired
 		}
 	} else if gid == "" {
 		return nil, ErrGroupIdMissingWithoutLong
 	}
-	enc, err := tbcd.Encode(gid)
+	enc, err := encodeFixedTBCD(gid, groupIdOctets)
 	if err != nil {
 		return nil, err
 	}
-	if len(enc) != GroupIdOctets {
-		return nil, fmt.Errorf("%w: got %d octets from %q", ErrGroupIdInvalidEncodedLength, len(enc), gid)
-	}
-	return gsm_map.GroupId(enc), nil
+	return enc, nil
 }
 
-// encodeLongGroupID enforces the 4-octet SIZE constraint on LongGroupId
-// per TS 29.002 MAP-MS-DataTypes.asn:2735.
+// encodeLongGroupID encodes a Long-Group-Id per TS 29.002 V19.1.0:
+//
+//	Long-GroupId ::= TBCD-STRING (SIZE (4))
+//	-- When Long-Group-Id is less than eight characters in length, the TBCD filler (1111)
+//	-- is used to fill unused half octets.
 func encodeLongGroupID(s string) (gsm_map.LongGroupId, error) {
-	enc, err := tbcd.Encode(s)
+	enc, err := encodeFixedTBCD(s, longGroupIdOctets)
 	if err != nil {
 		return nil, err
 	}
-	if len(enc) != LongGroupIdOctets {
-		return nil, fmt.Errorf("%w: got %d octets from %q", ErrLongGroupIdInvalidEncodedLength, len(enc), s)
+	return enc, nil
+}
+
+// The fixed sizes of GroupId ::= TBCD-STRING (SIZE (3)) and
+// Long-GroupId ::= TBCD-STRING (SIZE (4)), 3GPP TS 29.002 V19.1.0 §17.7.1.
+const (
+	groupIdOctets     = 3
+	longGroupIdOctets = 4
+)
+
+// encodeFixedTBCD encodes s as a TBCD-STRING (SIZE (octets)): the digits,
+// then TBCD filler (1111) in every unused half octet up to the field size.
+// Digits that need more octets are returned as they are, for the BER
+// codec's SIZE check to reject.
+func encodeFixedTBCD(s string, octets int) ([]byte, error) {
+	enc, err := tbcd.Encode(s)
+	if err != nil || len(enc) >= octets {
+		return enc, err
 	}
-	return gsm_map.LongGroupId(enc), nil
+	out := bytes.Repeat([]byte{0xFF}, octets)
+	copy(out, enc)
+	return out, nil
 }
 
-// decodeGroupID returns the raw nibble-swapped hex of a TBCD GroupId
-// without tbcd.Decode's trailing-'f' filler strip. Group IDs are
-// TBCD-encoded hex identifiers per TS 23.003 — not phone numbers — so
-// trailing 'f' nibbles can be legitimate data (or six-filler padding
-// when LongGroupId is present). Either way the caller sees the exact
-// nibble sequence the wire carried.
-func decodeGroupID(raw []byte) string {
-	return rawTBCDHex(raw)
-}
-
-// decodeLongGroupID mirrors decodeGroupID for the 4-octet LongGroupId
-// field; tbcd.Decode would otherwise strip legitimate trailing 'f'
-// nibbles in the identifier.
-func decodeLongGroupID(raw []byte) string {
-	return rawTBCDHex(raw)
-}
-
-// rawTBCDHex performs a pure nibble swap on TBCD bytes, returning a
-// lowercase hex string. No filler stripping — the caller sees exactly
-// what the wire carried.
-func rawTBCDHex(raw []byte) string {
-	out := make([]byte, len(raw)*2)
-	const hexDigits = "0123456789abcdef"
-	for i, b := range raw {
-		out[i*2] = hexDigits[b&0x0f]
-		out[i*2+1] = hexDigits[(b>>4)&0x0f]
+// decodeGroupID returns the digits of a TBCD GroupId, applying the rules of
+// encodeGroupID. Filler padding is dropped, so the six fillers decode to "".
+// With a LongGroupId present the GroupId "shall be filled with six TBCD
+// fillers" (3GPP TS 29.002 V19.1.0 §17.7.1 VoiceBroadcastData,
+// VoiceGroupCallData), so any digit is ErrGroupIdFillerRequired; without one
+// the GroupId must carry digits (ErrGroupIdMissingWithoutLong).
+func decodeGroupID(raw []byte, hasLong bool) (string, error) {
+	s, err := tbcd.Decode(raw)
+	if err != nil {
+		return "", err
 	}
-	return string(out)
+	switch {
+	case hasLong && s != "":
+		return "", ErrGroupIdFillerRequired
+	case !hasLong && s == "":
+		return "", ErrGroupIdMissingWithoutLong
+	}
+	return s, nil
+}
+
+// decodeLongGroupID mirrors decodeGroupID for the 4-octet LongGroupId field.
+func decodeLongGroupID(raw []byte) (string, error) {
+	s, err := tbcd.Decode(raw)
+	if err != nil {
+		return "", err
+	}
+	if s == "" {
+		return "", ErrLongGroupIdDecodedEmpty
+	}
+	return s, nil
 }

@@ -33,7 +33,7 @@ func TestLCSClientNameRoundTrip(t *testing.T) {
 		}},
 		{"max-length name string (63 octets)", &LCSClientName{
 			DataCodingScheme: 0x0f,
-			NameString:       make(HexBytes, NameStringMaxLen),
+			NameString:       make(HexBytes, 63),
 		}},
 	}
 	for _, tc := range cases {
@@ -42,10 +42,7 @@ func TestLCSClientNameRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToLCSClientName(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToLCSClientName(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -58,30 +55,30 @@ func TestLCSClientNameNilPassesThrough(t *testing.T) {
 	if err != nil || wire != nil {
 		t.Errorf("nil → nil expected, got wire=%v err=%v", wire, err)
 	}
-	out, err := convertWireToLCSClientName(nil)
-	if err != nil || out != nil {
-		t.Errorf("nil → nil expected, got out=%v err=%v", out, err)
+	out := convertWireToLCSClientName(nil)
+	if out != nil {
+		t.Errorf("nil → nil expected, got out=%v", out)
 	}
 }
 
 func TestLCSClientNameEmptyNameStringRejected(t *testing.T) {
-	_, err := convertLCSClientNameToWire(&LCSClientName{
+	_, err := strictWire(convertLCSClientNameToWire(&LCSClientName{
 		DataCodingScheme: 0x0f,
 		NameString:       HexBytes{},
-	})
-	if !errors.Is(err, ErrLCSClientNameNameStringSize) {
-		t.Errorf("want ErrLCSClientNameNameStringSize on encode, got %v", err)
+	}))
+	if !matchesConstraint(err, "nameString", "SIZE (1..63)") {
+		t.Errorf("want BER constraint error on encode, got %v", err)
 	}
 }
 
 func TestLCSClientNameOversizedNameStringRejected(t *testing.T) {
-	tooBig := make(HexBytes, NameStringMaxLen+1)
-	_, err := convertLCSClientNameToWire(&LCSClientName{
+	tooBig := make(HexBytes, 63+1)
+	_, err := strictWire(convertLCSClientNameToWire(&LCSClientName{
 		DataCodingScheme: 0x0f,
 		NameString:       tooBig,
-	})
-	if !errors.Is(err, ErrLCSClientNameNameStringSize) {
-		t.Errorf("want ErrLCSClientNameNameStringSize on encode, got %v", err)
+	}))
+	if !matchesConstraint(err, "nameString", "SIZE (1..63)") {
+		t.Errorf("want BER constraint error on encode, got %v", err)
 	}
 }
 
@@ -90,9 +87,9 @@ func TestLCSClientNameWireDataCodingSchemeMustBeOneOctet(t *testing.T) {
 		DataCodingScheme: gsm_map.USSDDataCodingScheme{0x0f, 0x10}, // too long
 		NameString:       gsm_map.NameString{0x41},
 	}
-	_, err := convertWireToLCSClientName(w)
-	if !errors.Is(err, ErrUSSDDataCodingSchemeInvalidSize) {
-		t.Errorf("want ErrUSSDDataCodingSchemeInvalidSize, got %v", err)
+	err := strictDecodeWire(w)
+	if !matchesConstraint(err, "dataCodingScheme", "SIZE (1)") {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -117,7 +114,7 @@ func TestLCSRequestorIDRoundTrip(t *testing.T) {
 		}},
 		{"max-length requestor string (63 octets)", &LCSRequestorID{
 			DataCodingScheme:  0x0f,
-			RequestorIDString: make(HexBytes, RequestorIDStringMaxLen),
+			RequestorIDString: make(HexBytes, 63),
 		}},
 	}
 	for _, tc := range cases {
@@ -126,10 +123,7 @@ func TestLCSRequestorIDRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToLCSRequestorID(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToLCSRequestorID(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -142,30 +136,30 @@ func TestLCSRequestorIDNilPassesThrough(t *testing.T) {
 	if err != nil || wire != nil {
 		t.Errorf("nil → nil expected, got wire=%v err=%v", wire, err)
 	}
-	out, err := convertWireToLCSRequestorID(nil)
-	if err != nil || out != nil {
-		t.Errorf("nil → nil expected, got out=%v err=%v", out, err)
+	out := convertWireToLCSRequestorID(nil)
+	if out != nil {
+		t.Errorf("nil → nil expected, got out=%v", out)
 	}
 }
 
 func TestLCSRequestorIDEmptyStringRejected(t *testing.T) {
-	_, err := convertLCSRequestorIDToWire(&LCSRequestorID{
+	_, err := strictWire(convertLCSRequestorIDToWire(&LCSRequestorID{
 		DataCodingScheme:  0x0f,
 		RequestorIDString: HexBytes{},
-	})
-	if !errors.Is(err, ErrLCSRequestorIDStringSize) {
-		t.Errorf("want ErrLCSRequestorIDStringSize, got %v", err)
+	}))
+	if !matchesConstraint(err, "requestorIDString", "SIZE (1..63)") {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
 func TestLCSRequestorIDOversizedStringRejected(t *testing.T) {
-	tooBig := make(HexBytes, RequestorIDStringMaxLen+1)
-	_, err := convertLCSRequestorIDToWire(&LCSRequestorID{
+	tooBig := make(HexBytes, 63+1)
+	_, err := strictWire(convertLCSRequestorIDToWire(&LCSRequestorID{
 		DataCodingScheme:  0x0f,
 		RequestorIDString: tooBig,
-	})
-	if !errors.Is(err, ErrLCSRequestorIDStringSize) {
-		t.Errorf("want ErrLCSRequestorIDStringSize, got %v", err)
+	}))
+	if !matchesConstraint(err, "requestorIDString", "SIZE (1..63)") {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -174,9 +168,9 @@ func TestLCSRequestorIDWireDataCodingSchemeMustBeOneOctet(t *testing.T) {
 		DataCodingScheme:  gsm_map.USSDDataCodingScheme{0x0f, 0x10},
 		RequestorIDString: gsm_map.RequestorIDString{0x41},
 	}
-	_, err := convertWireToLCSRequestorID(w)
-	if !errors.Is(err, ErrUSSDDataCodingSchemeInvalidSize) {
-		t.Errorf("want ErrUSSDDataCodingSchemeInvalidSize, got %v", err)
+	err := strictDecodeWire(w)
+	if !matchesConstraint(err, "dataCodingScheme", "SIZE (1)") {
+		t.Errorf("want BER constraint error, got %v", err)
 	}
 }
 
@@ -317,35 +311,33 @@ func TestLCSClientIDDialedByMSWireEmptyDigitsRejected(t *testing.T) {
 		LcsClientDialedByMS: &emptyAddr,
 	}
 	_, err := convertWireToLCSClientID(w)
-	if !errors.Is(err, ErrLCSClientIDDialedByMSEmpty) {
-		t.Errorf("want ErrLCSClientIDDialedByMSEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSClientIDDialedByMSDecodedEmpty) {
+		t.Errorf("want ErrLCSClientIDDialedByMSDecodedEmpty, got %v", err)
 	}
 }
 
-// Symmetric encode-side check: empty digits combined with non-zero
-// Nature/Plan must surface ErrLCSClientIDDialedByMSEmpty rather than
-// silently dropping the field.
+// Empty digits with address metadata fail on encode.
 func TestLCSClientIDDialedByMSEncodeEmptyWithNaturePlanRejected(t *testing.T) {
 	_, err := convertLCSClientIDToWire(&LCSClientID{
 		LcsClientType:             LCSClientTypeEmergencyServices,
 		LcsClientDialedByMS:       "",
 		LcsClientDialedByMSNature: 0x10,
 	})
-	if !errors.Is(err, ErrLCSClientIDDialedByMSEmpty) {
-		t.Errorf("Nature set with empty digits: want ErrLCSClientIDDialedByMSEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSClientIDDialedByMSNaturePlanWithoutDigits) {
+		t.Errorf("Nature set with empty digits: want ErrLCSClientIDDialedByMSNaturePlanWithoutDigits, got %v", err)
 	}
 	_, err = convertLCSClientIDToWire(&LCSClientID{
 		LcsClientType:           LCSClientTypeEmergencyServices,
 		LcsClientDialedByMS:     "",
 		LcsClientDialedByMSPlan: 0x01,
 	})
-	if !errors.Is(err, ErrLCSClientIDDialedByMSEmpty) {
-		t.Errorf("Plan set with empty digits: want ErrLCSClientIDDialedByMSEmpty, got %v", err)
+	if !errors.Is(err, ErrLCSClientIDDialedByMSNaturePlanWithoutDigits) {
+		t.Errorf("Plan set with empty digits: want ErrLCSClientIDDialedByMSNaturePlanWithoutDigits, got %v", err)
 	}
 }
 
-// LcsClientInternalID is a non-extensible enum (0..4); validate
-// symmetrically on encode and decode.
+// LcsClientInternalID (0..4, extensible): the encoder sends only the listed
+// values; the decoder keeps any (semantic_enum_test.go).
 func TestLCSClientIDInternalIDOutOfRangeRejected(t *testing.T) {
 	bad := LCSClientInternalID(99)
 	_, err := convertLCSClientIDToWire(&LCSClientID{
@@ -355,48 +347,32 @@ func TestLCSClientIDInternalIDOutOfRangeRejected(t *testing.T) {
 	if !errors.Is(err, ErrLCSClientInternalIDInvalid) {
 		t.Errorf("encode: want ErrLCSClientInternalIDInvalid, got %v", err)
 	}
-
-	wireBad := gsm_map.LCSClientInternalID(99)
-	_, err = convertWireToLCSClientID(&gsm_map.LCSClientID{
-		LcsClientType:       gsm_map.LCSClientTypeEmergencyServices,
-		LcsClientInternalID: &wireBad,
-	})
-	if !errors.Is(err, ErrLCSClientInternalIDInvalid) {
-		t.Errorf("decode: want ErrLCSClientInternalIDInvalid, got %v", err)
-	}
 }
 
-// LcsAPN must satisfy APN SIZE(2..63) per TS 29.002 MAP-MS-DataTypes.asn.
-// Use the shared validateAPN helper for symmetry with PDPContext etc.
+// LcsAPN must satisfy APN SIZE(2..63) per TS 29.002 §17.7.1.
 func TestLCSClientIDAPNSizeValidation(t *testing.T) {
 	// 1-octet APN is too small (spec minimum is 2).
-	_, err := convertLCSClientIDToWire(&LCSClientID{
+	_, err := strictWire(convertLCSClientIDToWire(&LCSClientID{
 		LcsClientType: LCSClientTypeEmergencyServices,
 		LcsAPN:        HexBytes{0x01},
-	})
-	if err == nil {
-		t.Error("encode: 1-octet APN should be rejected")
-	}
+	}))
+	wantConstraintError(t, err, "lcsAPN", "SIZE (2..63)")
 
 	// 64-octet APN is too large.
 	tooBig := make(HexBytes, 64)
-	_, err = convertLCSClientIDToWire(&LCSClientID{
+	_, err = strictWire(convertLCSClientIDToWire(&LCSClientID{
 		LcsClientType: LCSClientTypeEmergencyServices,
 		LcsAPN:        tooBig,
-	})
-	if err == nil {
-		t.Error("encode: 64-octet APN should be rejected")
-	}
+	}))
+	wantConstraintError(t, err, "lcsAPN", "SIZE (2..63)")
 
 	// Decode-side parity.
 	tooSmallWire := gsm_map.APN{0x01}
-	_, err = convertWireToLCSClientID(&gsm_map.LCSClientID{
+	err = strictDecodeWire(&gsm_map.LCSClientID{
 		LcsClientType: gsm_map.LCSClientTypeEmergencyServices,
 		LcsAPN:        &tooSmallWire,
 	})
-	if err == nil {
-		t.Error("decode: 1-octet APN should be rejected")
-	}
+	wantConstraintError(t, err, "lcsAPN", "SIZE (2..63)")
 }
 
 // LcsFormatIndicator (extensible enum, encoder strict, decoder lenient)

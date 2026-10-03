@@ -5,12 +5,7 @@
 // AreaEventInfo, PeriodicLDRInfo, ReportingPLMNList) and the top-level
 // ProvideSubscriberLocationArg/Res live in the other convert_psl_*.go files.
 //
-// Each converter pair:
-//   convertXToWire(*X) (*gsm_map.X, error)   — public type → wire
-//   convertWireToX(*gsm_map.X) (*X, error)   — wire → public type
-//
-// Validation (size/range/enum) lives in the converters and surfaces the
-// sentinels defined in gsmmap.go.
+// Converters for semantic sender rules return the sentinels in gsmmap.go.
 
 package gsmmap
 
@@ -26,7 +21,7 @@ import (
 // ============================================================================
 
 // DeferredLocationEventType (BIT STRING SIZE 1..16, 5 named bits) per
-// TS 29.002 MAP-LCS-DataTypes.asn:165.
+// 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
 // Encode rule: BitLength is the position of the highest set bit + 1
 // (minimum 1 to satisfy the SIZE 1..16 lower bound).
@@ -63,34 +58,32 @@ func convertDeferredLocationEventTypeToBitString(d *DeferredLocationEventType) r
 	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
 }
 
-// convertBitStringToDeferredLocationEventType validates the wire size
-// (1..16 bits) and decodes the 5 named bits. Bits past the 5 named bits
-// are tolerated and ignored on decode (forward-compat).
-func convertBitStringToDeferredLocationEventType(bs runtime.BitString) (*DeferredLocationEventType, error) {
-	if bs.BitLength < 1 || bs.BitLength > 16 {
-		return nil, fmt.Errorf("DeferredLocationEventType: %w (got %d bits)", ErrDeferredLocationEventTypeSize, bs.BitLength)
+// convertBitStringToDeferredLocationEventType decodes the 5 named bits and
+// ignores the others. A ProvideSubscriberLocation-Arg setting another bit is
+// rejected first (hasUnlistedDeferredLocationEvent).
+func convertBitStringToDeferredLocationEventType(bs runtime.BitString) *DeferredLocationEventType {
+	return &DeferredLocationEventType{
+		MsAvailable:      bs.Has(0),
+		EnteringIntoArea: bs.Has(1),
+		LeavingFromArea:  bs.Has(2),
+		BeingInsideArea:  bs.Has(3),
+		PeriodicLDR:      bs.Has(4),
 	}
-	d := &DeferredLocationEventType{}
-	if bs.BitLength > 0 {
-		d.MsAvailable = bs.Has(0)
-	}
-	if bs.BitLength > 1 {
-		d.EnteringIntoArea = bs.Has(1)
-	}
-	if bs.BitLength > 2 {
-		d.LeavingFromArea = bs.Has(2)
-	}
-	if bs.BitLength > 3 {
-		d.BeingInsideArea = bs.Has(3)
-	}
-	if bs.BitLength > 4 {
-		d.PeriodicLDR = bs.Has(4)
-	}
-	return d, nil
 }
 
-// SupportedGADShapes (BIT STRING SIZE 7..16, 7 named bits) per TS 29.002
-// MAP-LCS-DataTypes.asn:280.
+// hasUnlistedDeferredLocationEvent reports whether bs sets a bit past
+// periodicLDR(4), the last value 3GPP TS 29.002 V19.1.0 §17.7.13
+// DeferredLocationEventType lists.
+func hasUnlistedDeferredLocationEvent(bs runtime.BitString) bool {
+	for bit := 5; bit < bs.BitLength; bit++ {
+		if bs.Has(bit) {
+			return true
+		}
+	}
+	return false
+}
+
+// SupportedGADShapes (BIT STRING SIZE 7..16, 7 named bits) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
 // Encode rule: always emit 7 bits to satisfy the SIZE 7..16 lower bound,
 // even when no flag is set.
@@ -120,13 +113,9 @@ func convertSupportedGADShapesToBitString(g *SupportedGADShapes) runtime.BitStri
 	return runtime.BitString{Bytes: []byte{b}, BitLength: 7}
 }
 
-// convertBitStringToSupportedGADShapes validates the wire size (7..16
-// bits) and decodes the 7 named bits. Bits past the 7 named bits are
-// tolerated and ignored on decode.
-func convertBitStringToSupportedGADShapes(bs runtime.BitString) (*SupportedGADShapes, error) {
-	if bs.BitLength < 7 || bs.BitLength > 16 {
-		return nil, fmt.Errorf("SupportedGADShapes: %w (got %d bits)", ErrSupportedGADShapesSize, bs.BitLength)
-	}
+// convertBitStringToSupportedGADShapes decodes the 7 named bits.
+// Bits past them are tolerated and ignored on decode.
+func convertBitStringToSupportedGADShapes(bs runtime.BitString) *SupportedGADShapes {
 	g := &SupportedGADShapes{}
 	g.EllipsoidPoint = bs.Has(0)
 	g.EllipsoidPointWithUncertaintyCircle = bs.Has(1)
@@ -135,12 +124,19 @@ func convertBitStringToSupportedGADShapes(bs runtime.BitString) (*SupportedGADSh
 	g.EllipsoidPointWithAltitude = bs.Has(4)
 	g.EllipsoidPointWithAltitudeAndUncertaintyEllipsoid = bs.Has(5)
 	g.EllipsoidArc = bs.Has(6)
-	return g, nil
+	return g
 }
 
 // ============================================================================
-// LocationType — TS 29.002 MAP-LCS-DataTypes.asn:148
+// LocationType — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
+
+// isRecognizedLocationEstimateType reports whether v is one of the
+// LocationEstimateType values 3GPP TS 29.002 V19.1.0 §17.7.13 lists,
+// currentLocation(0) to notificationVerificationOnly(5).
+func isRecognizedLocationEstimateType(v LocationEstimateType) bool {
+	return v >= LocationEstimateCurrentLocation && v <= LocationEstimateNotificationVerificationOnly
+}
 
 func convertLocationTypeToWire(l *LocationType) (*gsm_map.LocationType, error) {
 	if l == nil {
@@ -149,7 +145,7 @@ func convertLocationTypeToWire(l *LocationType) (*gsm_map.LocationType, error) {
 	out := &gsm_map.LocationType{
 		LocationEstimateType: l.LocationEstimateType,
 	}
-	if int64(l.LocationEstimateType) < 0 || int64(l.LocationEstimateType) > 5 {
+	if !isRecognizedLocationEstimateType(l.LocationEstimateType) {
 		return nil, fmt.Errorf("LocationType.LocationEstimateType=%d: %w", l.LocationEstimateType, ErrLocationEstimateTypeInvalid)
 	}
 	if l.DeferredLocationEventType != nil {
@@ -159,67 +155,62 @@ func convertLocationTypeToWire(l *LocationType) (*gsm_map.LocationType, error) {
 	return out, nil
 }
 
-func convertWireToLocationType(w *gsm_map.LocationType) (*LocationType, error) {
+func convertWireToLocationType(w *gsm_map.LocationType) *LocationType {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	out := &LocationType{
 		LocationEstimateType: w.LocationEstimateType,
 	}
 	if w.DeferredLocationEventType != nil {
-		d, err := convertBitStringToDeferredLocationEventType(*w.DeferredLocationEventType)
-		if err != nil {
-			return nil, fmt.Errorf("LocationType.DeferredLocationEventType: %w", err)
-		}
-		out.DeferredLocationEventType = d
+		out.DeferredLocationEventType = convertBitStringToDeferredLocationEventType(*w.DeferredLocationEventType)
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
-// LCSCodeword — TS 29.002 MAP-LCS-DataTypes.asn:293
+// LCSCodeword — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
-func convertLCSCodewordToWire(c *LCSCodeword) (*gsm_map.LCSCodeword, error) {
+func convertLCSCodewordToWire(c *LCSCodeword) *gsm_map.LCSCodeword {
 	if c == nil {
-		return nil, nil
+		return nil
 	}
-	if len(c.LcsCodewordString) < 1 || len(c.LcsCodewordString) > LCSCodewordStringMaxLen {
-		return nil, fmt.Errorf("LCSCodeword.LcsCodewordString len=%d: %w", len(c.LcsCodewordString), ErrLCSCodewordStringSize)
-	}
+
 	out := &gsm_map.LCSCodeword{
 		DataCodingScheme:  gsm_map.USSDDataCodingScheme{byte(c.DataCodingScheme)},
 		LcsCodewordString: gsm_map.LCSCodewordString(c.LcsCodewordString),
 	}
-	return out, nil
+	return out
 }
 
-func convertWireToLCSCodeword(w *gsm_map.LCSCodeword) (*LCSCodeword, error) {
+func convertWireToLCSCodeword(w *gsm_map.LCSCodeword) *LCSCodeword {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
-	dcs, err := wireUSSDDataCodingScheme(w.DataCodingScheme)
-	if err != nil {
-		return nil, fmt.Errorf("LCSCodeword.DataCodingScheme: %w", err)
-	}
-	if len(w.LcsCodewordString) < 1 || len(w.LcsCodewordString) > LCSCodewordStringMaxLen {
-		return nil, fmt.Errorf("LCSCodeword.LcsCodewordString len=%d: %w", len(w.LcsCodewordString), ErrLCSCodewordStringSize)
-	}
+	dcs := USSDDataCodingScheme(w.DataCodingScheme[0])
 	return &LCSCodeword{
 		DataCodingScheme:  dcs,
 		LcsCodewordString: HexBytes(w.LcsCodewordString),
-	}, nil
+	}
 }
 
 // ============================================================================
-// LCSPrivacyCheck — TS 29.002 MAP-LCS-DataTypes.asn:302
+// LCSPrivacyCheck — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
+
+// isRecognizedPrivacyCheckRelatedAction reports whether v is one of the
+// PrivacyCheckRelatedAction values 3GPP TS 29.002 V19.1.0 §17.7.13 lists,
+// allowedWithoutNotification(0) to notAllowed(4).
+func isRecognizedPrivacyCheckRelatedAction(v PrivacyCheckRelatedAction) bool {
+	return v >= PrivacyCheckAllowedWithoutNotification && v <= PrivacyCheckNotAllowed
+}
 
 func convertLCSPrivacyCheckToWire(p *LCSPrivacyCheck) (*gsm_map.LCSPrivacyCheck, error) {
 	if p == nil {
 		return nil, nil
 	}
-	if int64(p.CallSessionUnrelated) < 0 || int64(p.CallSessionUnrelated) > 4 {
+	if !isRecognizedPrivacyCheckRelatedAction(p.CallSessionUnrelated) {
 		return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionUnrelated=%d: %w", p.CallSessionUnrelated, ErrPrivacyCheckRelatedActionInvalid)
 	}
 	out := &gsm_map.LCSPrivacyCheck{
@@ -227,7 +218,7 @@ func convertLCSPrivacyCheckToWire(p *LCSPrivacyCheck) (*gsm_map.LCSPrivacyCheck,
 	}
 	if p.CallSessionRelated != nil {
 		v := *p.CallSessionRelated
-		if int64(v) < 0 || int64(v) > 4 {
+		if !isRecognizedPrivacyCheckRelatedAction(v) {
 			return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionRelated=%d: %w", v, ErrPrivacyCheckRelatedActionInvalid)
 		}
 		out.CallSessionRelated = &v
@@ -235,30 +226,25 @@ func convertLCSPrivacyCheckToWire(p *LCSPrivacyCheck) (*gsm_map.LCSPrivacyCheck,
 	return out, nil
 }
 
-func convertWireToLCSPrivacyCheck(w *gsm_map.LCSPrivacyCheck) (*LCSPrivacyCheck, error) {
+// convertWireToLCSPrivacyCheck copies both PrivacyCheckRelatedActions. The
+// ProvideSubscriberLocation-Arg decoder rejects an unrecognized one
+// (ErrPrivacyCheckRelatedActionUnrecognized).
+func convertWireToLCSPrivacyCheck(w *gsm_map.LCSPrivacyCheck) *LCSPrivacyCheck {
 	if w == nil {
-		return nil, nil
-	}
-	// PrivacyCheckRelatedAction is NOT extensible (TS 29.002 MAP-LCS-DataTypes.asn:307);
-	// validate symmetrically with the encoder.
-	if int64(w.CallSessionUnrelated) < 0 || int64(w.CallSessionUnrelated) > 4 {
-		return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionUnrelated=%d: %w", w.CallSessionUnrelated, ErrPrivacyCheckRelatedActionInvalid)
+		return nil
 	}
 	out := &LCSPrivacyCheck{
 		CallSessionUnrelated: w.CallSessionUnrelated,
 	}
 	if w.CallSessionRelated != nil {
 		v := *w.CallSessionRelated
-		if int64(v) < 0 || int64(v) > 4 {
-			return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionRelated=%d: %w", v, ErrPrivacyCheckRelatedActionInvalid)
-		}
 		out.CallSessionRelated = &v
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
-// ResponseTime — TS 29.002 MAP-LCS-DataTypes.asn:261
+// ResponseTime — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 //
 // ResponseTimeCategory is an extensible ENUMERATED with a spec exception
@@ -278,23 +264,23 @@ func convertResponseTimeToWire(r *ResponseTime) (*gsm_map.ResponseTime, error) {
 	}, nil
 }
 
-func convertWireToResponseTime(w *gsm_map.ResponseTime) (*ResponseTime, error) {
+func convertWireToResponseTime(w *gsm_map.ResponseTime) *ResponseTime {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	cat := w.ResponseTimeCategory
-	// Per TS 29.002 MAP-LCS-DataTypes.asn:270-271, an unrecognized value
+	// Per 3GPP TS 29.002 V19.1.0 §17.7.13, an unrecognized value
 	// shall be treated the same as delaytolerant(1).
 	if cat != ResponseTimeLowdelay && cat != ResponseTimeDelaytolerant {
 		cat = ResponseTimeDelaytolerant
 	}
 	return &ResponseTime{
 		ResponseTimeCategory: cat,
-	}, nil
+	}
 }
 
 // ============================================================================
-// LCSQoS — TS 29.002 MAP-LCS-DataTypes.asn:237
+// LCSQoS — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
@@ -304,10 +290,7 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 	out := &gsm_map.LCSQoS{}
 
 	if len(q.HorizontalAccuracy) > 0 {
-		if len(q.HorizontalAccuracy) != 1 {
-			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy len=%d: %w", len(q.HorizontalAccuracy), ErrHorizontalAccuracyInvalidSize)
-		}
-		// Spec mandates bit 8 = 0 (TS 29.002 MAP-LCS-DataTypes.asn:250):
+		// Spec mandates bit 8 = 0 (3GPP TS 29.002 V19.1.0 §17.7.13):
 		// only the low 7 bits encode the uncertainty code per TS 23.032.
 		if q.HorizontalAccuracy[0]&0x80 != 0 {
 			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy=0x%02x: %w", q.HorizontalAccuracy[0], ErrHorizontalAccuracyReservedBit)
@@ -317,10 +300,7 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 	}
 	out.VerticalCoordinateRequest = boolToNullPtr(q.VerticalCoordinateRequest)
 	if len(q.VerticalAccuracy) > 0 {
-		if len(q.VerticalAccuracy) != 1 {
-			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy len=%d: %w", len(q.VerticalAccuracy), ErrVerticalAccuracyInvalidSize)
-		}
-		// Spec mandates bit 8 = 0 (TS 29.002 MAP-LCS-DataTypes.asn:256):
+		// Spec mandates bit 8 = 0 (3GPP TS 29.002 V19.1.0 §17.7.13):
 		// only the low 7 bits encode the vertical uncertainty code per TS 23.032.
 		if q.VerticalAccuracy[0]&0x80 != 0 {
 			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy=0x%02x: %w", q.VerticalAccuracy[0], ErrVerticalAccuracyReservedBit)
@@ -336,6 +316,13 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 		out.ResponseTime = rt
 	}
 	out.VelocityRequest = boolToNullPtr(q.VelocityRequest)
+	if q.LcsQosClass != nil {
+		c := *q.LcsQosClass
+		if c != LCSQoSClassBestEffort && c != LCSQoSClassAssured {
+			return nil, fmt.Errorf("LCSQoS.LcsQosClass=%d: %w", c, ErrLCSQoSClassInvalid)
+		}
+		out.LcsQosClass = &c
+	}
 	return out, nil
 }
 
@@ -345,9 +332,6 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 	}
 	out := &LCSQoS{}
 	if w.HorizontalAccuracy != nil {
-		if len(*w.HorizontalAccuracy) != 1 {
-			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy len=%d: %w", len(*w.HorizontalAccuracy), ErrHorizontalAccuracyInvalidSize)
-		}
 		if (*w.HorizontalAccuracy)[0]&0x80 != 0 {
 			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy=0x%02x: %w", (*w.HorizontalAccuracy)[0], ErrHorizontalAccuracyReservedBit)
 		}
@@ -355,21 +339,23 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 	}
 	out.VerticalCoordinateRequest = nullPtrToBool(w.VerticalCoordinateRequest)
 	if w.VerticalAccuracy != nil {
-		if len(*w.VerticalAccuracy) != 1 {
-			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy len=%d: %w", len(*w.VerticalAccuracy), ErrVerticalAccuracyInvalidSize)
-		}
 		if (*w.VerticalAccuracy)[0]&0x80 != 0 {
 			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy=0x%02x: %w", (*w.VerticalAccuracy)[0], ErrVerticalAccuracyReservedBit)
 		}
 		out.VerticalAccuracy = HexBytes(*w.VerticalAccuracy)
 	}
 	if w.ResponseTime != nil {
-		rt, err := convertWireToResponseTime(w.ResponseTime)
-		if err != nil {
-			return nil, fmt.Errorf("LCSQoS.ResponseTime: %w", err)
-		}
-		out.ResponseTime = rt
+		out.ResponseTime = convertWireToResponseTime(w.ResponseTime)
 	}
 	out.VelocityRequest = nullPtrToBool(w.VelocityRequest)
+	if w.LcsQosClass != nil {
+		// 3GPP TS 29.002 V19.1.0 §17.7.13 LCS-QoS-Class: "an unrecognized
+		// value shall be treated the same as value 0 (bestEffort)".
+		c := *w.LcsQosClass
+		if c != LCSQoSClassAssured {
+			c = LCSQoSClassBestEffort
+		}
+		out.LcsQosClass = &c
+	}
 	return out, nil
 }

@@ -15,13 +15,13 @@ import (
 
 func minimalReportSMDeliveryStatus() *ReportSMDeliveryStatus {
 	return &ReportSMDeliveryStatus{
-		MSISDN:               "31612345678",
-		MSISDNNature:         0x10,
-		MSISDNPlan:           0x01,
-		ServiceCentreAddress: "31600000000",
-		SCANature:            0x10,
-		SCAPlan:              0x01,
-		SmDeliveryOutcome:    SmDeliveryAbsentSubscriber,
+		MSISDN:                     "31612345678",
+		MSISDNNature:               0x10,
+		MSISDNPlan:                 0x01,
+		ServiceCentreAddress:       "31600000000",
+		ServiceCentreAddressNature: 0x10,
+		ServiceCentreAddressPlan:   0x01,
+		SmDeliveryOutcome:          SmDeliveryAbsentSubscriber,
 	}
 }
 
@@ -42,21 +42,21 @@ func TestReportSMDeliveryStatusRoundTrip(t *testing.T) {
 	}{
 		{"minimal absent-subscriber", minimalReportSMDeliveryStatus()},
 		{"successful transfer (clears waiting)", &ReportSMDeliveryStatus{
-			MSISDN:               "31612345678",
-			MSISDNNature:         0x10,
-			MSISDNPlan:           0x01,
-			ServiceCentreAddress: "31600000000",
-			SCANature:            0x10,
-			SCAPlan:              0x01,
-			SmDeliveryOutcome:    SmDeliverySuccessfulTransfer,
+			MSISDN:                     "31612345678",
+			MSISDNNature:               0x10,
+			MSISDNPlan:                 0x01,
+			ServiceCentreAddress:       "31600000000",
+			ServiceCentreAddressNature: 0x10,
+			ServiceCentreAddressPlan:   0x01,
+			SmDeliveryOutcome:          SmDeliverySuccessfulTransfer,
 		}},
 		{"with diagnostic + GPRS + IMSI", &ReportSMDeliveryStatus{
 			MSISDN:                                 "31612345678",
 			MSISDNNature:                           0x10,
 			MSISDNPlan:                             0x01,
 			ServiceCentreAddress:                   "31600000000",
-			SCANature:                              0x10,
-			SCAPlan:                                0x01,
+			ServiceCentreAddressNature:             0x10,
+			ServiceCentreAddressPlan:               0x01,
 			SmDeliveryOutcome:                      SmDeliveryAbsentSubscriber,
 			AbsentSubscriberDiagnosticSM:           &diag,
 			GprsSupportIndicator:                   true,
@@ -71,8 +71,8 @@ func TestReportSMDeliveryStatusRoundTrip(t *testing.T) {
 			MSISDNNature:                           0x10,
 			MSISDNPlan:                             0x01,
 			ServiceCentreAddress:                   "31600000000",
-			SCANature:                              0x10,
-			SCAPlan:                                0x01,
+			ServiceCentreAddressNature:             0x10,
+			ServiceCentreAddressPlan:               0x01,
 			SmDeliveryOutcome:                      SmDeliveryAbsentSubscriber,
 			AbsentSubscriberDiagnosticSM:           &diag,
 			GprsSupportIndicator:                   true,
@@ -82,7 +82,7 @@ func TestReportSMDeliveryStatusRoundTrip(t *testing.T) {
 			IMSI:                                   "204080000000001",
 			SingleAttemptDelivery:                  true,
 			CorrelationID: &SriSmCorrelationID{
-				HlrID:   HexBytes{0xAA, 0xBB},
+				HlrID:   "204080",
 				SipUriA: HexBytes{0xCC, 0xDD},
 				SipUriB: HexBytes{0xEE, 0xFF},
 			},
@@ -135,17 +135,19 @@ func TestReportSMDeliveryStatusBERRoundTrip(t *testing.T) {
 func TestReportSMDeliveryStatusEncodeNegative(t *testing.T) {
 	bad := 999
 	cases := []struct {
-		name string
-		mut  func(r *ReportSMDeliveryStatus)
-		want error
+		name       string
+		mut        func(r *ReportSMDeliveryStatus)
+		want       error
+		path       string
+		constraint string
 	}{
-		{"nil arg", nil, ErrReportSMDeliveryStatusNil},
-		{"empty MSISDN", func(r *ReportSMDeliveryStatus) { r.MSISDN = "" }, ErrReportSMDeliveryStatusMSISDNEmpty},
-		{"empty ServiceCentreAddress", func(r *ReportSMDeliveryStatus) { r.ServiceCentreAddress = "" }, ErrReportSMDeliveryStatusSCAEmpty},
-		{"outcome out of range", func(r *ReportSMDeliveryStatus) { r.SmDeliveryOutcome = SmDeliveryOutcome(9) }, ErrReportSMDeliveryStatusOutcomeInvalid},
-		{"diagnostic out of range", func(r *ReportSMDeliveryStatus) { r.AbsentSubscriberDiagnosticSM = &bad }, ErrAbsentSubscriberDiagnosticSMOutOfRange},
-		{"IMSI too short", func(r *ReportSMDeliveryStatus) { r.IMSI = "1234" }, ErrReportSMDeliveryStatusIMSIInvalidSize},
-		{"IMSI too long", func(r *ReportSMDeliveryStatus) { r.IMSI = "1234567890123456" }, ErrReportSMDeliveryStatusIMSIInvalidSize},
+		{"nil arg", nil, ErrReportSMDeliveryStatusNil, "", ""},
+		{"empty MSISDN", func(r *ReportSMDeliveryStatus) { r.MSISDN = "" }, ErrReportSMDeliveryStatusMSISDNEmpty, "", ""},
+		{"empty ServiceCentreAddress", func(r *ReportSMDeliveryStatus) { r.ServiceCentreAddress = "" }, ErrReportSMDeliveryStatusServiceCentreAddressEmpty, "", ""},
+		{"outcome out of range", func(r *ReportSMDeliveryStatus) { r.SmDeliveryOutcome = SmDeliveryOutcome(9) }, ErrReportSMDeliveryStatusOutcomeInvalid, "", ""},
+		{"diagnostic out of range", func(r *ReportSMDeliveryStatus) { r.AbsentSubscriberDiagnosticSM = &bad }, nil, "absentSubscriberDiagnosticSM", "(0..255)"},
+		{"IMSI too short", func(r *ReportSMDeliveryStatus) { r.IMSI = "1234" }, ErrIMSIInvalidLength, "", ""},
+		{"IMSI too long", func(r *ReportSMDeliveryStatus) { r.IMSI = "1234567890123456" }, ErrIMSIInvalidLength, "", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -154,8 +156,8 @@ func TestReportSMDeliveryStatusEncodeNegative(t *testing.T) {
 				in = minimalReportSMDeliveryStatus()
 				tc.mut(in)
 			}
-			_, err := convertReportSMDeliveryStatusToArg(in)
-			if !errors.Is(err, tc.want) {
+			_, err := strictWire(convertReportSMDeliveryStatusToArg(in))
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Errorf("want %v, got %v", tc.want, err)
 			}
 		})
@@ -181,36 +183,43 @@ func TestReportSMDeliveryStatusDecodeNegative(t *testing.T) {
 	}
 	emptyAddr := func() []byte { return []byte{0x91} } // header only, no TBCD digits
 	diag999 := gsm_map.AbsentSubscriberDiagnosticSM(999)
-	imsiShort := gsm_map.IMSI{0x21, 0xf3} // 3 digits after TBCD decode (< 5)
+	imsiShort := gsm_map.IMSI{0x21, 0xf3} // 3 digits after TBCD decode (< 6)
 
 	cases := []struct {
-		name string
-		mut  func(w *gsm_map.ReportSMDeliveryStatusArg)
-		want error
+		name       string
+		mut        func(w *gsm_map.ReportSMDeliveryStatusArg)
+		want       error
+		path       string
+		constraint string
 	}{
-		{"outcome out of range", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.SmDeliveryOutcome = gsm_map.SMDeliveryOutcome(7) }, ErrReportSMDeliveryStatusOutcomeInvalid},
-		{"MSISDN present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.Msisdn = emptyAddr() }, ErrReportSMDeliveryStatusMSISDNDecodedEmpty},
-		{"SCA present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.ServiceCentreAddress = emptyAddr() }, ErrReportSMDeliveryStatusSCADecodedEmpty},
-		{"diagnostic out of range on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.AbsentSubscriberDiagnosticSM = &diag999 }, ErrAbsentSubscriberDiagnosticSMOutOfRange},
-		{"IMSI invalid size on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { v := imsiShort; w.Imsi = &v }, ErrReportSMDeliveryStatusIMSIInvalidSize},
+		{"outcome out of range", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.SmDeliveryOutcome = gsm_map.SMDeliveryOutcome(7) }, ErrReportSMDeliveryStatusOutcomeInvalid, "", ""},
+		{"MSISDN present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.Msisdn = emptyAddr() }, ErrReportSMDeliveryStatusMSISDNEmpty, "", ""},
+		{"SCA present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.ServiceCentreAddress = emptyAddr() }, ErrReportSMDeliveryStatusServiceCentreAddressEmpty, "", ""},
+		{"diagnostic out of range on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.AbsentSubscriberDiagnosticSM = &diag999 }, nil, "absentSubscriberDiagnosticSM", "(0..255)"},
+		{"IMSI invalid size on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { v := imsiShort; w.Imsi = &v }, ErrIMSIInvalidLength, "", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			w := validWireArg()
 			tc.mut(w)
-			_, err := convertArgToReportSMDeliveryStatus(w)
-			if !errors.Is(err, tc.want) {
+			var err error
+			if tc.want == nil {
+				err = strictDecodeWire(w)
+			} else {
+				_, err = convertArgToReportSMDeliveryStatus(w)
+			}
+			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
 				t.Errorf("want %v, got %v", tc.want, err)
 			}
 		})
 	}
 
 	t.Run("Res StoredMSISDN present but empty", func(t *testing.T) {
-		ea := gsm_map.ISDNAddressString(emptyAddr())
+		ea := emptyAddr()
 		w := &gsm_map.ReportSMDeliveryStatusRes{StoredMSISDN: &ea}
 		_, err := convertResToReportSMDeliveryStatusRes(w)
-		if !errors.Is(err, ErrReportSMDeliveryStatusResStoredMSISDNEmpty) {
-			t.Errorf("want ErrReportSMDeliveryStatusResStoredMSISDNEmpty, got %v", err)
+		if !errors.Is(err, ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty) {
+			t.Errorf("want ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty, got %v", err)
 		}
 	})
 }

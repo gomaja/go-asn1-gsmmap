@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 
@@ -71,8 +72,8 @@ func TestSriSmRespRoundTrip(t *testing.T) {
 func TestUpdateLocationRoundTrip(t *testing.T) {
 	ul := &UpdateLocation{
 		IMSI:      "607036003958556",
-		MSCNumber: "628160360000",
-		VLRNumber: "628160360000",
+		MscNumber: "628160360000",
+		VlrNumber: "628160360000",
 		VlrCapability: &VlrCapability{
 			SupportedCamelPhases: &SupportedCamelPhases{
 				Phase1: true,
@@ -94,11 +95,11 @@ func TestUpdateLocationRoundTrip(t *testing.T) {
 	if ul.IMSI != parsed.IMSI {
 		t.Errorf("IMSI: got %s, want %s", parsed.IMSI, ul.IMSI)
 	}
-	if ul.MSCNumber != parsed.MSCNumber {
-		t.Errorf("MSCNumber: got %s, want %s", parsed.MSCNumber, ul.MSCNumber)
+	if ul.MscNumber != parsed.MscNumber {
+		t.Errorf("MscNumber: got %s, want %s", parsed.MscNumber, ul.MscNumber)
 	}
-	if ul.VLRNumber != parsed.VLRNumber {
-		t.Errorf("VLRNumber: got %s, want %s", parsed.VLRNumber, ul.VLRNumber)
+	if ul.VlrNumber != parsed.VlrNumber {
+		t.Errorf("VlrNumber: got %s, want %s", parsed.VlrNumber, ul.VlrNumber)
 	}
 
 	if parsed.VlrCapability == nil {
@@ -121,8 +122,8 @@ func TestUpdateLocationRoundTrip(t *testing.T) {
 func TestUpdateLocationWithLCSRoundTrip(t *testing.T) {
 	ul := &UpdateLocation{
 		IMSI:      "234507097995732",
-		MSCNumber: "996772589400",
-		VLRNumber: "996772589400",
+		MscNumber: "996772589400",
+		VlrNumber: "996772589400",
 		VlrCapability: &VlrCapability{
 			SupportedCamelPhases: &SupportedCamelPhases{
 				Phase1: true,
@@ -160,7 +161,7 @@ func TestUpdateLocationWithLCSRoundTrip(t *testing.T) {
 
 func TestUpdateLocationResRoundTrip(t *testing.T) {
 	res := &UpdateLocationRes{
-		HLRNumber: "62816036",
+		HlrNumber: "62816036",
 	}
 
 	data, err := res.Marshal()
@@ -173,15 +174,15 @@ func TestUpdateLocationResRoundTrip(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if res.HLRNumber != parsed.HLRNumber {
-		t.Errorf("HLRNumber: got %s, want %s", parsed.HLRNumber, res.HLRNumber)
+	if res.HlrNumber != parsed.HlrNumber {
+		t.Errorf("HlrNumber: got %s, want %s", parsed.HlrNumber, res.HlrNumber)
 	}
 }
 
 func TestUpdateGprsLocationRoundTrip(t *testing.T) {
 	ul := &UpdateGprsLocation{
-		IMSI:        "1234567890123456",
-		SGSNNumber:  "628160360000",
+		IMSI:        "123456789012345",
+		SgsnNumber:  "628160360000",
 		SGSNAddress: "192.168.1.1",
 		SGSNCapability: &SGSNCapability{
 			GprsEnhancementsSupportIndicator: true,
@@ -201,8 +202,8 @@ func TestUpdateGprsLocationRoundTrip(t *testing.T) {
 	if ul.IMSI != parsed.IMSI {
 		t.Errorf("IMSI: got %s, want %s", parsed.IMSI, ul.IMSI)
 	}
-	if ul.SGSNNumber != parsed.SGSNNumber {
-		t.Errorf("SGSNNumber: got %s, want %s", parsed.SGSNNumber, ul.SGSNNumber)
+	if ul.SgsnNumber != parsed.SgsnNumber {
+		t.Errorf("SgsnNumber: got %s, want %s", parsed.SgsnNumber, ul.SgsnNumber)
 	}
 	if ul.SGSNAddress != parsed.SGSNAddress {
 		t.Errorf("SGSNAddress: got %s, want %s", parsed.SGSNAddress, ul.SGSNAddress)
@@ -217,8 +218,8 @@ func TestUpdateGprsLocationRoundTrip(t *testing.T) {
 
 func TestUpdateGprsLocationWithLCSRoundTrip(t *testing.T) {
 	ul := &UpdateGprsLocation{
-		IMSI:        "1234567890123456",
-		SGSNNumber:  "628160360000",
+		IMSI:        "123456789012345",
+		SgsnNumber:  "628160360000",
 		SGSNAddress: "192.168.1.1",
 		SGSNCapability: &SGSNCapability{
 			GprsEnhancementsSupportIndicator: true,
@@ -252,7 +253,7 @@ func TestUpdateGprsLocationWithLCSRoundTrip(t *testing.T) {
 
 func TestUpdateGprsLocationResRoundTrip(t *testing.T) {
 	res := &UpdateGprsLocationRes{
-		HLRNumber: "62816036",
+		HlrNumber: "62816036",
 	}
 
 	data, err := res.Marshal()
@@ -265,8 +266,8 @@ func TestUpdateGprsLocationResRoundTrip(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if res.HLRNumber != parsed.HLRNumber {
-		t.Errorf("HLRNumber: got %s, want %s", parsed.HLRNumber, res.HLRNumber)
+	if res.HlrNumber != parsed.HlrNumber {
+		t.Errorf("HlrNumber: got %s, want %s", parsed.HlrNumber, res.HlrNumber)
 	}
 }
 
@@ -363,8 +364,8 @@ func TestATIValidationErrors(t *testing.T) {
 		GsmSCFAddress: "12345",
 	}
 	_, err := ati.Marshal()
-	if !errors.Is(err, ErrSubscriberIdentityNoAlt) {
-		t.Errorf("empty SubscriberIdentity: want ErrSubscriberIdentityNoAlt, got %v", err)
+	if !errors.Is(err, ErrSubscriberIdentityNoAlternative) {
+		t.Errorf("empty SubscriberIdentity: want ErrSubscriberIdentityNoAlternative, got %v", err)
 	}
 
 	// Both IMSI and MSISDN set
@@ -377,8 +378,8 @@ func TestATIValidationErrors(t *testing.T) {
 		GsmSCFAddress: "12345",
 	}
 	_, err = ati.Marshal()
-	if !errors.Is(err, ErrSubscriberIdentityMultipleAlts) {
-		t.Errorf("ambiguous SubscriberIdentity: want ErrSubscriberIdentityMultipleAlts, got %v", err)
+	if !errors.Is(err, ErrSubscriberIdentityMultipleAlternatives) {
+		t.Errorf("ambiguous SubscriberIdentity: want ErrSubscriberIdentityMultipleAlternatives, got %v", err)
 	}
 
 	// Nil receiver must not panic.
@@ -484,8 +485,8 @@ func TestUpdateLocationResParseKnownBytes(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if parsed.HLRNumber != "62816036" {
-		t.Errorf("HLRNumber: got %s, want 62816036", parsed.HLRNumber)
+	if parsed.HlrNumber != "62816036" {
+		t.Errorf("HlrNumber: got %s, want 62816036", parsed.HlrNumber)
 	}
 }
 
@@ -795,7 +796,7 @@ func TestATIResGPRSLocationRoundTrip(t *testing.T) {
 func TestATIResIMEIRoundTrip(t *testing.T) {
 	res := &AnyTimeInterrogationRes{
 		SubscriberInfo: SubscriberInfo{
-			IMEI: "353456789012345",
+			IMEI: "353456789012340",
 		},
 	}
 
@@ -809,7 +810,7 @@ func TestATIResIMEIRoundTrip(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if parsed.SubscriberInfo.IMEI != "353456789012345" {
+	if parsed.SubscriberInfo.IMEI != "353456789012340" {
 		t.Errorf("IMEI: got %s, want 353456789012345", parsed.SubscriberInfo.IMEI)
 	}
 }
@@ -829,9 +830,9 @@ func TestATIResFullRoundTrip(t *testing.T) {
 				State:              StateNetDetNotReachable,
 				NotReachableReason: &reason,
 			},
-			IMEI:               "353456789012345",
+			IMEI:               "353456789012340",
 			MsClassmark2:       []byte{0x33, 0x19, 0x83},
-			TimeZone:           []byte{0x08},
+			TimeZone:           []byte{0x08, 0x00}, // TimeZone SIZE (2..3), TS 29.002 §17.7.1.
 			DaylightSavingTime: &dst,
 		},
 	}
@@ -865,7 +866,7 @@ func TestATIResFullRoundTrip(t *testing.T) {
 	}
 
 	// IMEI
-	if si.IMEI != "353456789012345" {
+	if si.IMEI != "353456789012340" {
 		t.Errorf("IMEI: got %s, want 353456789012345", si.IMEI)
 	}
 
@@ -876,8 +877,8 @@ func TestATIResFullRoundTrip(t *testing.T) {
 	}
 
 	// TimeZone
-	if len(si.TimeZone) != 1 || si.TimeZone[0] != 0x08 {
-		t.Errorf("TimeZone: got %x, want [08]", si.TimeZone)
+	if !bytes.Equal(si.TimeZone, []byte{0x08, 0x00}) {
+		t.Errorf("TimeZone: got %x, want [08 00]", si.TimeZone)
 	}
 
 	// DaylightSavingTime
@@ -1030,8 +1031,8 @@ func TestATIResImsVoiceSupportRoundTrip(t *testing.T) {
 
 func TestATIResLastActivityRoundTrip(t *testing.T) {
 	ratType := UsedRatEUTRAN
-	// Time is an opaque octet string per 3GPP TS 23.032.
-	lastTime := HexBytes{0x31, 0x32, 0x31, 0x35, 0x31, 0x36, 0x32, 0x30, 0x34, 0x34, 0x35, 0x36, 0x5a}
+	// lastUE-ActivityTime is a Time, SIZE (4), TS 29.002 §17.7.8.
+	lastTime := HexBytes{0x31, 0x32, 0x31, 0x35}
 	res := &AnyTimeInterrogationRes{
 		SubscriberInfo: SubscriberInfo{
 			LastUEActivityTime: lastTime,
@@ -1073,7 +1074,7 @@ func TestATIResLocationInformation5GSRoundTrip(t *testing.T) {
 		CurrentLocationRetrieved: true,
 		AgeOfLocationInformation: &age,
 		VplmnID:                  HexBytes{0x62, 0xf2, 0x20},
-		LocalTimeZone:            HexBytes{0x08},
+		LocalTimeZone:            HexBytes{0x08, 0x00}, // TimeZone SIZE (2..3), TS 29.002 §17.7.1.
 		RatType:                  &rat,
 		NrTrackingAreaIdentity:   HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45},
 	}
@@ -1218,7 +1219,7 @@ func TestATIResFull5GSRoundTrip(t *testing.T) {
 				NumberPortabilityStatus: &nps,
 			},
 			ImsVoiceOverPSSessionsIndication: &imsVoice,
-			LastUEActivityTime:               HexBytes{0x31, 0x32, 0x31, 0x35, 0x31, 0x36},
+			LastUEActivityTime:               HexBytes{0x31, 0x32, 0x31, 0x35}, // Time, SIZE (4), TS 29.002 §17.7.8.
 			LastRATType:                      &rat,
 			LocationInformation5GS: &LocationInformation5GS{
 				NrCellGlobalIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45, 0x67, 0x89},
@@ -1273,7 +1274,7 @@ func TestPsSubscriberStateChoiceValidation(t *testing.T) {
 		{
 			name:    "empty",
 			in:      &PsSubscriberState{},
-			wantErr: ErrAtiPsSubscriberStateNoAlternative,
+			wantErr: ErrPsSubscriberStateNoAlternative,
 		},
 		{
 			name: "multiple",
@@ -1281,7 +1282,7 @@ func TestPsSubscriberStateChoiceValidation(t *testing.T) {
 				PsDetached:                   true,
 				PsAttachedReachableForPaging: true,
 			},
-			wantErr: ErrAtiPsSubscriberStateMultipleAlternatives,
+			wantErr: ErrPsSubscriberStateMultipleAlternatives,
 		},
 		{
 			name: "multiple-with-net-det",
@@ -1289,7 +1290,7 @@ func TestPsSubscriberStateChoiceValidation(t *testing.T) {
 				PsDetached:         true,
 				NetDetNotReachable: &reason,
 			},
-			wantErr: ErrAtiPsSubscriberStateMultipleAlternatives,
+			wantErr: ErrPsSubscriberStateMultipleAlternatives,
 		},
 	}
 	for _, tc := range cases {
@@ -1319,7 +1320,7 @@ func TestMarshalInvalidInputs(t *testing.T) {
 	// Invalid IP in UpdateGprsLocation
 	ugprs := &UpdateGprsLocation{
 		IMSI:        "1234567890",
-		SGSNNumber:  "12345",
+		SgsnNumber:  "12345",
 		SGSNAddress: "not-an-ip",
 	}
 	if _, err := ugprs.Marshal(); err == nil {
@@ -1345,7 +1346,7 @@ func TestSriSmFullStressRoundTrip(t *testing.T) {
 		SingleAttemptDelivery:   true,
 		T4TriggerIndicator:      true,
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0xAA, 0xBB},
+			HlrID:   "204080", // HLR-Id ::= IMSI: MCC, MNC, leading MSIN digits, TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -1512,7 +1513,7 @@ func TestMtFsmFullStressRoundTrip(t *testing.T) {
 		SmDeliveryStartTime:    HexBytes{0x01, 0x02, 0x03, 0x04},
 		SmsOverIPOnlyIndicator: true,
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0xAA, 0xBB},
+			HlrID:   "204080", // HLR-Id ::= IMSI: MCC, MNC, leading MSIN digits, TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -1567,14 +1568,14 @@ var smRpDaCases = []smRpDaCase{
 	{
 		name: "ServiceCentreAddressDA",
 		in: SmRpDa{
-			ServiceCentreAddressDA: "31612345678",
-			SCADANature:            address.NatureInternational,
-			SCADAPlan:              address.PlanISDN,
+			ServiceCentreAddressDA:       "31612345678",
+			ServiceCentreAddressDANature: address.NatureInternational,
+			ServiceCentreAddressDAPlan:   address.PlanISDN,
 		},
 		want: SmRpDa{
-			ServiceCentreAddressDA: "31612345678",
-			SCADANature:            address.NatureInternational,
-			SCADAPlan:              address.PlanISDN,
+			ServiceCentreAddressDA:       "31612345678",
+			ServiceCentreAddressDANature: address.NatureInternational,
+			ServiceCentreAddressDAPlan:   address.PlanISDN,
 		},
 	},
 	{
@@ -1586,14 +1587,14 @@ var smRpDaCases = []smRpDaCase{
 	{
 		name: "ServiceCentreAddressDA_ExplicitNaturePlan",
 		in: SmRpDa{
-			ServiceCentreAddressDA: "31612345678",
-			SCADANature:            address.NatureNational,
-			SCADAPlan:              address.PlanNational,
+			ServiceCentreAddressDA:       "31612345678",
+			ServiceCentreAddressDANature: address.NatureNational,
+			ServiceCentreAddressDAPlan:   address.PlanNational,
 		},
 		want: SmRpDa{
-			ServiceCentreAddressDA: "31612345678",
-			SCADANature:            address.NatureNational,
-			SCADAPlan:              address.PlanNational,
+			ServiceCentreAddressDA:       "31612345678",
+			ServiceCentreAddressDANature: address.NatureNational,
+			ServiceCentreAddressDAPlan:   address.PlanNational,
 		},
 	},
 	{
@@ -1640,14 +1641,14 @@ var smRpOaCases = []smRpOaCase{
 	{
 		name: "ServiceCentreAddressOA",
 		in: SmRpOa{
-			ServiceCentreAddressOA: "31699887766",
-			SCAOANature:            address.NatureInternational,
-			SCAOAPlan:              address.PlanISDN,
+			ServiceCentreAddressOA:       "31699887766",
+			ServiceCentreAddressOANature: address.NatureInternational,
+			ServiceCentreAddressOAPlan:   address.PlanISDN,
 		},
 		want: SmRpOa{
-			ServiceCentreAddressOA: "31699887766",
-			SCAOANature:            address.NatureInternational,
-			SCAOAPlan:              address.PlanISDN,
+			ServiceCentreAddressOA:       "31699887766",
+			ServiceCentreAddressOANature: address.NatureInternational,
+			ServiceCentreAddressOAPlan:   address.PlanISDN,
 		},
 	},
 	{
@@ -1796,18 +1797,18 @@ func TestMtMoFsmChoiceValidation(t *testing.T) {
 		msg     marshaler
 		wantErr error
 	}{
-		{"MtFsm/SmRpDa/None", &MtFsm{SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrMtFsmSmRpDaNoAlternative},
-		{"MtFsm/SmRpDa/IMSIAndNoSmRpDa", &MtFsm{SmRpDa: da2, SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrMtFsmSmRpDaMultipleAlternatives},
-		{"MtFsm/SmRpDa/IMSIAndLMSI", &MtFsm{SmRpDa: da3, SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrMtFsmSmRpDaMultipleAlternatives},
-		{"MtFsm/SmRpOa/None", &MtFsm{SmRpDa: mtBase.SmRpDa, TPDU: mtBase.TPDU}, ErrMtFsmSmRpOaNoAlternative},
-		{"MtFsm/SmRpOa/MSISDNAndNoSmRpOa", &MtFsm{SmRpDa: mtBase.SmRpDa, SmRpOa: oa2, TPDU: mtBase.TPDU}, ErrMtFsmSmRpOaMultipleAlternatives},
-		{"MtFsm/SmRpOa/MSISDNAndServiceCentreAddressOA", &MtFsm{SmRpDa: mtBase.SmRpDa, SmRpOa: oa3, TPDU: mtBase.TPDU}, ErrMtFsmSmRpOaMultipleAlternatives},
-		{"MoFsm/SmRpDa/None", &MoFsm{SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrMoFsmSmRpDaNoAlternative},
-		{"MoFsm/SmRpDa/IMSIAndNoSmRpDa", &MoFsm{SmRpDa: da2, SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrMoFsmSmRpDaMultipleAlternatives},
-		{"MoFsm/SmRpDa/IMSIAndLMSI", &MoFsm{SmRpDa: da3, SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrMoFsmSmRpDaMultipleAlternatives},
-		{"MoFsm/SmRpOa/None", &MoFsm{SmRpDa: moBase.SmRpDa, TPDU: moBase.TPDU}, ErrMoFsmSmRpOaNoAlternative},
-		{"MoFsm/SmRpOa/MSISDNAndNoSmRpOa", &MoFsm{SmRpDa: moBase.SmRpDa, SmRpOa: oa2, TPDU: moBase.TPDU}, ErrMoFsmSmRpOaMultipleAlternatives},
-		{"MoFsm/SmRpOa/MSISDNAndServiceCentreAddressOA", &MoFsm{SmRpDa: moBase.SmRpDa, SmRpOa: oa3, TPDU: moBase.TPDU}, ErrMoFsmSmRpOaMultipleAlternatives},
+		{"MtFsm/SmRpDa/None", &MtFsm{SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrSmRpDaNoAlternative},
+		{"MtFsm/SmRpDa/IMSIAndNoSmRpDa", &MtFsm{SmRpDa: da2, SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrSmRpDaMultipleAlternatives},
+		{"MtFsm/SmRpDa/IMSIAndLMSI", &MtFsm{SmRpDa: da3, SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrSmRpDaMultipleAlternatives},
+		{"MtFsm/SmRpOa/None", &MtFsm{SmRpDa: mtBase.SmRpDa, TPDU: mtBase.TPDU}, ErrSmRpOaNoAlternative},
+		{"MtFsm/SmRpOa/MSISDNAndNoSmRpOa", &MtFsm{SmRpDa: mtBase.SmRpDa, SmRpOa: oa2, TPDU: mtBase.TPDU}, ErrSmRpOaMultipleAlternatives},
+		{"MtFsm/SmRpOa/MSISDNAndServiceCentreAddressOA", &MtFsm{SmRpDa: mtBase.SmRpDa, SmRpOa: oa3, TPDU: mtBase.TPDU}, ErrSmRpOaMultipleAlternatives},
+		{"MoFsm/SmRpDa/None", &MoFsm{SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrSmRpDaNoAlternative},
+		{"MoFsm/SmRpDa/IMSIAndNoSmRpDa", &MoFsm{SmRpDa: da2, SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrSmRpDaMultipleAlternatives},
+		{"MoFsm/SmRpDa/IMSIAndLMSI", &MoFsm{SmRpDa: da3, SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrSmRpDaMultipleAlternatives},
+		{"MoFsm/SmRpOa/None", &MoFsm{SmRpDa: moBase.SmRpDa, TPDU: moBase.TPDU}, ErrSmRpOaNoAlternative},
+		{"MoFsm/SmRpOa/MSISDNAndNoSmRpOa", &MoFsm{SmRpDa: moBase.SmRpDa, SmRpOa: oa2, TPDU: moBase.TPDU}, ErrSmRpOaMultipleAlternatives},
+		{"MoFsm/SmRpOa/MSISDNAndServiceCentreAddressOA", &MoFsm{SmRpDa: moBase.SmRpDa, SmRpOa: oa3, TPDU: moBase.TPDU}, ErrSmRpOaMultipleAlternatives},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1885,8 +1886,8 @@ func TestMtFsmDeliveryTimerValidation(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected error for invalid SmDeliveryTimer")
 			}
-			if !errors.Is(err, ErrMtFsmInvalidDeliveryTimer) {
-				t.Errorf("expected ErrMtFsmInvalidDeliveryTimer, got: %v", err)
+			if !matchesConstraint(err, "smDeliveryTimer", "(30..600)") {
+				t.Errorf("expected BER constraint error, got: %v", err)
 			}
 		})
 	}
@@ -1908,8 +1909,8 @@ func TestAdditionalNumberChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for both-set AdditionalNumber CHOICE")
 		}
-		if !errors.Is(err, ErrSriChoiceMultipleAlternatives) {
-			t.Errorf("expected ErrSriChoiceMultipleAlternatives, got: %v", err)
+		if !errors.Is(err, ErrAdditionalNumberMultipleAlternatives) {
+			t.Errorf("expected ErrAdditionalNumberMultipleAlternatives, got: %v", err)
 		}
 	})
 
@@ -1925,8 +1926,8 @@ func TestAdditionalNumberChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty AdditionalNumber CHOICE")
 		}
-		if !errors.Is(err, ErrSriChoiceNoAlternative) {
-			t.Errorf("expected ErrSriChoiceNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrAdditionalNumberNoAlternative) {
+			t.Errorf("expected ErrAdditionalNumberNoAlternative, got: %v", err)
 		}
 	})
 }
@@ -1951,7 +1952,7 @@ func TestMoFsmFullStressRoundTrip(t *testing.T) {
 
 		IMSI: "310260123456789",
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0xAA, 0xBB},
+			HlrID:   "204080", // HLR-Id ::= IMSI: MCC, MNC, leading MSIN digits, TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -2008,8 +2009,8 @@ func TestUpdateLocationFullStressRoundTrip(t *testing.T) {
 	istVal := 1 // istCommandSupported
 	in := &UpdateLocation{
 		IMSI:      "310260123456789",
-		MSCNumber: "31612345678",
-		VLRNumber: "31699887766",
+		MscNumber: "31612345678",
+		VlrNumber: "31699887766",
 
 		VlrCapability: &VlrCapability{
 			SupportedCamelPhases: &SupportedCamelPhases{
@@ -2089,7 +2090,7 @@ func TestUpdateLocationFullStressRoundTrip(t *testing.T) {
 
 func TestUpdateLocationResFullRoundTrip(t *testing.T) {
 	in := &UpdateLocationRes{
-		HLRNumber:            "31612345678",
+		HlrNumber:            "31612345678",
 		AddCapability:        true,
 		PagingAreaCapability: true,
 	}
@@ -2112,8 +2113,8 @@ func TestSuperChargerInfoRoundTrip(t *testing.T) {
 	t.Run("SendSubscriberData", func(t *testing.T) {
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
 					SendSubscriberData: true,
@@ -2143,8 +2144,8 @@ func TestSuperChargerInfoRoundTrip(t *testing.T) {
 	t.Run("SubscriberDataStored", func(t *testing.T) {
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
 					SubscriberDataStored: HexBytes{0x01, 0x02, 0x03},
@@ -2174,8 +2175,8 @@ func TestSuperChargerInfoRoundTrip(t *testing.T) {
 	t.Run("BothSet", func(t *testing.T) {
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{
 					SendSubscriberData:   true,
@@ -2195,8 +2196,8 @@ func TestSuperChargerInfoRoundTrip(t *testing.T) {
 	t.Run("NoneSet", func(t *testing.T) {
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SuperChargerSupportedInServingNetworkEntity: &SuperChargerInfo{},
 			},
@@ -2229,8 +2230,8 @@ func TestSupportedRATTypesRoundTrip(t *testing.T) {
 
 		in := &UpdateLocation{
 			IMSI:      "310260123456789",
-			MSCNumber: "31612345678",
-			VLRNumber: "31699887766",
+			MscNumber: "31612345678",
+			VlrNumber: "31699887766",
 			VlrCapability: &VlrCapability{
 				SupportedRATTypesIndicator: rats,
 			},
@@ -2274,7 +2275,7 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 
 	in := &UpdateGprsLocation{
 		IMSI:        "310260311111111",
-		SGSNNumber:  "31631000001",
+		SgsnNumber:  "31631000001",
 		SGSNAddress: "192.168.31.1",
 
 		SGSNCapability: &SGSNCapability{
@@ -2298,16 +2299,14 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 			SupportedRATTypesIndicator: &SupportedRATTypes{
 				UTRAN: true, GERAN: true, GAN: true, IHSPAEvolution: true, EUTRAN: true,
 			},
-			SupportedFeatures:                                  HexBytes{0xA0},
-			SupportedFeaturesBits:                              4,
+			SupportedFeatures:                                  &SupportedFeatures{OdbAllApn: true, OdbVPLMNApn: true}, // SIZE (26..40) bits, TS 29.002 §17.7.1.
 			TAdsDataRetrieval:                                  true,
 			HomogeneousSupportOfIMSVoiceOverPSSessions:         &truthy,
 			CancellationTypeInitialAttach:                      true,
 			MsisdnLessOperationSupported:                       true,
 			UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions: true,
 			ResetIdsSupported:                                  true,
-			ExtSupportedFeatures:                               HexBytes{0x80},
-			ExtSupportedFeaturesBits:                           2,
+			ExtSupportedFeatures:                               &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true, BitLength: 2},
 		},
 
 		InformPreviousNetworkEntity: true,
@@ -2369,7 +2368,7 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 func TestUpdateGprsLocationEpsInfoIsr(t *testing.T) {
 	in := &UpdateGprsLocation{
 		IMSI:        "310260311111111",
-		SGSNNumber:  "31631000001",
+		SgsnNumber:  "31631000001",
 		SGSNAddress: "192.168.31.1",
 		EpsInfo: &EpsInfo{
 			IsrInformation:     HexBytes{0xC0},
@@ -2399,9 +2398,27 @@ func TestUpdateGprsLocationEpsInfoIsr(t *testing.T) {
 	}
 }
 
+func TestUpdateGprsLocationEpsInfoIsrMinimum(t *testing.T) {
+	for _, bits := range []int{1, 2} {
+		t.Run(fmt.Sprint(bits), func(t *testing.T) {
+			in := &UpdateGprsLocation{
+				IMSI:        "310260311111111",
+				SgsnNumber:  "31631000001",
+				SGSNAddress: "192.168.31.1",
+				EpsInfo: &EpsInfo{
+					IsrInformation:     HexBytes{0xC0},
+					IsrInformationBits: bits,
+				},
+			}
+			_, err := in.Marshal()
+			wantConstraintError(t, err, "isr-Information", "SIZE (3..8)")
+		})
+	}
+}
+
 func TestUpdateGprsLocationResFullRoundTrip(t *testing.T) {
 	in := &UpdateGprsLocationRes{
-		HLRNumber:                  "31612345678",
+		HlrNumber:                  "31612345678",
 		AddCapability:              true,
 		SgsnMmeSeparationSupported: true,
 		MmeRegisteredforSMS:        true,
@@ -2425,7 +2442,7 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 	t.Run("NoneSet", func(t *testing.T) {
 		in := &UpdateGprsLocation{
 			IMSI:        "310260311111111",
-			SGSNNumber:  "31631000001",
+			SgsnNumber:  "31631000001",
 			SGSNAddress: "192.168.31.1",
 			EpsInfo:     &EpsInfo{},
 		}
@@ -2433,8 +2450,8 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty EpsInfo CHOICE")
 		}
-		if !errors.Is(err, ErrSriChoiceNoAlternative) {
-			t.Errorf("expected ErrSriChoiceNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrEpsInfoNoAlternative) {
+			t.Errorf("expected ErrEpsInfoNoAlternative, got: %v", err)
 		}
 	})
 
@@ -2442,7 +2459,7 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 		ctxID := 1
 		in := &UpdateGprsLocation{
 			IMSI:        "310260311111111",
-			SGSNNumber:  "31631000001",
+			SgsnNumber:  "31631000001",
 			SGSNAddress: "192.168.31.1",
 			EpsInfo: &EpsInfo{
 				PdnGwUpdate: &PdnGwUpdate{
@@ -2456,8 +2473,8 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for both-set EpsInfo CHOICE")
 		}
-		if !errors.Is(err, ErrSriChoiceMultipleAlternatives) {
-			t.Errorf("expected ErrSriChoiceMultipleAlternatives, got: %v", err)
+		if !errors.Is(err, ErrEpsInfoMultipleAlternatives) {
+			t.Errorf("expected ErrEpsInfoMultipleAlternatives, got: %v", err)
 		}
 	})
 }
@@ -2561,8 +2578,10 @@ func TestMwStatusBitStringRoundTrip(t *testing.T) {
 
 func TestInformServiceCentreValidationErrors(t *testing.T) {
 	tests := []struct {
-		name    string
-		mutator func(i *InformServiceCentre)
+		name       string
+		mutator    func(i *InformServiceCentre)
+		path       string
+		constraint string
 	}{
 		{
 			name: "AbsentSubscriberDiagnosticSM_negative",
@@ -2570,6 +2589,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := -1
 				i.AbsentSubscriberDiagnosticSM = &v
 			},
+			path: "absentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 		{
 			name: "AbsentSubscriberDiagnosticSM_overflow",
@@ -2577,6 +2597,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := 256
 				i.AbsentSubscriberDiagnosticSM = &v
 			},
+			path: "absentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 		{
 			name: "AdditionalAbsentSubscriberDiagnosticSM_overflow",
@@ -2584,6 +2605,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := 1000
 				i.AdditionalAbsentSubscriberDiagnosticSM = &v
 			},
+			path: "additionalAbsentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 		{
 			name: "Smsf3gppAbsentSubscriberDiagnosticSM_negative",
@@ -2591,6 +2613,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := -100
 				i.Smsf3gppAbsentSubscriberDiagnosticSM = &v
 			},
+			path: "smsf3gppAbsentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 		{
 			name: "SmsfNon3gppAbsentSubscriberDiagnosticSM_overflow",
@@ -2598,6 +2621,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 				v := math.MaxInt32
 				i.SmsfNon3gppAbsentSubscriberDiagnosticSM = &v
 			},
+			path: "smsfNon3gppAbsentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
 	}
 
@@ -2611,8 +2635,8 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected validation error, got nil")
 			}
-			if !errors.Is(err, ErrAbsentSubscriberDiagnosticSMOutOfRange) {
-				t.Errorf("expected ErrAbsentSubscriberDiagnosticSMOutOfRange, got: %v", err)
+			if !matchesConstraint(err, tc.path, tc.constraint) {
+				t.Errorf("expected BER constraint error, got: %v", err)
 			}
 		})
 	}
@@ -2646,7 +2670,7 @@ func TestAlertServiceCentreFullStressRoundTrip(t *testing.T) {
 		ServiceCentreAddress: "31611111111",
 		IMSI:                 "204080012345678",
 		CorrelationID: &SriSmCorrelationID{
-			HlrID:   HexBytes{0xAA, 0xBB},
+			HlrID:   "204080", // HLR-Id ::= IMSI: MCC, MNC, leading MSIN digits, TS 29.002 §17.7.8.
 			SipUriA: HexBytes{0xCC, 0xDD},
 			SipUriB: HexBytes{0xEE, 0xFF},
 		},
@@ -2753,8 +2777,8 @@ func TestPurgeMSFullStressRoundTrip(t *testing.T) {
 
 	in := &PurgeMS{
 		IMSI:       "204080012345678",
-		VLRNumber:  "31611111111",
-		SGSNNumber: "31622222222",
+		VlrNumber:  "31611111111",
+		SgsnNumber: "31622222222",
 		LocationInformation: &CSLocationInformation{
 			AgeOfLocationInformation: &csAge,
 			VlrNumber:                "31611111111",
@@ -2836,8 +2860,8 @@ func TestPurgeMSValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrPurgeMSMissingIMSI) {
-			t.Errorf("expected ErrPurgeMSMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 }
@@ -3041,8 +3065,8 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrSaiMissingIMSI) {
-			t.Errorf("expected ErrSaiMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 
@@ -3052,8 +3076,8 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for NumberOfRequestedVectors=0")
 		}
-		if !errors.Is(err, ErrSaiInvalidNumberOfRequestedVectors) {
-			t.Errorf("expected ErrSaiInvalidNumberOfRequestedVectors, got: %v", err)
+		if !matchesConstraint(err, "numberOfRequestedVectors", "(1..5)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 
@@ -3063,8 +3087,8 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for NumberOfRequestedVectors=6")
 		}
-		if !errors.Is(err, ErrSaiInvalidNumberOfRequestedVectors) {
-			t.Errorf("expected ErrSaiInvalidNumberOfRequestedVectors, got: %v", err)
+		if !matchesConstraint(err, "numberOfRequestedVectors", "(1..5)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 
@@ -3079,8 +3103,8 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for NumberOfRequestedAdditionalVectors=10")
 		}
-		if !errors.Is(err, ErrSaiInvalidNumberOfRequestedAdditionalVectors) {
-			t.Errorf("expected ErrSaiInvalidNumberOfRequestedAdditionalVectors, got: %v", err)
+		if !matchesConstraint(err, "numberOfRequestedAdditional-Vectors", "(1..5)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 
@@ -3094,8 +3118,8 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid PLMN-Id length")
 		}
-		if !errors.Is(err, ErrSaiInvalidPLMNId) {
-			t.Errorf("expected ErrSaiInvalidPLMNId, got: %v", err)
+		if !matchesConstraint(err, "requestingPLMN-Id", "SIZE (3)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 
@@ -3107,8 +3131,8 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid UeUsageType length")
 		}
-		if !errors.Is(err, ErrSaiInvalidUeUsageType) {
-			t.Errorf("expected ErrSaiInvalidUeUsageType, got: %v", err)
+		if !matchesConstraint(err, "ueUsageType", "SIZE (4)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 
@@ -3143,8 +3167,8 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for EpsAuthenticationSetList with 6 entries")
 		}
-		if !errors.Is(err, ErrSaiInvalidEpsAuthSetListSize) {
-			t.Errorf("expected ErrSaiInvalidEpsAuthSetListSize, got: %v", err)
+		if !matchesConstraint(err, "eps-AuthenticationSetList", "SIZE (1..5)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 }
@@ -3161,8 +3185,8 @@ func TestAuthenticationSetListChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for both CHOICE alternatives set")
 		}
-		if !errors.Is(err, ErrSaiAuthSetListChoiceMultipleAlternatives) {
-			t.Errorf("expected ErrSaiAuthSetListChoiceMultipleAlternatives, got: %v", err)
+		if !errors.Is(err, ErrAuthenticationSetListMultipleAlternatives) {
+			t.Errorf("expected ErrAuthenticationSetListMultipleAlternatives, got: %v", err)
 		}
 	})
 
@@ -3174,8 +3198,8 @@ func TestAuthenticationSetListChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for no CHOICE alternative set")
 		}
-		if !errors.Is(err, ErrSaiAuthSetListChoiceNoAlternative) {
-			t.Errorf("expected ErrSaiAuthSetListChoiceNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrAuthenticationSetListNoAlternative) {
+			t.Errorf("expected ErrAuthenticationSetListNoAlternative, got: %v", err)
 		}
 	})
 }
@@ -3283,8 +3307,8 @@ func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrPsiMissingIMSI) {
-			t.Errorf("expected ErrPsiMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 
@@ -3298,8 +3322,8 @@ func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid LMSI length")
 		}
-		if !errors.Is(err, ErrPsiInvalidLMSI) {
-			t.Errorf("expected ErrPsiInvalidLMSI, got: %v", err)
+		if !matchesConstraint(err, "lmsi", "SIZE (4)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 
@@ -3314,8 +3338,8 @@ func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for CallPriority=16")
 		}
-		if !errors.Is(err, ErrPsiInvalidCallPriority) {
-			t.Errorf("expected ErrPsiInvalidCallPriority, got: %v", err)
+		if !matchesConstraint(err, "callPriority", "(0..15)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 }
@@ -3495,8 +3519,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing Identity")
 		}
-		if !errors.Is(err, ErrCancelLocIdentityChoiceNoAlternative) {
-			t.Errorf("expected ErrCancelLocIdentityChoiceNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrCancelLocationIdentityNoAlternative) {
+			t.Errorf("expected ErrCancelLocationIdentityNoAlternative, got: %v", err)
 		}
 	})
 
@@ -3514,8 +3538,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for multiple Identity alternatives")
 		}
-		if !errors.Is(err, ErrCancelLocIdentityChoiceMultiple) {
-			t.Errorf("expected ErrCancelLocIdentityChoiceMultiple, got: %v", err)
+		if !errors.Is(err, ErrCancelLocationIdentityMultipleAlternatives) {
+			t.Errorf("expected ErrCancelLocationIdentityMultipleAlternatives, got: %v", err)
 		}
 	})
 
@@ -3532,8 +3556,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty nested IMSI")
 		}
-		if !errors.Is(err, ErrCancelLocIdentityMissingIMSI) {
-			t.Errorf("expected ErrCancelLocIdentityMissingIMSI, got: %v", err)
+		if !errors.Is(err, ErrIdentityEmpty) {
+			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
 		}
 	})
 
@@ -3550,8 +3574,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for wrong LMSI length")
 		}
-		if !errors.Is(err, ErrCancelLocIdentityInvalidLMSI) {
-			t.Errorf("expected ErrCancelLocIdentityInvalidLMSI, got: %v", err)
+		if !matchesConstraint(err, "lmsi", "SIZE (4)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 
@@ -3643,56 +3667,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid NewLMSI length")
 		}
-		if !errors.Is(err, ErrCancelLocInvalidNewLMSI) {
-			t.Errorf("expected ErrCancelLocInvalidNewLMSI, got: %v", err)
-		}
-	})
-}
-
-// TestCancelLocationDecodeRejectsEmptyIMSI builds wire CancelLocationArgs
-// whose Identity CHOICE carries an empty IMSI under each alternative,
-// marshals them via go-asn1 directly, and confirms ParseCancelLocation
-// rejects both — verifying decoder/encoder symmetry against crafted
-// peer input. The two alternatives use different sentinels: the top-level
-// imsi alternative is indistinguishable from "no alternative set" and
-// returns ErrCancelLocIdentityChoiceNoAlternative, while the nested
-// imsi-WithLMSI alternative returns ErrCancelLocIdentityMissingIMSI to
-// distinguish the mandatory-nested-field violation.
-func TestCancelLocationDecodeRejectsEmptyIMSI(t *testing.T) {
-	t.Run("ImsiAlternative", func(t *testing.T) {
-		arg := gsm_map.CancelLocationArg{
-			Identity: gsm_map.NewIdentityImsi(gsm_map.IMSI{}), // empty
-		}
-		data, err := arg.MarshalBER()
-		if err != nil {
-			t.Fatalf("MarshalBER: %v", err)
-		}
-		_, err = ParseCancelLocation(data)
-		if err == nil {
-			t.Fatal("expected error for empty IMSI on decode")
-		}
-		if !errors.Is(err, ErrCancelLocIdentityChoiceNoAlternative) {
-			t.Errorf("expected ErrCancelLocIdentityChoiceNoAlternative, got: %v", err)
-		}
-	})
-
-	t.Run("ImsiWithLMSIAlternative", func(t *testing.T) {
-		arg := gsm_map.CancelLocationArg{
-			Identity: gsm_map.NewIdentityImsiWithLMSI(gsm_map.IMSIWithLMSI{
-				Imsi: gsm_map.IMSI{}, // empty — not allowed by spec
-				Lmsi: gsm_map.LMSI{0x01, 0x02, 0x03, 0x04},
-			}),
-		}
-		data, err := arg.MarshalBER()
-		if err != nil {
-			t.Fatalf("MarshalBER: %v", err)
-		}
-		_, err = ParseCancelLocation(data)
-		if err == nil {
-			t.Fatal("expected error for empty nested IMSI on decode")
-		}
-		if !errors.Is(err, ErrCancelLocIdentityMissingIMSI) {
-			t.Errorf("expected ErrCancelLocIdentityMissingIMSI, got: %v", err)
+		if !matchesConstraint(err, "new-lmsi", "SIZE (4)") {
+			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
 }
@@ -3754,8 +3730,6 @@ func TestCamelOCSIRoundTrip(t *testing.T) {
 				},
 			},
 			CamelCapabilityHandling: &phase,
-			NotificationToCSE:       true,
-			CsiActive:               true,
 		},
 	}
 	got := camelRoundTrip(t, in)
@@ -3802,8 +3776,7 @@ func TestCamelDCSIRoundTrip(t *testing.T) {
 					DefaultCallHandling: DefaultCallHandlingContinueCall,
 				},
 			},
-			NotificationToCSE: true,
-			CsiActive:         true,
+			CamelCapabilityHandling: intPtr(3),
 		},
 	}
 	got := camelRoundTrip(t, in)
@@ -3988,7 +3961,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
 		if !errors.Is(err, ErrCamelMissingGsmSCFAddress) {
 			t.Errorf("want ErrCamelMissingGsmSCFAddress, got %v", err)
 		}
@@ -4007,9 +3980,9 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
-		if !errors.Is(err, ErrCamelInvalidServiceKey) {
-			t.Errorf("want ErrCamelInvalidServiceKey, got %v", err)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		if !matchesConstraint(err, "serviceKey", "(0..2147483647)") {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 
@@ -4029,16 +4002,16 @@ func TestCamelValidationErrors(t *testing.T) {
 			},
 		}
 		_, err := convertGmscCamelSubInfoToWire(in)
-		if !errors.Is(err, ErrCamelInvalidCamelCapabilityHandling) {
-			t.Errorf("want ErrCamelInvalidCamelCapabilityHandling, got %v", err)
+		if !errors.Is(err, ErrCamelCapabilityHandlingOutOfRange) {
+			t.Errorf("want ErrCamelCapabilityHandlingOutOfRange, got %v", err)
 		}
 	})
 
 	t.Run("InvalidTDPDataListSize_Empty", func(t *testing.T) {
 		in := &GmscCamelSubscriptionInfo{OCSI: &OCSI{}}
-		_, err := convertGmscCamelSubInfoToWire(in)
-		if !errors.Is(err, ErrCamelInvalidTDPDataListSize) {
-			t.Errorf("want ErrCamelInvalidTDPDataListSize, got %v", err)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		if !matchesConstraint(err, "o-BcsmCamelTDPDataList", "SIZE (1..10)") {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 
@@ -4054,7 +4027,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
 		if !errors.Is(err, ErrCamelInvalidMatchType) {
 			t.Errorf("want ErrCamelInvalidMatchType, got %v", err)
 		}
@@ -4070,7 +4043,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
 		if !errors.Is(err, ErrCamelInvalidCallTypeCriteria) {
 			t.Errorf("want ErrCamelInvalidCallTypeCriteria, got %v", err)
 		}
@@ -4087,7 +4060,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
 		if !errors.Is(err, ErrCamelMissingDestinationNumberCriteria) {
 			t.Errorf("want ErrCamelMissingDestinationNumberCriteria, got %v", err)
 		}
@@ -4105,9 +4078,9 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
-		if !errors.Is(err, ErrCamelInvalidDestinationNumberLength) {
-			t.Errorf("want ErrCamelInvalidDestinationNumberLength, got %v", err)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		if !matchesConstraint(err, "element[0]", "(1..15)") {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 
@@ -4120,7 +4093,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
 		if !errors.Is(err, ErrCamelInvalidCauseValue) {
 			t.Errorf("want ErrCamelInvalidCauseValue, got %v", err)
 		}
@@ -4136,9 +4109,10 @@ func TestCamelValidationErrors(t *testing.T) {
 						DefaultCallHandling: DefaultCallHandlingContinueCall,
 					},
 				},
+				CamelCapabilityHandling: intPtr(3),
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
 		if !errors.Is(err, ErrCamelMissingDialledNumber) {
 			t.Errorf("want ErrCamelMissingDialledNumber, got %v", err)
 		}
@@ -4156,7 +4130,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
 		if !errors.Is(err, ErrCamelMissingDestinationNumber) {
 			t.Errorf("want ErrCamelMissingDestinationNumber, got %v", err)
 		}
@@ -4171,9 +4145,9 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := convertGmscCamelSubInfoToWire(in)
-		if !errors.Is(err, ErrCamelInvalidCauseValueListSize) {
-			t.Errorf("want ErrCamelInvalidCauseValueListSize, got %v", err)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		if !matchesConstraint(err, "o-CauseValueCriteria", "SIZE (1..5)") {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 
@@ -4183,9 +4157,9 @@ func TestCamelValidationErrors(t *testing.T) {
 			big[i] = OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo}
 		}
 		in := &GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
-		_, err := convertGmscCamelSubInfoToWire(in)
-		if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
-			t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
+		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		if !matchesConstraint(err, "o-BcsmCamelTDP-CriteriaList", "SIZE (1..10)") {
+			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 }
@@ -4196,14 +4170,14 @@ func TestCamelValidationErrors(t *testing.T) {
 func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 	t.Run("OCauseValue_Empty", func(t *testing.T) {
 		wire := gsm_map.GmscCamelSubscriptionInfo{
-			OBcsmCamelTDPCriteriaList: gsm_map.OBcsmCamelTDPCriteriaList{
+			OBcsmCamelTDPCriteriaList: &gsm_map.OBcsmCamelTDPCriteriaList{Values: []gsm_map.OBcsmCamelTDPCriteria{
 				{
 					OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
-					OCauseValueCriteria: gsm_map.OCauseValueCriteria{
-						gsm_map.CauseValue{}, // zero octets — violates SIZE(1)
-					},
+					OCauseValueCriteria: &gsm_map.OCauseValueCriteria{Values: []gsm_map.CauseValue{
+						{}, // zero octets — violates SIZE(1)
+					}},
 				},
-			},
+			}},
 		}
 		_, err := convertWireToGmscCamelSubInfo(&wire)
 		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
@@ -4213,14 +4187,14 @@ func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 
 	t.Run("OCauseValue_MultiOctet", func(t *testing.T) {
 		wire := gsm_map.GmscCamelSubscriptionInfo{
-			OBcsmCamelTDPCriteriaList: gsm_map.OBcsmCamelTDPCriteriaList{
+			OBcsmCamelTDPCriteriaList: &gsm_map.OBcsmCamelTDPCriteriaList{Values: []gsm_map.OBcsmCamelTDPCriteria{
 				{
 					OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
-					OCauseValueCriteria: gsm_map.OCauseValueCriteria{
-						gsm_map.CauseValue{0x10, 0x20}, // 2 octets — violates SIZE(1)
-					},
+					OCauseValueCriteria: &gsm_map.OCauseValueCriteria{Values: []gsm_map.CauseValue{
+						{0x10, 0x20}, // 2 octets — violates SIZE(1)
+					}},
 				},
-			},
+			}},
 		}
 		_, err := convertWireToGmscCamelSubInfo(&wire)
 		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
@@ -4230,14 +4204,14 @@ func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 
 	t.Run("TCauseValue_Empty", func(t *testing.T) {
 		wire := gsm_map.GmscCamelSubscriptionInfo{
-			TBCSMCAMELTDPCriteriaList: gsm_map.TBCSMCAMELTDPCriteriaList{
+			TBCSMCAMELTDPCriteriaList: &gsm_map.TBCSMCAMELTDPCriteriaList{Values: []gsm_map.TBCSMCAMELTDPCriteria{
 				{
 					TBCSMTriggerDetectionPoint: gsm_map.TBcsmTriggerDetectionPointTBusy,
-					TCauseValueCriteria: gsm_map.TCauseValueCriteria{
-						gsm_map.CauseValue{}, // zero octets
-					},
+					TCauseValueCriteria: &gsm_map.TCauseValueCriteria{Values: []gsm_map.CauseValue{
+						{}, // zero octets
+					}},
 				},
-			},
+			}},
 		}
 		_, err := convertWireToGmscCamelSubInfo(&wire)
 		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
@@ -4255,12 +4229,12 @@ func TestCamelDecodeEnforcesDestinationNumberCriteriaListRule(t *testing.T) {
 		// No DestinationNumberList nor DestinationNumberLengthList
 	}
 	wire := gsm_map.GmscCamelSubscriptionInfo{
-		OBcsmCamelTDPCriteriaList: gsm_map.OBcsmCamelTDPCriteriaList{
+		OBcsmCamelTDPCriteriaList: &gsm_map.OBcsmCamelTDPCriteriaList{Values: []gsm_map.OBcsmCamelTDPCriteria{
 			{
 				OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
 				DestinationNumberCriteria:  dnc,
 			},
-		},
+		}},
 	}
 	_, err := convertWireToGmscCamelSubInfo(&wire)
 	if !errors.Is(err, ErrCamelMissingDestinationNumberCriteria) {
@@ -4274,35 +4248,29 @@ func TestCamelDecodeEnforcesDestinationNumberCriteriaListRule(t *testing.T) {
 func TestCamelDecodeRejectsInvalidServiceKey(t *testing.T) {
 	wire := gsm_map.GmscCamelSubscriptionInfo{
 		OCSI: &gsm_map.OCSI{
-			OBcsmCamelTDPDataList: gsm_map.OBcsmCamelTDPDataList{
+			OBcsmCamelTDPDataList: &gsm_map.OBcsmCamelTDPDataList{Values: []gsm_map.OBcsmCamelTDPData{
 				{
 					OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
 					ServiceKey:                 -1, // out of range
 					GsmSCFAddress:              gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x11, 0x11, 0x11, 0xf1},
 					DefaultCallHandling:        gsm_map.DefaultCallHandlingContinueCall,
 				},
-			},
+			}},
 		},
 	}
-	_, err := convertWireToGmscCamelSubInfo(&wire)
-	if !errors.Is(err, ErrCamelInvalidServiceKey) {
-		t.Errorf("want ErrCamelInvalidServiceKey, got %v", err)
-	}
+	wantConstraintError(t, strictDecodeWire(&wire), "ocsi.o-BcsmCamelTDPDataList.element[0].serviceKey", "(0..2147483647)")
 }
 
 // TestCamelDecodeRejectsOversizedCriteriaList verifies that the decoder rejects
 // O-BCSM/T-BCSM CAMEL TDP criteria lists with more than 10 entries, matching
-// the SIZE(1..maxNumOfCamelTDPData) constraint from TS 29.002.
+// the SIZE(1..10) constraint from TS 29.002.
 func TestCamelDecodeRejectsOversizedCriteriaList(t *testing.T) {
-	big := make(gsm_map.OBcsmCamelTDPCriteriaList, 11)
-	for i := range big {
-		big[i] = gsm_map.OBcsmCamelTDPCriteria{
+	big := &gsm_map.OBcsmCamelTDPCriteriaList{Values: make([]gsm_map.OBcsmCamelTDPCriteria, 11)}
+	for i := range big.Values {
+		big.Values[i] = gsm_map.OBcsmCamelTDPCriteria{
 			OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
 		}
 	}
 	wire := gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
-	_, err := convertWireToGmscCamelSubInfo(&wire)
-	if !errors.Is(err, ErrCamelInvalidCriteriaListSize) {
-		t.Errorf("want ErrCamelInvalidCriteriaListSize, got %v", err)
-	}
+	wantConstraintError(t, strictDecodeWire(&wire), "o-BcsmCamelTDP-CriteriaList.OBcsmCamelTDPCriteriaList", "SIZE (1..10)")
 }

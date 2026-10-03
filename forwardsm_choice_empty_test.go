@@ -8,11 +8,9 @@ import (
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// An SM-RP-DA or SM-RP-OA address alternative that is present on the wire
-// but carries no digits (a one-octet AddressString, or an empty IMSI) would
-// decode to an SmRpDa / SmRpOa with no alternative set, which Marshal then
-// rejects. Parse reports it instead, like every other address the package
-// cannot represent.
+// An SM-RP-DA or SM-RP-OA address alternative can be present on the wire
+// yet carry no digits. These cases check the corresponding parse errors for
+// one-octet AddressStrings.
 func TestForwardSMChoiceAddressDecodedEmpty(t *testing.T) {
 	golden, err := hex.DecodeString(forwardSMFuzzSeeds[0]) // MO-ForwardSM-Arg
 	if err != nil {
@@ -28,18 +26,15 @@ func TestForwardSMChoiceAddressDecodedEmpty(t *testing.T) {
 		edit func(a *gsm_map.MOForwardSMArg)
 		want error
 	}{
-		{"SM-RP-DA imsi empty", func(a *gsm_map.MOForwardSMArg) {
-			a.SmRPDA = gsm_map.NewSMRPDAImsi(gsm_map.IMSI{})
-		}, ErrSmRpDaIMSIDecodedEmpty},
 		{"SM-RP-DA serviceCentreAddressDA without digits", func(a *gsm_map.MOForwardSMArg) {
-			a.SmRPDA = gsm_map.NewSMRPDAServiceCentreAddressDA(gsm_map.AddressString(natureOnly))
-		}, ErrSmRpDaServiceCentreAddressDecodedEmpty},
+			a.SmRPDA = gsm_map.NewSMRPDAServiceCentreAddressDA(natureOnly)
+		}, ErrSmRpDaServiceCentreAddressDADecodedEmpty},
 		{"SM-RP-OA msisdn without digits", func(a *gsm_map.MOForwardSMArg) {
-			a.SmRPOA = gsm_map.NewSMRPOAMsisdn(gsm_map.ISDNAddressString(natureOnly))
+			a.SmRPOA = gsm_map.NewSMRPOAMsisdn(natureOnly)
 		}, ErrSmRpOaMSISDNDecodedEmpty},
 		{"SM-RP-OA serviceCentreAddressOA without digits", func(a *gsm_map.MOForwardSMArg) {
-			a.SmRPOA = gsm_map.NewSMRPOAServiceCentreAddressOA(gsm_map.AddressString(natureOnly))
-		}, ErrSmRpOaServiceCentreAddressDecodedEmpty},
+			a.SmRPOA = gsm_map.NewSMRPOAServiceCentreAddressOA(natureOnly)
+		}, ErrSmRpOaServiceCentreAddressOADecodedEmpty},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

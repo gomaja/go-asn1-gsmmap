@@ -120,16 +120,7 @@ func TestPSLSentinelErrors(t *testing.T) {
 		ErrPrivacyCheckRelatedActionInvalid,
 		ErrAccuracyFulfilmentIndicatorInvalid,
 		ErrResponseTimeCategoryInvalid,
-		ErrLCSPriorityInvalidSize,
-		ErrLCSReferenceNumberInvalidSize,
-		ErrHorizontalAccuracyInvalidSize,
-		ErrVerticalAccuracyInvalidSize,
-		ErrLCSCodewordStringSize,
-		ErrLCSClientNameNameStringSize,
-		ErrLCSRequestorIDStringSize,
-		ErrDeferredLocationEventTypeSize,
-		ErrSupportedGADShapesSize,
-		ErrLCSClientIDDialedByMSEmpty,
+		ErrLCSClientIDDialedByMSDecodedEmpty,
 	}
 	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {
@@ -145,19 +136,6 @@ func TestPSLSentinelErrors(t *testing.T) {
 		if !errors.Is(wrapped, s) {
 			t.Errorf("sentinel #%d not detectable through errors.Is when wrapped with %%w", i)
 		}
-	}
-}
-
-// Spec constants must resolve to the values defined in TS 29.002.
-func TestPSLSpecConstants(t *testing.T) {
-	if LCSCodewordStringMaxLen != 20 {
-		t.Errorf("LCSCodewordStringMaxLen: want 20 per maxLCSCodewordStringLength, got %d", LCSCodewordStringMaxLen)
-	}
-	if NameStringMaxLen != 63 {
-		t.Errorf("NameStringMaxLen: want 63 per maxNameStringLength, got %d", NameStringMaxLen)
-	}
-	if RequestorIDStringMaxLen != 63 {
-		t.Errorf("RequestorIDStringMaxLen: want 63 per maxRequestorIDStringLength, got %d", RequestorIDStringMaxLen)
 	}
 }
 

@@ -27,8 +27,9 @@ func TestParseSriSm(t *testing.T) {
 			matchMarshaledBytes: true,
 		},
 		{
-			name:                "Valid SRI SM - nonDER",
-			hexString:           "3019800a915282051447720982f9810101820891328490001015f8",
+			name: "Valid SRI SM - nonDER",
+			// msisdn is ISDN-AddressString SIZE (1..9), TS 29.002 §17.7.8; sm-RP-PRI TRUE=0x01 is non-DER.
+			hexString:           "30188009915282051447720982810101820891328490001015f8",
 			expectError:         false,
 			matchMarshaledBytes: false,
 		},
@@ -219,7 +220,7 @@ func TestParseMoFsmRejectsCapturedMtForwardSMV2(t *testing.T) {
 	// Captured from temp_wireshark/issue-2.pcapng frame 33:
 	// TCAP forwardSM(46) in shortMsgMT-RelayContext-v2 carries
 	// MT-ForwardSM-Arg with an SMS-DELIVER TPDU. Per 3GPP TS 29.002
-	// v19.1.0 MAP-SM-DataTypes.asn, MO-ForwardSM-Arg and MT-ForwardSM-Arg
+	// V19.1.0 §17.7.6, MO-ForwardSM-Arg and MT-ForwardSM-Arg
 	// share the same leading fields; TS 23.040 v19.0.0 clause 9.2.2
 	// makes the TPDU direction the discriminator here.
 	data, err := hex.DecodeString("3056800822589172230006f7840891328490000033f00440040d91328471112898f3000062805011948422324f2228e90c42a153500c34a3e1643010cd06a2c570391cc8268bd960a0a213548bc16020015990a6cb62b61a")
@@ -306,9 +307,9 @@ func TestParseUpdateGprsLocation(t *testing.T) {
 		},
 		{
 			name:                   "Valid UpdateGprsLocation with SGSNCapability",
-			hexString:              "301e04082143658709214365040791261806630000040504c0a80101a0028300",
+			hexString:              "301e040821436587092143f5040791261806630000040504c0a80101a0028300",
 			expectError:            false,
-			expectedIMSI:           "1234567890123456",
+			expectedIMSI:           "123456789012345",
 			expectedSGSNNumber:     "628160360000",
 			expectedSGSNAddress:    "192.168.1.1",
 			expectedGprsEnhSupport: true,
@@ -316,9 +317,9 @@ func TestParseUpdateGprsLocation(t *testing.T) {
 		},
 		{
 			name:                   "Valid UpdateGprsLocation with SGSNCapability and LCS",
-			hexString:              "302204082143658709214365040791261806630000040504c0a80101a0068300850206c0",
+			hexString:              "3022040821436587092143f5040791261806630000040504c0a80101a0068300850206c0",
 			expectError:            false,
-			expectedIMSI:           "1234567890123456",
+			expectedIMSI:           "123456789012345",
 			expectedSGSNNumber:     "628160360000",
 			expectedSGSNAddress:    "192.168.1.1",
 			expectedGprsEnhSupport: true,
@@ -349,8 +350,8 @@ func TestParseUpdateGprsLocation(t *testing.T) {
 			if updGprsLoc.IMSI != tc.expectedIMSI {
 				t.Errorf("IMSI mismatch: got %s, expected %s", updGprsLoc.IMSI, tc.expectedIMSI)
 			}
-			if updGprsLoc.SGSNNumber != tc.expectedSGSNNumber {
-				t.Errorf("SGSNNumber mismatch: got %s, expected %s", updGprsLoc.SGSNNumber, tc.expectedSGSNNumber)
+			if updGprsLoc.SgsnNumber != tc.expectedSGSNNumber {
+				t.Errorf("SgsnNumber mismatch: got %s, expected %s", updGprsLoc.SgsnNumber, tc.expectedSGSNNumber)
 			}
 			if updGprsLoc.SGSNAddress != tc.expectedSGSNAddress {
 				t.Errorf("SGSNAddress mismatch: got %s, expected %s", updGprsLoc.SGSNAddress, tc.expectedSGSNAddress)
@@ -423,8 +424,8 @@ func TestParseUpdateLocationRes(t *testing.T) {
 				return
 			}
 
-			if updLocRes.HLRNumber != tc.expectedHLRNumber {
-				t.Errorf("HLRNumber mismatch: got %s, expected %s", updLocRes.HLRNumber, tc.expectedHLRNumber)
+			if updLocRes.HlrNumber != tc.expectedHLRNumber {
+				t.Errorf("HlrNumber mismatch: got %s, expected %s", updLocRes.HlrNumber, tc.expectedHLRNumber)
 			}
 
 			marshaledBytes, err := updLocRes.Marshal()
@@ -476,8 +477,8 @@ func TestParseUpdateGprsLocationRes(t *testing.T) {
 				return
 			}
 
-			if updGprsLocRes.HLRNumber != tc.expectedHLRNumber {
-				t.Errorf("HLRNumber mismatch: got %s, expected %s", updGprsLocRes.HLRNumber, tc.expectedHLRNumber)
+			if updGprsLocRes.HlrNumber != tc.expectedHLRNumber {
+				t.Errorf("HlrNumber mismatch: got %s, expected %s", updGprsLocRes.HlrNumber, tc.expectedHLRNumber)
 			}
 
 			marshaledBytes, err := updGprsLocRes.Marshal()
@@ -599,11 +600,11 @@ func TestParseUpdateLocation(t *testing.T) {
 			if updLoc.IMSI != tc.expectedIMSI {
 				t.Errorf("IMSI mismatch: got %s, expected %s", updLoc.IMSI, tc.expectedIMSI)
 			}
-			if updLoc.MSCNumber != tc.expectedMSCNumber {
-				t.Errorf("MSCNumber mismatch: got %s, expected %s", updLoc.MSCNumber, tc.expectedMSCNumber)
+			if updLoc.MscNumber != tc.expectedMSCNumber {
+				t.Errorf("MscNumber mismatch: got %s, expected %s", updLoc.MscNumber, tc.expectedMSCNumber)
 			}
-			if updLoc.VLRNumber != tc.expectedVLRNumber {
-				t.Errorf("VLRNumber mismatch: got %s, expected %s", updLoc.VLRNumber, tc.expectedVLRNumber)
+			if updLoc.VlrNumber != tc.expectedVLRNumber {
+				t.Errorf("VlrNumber mismatch: got %s, expected %s", updLoc.VlrNumber, tc.expectedVLRNumber)
 			}
 
 			if tc.expectedCamelPhases != nil {

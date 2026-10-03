@@ -7,7 +7,7 @@ import (
 )
 
 // ============================================================================
-// AllocationRetentionPriority — TS 29.002 MAP-MS-DataTypes.asn:1420
+// AllocationRetentionPriority — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertAllocationRetentionPriorityToWire(a *AllocationRetentionPriority) *gsm_map.AllocationRetentionPriority {
@@ -47,16 +47,14 @@ func convertWireToAllocationRetentionPriority(w *gsm_map.AllocationRetentionPrio
 }
 
 // ============================================================================
-// EPSQoSSubscribed — TS 29.002 MAP-MS-DataTypes.asn:1380
+// EPSQoSSubscribed — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertEPSQoSSubscribedToWire(q *EPSQoSSubscribed) (*gsm_map.EPSQoSSubscribed, error) {
 	if q == nil {
 		return nil, nil
 	}
-	if q.QosClassIdentifier < 1 || q.QosClassIdentifier > 9 {
-		return nil, fmt.Errorf("%w (got %d)", ErrQoSClassIdentifierOutOfRange, q.QosClassIdentifier)
-	}
+
 	return &gsm_map.EPSQoSSubscribed{
 		QosClassIdentifier:          gsm_map.QoSClassIdentifier(q.QosClassIdentifier),
 		AllocationRetentionPriority: *convertAllocationRetentionPriorityToWire(&q.AllocationRetentionPriority),
@@ -67,10 +65,7 @@ func convertWireToEPSQoSSubscribed(w *gsm_map.EPSQoSSubscribed) (*EPSQoSSubscrib
 	if w == nil {
 		return nil, nil
 	}
-	qci, err := narrowInt64Range(int64(w.QosClassIdentifier), 1, 9, "EPSQoSSubscribed.QosClassIdentifier")
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrQoSClassIdentifierOutOfRange, err)
-	}
+	qci := int(w.QosClassIdentifier)
 	arp, err := convertWireToAllocationRetentionPriority(&w.AllocationRetentionPriority)
 	if err != nil {
 		return nil, fmt.Errorf("EPSQoSSubscribed.AllocationRetentionPriority: %w", err)
@@ -82,10 +77,10 @@ func convertWireToEPSQoSSubscribed(w *gsm_map.EPSQoSSubscribed) (*EPSQoSSubscrib
 }
 
 // ============================================================================
-// SpecificAPNInfo / SpecificAPNInfoList — TS 29.002 MAP-MS-DataTypes.asn:1398-1408
-// PdnGwIdentity is the pre-existing public type (gsmmap.go:366) shared with
+// SpecificAPNInfo / SpecificAPNInfoList — 3GPP TS 29.002 V19.1.0 §17.7.1
+// PdnGwIdentity is the public type shared with
 // UpdateGprsLocation; convertPdnGwIdentityToWire / convertWireToPdnGwIdentity
-// in convert_updategprsloc.go enforce the strict spec sizes (IPv4=4, IPv6=16)
+// in convert_updategprsloc.go enforce IPv4=4 octets, IPv6=16 octets,
 // and the "at least one of IPv4Address, IPv6Address, or Name" rule.
 // ============================================================================
 
@@ -93,9 +88,7 @@ func convertSpecificAPNInfoToWire(s *SpecificAPNInfo) (*gsm_map.SpecificAPNInfo,
 	if s == nil {
 		return nil, nil
 	}
-	if err := validateAPN(s.Apn, "SpecificAPNInfo.Apn"); err != nil {
-		return nil, err
-	}
+
 	gw, err := convertPdnGwIdentityToWire(&s.PdnGwIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("SpecificAPNInfo.PdnGwIdentity: %w", err)
@@ -110,9 +103,7 @@ func convertWireToSpecificAPNInfo(w *gsm_map.SpecificAPNInfo) (*SpecificAPNInfo,
 	if w == nil {
 		return nil, nil
 	}
-	if err := validateAPN(HexBytes(w.Apn), "SpecificAPNInfo.Apn"); err != nil {
-		return nil, err
-	}
+
 	gw, err := convertWireToPdnGwIdentity(&w.PdnGwIdentity)
 	if err != nil {
 		return nil, fmt.Errorf("SpecificAPNInfo.PdnGwIdentity: %w", err)
@@ -123,33 +114,29 @@ func convertWireToSpecificAPNInfo(w *gsm_map.SpecificAPNInfo) (*SpecificAPNInfo,
 	}, nil
 }
 
-func convertSpecificAPNInfoListToWire(list SpecificAPNInfoList) (gsm_map.SpecificAPNInfoList, error) {
+func convertSpecificAPNInfoListToWire(list SpecificAPNInfoList) (*gsm_map.SpecificAPNInfoList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfSpecificAPNInfos {
-		return nil, fmt.Errorf("%w (got %d)", ErrSpecificAPNInfoListSize, len(list))
-	}
-	out := make(gsm_map.SpecificAPNInfoList, len(list))
+
+	out := gsm_map.SpecificAPNInfoList{Values: make([]gsm_map.SpecificAPNInfo, len(list))}
 	for i, s := range list {
 		w, err := convertSpecificAPNInfoToWire(&s)
 		if err != nil {
 			return nil, fmt.Errorf("SpecificAPNInfoList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToSpecificAPNInfoList(w gsm_map.SpecificAPNInfoList) (SpecificAPNInfoList, error) {
+func convertWireToSpecificAPNInfoList(w *gsm_map.SpecificAPNInfoList) (SpecificAPNInfoList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfSpecificAPNInfos {
-		return nil, fmt.Errorf("%w (got %d)", ErrSpecificAPNInfoListSize, len(w))
-	}
-	out := make(SpecificAPNInfoList, len(w))
-	for i, s := range w {
+
+	out := make(SpecificAPNInfoList, len(w.Values))
+	for i, s := range w.Values {
 		v, err := convertWireToSpecificAPNInfo(&s)
 		if err != nil {
 			return nil, fmt.Errorf("SpecificAPNInfoList[%d]: %w", i, err)
@@ -179,11 +166,11 @@ func convertWLANOffloadabilityToWire(o *WLANOffloadability) (*gsm_map.WLANOffloa
 	}
 	out := &gsm_map.WLANOffloadability{}
 	if o.WlanOffloadabilityEUTRAN != nil {
-		v := gsm_map.WLANOffloadabilityIndication(*o.WlanOffloadabilityEUTRAN)
+		v := *o.WlanOffloadabilityEUTRAN
 		out.WlanOffloadabilityEUTRAN = &v
 	}
 	if o.WlanOffloadabilityUTRAN != nil {
-		v := gsm_map.WLANOffloadabilityIndication(*o.WlanOffloadabilityUTRAN)
+		v := *o.WlanOffloadabilityUTRAN
 		out.WlanOffloadabilityUTRAN = &v
 	}
 	return out, nil
@@ -195,14 +182,14 @@ func convertWireToWLANOffloadability(w *gsm_map.WLANOffloadability) (*WLANOffloa
 	}
 	out := &WLANOffloadability{}
 	if w.WlanOffloadabilityEUTRAN != nil {
-		v := WLANOffloadabilityIndication(*w.WlanOffloadabilityEUTRAN)
+		v := *w.WlanOffloadabilityEUTRAN
 		if v < 0 || v > 1 {
 			return nil, fmt.Errorf("%w (EUTRAN got %d)", ErrWLANOffloadabilityIndicationInvalid, v)
 		}
 		out.WlanOffloadabilityEUTRAN = &v
 	}
 	if w.WlanOffloadabilityUTRAN != nil {
-		v := WLANOffloadabilityIndication(*w.WlanOffloadabilityUTRAN)
+		v := *w.WlanOffloadabilityUTRAN
 		if v < 0 || v > 1 {
 			return nil, fmt.Errorf("%w (UTRAN got %d)", ErrWLANOffloadabilityIndicationInvalid, v)
 		}
@@ -212,48 +199,14 @@ func convertWireToWLANOffloadability(w *gsm_map.WLANOffloadability) (*WLANOffloa
 }
 
 // ============================================================================
-// APNConfiguration — TS 29.002 MAP-MS-DataTypes.asn:1327
+// APNConfiguration — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfiguration, error) {
 	if a == nil {
 		return nil, nil
 	}
-	if a.ContextId < 1 || int64(a.ContextId) > gsm_map.MaxNumOfPDPContexts {
-		return nil, fmt.Errorf("%w (got %d)", ErrPDPContextIdOutOfRange, a.ContextId)
-	}
-	if len(a.PdnType) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrPDNTypeInvalidSize, len(a.PdnType))
-	}
-	if err := validateAPN(a.Apn, "APNConfiguration.Apn"); err != nil {
-		return nil, err
-	}
-	if a.ServedPartyIPIPv4Address != nil {
-		if err := validatePDPAddress(a.ServedPartyIPIPv4Address, "APNConfiguration.ServedPartyIPIPv4Address"); err != nil {
-			return nil, err
-		}
-	}
-	if a.ServedPartyIPIPv6Address != nil {
-		if err := validatePDPAddress(a.ServedPartyIPIPv6Address, "APNConfiguration.ServedPartyIPIPv6Address"); err != nil {
-			return nil, err
-		}
-	}
-	if a.ChargingCharacteristics != nil && len(a.ChargingCharacteristics) != 2 {
-		return nil, fmt.Errorf("%w (got %d)", ErrPDPChargingCharsInvalidSize, len(a.ChargingCharacteristics))
-	}
-	if a.ApnOiReplacement != nil {
-		if err := validateAPNOIReplacement(a.ApnOiReplacement, "APNConfiguration.ApnOiReplacement"); err != nil {
-			return nil, err
-		}
-	}
-	if a.RestorationPriority != nil && len(a.RestorationPriority) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrRestorationPriorityInvalidSize, len(a.RestorationPriority))
-	}
-	if a.SCEFID != nil {
-		if err := validateFQDN(a.SCEFID, "APNConfiguration.SCEFID"); err != nil {
-			return nil, err
-		}
-	}
+
 	if a.PdnGwAllocationType != nil {
 		if v := *a.PdnGwAllocationType; v < 0 || v > 1 {
 			return nil, fmt.Errorf("%w (got %d)", ErrPDNGWAllocationTypeInvalid, v)
@@ -310,7 +263,7 @@ func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfigurati
 		out.PdnGwIdentity = gw
 	}
 	if a.PdnGwAllocationType != nil {
-		v := gsm_map.PDNGWAllocationType(*a.PdnGwAllocationType)
+		v := *a.PdnGwAllocationType
 		out.PdnGwAllocationType = &v
 	}
 	if a.ChargingCharacteristics != nil {
@@ -340,11 +293,11 @@ func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfigurati
 		out.ApnOiReplacement = &v
 	}
 	if a.SiptoPermission != nil {
-		v := gsm_map.SIPTOPermission(*a.SiptoPermission)
+		v := *a.SiptoPermission
 		out.SiptoPermission = &v
 	}
 	if a.LipaPermission != nil {
-		v := gsm_map.LIPAPermission(*a.LipaPermission)
+		v := *a.LipaPermission
 		out.LipaPermission = &v
 	}
 	if a.RestorationPriority != nil {
@@ -352,7 +305,7 @@ func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfigurati
 		out.RestorationPriority = &v
 	}
 	if a.SiptoLocalNetworkPermission != nil {
-		v := gsm_map.SIPTOLocalNetworkPermission(*a.SiptoLocalNetworkPermission)
+		v := *a.SiptoLocalNetworkPermission
 		out.SiptoLocalNetworkPermission = &v
 	}
 	if a.WlanOffloadability != nil {
@@ -363,7 +316,7 @@ func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfigurati
 		out.WlanOffloadability = wo
 	}
 	if a.NIDDMechanism != nil {
-		v := gsm_map.NIDDMechanism(*a.NIDDMechanism)
+		v := *a.NIDDMechanism
 		out.NIDDMechanism = &v
 	}
 	if a.SCEFID != nil {
@@ -371,7 +324,7 @@ func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfigurati
 		out.SCEFID = &v
 	}
 	if a.PdnConnectionContinuity != nil {
-		v := gsm_map.PDNConnectionContinuity(*a.PdnConnectionContinuity)
+		v := *a.PdnConnectionContinuity
 		out.PdnConnectionContinuity = &v
 	}
 	return out, nil
@@ -381,16 +334,7 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 	if w == nil {
 		return nil, nil
 	}
-	id, err := narrowInt64Range(int64(w.ContextId), 1, gsm_map.MaxNumOfPDPContexts, "APNConfiguration.ContextId")
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrPDPContextIdOutOfRange, err)
-	}
-	if len(w.PdnType) != 1 {
-		return nil, fmt.Errorf("%w (got %d)", ErrPDNTypeInvalidSize, len(w.PdnType))
-	}
-	if err := validateAPN(HexBytes(w.Apn), "APNConfiguration.Apn"); err != nil {
-		return nil, err
-	}
+	id := int(w.ContextId)
 
 	qos, err := convertWireToEPSQoSSubscribed(&w.EpsQosSubscribed)
 	if err != nil {
@@ -406,9 +350,6 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 		NonIPPDNTypeIndicator: nullPtrToBool(w.NonIPPDNTypeIndicator),
 	}
 	if w.ServedPartyIPIPv4Address != nil {
-		if err := validatePDPAddress(HexBytes(*w.ServedPartyIPIPv4Address), "APNConfiguration.ServedPartyIPIPv4Address"); err != nil {
-			return nil, err
-		}
 		out.ServedPartyIPIPv4Address = HexBytes(*w.ServedPartyIPIPv4Address)
 	}
 	if w.PdnGwIdentity != nil {
@@ -419,16 +360,13 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 		out.PdnGwIdentity = gw
 	}
 	if w.PdnGwAllocationType != nil {
-		v := PDNGWAllocationType(*w.PdnGwAllocationType)
+		v := *w.PdnGwAllocationType
 		if v < 0 || v > 1 {
 			return nil, fmt.Errorf("%w (got %d)", ErrPDNGWAllocationTypeInvalid, v)
 		}
 		out.PdnGwAllocationType = &v
 	}
 	if w.ChargingCharacteristics != nil {
-		if len(*w.ChargingCharacteristics) != 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrPDPChargingCharsInvalidSize, len(*w.ChargingCharacteristics))
-		}
 		out.ChargingCharacteristics = HexBytes(*w.ChargingCharacteristics)
 	}
 	if w.Ambr != nil {
@@ -446,39 +384,30 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 		out.SpecificAPNInfoList = sl
 	}
 	if w.ServedPartyIPIPv6Address != nil {
-		if err := validatePDPAddress(HexBytes(*w.ServedPartyIPIPv6Address), "APNConfiguration.ServedPartyIPIPv6Address"); err != nil {
-			return nil, err
-		}
 		out.ServedPartyIPIPv6Address = HexBytes(*w.ServedPartyIPIPv6Address)
 	}
 	if w.ApnOiReplacement != nil {
-		if err := validateAPNOIReplacement(HexBytes(*w.ApnOiReplacement), "APNConfiguration.ApnOiReplacement"); err != nil {
-			return nil, err
-		}
 		out.ApnOiReplacement = HexBytes(*w.ApnOiReplacement)
 	}
 	if w.SiptoPermission != nil {
-		v := SIPTOPermission(*w.SiptoPermission)
+		v := *w.SiptoPermission
 		if v < 0 || v > 1 {
 			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOPermissionInvalid, v)
 		}
 		out.SiptoPermission = &v
 	}
 	if w.LipaPermission != nil {
-		v := LIPAPermission(*w.LipaPermission)
+		v := *w.LipaPermission
 		if v < 0 || v > 2 {
 			return nil, fmt.Errorf("%w (got %d)", ErrLIPAPermissionInvalid, v)
 		}
 		out.LipaPermission = &v
 	}
 	if w.RestorationPriority != nil {
-		if len(*w.RestorationPriority) != 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrRestorationPriorityInvalidSize, len(*w.RestorationPriority))
-		}
 		out.RestorationPriority = HexBytes(*w.RestorationPriority)
 	}
 	if w.SiptoLocalNetworkPermission != nil {
-		v := SIPTOLocalNetworkPermission(*w.SiptoLocalNetworkPermission)
+		v := *w.SiptoLocalNetworkPermission
 		if v < 0 || v > 1 {
 			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOLocalNetworkPermissionInvalid, v)
 		}
@@ -492,20 +421,17 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 		out.WlanOffloadability = wo
 	}
 	if w.NIDDMechanism != nil {
-		v := NIDDMechanism(*w.NIDDMechanism)
+		v := *w.NIDDMechanism
 		if v < 0 || v > 1 {
 			return nil, fmt.Errorf("%w (got %d)", ErrNIDDMechanismInvalid, v)
 		}
 		out.NIDDMechanism = &v
 	}
 	if w.SCEFID != nil {
-		if err := validateFQDN(HexBytes(*w.SCEFID), "APNConfiguration.SCEFID"); err != nil {
-			return nil, err
-		}
 		out.SCEFID = HexBytes(*w.SCEFID)
 	}
 	if w.PdnConnectionContinuity != nil {
-		v := PDNConnectionContinuity(*w.PdnConnectionContinuity)
+		v := *w.PdnConnectionContinuity
 		if v < 0 || v > 2 {
 			return nil, fmt.Errorf("%w (got %d)", ErrPDNConnectionContinuityInvalid, v)
 		}
@@ -516,36 +442,32 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 
 // ============================================================================
 // EPSDataList / APNConfigurationProfile / EPSSubscriptionData
-// — TS 29.002 MAP-MS-DataTypes.asn:1283-1325
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
-func convertEPSDataListToWire(list EPSDataList) (gsm_map.EPSDataList, error) {
+func convertEPSDataListToWire(list EPSDataList) (*gsm_map.EPSDataList, error) {
 	if list == nil {
 		return nil, nil
 	}
-	if int64(len(list)) < 1 || int64(len(list)) > gsm_map.MaxNumOfAPNConfigurations {
-		return nil, fmt.Errorf("%w (got %d)", ErrEPSDataListSize, len(list))
-	}
-	out := make(gsm_map.EPSDataList, len(list))
+
+	out := gsm_map.EPSDataList{Values: make([]gsm_map.APNConfiguration, len(list))}
 	for i, a := range list {
 		w, err := convertAPNConfigurationToWire(&a)
 		if err != nil {
 			return nil, fmt.Errorf("EPSDataList[%d]: %w", i, err)
 		}
-		out[i] = *w
+		out.Values[i] = *w
 	}
-	return out, nil
+	return &out, nil
 }
 
-func convertWireToEPSDataList(w gsm_map.EPSDataList) (EPSDataList, error) {
+func convertWireToEPSDataList(w *gsm_map.EPSDataList) (EPSDataList, error) {
 	if w == nil {
 		return nil, nil
 	}
-	if int64(len(w)) < 1 || int64(len(w)) > gsm_map.MaxNumOfAPNConfigurations {
-		return nil, fmt.Errorf("%w (got %d)", ErrEPSDataListSize, len(w))
-	}
-	out := make(EPSDataList, len(w))
-	for i, a := range w {
+
+	out := make(EPSDataList, len(w.Values))
+	for i, a := range w.Values {
 		v, err := convertWireToAPNConfiguration(&a)
 		if err != nil {
 			return nil, fmt.Errorf("EPSDataList[%d]: %w", i, err)
@@ -559,14 +481,7 @@ func convertAPNConfigurationProfileToWire(p *APNConfigurationProfile) (*gsm_map.
 	if p == nil {
 		return nil, nil
 	}
-	if p.DefaultContext < 1 || int64(p.DefaultContext) > gsm_map.MaxNumOfPDPContexts {
-		return nil, fmt.Errorf("%w (got %d)", ErrPDPContextIdOutOfRange, p.DefaultContext)
-	}
-	if p.AdditionalDefaultContext != nil {
-		if v := *p.AdditionalDefaultContext; v < 1 || int64(v) > gsm_map.MaxNumOfPDPContexts {
-			return nil, fmt.Errorf("%w (additional, got %d)", ErrPDPContextIdOutOfRange, v)
-		}
-	}
+
 	if p.EpsDataList == nil {
 		return nil, ErrAPNConfigurationProfileMissingList
 	}
@@ -590,10 +505,7 @@ func convertWireToAPNConfigurationProfile(w *gsm_map.APNConfigurationProfile) (*
 	if w == nil {
 		return nil, nil
 	}
-	def, err := narrowInt64Range(int64(w.DefaultContext), 1, gsm_map.MaxNumOfPDPContexts, "APNConfigurationProfile.DefaultContext")
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrPDPContextIdOutOfRange, err)
-	}
+	def := int(w.DefaultContext)
 	if w.EpsDataList == nil {
 		return nil, ErrAPNConfigurationProfileMissingList
 	}
@@ -607,10 +519,7 @@ func convertWireToAPNConfigurationProfile(w *gsm_map.APNConfigurationProfile) (*
 		CompleteDataListIncluded: nullPtrToBool(w.CompleteDataListIncluded),
 	}
 	if w.AdditionalDefaultContext != nil {
-		add, err := narrowInt64Range(int64(*w.AdditionalDefaultContext), 1, gsm_map.MaxNumOfPDPContexts, "APNConfigurationProfile.AdditionalDefaultContext")
-		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrPDPContextIdOutOfRange, err)
-		}
+		add := int(*w.AdditionalDefaultContext)
 		out.AdditionalDefaultContext = &add
 	}
 	return out, nil
@@ -619,16 +528,6 @@ func convertWireToAPNConfigurationProfile(w *gsm_map.APNConfigurationProfile) (*
 func convertEPSSubscriptionDataToWire(e *EPSSubscriptionData) (*gsm_map.EPSSubscriptionData, error) {
 	if e == nil {
 		return nil, nil
-	}
-	if e.ApnOiReplacement != nil {
-		if err := validateAPNOIReplacement(e.ApnOiReplacement, "EPSSubscriptionData.ApnOiReplacement"); err != nil {
-			return nil, err
-		}
-	}
-	if e.RfspId != nil {
-		if v := *e.RfspId; v < 1 || v > MaxRFSPID {
-			return nil, fmt.Errorf("%w (got %d)", ErrRFSPIDOutOfRange, v)
-		}
 	}
 	out := &gsm_map.EPSSubscriptionData{
 		MpsCSPriority:    boolToNullPtr(e.MpsCSPriority),
@@ -662,7 +561,7 @@ func convertEPSSubscriptionDataToWire(e *EPSSubscriptionData) (*gsm_map.EPSSubsc
 		if err != nil {
 			return nil, fmt.Errorf("encoding EPSSubscriptionData.StnSr: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.StnSr = &v
 	}
 	return out, nil
@@ -678,16 +577,10 @@ func convertWireToEPSSubscriptionData(w *gsm_map.EPSSubscriptionData) (*EPSSubsc
 		SubscribedVsrvcc: nullPtrToBool(w.SubscribedVsrvcc),
 	}
 	if w.ApnOiReplacement != nil {
-		if err := validateAPNOIReplacement(HexBytes(*w.ApnOiReplacement), "EPSSubscriptionData.ApnOiReplacement"); err != nil {
-			return nil, err
-		}
 		out.ApnOiReplacement = HexBytes(*w.ApnOiReplacement)
 	}
 	if w.RfspId != nil {
-		v, err := narrowInt64Range(int64(*w.RfspId), 1, MaxRFSPID, "EPSSubscriptionData.RfspId")
-		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrRFSPIDOutOfRange, err)
-		}
+		v := int(*w.RfspId)
 		out.RfspId = &v
 	}
 	if w.Ambr != nil {
@@ -705,15 +598,9 @@ func convertWireToEPSSubscriptionData(w *gsm_map.EPSSubscriptionData) (*EPSSubsc
 		out.ApnConfigurationProfile = acp
 	}
 	if w.StnSr != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.StnSr))
+		s, nature, plan, err := decodeAddressWithDigits(*w.StnSr, ErrEPSSubscriptionDataStnSrDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding EPSSubscriptionData.StnSr: %w", err)
-		}
-		// The public type uses StnSr == "" to mean absent. If a present
-		// wire frame decodes to empty digits, reject explicitly to avoid
-		// silently losing the field on a round-trip re-encode.
-		if s == "" {
-			return nil, fmt.Errorf("decoding EPSSubscriptionData.StnSr: present wire field decoded to empty digits; presence cannot round-trip through string-based API")
 		}
 		out.StnSr = s
 		out.StnSrNature = nature
