@@ -37,9 +37,9 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 	}
 
 	arg := &gsm_map.RoutingInfoForSMArg{
-		Msisdn:               gsm_map.ISDNAddressString(msisdn),
+		Msisdn:               msisdn,
 		SmRPPRI:              s.SmRpPri,
-		ServiceCentreAddress: gsm_map.AddressString(sca),
+		ServiceCentreAddress: sca,
 	}
 
 	// Optional fields (post-extension marker).
@@ -70,7 +70,7 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding IMSI: %w", err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		arg.Imsi = &v
 	}
 
@@ -128,7 +128,7 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 	}
 
 	if arg.SmDeliveryNotIntended != nil {
-		v := SmDeliveryNotIntended(*arg.SmDeliveryNotIntended)
+		v := *arg.SmDeliveryNotIntended
 		s.SmDeliveryNotIntended = &v
 	}
 
@@ -179,7 +179,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	}
 
 	li := gsm_map.LocationInfoWithLMSI{
-		NetworkNodeNumber: gsm_map.ISDNAddressString(nnn),
+		NetworkNodeNumber: nnn,
 	}
 
 	// LMSI must be exactly 4 octets when present (3GPP TS 29.002).
@@ -233,7 +233,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding Smsf3gppNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		li.Smsf3gppNumber = &v
 	}
 
@@ -248,7 +248,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding SmsfNon3gppNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		li.SmsfNon3gppNumber = &v
 	}
 
@@ -264,7 +264,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	li.SmsfNon3gppAddressIndicator = boolToNullPtr(s.LocationInfoWithLMSI.SmsfNon3gppAddressIndicator)
 
 	out := &gsm_map.RoutingInfoForSMRes{
-		Imsi:                 gsm_map.IMSI(imsiBytes),
+		Imsi:                 imsiBytes,
 		LocationInfoWithLMSI: li,
 	}
 

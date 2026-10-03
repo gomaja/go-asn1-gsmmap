@@ -161,8 +161,8 @@ func convertOBcsmTDPDataToWire(d *OBcsmCamelTDPData) (gsm_map.OBcsmCamelTDPData,
 	}
 	return gsm_map.OBcsmCamelTDPData{
 		OBcsmTriggerDetectionPoint: d.OBcsmTriggerDetectionPoint,
-		ServiceKey:                 gsm_map.ServiceKey(d.ServiceKey),
-		GsmSCFAddress:              gsm_map.ISDNAddressString(addr),
+		ServiceKey:                 d.ServiceKey,
+		GsmSCFAddress:              addr,
 		DefaultCallHandling:        d.DefaultCallHandling,
 	}, nil
 }
@@ -214,8 +214,8 @@ func convertTBcsmTDPDataToWire(d *TBcsmCamelTDPData) (gsm_map.TBcsmCamelTDPData,
 	}
 	return gsm_map.TBcsmCamelTDPData{
 		TBcsmTriggerDetectionPoint: d.TBcsmTriggerDetectionPoint,
-		ServiceKey:                 gsm_map.ServiceKey(d.ServiceKey),
-		GsmSCFAddress:              gsm_map.ISDNAddressString(addr),
+		ServiceKey:                 d.ServiceKey,
+		GsmSCFAddress:              addr,
 		DefaultCallHandling:        d.DefaultCallHandling,
 	}, nil
 }
@@ -271,7 +271,7 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
 			}
-			list.Values[i] = gsm_map.ISDNAddressString(enc)
+			list.Values[i] = enc
 		}
 		out.DestinationNumberList = &list
 	}
@@ -289,7 +289,7 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 // Mirrors the encoder's "at least one list" rule so malformed peer input
 // can't produce a criteria SEQUENCE with neither list populated.
 func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria) (*DestinationNumberCriteria, error) {
-	mt := MatchType(w.MatchType)
+	mt := w.MatchType
 	if !isValidMatchType(mt) {
 		return nil, ErrCamelInvalidMatchType
 	}
@@ -398,7 +398,7 @@ func convertWireToOBcsmTDPCriteria(w *gsm_map.OBcsmCamelTDPCriteria) (*OBcsmCame
 		out.BasicServiceCriteria = bsc
 	}
 	if w.CallTypeCriteria != nil {
-		ctc := CallTypeCriteria(*w.CallTypeCriteria)
+		ctc := *w.CallTypeCriteria
 		if !isValidCallTypeCriteria(ctc) {
 			return nil, ErrCamelInvalidCallTypeCriteria
 		}
@@ -511,7 +511,7 @@ func convertOCSIToWire(o *OCSI) (*gsm_map.OCSI, error) {
 	}
 	out := &gsm_map.OCSI{OBcsmCamelTDPDataList: &list}
 	if o.CamelCapabilityHandling != nil {
-		v := gsm_map.CamelCapabilityHandling(int64(*o.CamelCapabilityHandling))
+		v := int64(*o.CamelCapabilityHandling)
 		out.CamelCapabilityHandling = &v
 	}
 	out.NotificationToCSE = boolToNullPtr(o.NotificationToCSE)
@@ -560,7 +560,7 @@ func convertTCSIToWire(t *TCSI) (*gsm_map.TCSI, error) {
 	}
 	out := &gsm_map.TCSI{TBcsmCamelTDPDataList: &list}
 	if t.CamelCapabilityHandling != nil {
-		v := gsm_map.CamelCapabilityHandling(int64(*t.CamelCapabilityHandling))
+		v := int64(*t.CamelCapabilityHandling)
 		out.CamelCapabilityHandling = &v
 	}
 	out.NotificationToCSE = boolToNullPtr(t.NotificationToCSE)
@@ -611,9 +611,9 @@ func convertDPAnalysedInfoCriteriumToWire(c *DPAnalysedInfoCriterium) (gsm_map.D
 		return gsm_map.DPAnalysedInfoCriterium{}, fmt.Errorf("encoding GsmSCFAddress: %w", err)
 	}
 	return gsm_map.DPAnalysedInfoCriterium{
-		DialledNumber:       gsm_map.ISDNAddressString(dn),
-		ServiceKey:          gsm_map.ServiceKey(c.ServiceKey),
-		GsmSCFAddress:       gsm_map.ISDNAddressString(sc),
+		DialledNumber:       dn,
+		ServiceKey:          c.ServiceKey,
+		GsmSCFAddress:       sc,
 		DefaultCallHandling: c.DefaultCallHandling,
 	}, nil
 }
@@ -691,7 +691,7 @@ func convertDCSIToWire(d *DCSI) (*gsm_map.DCSI, error) {
 		out.DpAnalysedInfoCriteriaList = &list
 	}
 	if d.CamelCapabilityHandling != nil {
-		cch := gsm_map.CamelCapabilityHandling(int64(*d.CamelCapabilityHandling))
+		cch := int64(*d.CamelCapabilityHandling)
 		out.CamelCapabilityHandling = &cch
 	}
 	return out, nil
@@ -835,7 +835,7 @@ func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
 	return &gsm_map.SSCSI{
 		SsCamelData: gsm_map.SSCamelData{
 			SsEventList:   &events,
-			GsmSCFAddress: gsm_map.ISDNAddressString(addr),
+			GsmSCFAddress: addr,
 		},
 		NotificationToCSE: boolToNullPtr(s.NotificationToCSE),
 		CsiActive:         boolToNullPtr(s.CsiActive),
@@ -884,8 +884,8 @@ func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
 	}
 	return &gsm_map.MCSI{
 		MobilityTriggers:  &triggers,
-		ServiceKey:        gsm_map.ServiceKey(m.ServiceKey),
-		GsmSCFAddress:     gsm_map.ISDNAddressString(addr),
+		ServiceKey:        m.ServiceKey,
+		GsmSCFAddress:     addr,
 		NotificationToCSE: boolToNullPtr(m.NotificationToCSE),
 		CsiActive:         boolToNullPtr(m.CsiActive),
 	}, nil
@@ -990,8 +990,8 @@ func convertSMSCAMELTDPDataToWire(d *SMSCAMELTDPData, tdp SMSTriggerDetectionPoi
 	}
 	return gsm_map.SMSCAMELTDPData{
 		SmsTriggerDetectionPoint: d.SmsTriggerDetectionPoint,
-		ServiceKey:               gsm_map.ServiceKey(d.ServiceKey),
-		GsmSCFAddress:            gsm_map.ISDNAddressString(addr),
+		ServiceKey:               d.ServiceKey,
+		GsmSCFAddress:            addr,
 		DefaultSMSHandling:       d.DefaultSMSHandling,
 	}, nil
 }
@@ -1067,7 +1067,7 @@ func convertSMSCSIToWire(s *SMSCSI, tdp SMSTriggerDetectionPoint) (*gsm_map.SMSC
 		out.SmsCAMELTDPDataList = &list
 	}
 	if s.CamelCapabilityHandling != nil {
-		cch := gsm_map.CamelCapabilityHandling(int64(*s.CamelCapabilityHandling))
+		cch := int64(*s.CamelCapabilityHandling)
 		out.CamelCapabilityHandling = &cch
 	}
 	return out, nil

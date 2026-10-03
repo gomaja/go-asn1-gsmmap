@@ -29,8 +29,8 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 	}
 
 	arg := &gsm_map.AlertServiceCentreArg{
-		Msisdn:               gsm_map.ISDNAddressString(msisdn),
-		ServiceCentreAddress: gsm_map.AddressString(sca),
+		Msisdn:               msisdn,
+		ServiceCentreAddress: sca,
 	}
 
 	if a.IMSI != "" {
@@ -38,7 +38,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		arg.Imsi = &v
 	}
 
@@ -73,7 +73,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 		if err != nil {
 			return nil, fmt.Errorf("encoding NewSGSNNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.NewSGSNNumber = &v
 	}
 
@@ -86,7 +86,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 		if err != nil {
 			return nil, fmt.Errorf("encoding NewMMENumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.NewMMENumber = &v
 	}
 
@@ -99,7 +99,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 		if err != nil {
 			return nil, fmt.Errorf("encoding NewMSCNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.NewMSCNumber = &v
 	}
 

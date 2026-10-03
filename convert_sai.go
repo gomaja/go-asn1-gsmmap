@@ -172,7 +172,7 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 	}
 
 	arg := &gsm_map.SendAuthenticationInfoArg{
-		Imsi:                         gsm_map.IMSI(imsiBytes),
+		Imsi:                         imsiBytes,
 		NumberOfRequestedVectors:     int64(s.NumberOfRequestedVectors),
 		SegmentationProhibited:       boolToNullPtr(s.SegmentationProhibited),
 		ImmediateResponsePreferred:   boolToNullPtr(s.ImmediateResponsePreferred),
@@ -193,7 +193,7 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 		arg.RequestingPLMNId = &v
 	}
 	if s.NumberOfRequestedAdditionalVectors != nil {
-		v := gsm_map.NumberOfRequestedVectors(int64(*s.NumberOfRequestedAdditionalVectors))
+		v := int64(*s.NumberOfRequestedAdditionalVectors)
 		arg.NumberOfRequestedAdditionalVectors = &v
 	}
 
@@ -228,8 +228,7 @@ func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) 
 	// per TS 29.002. Spec exception handling:
 	//   "received values in the range (6-15) shall be treated as 'vlr'"
 	//   "received values greater than 17 shall be treated as 'sgsn'"
-	// Apply the mapping in int64 space first so wire values that exceed
-	// platform int still satisfy the spec mandate on 32-bit builds.
+	// Apply the receiver mapping before exposing the value as int.
 	if arg.RequestingNodeType != nil {
 		// A negative value lies outside both rules; the type is extensible,
 		// so it is kept (3GPP TS 29.002 V19.1.0 §17.1.4).
@@ -244,12 +243,12 @@ func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) 
 		out.RequestingNodeType = &v
 	}
 	if arg.RequestingPLMNId != nil {
-		plmn := []byte(*arg.RequestingPLMNId)
+		plmn := *arg.RequestingPLMNId
 
 		out.RequestingPLMNId = HexBytes(plmn)
 	}
 	if arg.NumberOfRequestedAdditionalVectors != nil {
-		v := int64(*arg.NumberOfRequestedAdditionalVectors)
+		v := *arg.NumberOfRequestedAdditionalVectors
 
 		iv := int(v)
 		out.NumberOfRequestedAdditionalVectors = &iv
@@ -309,7 +308,7 @@ func convertResToSendAuthenticationInfoRes(res *gsm_map.SendAuthenticationInfoRe
 	}
 
 	if res.UeUsageType != nil {
-		ue := []byte(*res.UeUsageType)
+		ue := *res.UeUsageType
 
 		out.UeUsageType = HexBytes(ue)
 	}

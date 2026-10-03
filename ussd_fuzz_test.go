@@ -138,7 +138,7 @@ func FuzzUSSDDataCodingSchemeDecode(f *testing.F) {
 		}
 		// 8n GSM 7 bit characters ending in <CR> gain a second <CR> on the
 		// wire that the receiver keeps (TS 23.038 §6.1.2.3.1).
-		if t2 != t1 && !(strings.HasSuffix(t1, "\r") && t2 == t1+"\r") {
+		if t2 != t1 && (!strings.HasSuffix(t1, "\r") || t2 != t1+"\r") {
 			t.Fatalf("Decode(Encode(x)) = %q, want %q (dcs 0x%02X in=%x enc=%x)", t2, t1, dcs, s, enc)
 		}
 	})

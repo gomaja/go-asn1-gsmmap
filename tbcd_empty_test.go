@@ -13,7 +13,7 @@ import (
 func TestParseAllFillerIdentityRejected(t *testing.T) {
 	fill := []byte{0xFF, 0xFF, 0xFF}
 	t.Run("CancelLocation imsi", func(t *testing.T) {
-		arg := gsm_map.CancelLocationArg{Identity: gsm_map.NewIdentityImsi(gsm_map.IMSI(fill))}
+		arg := gsm_map.CancelLocationArg{Identity: gsm_map.NewIdentityImsi(fill)}
 		data, err := arg.MarshalBER()
 		if err != nil {
 			t.Fatal(err)
@@ -24,7 +24,7 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 	})
 	t.Run("CancelLocation imsi-WithLMSI", func(t *testing.T) {
 		arg := gsm_map.CancelLocationArg{Identity: gsm_map.NewIdentityImsiWithLMSI(gsm_map.IMSIWithLMSI{
-			Imsi: gsm_map.IMSI(fill), Lmsi: gsm_map.LMSI{0x01, 0x02, 0x03, 0x04},
+			Imsi: fill, Lmsi: gsm_map.LMSI{0x01, 0x02, 0x03, 0x04},
 		})}
 		data, err := arg.MarshalBER()
 		if err != nil {
@@ -43,7 +43,7 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 		if err := arg.UnmarshalBER(golden); err != nil {
 			t.Fatal(err)
 		}
-		arg.SmRPDA = gsm_map.NewSMRPDAImsi(gsm_map.IMSI(fill))
+		arg.SmRPDA = gsm_map.NewSMRPDAImsi(fill)
 		data, err := arg.MarshalBER()
 		if err != nil {
 			t.Fatal(err)
@@ -61,7 +61,7 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 		if err := mo.UnmarshalBER(golden); err != nil {
 			t.Fatal(err)
 		}
-		arg := gsm_map.MTForwardSMArg{SmRPDA: gsm_map.NewSMRPDAImsi(gsm_map.IMSI(fill)), SmRPOA: mo.SmRPOA, SmRPUI: mo.SmRPUI}
+		arg := gsm_map.MTForwardSMArg{SmRPDA: gsm_map.NewSMRPDAImsi(fill), SmRPOA: mo.SmRPOA, SmRPUI: mo.SmRPUI}
 		data, err := arg.MarshalBER()
 		if err != nil {
 			t.Fatal(err)
@@ -73,7 +73,7 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 	t.Run("ProvideSubscriberLocation imsi and imei", func(t *testing.T) {
 		mlc := gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x32, 0x54, 0x76, 0x98}
 		good := gsm_map.IMSI{0x02, 0x04, 0x08, 0x00, 0x21, 0x43, 0x65, 0xf7}
-		empty := gsm_map.IMSI(fill)
+		empty := fill
 		emptyImei := gsm_map.IMEI{0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
 		lt := gsm_map.LocationType{LocationEstimateType: gsm_map.LocationEstimateTypeCurrentLocation}
 		for name, w := range map[string]*gsm_map.ProvideSubscriberLocationArg{

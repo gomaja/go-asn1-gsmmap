@@ -32,7 +32,7 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportRes.NaESRK: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.NaESRK = &v
 	}
 	// [1] na-ESRD
@@ -41,7 +41,7 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportRes.NaESRD: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.NaESRD = &v
 	}
 	// [2] h-gmlc-Address
@@ -50,7 +50,7 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportRes.HGmlcAddress: %w", err)
 		}
-		v := gsm_map.GSNAddress(gsnAddr)
+		v := gsnAddr
 		out.HGmlcAddress = &v
 	}
 	// [3] mo-lrShortCircuitIndicator (NULL flag)
@@ -86,7 +86,7 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 	out := &SubscriberLocationReportRes{}
 
 	if w.NaESRK != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.NaESRK))
+		s, nature, plan, err := decodeAddressField(*w.NaESRK)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportRes.NaESRK: %w", err)
 		}
@@ -98,7 +98,7 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 		out.NaESRKPlan = plan
 	}
 	if w.NaESRD != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.NaESRD))
+		s, nature, plan, err := decodeAddressField(*w.NaESRD)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportRes.NaESRD: %w", err)
 		}

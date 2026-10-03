@@ -48,7 +48,7 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 		if err != nil {
 			return nil, fmt.Errorf("encoding IMEI: %w", err)
 		}
-		imei := gsm_map.IMEI(imeiBytes)
+		imei := imeiBytes
 		si.Imei = &imei
 	}
 
@@ -181,7 +181,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	}
 
 	if si.MsClassmark2 != nil {
-		out.MsClassmark2 = []byte(*si.MsClassmark2)
+		out.MsClassmark2 = *si.MsClassmark2
 	}
 
 	if si.GprsMSClass != nil {
@@ -208,7 +208,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	}
 
 	if si.LastUEActivityTime != nil {
-		out.LastUEActivityTime = []byte(*si.LastUEActivityTime)
+		out.LastUEActivityTime = *si.LastUEActivityTime
 	}
 
 	// LastRATType — Used-RAT-Type per TS 29.002 (extensible enum;
@@ -235,7 +235,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 	}
 
 	if si.TimeZone != nil {
-		out.TimeZone = []byte(*si.TimeZone)
+		out.TimeZone = *si.TimeZone
 	}
 
 	// DaylightSavingTime — 0..2 per TS 29.002.
@@ -427,7 +427,7 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
-		imsi := gsm_map.IMSI(b)
+		imsi := b
 		out.Imsi = &imsi
 	}
 
@@ -436,7 +436,7 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding MSISDN: %w", err)
 		}
-		as := gsm_map.ISDNAddressString(enc)
+		as := enc
 		out.Msisdn = &as
 	}
 
@@ -460,7 +460,7 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	out := &MnpInfoRes{}
 
 	if w.RouteingNumber != nil {
-		out.RouteingNumber = []byte(*w.RouteingNumber)
+		out.RouteingNumber = *w.RouteingNumber
 	}
 
 	if w.Imsi != nil && len(*w.Imsi) > 0 {
@@ -484,10 +484,7 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 	if w.NumberPortabilityStatus != nil {
 		// NumberPortabilityStatus — ENUMERATED { 0, 1, 2, 4, 5 } per TS 29.002.
 		// Spec exception: "reception of other values than the ones listed the
-		// receiver shall ignore the whole NumberPortabilityStatus parameter".
-		// Match against the defined set in int64 space so wire values that
-		// exceed platform int are also treated as unknown (ignored), not as
-		// decode errors — consistent with the spec's "ignore" mandate.
+		// receiver shall ignore the whole NumberPortabilityStatus;".
 		// Unknown extensions are ignored per 3GPP TS 29.002 V19.1.0 §17.7.1.
 		switch *w.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut,
@@ -517,10 +514,10 @@ func convertGprsMSClassToWire(g *GprsMSClass) *gsm_map.GPRSMSClass {
 
 func convertWireToGprsMSClass(w *gsm_map.GPRSMSClass) *GprsMSClass {
 	out := &GprsMSClass{
-		MSNetworkCapability: []byte(w.MSNetworkCapability),
+		MSNetworkCapability: w.MSNetworkCapability,
 	}
 	if w.MSRadioAccessCapability != nil {
-		out.MSRadioAccessCapability = []byte(*w.MSRadioAccessCapability)
+		out.MSRadioAccessCapability = *w.MSRadioAccessCapability
 	}
 	return out
 }
@@ -548,10 +545,10 @@ func convertWireToUserCSGInformation(w *gsm_map.UserCSGInformation) *UserCSGInfo
 		CsgIDBits: w.CsgId.BitLength,
 	}
 	if w.AccessMode != nil {
-		out.AccessMode = []byte(w.AccessMode)
+		out.AccessMode = w.AccessMode
 	}
 	if w.Cmi != nil {
-		out.CMI = []byte(w.Cmi)
+		out.CMI = w.Cmi
 	}
 	return out
 }
@@ -576,7 +573,7 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 		if err != nil {
 			return nil, fmt.Errorf("encoding GeographicalInformation: %w", err)
 		}
-		gi := gsm_map.GeographicalInformation(raw)
+		gi := raw
 		out.GeographicalInformation = &gi
 	}
 
@@ -631,15 +628,15 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 	out := &LocationInformation5GS{}
 
 	if w.NrCellGlobalIdentity != nil {
-		out.NrCellGlobalIdentity = []byte(*w.NrCellGlobalIdentity)
+		out.NrCellGlobalIdentity = *w.NrCellGlobalIdentity
 	}
 
 	if w.EUtranCellGlobalIdentity != nil {
-		out.EUtranCellGlobalIdentity = []byte(*w.EUtranCellGlobalIdentity)
+		out.EUtranCellGlobalIdentity = *w.EUtranCellGlobalIdentity
 	}
 
 	if w.GeographicalInformation != nil {
-		gi, err := DecodeGeographicalInfo([]byte(*w.GeographicalInformation))
+		gi, err := DecodeGeographicalInfo(*w.GeographicalInformation)
 		if err != nil {
 			return nil, fmt.Errorf("decoding GeographicalInformation: %w", err)
 		}
@@ -647,15 +644,15 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 	}
 
 	if w.GeodeticInformation != nil {
-		out.GeodeticInformation = []byte(*w.GeodeticInformation)
+		out.GeodeticInformation = *w.GeodeticInformation
 	}
 
 	if w.AmfAddress != nil {
-		out.AmfAddress = []byte(*w.AmfAddress)
+		out.AmfAddress = *w.AmfAddress
 	}
 
 	if w.TrackingAreaIdentity != nil {
-		out.TrackingAreaIdentity = []byte(*w.TrackingAreaIdentity)
+		out.TrackingAreaIdentity = *w.TrackingAreaIdentity
 	}
 
 	out.CurrentLocationRetrieved = nullPtrToBool(w.CurrentLocationRetrieved)
@@ -666,13 +663,13 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 	}
 
 	if w.VplmnId != nil {
-		p := []byte(*w.VplmnId)
+		p := *w.VplmnId
 
 		out.VplmnID = p
 	}
 
 	if w.LocaltimeZone != nil {
-		out.LocalTimeZone = []byte(*w.LocaltimeZone)
+		out.LocalTimeZone = *w.LocaltimeZone
 	}
 
 	// RatType — Used-RAT-Type per TS 29.002 (extensible enum;
@@ -683,7 +680,7 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 	}
 
 	if w.NrTrackingAreaIdentity != nil {
-		out.NrTrackingAreaIdentity = []byte(*w.NrTrackingAreaIdentity)
+		out.NrTrackingAreaIdentity = *w.NrTrackingAreaIdentity
 	}
 
 	return out, nil

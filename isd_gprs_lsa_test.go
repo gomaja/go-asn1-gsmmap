@@ -190,7 +190,7 @@ func TestPDPContext_DecoderRejectsContextIdOutOfRange(t *testing.T) {
 	// as strict encoding does.
 	for _, id := range []int64{0, 51, 100} {
 		w := &gsm_map.PDPContext{
-			PdpContextId:  gsm_map.ContextId(id),
+			PdpContextId:  id,
 			PdpType:       gsm_map.PDPType{0xf1, 0x21},
 			QosSubscribed: gsm_map.QoSSubscribed{0x09, 0x00, 0x00},
 			Apn:           gsm_map.APN{'a', 'p'},

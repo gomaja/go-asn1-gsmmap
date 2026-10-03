@@ -65,7 +65,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.MSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.Msisdn = &v
 	}
 	// [1] imsi
@@ -74,7 +74,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.IMSI: %w", err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		out.Imsi = &v
 	}
 	// [2] imei
@@ -83,7 +83,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.IMEI: %w", err)
 		}
-		v := gsm_map.IMEI(imeiBytes)
+		v := imeiBytes
 		out.Imei = &v
 	}
 	// [3] na-ESRD
@@ -92,7 +92,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.NaESRD: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.NaESRD = &v
 	}
 	// [4] na-ESRK
@@ -101,7 +101,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.NaESRK: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.NaESRK = &v
 	}
 	// [5] locationEstimate
@@ -111,7 +111,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	// [6] ageOfLocationEstimate
 	if a.AgeOfLocationEstimate != nil {
-		v := gsm_map.AgeOfLocationInformation(*a.AgeOfLocationEstimate)
+		v := *a.AgeOfLocationEstimate
 		out.AgeOfLocationEstimate = &v
 	}
 	// [7] slr-ArgExtensionContainer: opaque metadata; not surfaced.
@@ -158,14 +158,14 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.HGmlcAddress: %w", err)
 		}
-		v := gsm_map.GSNAddress(gsnAddr)
+		v := gsnAddr
 		out.HGmlcAddress = &v
 	}
 	// [15] lcsServiceTypeID
 	if a.LcsServiceTypeID != nil {
 		v := *a.LcsServiceTypeID
 
-		w := gsm_map.LCSServiceTypeID(v)
+		w := v
 		out.LcsServiceTypeID = &w
 	}
 	// [17] sai-Present / [18] pseudonymIndicator (NULL flags)
@@ -271,7 +271,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 	}
 
 	if w.Msisdn != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.Msisdn))
+		s, nature, plan, err := decodeAddressField(*w.Msisdn)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.MSISDN: %w", err)
 		}
@@ -297,7 +297,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.IMEI = imei
 	}
 	if w.NaESRD != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.NaESRD))
+		s, nature, plan, err := decodeAddressField(*w.NaESRD)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.NaESRD: %w", err)
 		}
@@ -309,7 +309,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.NaESRDPlan = plan
 	}
 	if w.NaESRK != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.NaESRK))
+		s, nature, plan, err := decodeAddressField(*w.NaESRK)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.NaESRK: %w", err)
 		}
@@ -324,7 +324,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.LocationEstimate = ExtGeographicalInformation(*w.LocationEstimate)
 	}
 	if w.AgeOfLocationEstimate != nil {
-		v := int64(*w.AgeOfLocationEstimate)
+		v := *w.AgeOfLocationEstimate
 		out.AgeOfLocationEstimate = &v
 	}
 	if w.AddLocationEstimate != nil {
@@ -361,7 +361,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.HGmlcAddress = addr
 	}
 	if w.LcsServiceTypeID != nil {
-		v := int64(*w.LcsServiceTypeID)
+		v := *w.LcsServiceTypeID
 
 		out.LcsServiceTypeID = &v
 	}

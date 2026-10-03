@@ -18,7 +18,7 @@ import (
 
 func semOptionalAddressCases() []semAddressCase {
 	ptr := func(a []byte) *gsm_map.ISDNAddressString {
-		v := gsm_map.ISDNAddressString(a)
+		v := a
 		return &v
 	}
 	imsi := func() *gsm_map.IMSI {
@@ -107,7 +107,7 @@ func semOptionalAddressCases() []semAddressCase {
 		}, semParse(ParseInsertSubscriberData), ErrExtForwFeatureForwardedToNumberDecodedEmpty},
 		{"InsertSubscriberData Ext-ForwFeature longForwardedToNumber", func(t *testing.T, a []byte) semWire {
 			w := semForwISD(t)
-			v := gsm_map.FTNAddressString(a)
+			v := a
 			w.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].LongForwardedToNumber = &v
 			return w
 		}, semParse(ParseInsertSubscriberData), ErrExtForwFeatureLongForwardedToNumberDecodedEmpty},

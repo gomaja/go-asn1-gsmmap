@@ -33,7 +33,7 @@ func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationAr
 	return &gsm_map.AnyTimeInterrogationArg{
 		SubscriberIdentity: subId,
 		RequestedInfo:      reqInfo,
-		GsmSCFAddress:      gsm_map.ISDNAddressString(scfAddr),
+		GsmSCFAddress:      scfAddr,
 	}, nil
 }
 
@@ -158,7 +158,7 @@ func buildRequestedInfoFromWire(ri *gsm_map.RequestedInfo) RequestedInfo {
 		out.RequestedDomain = &domain
 	}
 
-	if ri.RequestedNodes != nil && ri.RequestedNodes.BitLength > 0 {
+	if ri.RequestedNodes != nil {
 		out.RequestedNodes = convertBitStringToRequestedNodes(*ri.RequestedNodes)
 	}
 	return out

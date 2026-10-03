@@ -40,7 +40,7 @@ func convertCancelLocationIdentityToWire(id *CancelLocationIdentity) (gsm_map.Id
 		if err != nil {
 			return gsm_map.Identity{}, fmt.Errorf(errEncodingIMSI, err)
 		}
-		return gsm_map.NewIdentityImsi(gsm_map.IMSI(imsiBytes)), nil
+		return gsm_map.NewIdentityImsi(imsiBytes), nil
 	}
 
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, id.IMSIWithLMSI.IMSI)
@@ -48,7 +48,7 @@ func convertCancelLocationIdentityToWire(id *CancelLocationIdentity) (gsm_map.Id
 		return gsm_map.Identity{}, fmt.Errorf(errEncodingIMSI, err)
 	}
 	iwl := gsm_map.IMSIWithLMSI{
-		Imsi: gsm_map.IMSI(imsiBytes),
+		Imsi: imsiBytes,
 		Lmsi: gsm_map.LMSI(id.IMSIWithLMSI.LMSI),
 	}
 	return gsm_map.NewIdentityImsiWithLMSI(iwl), nil
@@ -75,7 +75,7 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}
-		lmsi := []byte(id.ImsiWithLMSI.Lmsi)
+		lmsi := id.ImsiWithLMSI.Lmsi
 
 		return CancelLocationIdentity{
 			IMSIWithLMSI: &CancelLocationIMSIWithLMSI{IMSI: imsi, LMSI: HexBytes(lmsi)},
@@ -155,7 +155,7 @@ func convertCancelLocationToArg(c *CancelLocation) (*gsm_map.CancelLocationArg, 
 		if err != nil {
 			return nil, fmt.Errorf("encoding NewMSCNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.NewMSCNumber = &v
 	}
 
@@ -165,7 +165,7 @@ func convertCancelLocationToArg(c *CancelLocation) (*gsm_map.CancelLocationArg, 
 		if err != nil {
 			return nil, fmt.Errorf("encoding NewVLRNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.NewVLRNumber = &v
 	}
 
@@ -236,7 +236,7 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 	}
 
 	if arg.NewLmsi != nil {
-		lmsi := []byte(*arg.NewLmsi)
+		lmsi := *arg.NewLmsi
 
 		out.NewLMSI = HexBytes(lmsi)
 	}

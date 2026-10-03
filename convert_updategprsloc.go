@@ -32,9 +32,9 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	}
 
 	arg := &gsm_map.UpdateGprsLocationArg{
-		Imsi:        gsm_map.IMSI(imsiBytes),
-		SgsnNumber:  gsm_map.ISDNAddressString(sgsnNumber),
-		SgsnAddress: gsm_map.GSNAddress(sgsnAddr),
+		Imsi:        imsiBytes,
+		SgsnNumber:  sgsnNumber,
+		SgsnAddress: sgsnAddr,
 	}
 
 	if u.SGSNCapability != nil {
@@ -55,7 +55,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		if err != nil {
 			return nil, fmt.Errorf("encoding VGmlcAddress: %w", err)
 		}
-		v := gsm_map.GSNAddress(gsnAddr)
+		v := gsnAddr
 		arg.VGmlcAddress = &v
 	}
 
@@ -120,7 +120,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		if err != nil {
 			return nil, fmt.Errorf("encoding MmeNumberForMTSMS: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(mme)
+		v := mme
 		arg.MmeNumberforMTSMS = &v
 	}
 
@@ -133,7 +133,8 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 
 	arg.SmsOnly = boolToNullPtr(u.SmsOnly)
 
-	// [19]/[20] DiameterIdentity
+	// [19] names the SGSN by FQDN; [20] carries an FQDN or realm
+	// (RFC 6733 §4.3.1).
 	if len(u.SgsnName) > 0 {
 		v := gsm_map.DiameterIdentity(u.SgsnName)
 		arg.SgsnName = &v
@@ -388,25 +389,25 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 
 	out.GprsEnhancementsSupportIndicator = nullPtrToBool(w.GprsEnhancementsSupportIndicator)
 
-	if w.SupportedCamelPhases != nil && w.SupportedCamelPhases.BitLength > 0 {
+	if w.SupportedCamelPhases != nil {
 		out.SupportedCamelPhases = convertBitStringToCamelPhases(*w.SupportedCamelPhases)
 	}
 
-	if w.SupportedLCSCapabilitySets != nil && w.SupportedLCSCapabilitySets.BitLength > 0 {
+	if w.SupportedLCSCapabilitySets != nil {
 		out.SupportedLCSCapabilitySets = convertBitStringToLCSCaps(*w.SupportedLCSCapabilitySets)
 	}
 
-	if w.OfferedCamel4CSIs != nil && w.OfferedCamel4CSIs.BitLength > 0 {
+	if w.OfferedCamel4CSIs != nil {
 		out.OfferedCamel4CSIs = convertBitStringToOfferedCamel4CSIs(*w.OfferedCamel4CSIs)
 	}
 
 	out.SmsCallBarringSupportIndicator = nullPtrToBool(w.SmsCallBarringSupportIndicator)
 
-	if w.SupportedRATTypesIndicator != nil && w.SupportedRATTypesIndicator.BitLength > 0 {
+	if w.SupportedRATTypesIndicator != nil {
 		out.SupportedRATTypesIndicator = convertBitStringToSupportedRATTypes(*w.SupportedRATTypesIndicator)
 	}
 
-	if w.SupportedFeatures != nil && w.SupportedFeatures.BitLength > 0 {
+	if w.SupportedFeatures != nil {
 		out.SupportedFeatures = HexBytes(append([]byte(nil), w.SupportedFeatures.Bytes...))
 		out.SupportedFeaturesBits = w.SupportedFeatures.BitLength
 	}
@@ -423,7 +424,7 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 	out.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions = nullPtrToBool(w.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions)
 	out.ResetIdsSupported = nullPtrToBool(w.ResetIdsSupported)
 
-	if w.ExtSupportedFeatures != nil && w.ExtSupportedFeatures.BitLength > 0 {
+	if w.ExtSupportedFeatures != nil {
 		out.ExtSupportedFeatures = HexBytes(append([]byte(nil), w.ExtSupportedFeatures.Bytes...))
 		out.ExtSupportedFeaturesBits = w.ExtSupportedFeatures.BitLength
 	}
@@ -487,7 +488,7 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 	out := &gsm_map.PDNGWUpdate{}
 	if len(p.APN) > 0 {
-		apn := gsm_map.APN(append([]byte(nil), p.APN...))
+		apn := append([]byte(nil), p.APN...)
 		out.Apn = &apn
 	}
 	if p.PdnGwIdentity != nil {
@@ -498,7 +499,7 @@ func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 		out.PdnGwIdentity = id
 	}
 	if p.ContextID != nil {
-		v := gsm_map.ContextId(int64(*p.ContextID))
+		v := int64(*p.ContextID)
 		out.ContextId = &v
 	}
 	return out, nil
@@ -537,15 +538,15 @@ func convertPdnGwIdentityToWire(p *PdnGwIdentity) (*gsm_map.PDNGWIdentity, error
 	}
 	out := &gsm_map.PDNGWIdentity{}
 	if len(p.IPv4Address) > 0 {
-		v := gsm_map.PDPAddress(append([]byte(nil), p.IPv4Address...))
+		v := append([]byte(nil), p.IPv4Address...)
 		out.PdnGwIpv4Address = &v
 	}
 	if len(p.IPv6Address) > 0 {
-		v := gsm_map.PDPAddress(append([]byte(nil), p.IPv6Address...))
+		v := append([]byte(nil), p.IPv6Address...)
 		out.PdnGwIpv6Address = &v
 	}
 	if len(p.Name) > 0 {
-		v := gsm_map.FQDN(append([]byte(nil), p.Name...))
+		v := append([]byte(nil), p.Name...)
 		out.PdnGwName = &v
 	}
 	return out, nil
@@ -591,7 +592,7 @@ func convertUpdateGprsLocationResToRes(u *UpdateGprsLocationRes) (*gsm_map.Updat
 	}
 
 	return &gsm_map.UpdateGprsLocationRes{
-		HlrNumber:                  gsm_map.ISDNAddressString(hlr),
+		HlrNumber:                  hlr,
 		AddCapability:              boolToNullPtr(u.AddCapability),
 		SgsnMmeSeparationSupported: boolToNullPtr(u.SgsnMmeSeparationSupported),
 		MmeRegisteredforSMS:        boolToNullPtr(u.MmeRegisteredforSMS),

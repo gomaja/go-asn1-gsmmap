@@ -81,8 +81,8 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	}
 
 	out := &gsm_map.ReportSMDeliveryStatusArg{
-		Msisdn:               gsm_map.ISDNAddressString(msisdn),
-		ServiceCentreAddress: gsm_map.AddressString(sca),
+		Msisdn:               msisdn,
+		ServiceCentreAddress: sca,
 		SmDeliveryOutcome:    r.SmDeliveryOutcome,
 	}
 
@@ -121,7 +121,7 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 		if err != nil {
 			return nil, fmt.Errorf("encoding ReportSMDeliveryStatus.IMSI: %w", err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		out.Imsi = &v
 	}
 	// [11] correlationID.
@@ -141,14 +141,14 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 		return nil, ErrReportSMDeliveryStatusNil
 	}
 
-	msisdn, mNature, mPlan, err := decodeAddressField([]byte(w.Msisdn))
+	msisdn, mNature, mPlan, err := decodeAddressField(w.Msisdn)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.MSISDN: %w", err)
 	}
 	if msisdn == "" {
 		return nil, ErrReportSMDeliveryStatusMSISDNDecodedEmpty
 	}
-	sca, scaNature, scaPlan, err := decodeAddressField([]byte(w.ServiceCentreAddress))
+	sca, scaNature, scaPlan, err := decodeAddressField(w.ServiceCentreAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.ServiceCentreAddress: %w", err)
 	}
@@ -227,7 +227,7 @@ func convertReportSMDeliveryStatusResToRes(r *ReportSMDeliveryStatusRes) (*gsm_m
 		if err != nil {
 			return nil, fmt.Errorf("encoding ReportSMDeliveryStatusRes.StoredMSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(enc)
+		v := enc
 		out.StoredMSISDN = &v
 	}
 	return out, nil
@@ -239,7 +239,7 @@ func convertResToReportSMDeliveryStatusRes(w *gsm_map.ReportSMDeliveryStatusRes)
 	}
 	out := &ReportSMDeliveryStatusRes{}
 	if w.StoredMSISDN != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.StoredMSISDN))
+		s, nature, plan, err := decodeAddressField(*w.StoredMSISDN)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ReportSMDeliveryStatusRes.StoredMSISDN: %w", err)
 		}

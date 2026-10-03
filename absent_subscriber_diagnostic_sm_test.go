@@ -76,7 +76,7 @@ func TestAbsentSubscriberDiagnosticSMValues(t *testing.T) {
 // cast that convertWireToAbsentSubscriberSMParam relies on.
 func TestAbsentSubscriberDiagnosticSMUpstreamCastRoundTrip(t *testing.T) {
 	for raw := int64(0); raw <= 10; raw++ {
-		upstream := gsm_map.AbsentSubscriberDiagnosticSM(raw)
+		upstream := raw
 		local := AbsentSubscriberDiagnosticSM(upstream)
 		back := gsm_map.AbsentSubscriberDiagnosticSM(local)
 		if back != upstream {

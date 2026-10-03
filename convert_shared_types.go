@@ -19,14 +19,14 @@ func convertAdditionalNumberToWire(a *AdditionalNumber) (*gsm_map.AdditionalNumb
 		if err != nil {
 			return nil, fmt.Errorf("encoding MscNumber: %w", err)
 		}
-		v := gsm_map.NewAdditionalNumberMscNumber(gsm_map.ISDNAddressString(encoded))
+		v := gsm_map.NewAdditionalNumberMscNumber(encoded)
 		return &v, nil
 	case hasSgsn:
 		encoded, err := encodeAddressField(a.SgsnNumber, a.SgsnNumberNature, a.SgsnNumberPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding SgsnNumber: %w", err)
 		}
-		v := gsm_map.NewAdditionalNumberSgsnNumber(gsm_map.ISDNAddressString(encoded))
+		v := gsm_map.NewAdditionalNumberSgsnNumber(encoded)
 		return &v, nil
 	default:
 		return nil, ErrSriChoiceNoAlternative
@@ -94,7 +94,7 @@ func convertCorrelationIDToWire(c *SriSmCorrelationID) (*gsm_map.CorrelationID, 
 		if err != nil {
 			return nil, fmt.Errorf("encoding CorrelationID.HlrID: %w", err)
 		}
-		v := gsm_map.HLRId(hlr)
+		v := hlr
 		out.HlrId = &v
 	}
 	if len(c.SipUriA) > 0 {
@@ -182,7 +182,7 @@ func convertAddInfoToWire(a *AddInfo) (*gsm_map.ADDInfo, error) {
 		return nil, fmt.Errorf("encoding IMEISV: %w", err)
 	}
 	out := &gsm_map.ADDInfo{
-		Imeisv:                   gsm_map.IMEI(imeisvBytes),
+		Imeisv:                   imeisvBytes,
 		SkipSubscriberDataUpdate: boolToNullPtr(a.SkipSubscriberDataUpdate),
 	}
 	return out, nil
@@ -223,7 +223,7 @@ func convertForwardingDataToWire(f *ForwardingData) (*gsm_map.ForwardingData, er
 		if err != nil {
 			return nil, fmt.Errorf("encoding ForwardedToNumber: %w", err)
 		}
-		as := gsm_map.ISDNAddressString(enc)
+		as := enc
 		out.ForwardedToNumber = &as
 	}
 	if len(f.ForwardedToSubaddress) > 0 {
@@ -339,7 +339,7 @@ func convertRoutingInfoToWire(r *RoutingInfo) (*gsm_map.RoutingInfo, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding RoamingNumber: %w", err)
 		}
-		v := gsm_map.NewRoutingInfoRoamingNumber(gsm_map.ISDNAddressString(enc))
+		v := gsm_map.NewRoutingInfoRoamingNumber(enc)
 		return &v, nil
 	case hasFwd:
 		fw, err := convertForwardingDataToWire(r.ForwardingData)

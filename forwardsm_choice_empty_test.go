@@ -27,13 +27,13 @@ func TestForwardSMChoiceAddressDecodedEmpty(t *testing.T) {
 		want error
 	}{
 		{"SM-RP-DA serviceCentreAddressDA without digits", func(a *gsm_map.MOForwardSMArg) {
-			a.SmRPDA = gsm_map.NewSMRPDAServiceCentreAddressDA(gsm_map.AddressString(natureOnly))
+			a.SmRPDA = gsm_map.NewSMRPDAServiceCentreAddressDA(natureOnly)
 		}, ErrSmRpDaServiceCentreAddressDecodedEmpty},
 		{"SM-RP-OA msisdn without digits", func(a *gsm_map.MOForwardSMArg) {
-			a.SmRPOA = gsm_map.NewSMRPOAMsisdn(gsm_map.ISDNAddressString(natureOnly))
+			a.SmRPOA = gsm_map.NewSMRPOAMsisdn(natureOnly)
 		}, ErrSmRpOaMSISDNDecodedEmpty},
 		{"SM-RP-OA serviceCentreAddressOA without digits", func(a *gsm_map.MOForwardSMArg) {
-			a.SmRPOA = gsm_map.NewSMRPOAServiceCentreAddressOA(gsm_map.AddressString(natureOnly))
+			a.SmRPOA = gsm_map.NewSMRPOAServiceCentreAddressOA(natureOnly)
 		}, ErrSmRpOaServiceCentreAddressDecodedEmpty},
 	}
 	for _, tc := range cases {

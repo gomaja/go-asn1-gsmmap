@@ -32,7 +32,7 @@ func convertProvideSubscriberInfoToArg(p *ProvideSubscriberInfo) (*gsm_map.Provi
 	}
 
 	arg := &gsm_map.ProvideSubscriberInfoArg{
-		Imsi:          gsm_map.IMSI(imsiBytes),
+		Imsi:          imsiBytes,
 		RequestedInfo: reqInfo,
 	}
 
@@ -44,7 +44,7 @@ func convertProvideSubscriberInfoToArg(p *ProvideSubscriberInfo) (*gsm_map.Provi
 
 	// CallPriority (optional, 0..15).
 	if p.CallPriority != nil {
-		v := gsm_map.EMLPPPriority(int64(*p.CallPriority))
+		v := int64(*p.CallPriority)
 		arg.CallPriority = &v
 	}
 
@@ -64,14 +64,14 @@ func convertArgToProvideSubscriberInfo(arg *gsm_map.ProvideSubscriberInfoArg) (*
 
 	// LMSI (optional, must be exactly 4 octets when present).
 	if arg.Lmsi != nil {
-		lmsi := []byte(*arg.Lmsi)
+		lmsi := *arg.Lmsi
 
 		out.LMSI = HexBytes(lmsi)
 	}
 
 	// CallPriority (optional, 0..15).
 	if arg.CallPriority != nil {
-		v := int64(*arg.CallPriority)
+		v := *arg.CallPriority
 
 		iv := int(v)
 		out.CallPriority = &iv

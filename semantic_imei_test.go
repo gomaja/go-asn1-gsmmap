@@ -52,7 +52,7 @@ func TestMarshalIMEISpareDigit(t *testing.T) {
 // Parse accepts a 15-digit IMEI whatever its last digit.
 func TestParseIMEICheckDigitTolerated(t *testing.T) {
 	for _, imei := range []string{"490154203237510", "490154203237518"} {
-		raw := gsm_map.IMEI(semTBCD(t, imei)) // last octet: filler, 15th digit
+		raw := semTBCD(t, imei) // last octet: filler, 15th digit
 		w := &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{Imei: &raw}}
 		data, err := w.MarshalBER()
 		if err != nil {

@@ -30,7 +30,7 @@ func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo,
 	}
 
 	out := &gsm_map.LCSLocationInfo{
-		NetworkNodeNumber: gsm_map.ISDNAddressString(nodeWire),
+		NetworkNodeNumber: nodeWire,
 	}
 
 	if len(l.LMSI) > 0 {
@@ -77,7 +77,7 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 	if w == nil {
 		return nil, nil
 	}
-	node, nature, plan, err := decodeAddressField([]byte(w.NetworkNodeNumber))
+	node, nature, plan, err := decodeAddressField(w.NetworkNodeNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding LCSLocationInfo.NetworkNodeNumber: %w", err)
 	}
@@ -103,7 +103,8 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 		}
 		out.AdditionalNumber = an
 	}
-	// The capability sets are represented by named bits in the public type.
+	// Direct wire conversion treats zero-length capability sets as absent;
+	// BER enforces SIZE (2..16) (3GPP TS 29.002 V19.1.0 §17.7.1).
 	if w.SupportedLCSCapabilitySets != nil && w.SupportedLCSCapabilitySets.BitLength > 0 {
 		out.SupportedLCSCapabilitySets = convertBitStringToLCSCaps(*w.SupportedLCSCapabilitySets)
 	}

@@ -31,13 +31,13 @@ func convertSubscriberIdentityToWire(s SubscriberIdentity) (gsm_map.SubscriberId
 		if err != nil {
 			return gsm_map.SubscriberIdentity{}, fmt.Errorf(errEncodingIMSI, err)
 		}
-		return gsm_map.NewSubscriberIdentityImsi(gsm_map.IMSI(imsiBytes)), nil
+		return gsm_map.NewSubscriberIdentityImsi(imsiBytes), nil
 	}
 	msisdnBytes, err := encodeAddressField(s.MSISDN, s.MSISDNNature, s.MSISDNPlan)
 	if err != nil {
 		return gsm_map.SubscriberIdentity{}, fmt.Errorf("encoding MSISDN: %w", err)
 	}
-	return gsm_map.NewSubscriberIdentityMsisdn(gsm_map.ISDNAddressString(msisdnBytes)), nil
+	return gsm_map.NewSubscriberIdentityMsisdn(msisdnBytes), nil
 }
 
 // convertWireToSubscriberIdentity decodes the SubscriberIdentity CHOICE.

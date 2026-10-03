@@ -239,8 +239,8 @@ func TestPeriodicLDRInfoOutOfRangeRejected(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			wire.ReportingAmount = gsm_map.ReportingAmount(tc.in.ReportingAmount)
-			wire.ReportingInterval = gsm_map.ReportingInterval(tc.in.ReportingInterval)
+			wire.ReportingAmount = tc.in.ReportingAmount
+			wire.ReportingInterval = tc.in.ReportingInterval
 			_, err = strictWire(wire, nil)
 			wantConstraintError(t, err, tc.path, "(1..8639999)")
 		})

@@ -47,9 +47,9 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 	}
 
 	arg := &gsm_map.SendRoutingInfoArg{
-		Msisdn:              gsm_map.ISDNAddressString(msisdn),
+		Msisdn:              msisdn,
 		InterrogationType:   s.InterrogationType,
-		GmscOrGsmSCFAddress: gsm_map.ISDNAddressString(gmsc),
+		GmscOrGsmSCFAddress: gmsc,
 	}
 
 	// CugCheckInfo
@@ -350,7 +350,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	s.GsmSCFInitiatedCall = nullPtrToBool(arg.GsmSCFInitiatedCall)
 
 	// SuppressMTSS
-	if arg.SuppressMTSS != nil && arg.SuppressMTSS.BitLength > 0 {
+	if arg.SuppressMTSS != nil {
 		s.SuppressMTSS = convertBitStringToSuppressMTSS(*arg.SuppressMTSS)
 	}
 
@@ -380,7 +380,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
-		out.Imsi = (*gsm_map.IMSI)(&imsiBytes)
+		out.Imsi = &imsiBytes
 	}
 
 	// ExtendedRoutingInfo
@@ -435,7 +435,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding VmscAddress: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(enc)
+		v := enc
 		out.VmscAddress = &v
 	}
 
@@ -455,7 +455,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding MSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(enc)
+		v := enc
 		out.Msisdn = &v
 	}
 
@@ -521,7 +521,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// UnavailabilityCause — 1..6 per TS 29.002.
 	if s.UnavailabilityCause != nil {
-		// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
+		// Sender accepts only defined values; other received values make the service unavailable (3GPP TS 29.002 V19.1.0 §17.7.3).
 		if *s.UnavailabilityCause < 1 || *s.UnavailabilityCause > 6 {
 			return nil, fmt.Errorf("UnavailabilityCause: %w (got %d)", ErrUnavailabilityCauseInvalid, *s.UnavailabilityCause)
 		}
@@ -636,10 +636,8 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// NumberPortabilityStatus — ENUMERATED { 0, 1, 2, 4, 5 } per TS 29.002.
 	// Spec exception: "reception of other values than the ones listed the
-	// receiver shall ignore the whole NumberPortabilityStatus parameter".
-	// Match against the defined set in int64 space so wire values that
-	// exceed platform int are also treated as unknown (ignored), not as
-	// decode errors — consistent with the spec's "ignore" mandate.
+	// receiver shall ignore the whole NumberPortabilityStatus;".
+	// Ignore values outside the defined set (3GPP TS 29.002 V19.1.0 §17.7.1).
 	if res.NumberPortabilityStatus != nil {
 		// Unknown extensions are ignored per 3GPP TS 29.002 V19.1.0 §17.7.1.
 		switch *res.NumberPortabilityStatus {
@@ -660,12 +658,12 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	out.IstAlertTimer = istAlert
 
 	// SupportedCamelPhasesInVMSC
-	if res.SupportedCamelPhasesInVMSC != nil && res.SupportedCamelPhasesInVMSC.BitLength > 0 {
+	if res.SupportedCamelPhasesInVMSC != nil {
 		out.SupportedCamelPhasesInVMSC = convertBitStringToCamelPhases(*res.SupportedCamelPhasesInVMSC)
 	}
 
 	// OfferedCamel4CSIsInVMSC
-	if res.OfferedCamel4CSIsInVMSC != nil && res.OfferedCamel4CSIsInVMSC.BitLength > 0 {
+	if res.OfferedCamel4CSIsInVMSC != nil {
 		out.OfferedCamel4CSIsInVMSC = convertBitStringToOfferedCamel4CSIs(*res.OfferedCamel4CSIsInVMSC)
 	}
 
@@ -700,7 +698,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	}
 
 	// AllowedServices
-	if res.AllowedServices != nil && res.AllowedServices.BitLength > 0 {
+	if res.AllowedServices != nil {
 		out.AllowedServices = convertBitStringToAllowedServices(*res.AllowedServices)
 	}
 
@@ -708,7 +706,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	// Spec exception: "Reception of other values than the ones listed shall
 	// result in the service being unavailable for that call." The protocol
 	// decode surfaces the raw value, any value including a negative one
-	// (3GPP TS 29.002 V19.1.0 §17.1.4); treating unknown causes as
+	// (3GPP TS 29.002 V19.1.0 §17.7.3); treating unknown causes as
 	// service-unavailable is an application-layer concern.
 	if res.UnavailabilityCause != nil {
 		uc := *res.UnavailabilityCause

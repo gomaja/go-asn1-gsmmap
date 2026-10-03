@@ -146,7 +146,7 @@ func convertLCSClientIDToWire(c *LCSClientID) (*gsm_map.LCSClientID, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding LCSClientID.LcsClientDialedByMS: %w", err)
 		}
-		v := gsm_map.AddressString(isdn)
+		v := isdn
 		out.LcsClientDialedByMS = &v
 	}
 	if c.LcsClientInternalID != nil {
@@ -195,7 +195,7 @@ func convertWireToLCSClientID(w *gsm_map.LCSClientID) (*LCSClientID, error) {
 		out.LcsClientExternalID = ext
 	}
 	if w.LcsClientDialedByMS != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.LcsClientDialedByMS))
+		s, nature, plan, err := decodeAddressField(*w.LcsClientDialedByMS)
 		if err != nil {
 			return nil, fmt.Errorf("decoding LCSClientID.LcsClientDialedByMS: %w", err)
 		}

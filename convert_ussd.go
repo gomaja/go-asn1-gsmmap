@@ -42,7 +42,7 @@ func convertUSSDArgToWire(a *USSDArg) (*gsm_map.USSDArg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding USSDArg.MSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(enc)
+		v := enc
 		out.Msisdn = &v
 	}
 	return out, nil
@@ -55,14 +55,14 @@ func convertWireToUSSDArg(w *gsm_map.USSDArg) (*USSDArg, error) {
 	dcs := USSDDataCodingScheme(w.UssdDataCodingScheme[0])
 	out := &USSDArg{
 		DataCodingScheme: dcs,
-		USSDString:       slices.Clone([]byte(w.UssdString)),
+		USSDString:       slices.Clone(w.UssdString),
 	}
 	if w.AlertingPattern != nil {
 		p := AlertingPattern((*w.AlertingPattern)[0])
 		out.AlertingPattern = &p
 	}
 	if w.Msisdn != nil {
-		digits, nature, plan, err := decodeAddressField([]byte(*w.Msisdn))
+		digits, nature, plan, err := decodeAddressField(*w.Msisdn)
 		if err != nil {
 			return nil, fmt.Errorf("decoding USSDArg.MSISDN: %w", err)
 		}
@@ -93,6 +93,6 @@ func convertWireToUSSDRes(w *gsm_map.USSDRes) (*USSDRes, error) {
 	dcs := USSDDataCodingScheme(w.UssdDataCodingScheme[0])
 	return &USSDRes{
 		DataCodingScheme: dcs,
-		USSDString:       slices.Clone([]byte(w.UssdString)),
+		USSDString:       slices.Clone(w.UssdString),
 	}, nil
 }
