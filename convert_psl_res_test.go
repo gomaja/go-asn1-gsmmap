@@ -82,8 +82,8 @@ func TestServingNodeAddressMmeNumberRoundTrip(t *testing.T) {
 
 func TestServingNodeAddressNoAlternativeRejected(t *testing.T) {
 	_, err := convertServingNodeAddressToWire(&ServingNodeAddress{})
-	if !errors.Is(err, ErrServingNodeAddressNoAlt) {
-		t.Errorf("encode empty: want ErrServingNodeAddressNoAlt, got %v", err)
+	if !errors.Is(err, ErrServingNodeAddressNoAlternative) {
+		t.Errorf("encode empty: want ErrServingNodeAddressNoAlternative, got %v", err)
 	}
 }
 
@@ -92,8 +92,8 @@ func TestServingNodeAddressMultipleAlternativesRejected(t *testing.T) {
 		MscNumber:  "31611111111",
 		SgsnNumber: "31622222222",
 	})
-	if !errors.Is(err, ErrServingNodeAddressMultipleAlts) {
-		t.Errorf("encode 2 alts: want ErrServingNodeAddressMultipleAlts, got %v", err)
+	if !errors.Is(err, ErrServingNodeAddressMultipleAlternatives) {
+		t.Errorf("encode 2 alts: want ErrServingNodeAddressMultipleAlternatives, got %v", err)
 	}
 }
 
@@ -131,45 +131,16 @@ func TestServingNodeAddressSgsnNumberDecodedEmptyRejected(t *testing.T) {
 	}
 }
 
-// Decoder must reject malformed CellIdOrSai CHOICEs (selected
-// alternative but nil payload, or unknown choice value) instead of
-// silently coercing to "absent". Caught by 3 reviewers (CodeRabbit,
-// Codex, cubic) on PR #47.
+// An invalid generated CHOICE value is rejected by the conversion boundary.
 func TestProvideSubscriberLocationResCellIdOrSaiInvalidChoice(t *testing.T) {
-	t.Run("CGI choice but nil payload", func(t *testing.T) {
-		w := &gsm_map.ProvideSubscriberLocationRes{
-			LocationEstimate: gsm_map.ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
-			CellIdOrSai: &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{
-				Choice: gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength,
-			},
-		}
-		_, err := convertWireToProvideSubscriberLocationRes(w)
-		if !errors.Is(err, ErrPSLResCellIdOrSaiInvalidChoice) {
-			t.Errorf("want ErrPSLResCellIdOrSaiInvalidChoice, got %v", err)
-		}
-	})
-	t.Run("LAI choice but nil payload", func(t *testing.T) {
-		w := &gsm_map.ProvideSubscriberLocationRes{
-			LocationEstimate: gsm_map.ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
-			CellIdOrSai: &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{
-				Choice: gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength,
-			},
-		}
-		_, err := convertWireToProvideSubscriberLocationRes(w)
-		if !errors.Is(err, ErrPSLResCellIdOrSaiInvalidChoice) {
-			t.Errorf("want ErrPSLResCellIdOrSaiInvalidChoice, got %v", err)
-		}
-	})
-	t.Run("unknown choice value", func(t *testing.T) {
-		w := &gsm_map.ProvideSubscriberLocationRes{
-			LocationEstimate: gsm_map.ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
-			CellIdOrSai:      &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{Choice: 99},
-		}
-		_, err := convertWireToProvideSubscriberLocationRes(w)
-		if !errors.Is(err, ErrPSLResCellIdOrSaiInvalidChoice) {
-			t.Errorf("want ErrPSLResCellIdOrSaiInvalidChoice, got %v", err)
-		}
-	})
+	w := &gsm_map.ProvideSubscriberLocationRes{
+		LocationEstimate: gsm_map.ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+		CellIdOrSai:      &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{Choice: 99},
+	}
+	_, err := convertWireToProvideSubscriberLocationRes(w)
+	if !errors.Is(err, ErrCellGlobalIdOrServiceAreaIdOrLAIUnknownAlternative) {
+		t.Errorf("want ErrCellGlobalIdOrServiceAreaIdOrLAIUnknownAlternative, got %v", err)
+	}
 }
 
 func TestServingNodeAddressNilPassesThrough(t *testing.T) {

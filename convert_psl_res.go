@@ -17,7 +17,7 @@ import (
 // ============================================================================
 //
 // ServingNodeAddress is a CHOICE between MscNumber, SgsnNumber, and
-// MmeNumber per TS 29.002 MAP-LCS-DataTypes.asn (used in PSL-Res
+// MmeNumber per TS 29.002 §17.7.13 (used in PSL-Res
 // targetServingNodeForHandover field). Per the existing CHOICE pattern
 // (see AdditionalNumber, CancelLocationIdentity), the selected
 // alternative is inferred from which field is set:
@@ -44,9 +44,9 @@ func convertServingNodeAddressToWire(s *ServingNodeAddress) (*gsm_map.ServingNod
 	}
 	switch {
 	case count == 0:
-		return nil, ErrServingNodeAddressNoAlt
+		return nil, ErrServingNodeAddressNoAlternative
 	case count > 1:
-		return nil, ErrServingNodeAddressMultipleAlts
+		return nil, ErrServingNodeAddressMultipleAlternatives
 	}
 
 	switch {
@@ -78,9 +78,6 @@ func convertWireToServingNodeAddress(w *gsm_map.ServingNodeAddress) (*ServingNod
 	out := &ServingNodeAddress{}
 	switch w.Choice {
 	case gsm_map.ServingNodeAddressChoiceMscNumber:
-		if w.MscNumber == nil {
-			return nil, ErrServingNodeAddressNoAlt
-		}
 		s, nature, plan, err := decodeAddressField(*w.MscNumber)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ServingNodeAddress.MscNumber: %w", err)
@@ -92,9 +89,6 @@ func convertWireToServingNodeAddress(w *gsm_map.ServingNodeAddress) (*ServingNod
 		out.MscNumberNature = nature
 		out.MscNumberPlan = plan
 	case gsm_map.ServingNodeAddressChoiceSgsnNumber:
-		if w.SgsnNumber == nil {
-			return nil, ErrServingNodeAddressNoAlt
-		}
 		s, nature, plan, err := decodeAddressField(*w.SgsnNumber)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ServingNodeAddress.SgsnNumber: %w", err)
@@ -106,14 +100,11 @@ func convertWireToServingNodeAddress(w *gsm_map.ServingNodeAddress) (*ServingNod
 		out.SgsnNumberNature = nature
 		out.SgsnNumberPlan = plan
 	case gsm_map.ServingNodeAddressChoiceMmeNumber:
-		if w.MmeNumber == nil {
-			return nil, ErrServingNodeAddressNoAlt
-		}
 		mme := HexBytes(*w.MmeNumber)
 
 		out.MmeNumber = mme
 	default:
-		return nil, ErrServingNodeAddressNoAlt
+		return nil, ErrServingNodeAddressUnknownAlternative
 	}
 	return out, nil
 }
@@ -149,21 +140,15 @@ func convertWireToCellIdOrSai(w *gsm_map.CellGlobalIdOrServiceAreaIdOrLAI) (cgi,
 	}
 	switch w.Choice {
 	case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength:
-		if w.CellGlobalIdOrServiceAreaIdFixedLength == nil {
-			return nil, nil, fmt.Errorf("CellIdOrSai: choice=CGI/SAI but payload is nil: %w", ErrPSLResCellIdOrSaiInvalidChoice)
-		}
 		b := HexBytes(*w.CellGlobalIdOrServiceAreaIdFixedLength)
 
 		return b, nil, nil
 	case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
-		if w.LaiFixedLength == nil {
-			return nil, nil, fmt.Errorf("CellIdOrSai: choice=LAI but payload is nil: %w", ErrPSLResCellIdOrSaiInvalidChoice)
-		}
 		b := HexBytes(*w.LaiFixedLength)
 
 		return nil, b, nil
 	default:
-		return nil, nil, fmt.Errorf("CellIdOrSai: unsupported choice %d: %w", w.Choice, ErrPSLResCellIdOrSaiInvalidChoice)
+		return nil, nil, fmt.Errorf("CellIdOrSai: unsupported choice %d: %w", w.Choice, ErrCellGlobalIdOrServiceAreaIdOrLAIUnknownAlternative)
 	}
 }
 

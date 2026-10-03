@@ -123,8 +123,8 @@ func TestPSLAreaPeriodicSentinelErrors(t *testing.T) {
 		ErrPeriodicLDRProductExceeded,
 		ErrRANTechnologyInvalid,
 		ErrTerminationCauseInvalid,
-		ErrServingNodeAddressMultipleAlts,
-		ErrServingNodeAddressNoAlt,
+		ErrServingNodeAddressMultipleAlternatives,
+		ErrServingNodeAddressNoAlternative,
 	}
 	seen := make(map[error]int, len(sentinels))
 	for i, s := range sentinels {

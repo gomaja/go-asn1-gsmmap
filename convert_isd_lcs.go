@@ -7,7 +7,7 @@ import (
 )
 
 // ============================================================================
-// LCSClientExternalID — TS 29.002 MAP-CommonDataTypes.asn (gsm_map.LCSClientExternalID)
+// LCSClientExternalID — TS 29.002 §17.7.8 (gsm_map.LCSClientExternalID)
 // ============================================================================
 
 func convertLCSClientExternalIDToWire(c *LCSClientExternalID) (*gsm_map.LCSClientExternalID, error) {
@@ -477,14 +477,14 @@ func convertGMLCListToWire(list GMLCList) (*gsm_map.GMLCList, error) {
 	out := gsm_map.GMLCList{Values: make([]gsm_map.ISDNAddressString, len(list))}
 	for i, a := range list {
 		if a.Digits == "" {
-			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCAddressEmpty)
+			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCListEntryEmpty)
 		}
 		isdn, err := encodeAddressField(a.Digits, a.Nature, a.Plan)
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
 		}
 		if !isISDNAddressStringSize(len(isdn)) {
-			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(isdn), ErrGMLCAddressInvalidSize)
+			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(isdn), ErrGMLCListEntryInvalidSize)
 		}
 		out.Values[i] = isdn
 	}
@@ -499,14 +499,14 @@ func convertWireToGMLCList(w *gsm_map.GMLCList) (GMLCList, error) {
 	out := make(GMLCList, len(w.Values))
 	for i, a := range w.Values {
 		if !isISDNAddressStringSize(len(a)) {
-			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(a), ErrGMLCAddressInvalidSize)
+			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(a), ErrGMLCListEntryInvalidSize)
 		}
 		s, nature, plan, err := decodeAddressField(a)
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
 		}
 		if s == "" {
-			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCAddressEmpty)
+			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCListEntryEmpty)
 		}
 		out[i] = ISDNNumber{Digits: s, Nature: nature, Plan: plan}
 	}

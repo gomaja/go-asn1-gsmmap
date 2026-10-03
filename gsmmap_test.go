@@ -364,8 +364,8 @@ func TestATIValidationErrors(t *testing.T) {
 		GsmSCFAddress: "12345",
 	}
 	_, err := ati.Marshal()
-	if !errors.Is(err, ErrSubscriberIdentityNoAlt) {
-		t.Errorf("empty SubscriberIdentity: want ErrSubscriberIdentityNoAlt, got %v", err)
+	if !errors.Is(err, ErrSubscriberIdentityNoAlternative) {
+		t.Errorf("empty SubscriberIdentity: want ErrSubscriberIdentityNoAlternative, got %v", err)
 	}
 
 	// Both IMSI and MSISDN set
@@ -378,8 +378,8 @@ func TestATIValidationErrors(t *testing.T) {
 		GsmSCFAddress: "12345",
 	}
 	_, err = ati.Marshal()
-	if !errors.Is(err, ErrSubscriberIdentityMultipleAlts) {
-		t.Errorf("ambiguous SubscriberIdentity: want ErrSubscriberIdentityMultipleAlts, got %v", err)
+	if !errors.Is(err, ErrSubscriberIdentityMultipleAlternatives) {
+		t.Errorf("ambiguous SubscriberIdentity: want ErrSubscriberIdentityMultipleAlternatives, got %v", err)
 	}
 
 	// Nil receiver must not panic.
@@ -1274,7 +1274,7 @@ func TestPsSubscriberStateChoiceValidation(t *testing.T) {
 		{
 			name:    "empty",
 			in:      &PsSubscriberState{},
-			wantErr: ErrAtiPsSubscriberStateNoAlternative,
+			wantErr: ErrPsSubscriberStateNoAlternative,
 		},
 		{
 			name: "multiple",
@@ -1282,7 +1282,7 @@ func TestPsSubscriberStateChoiceValidation(t *testing.T) {
 				PsDetached:                   true,
 				PsAttachedReachableForPaging: true,
 			},
-			wantErr: ErrAtiPsSubscriberStateMultipleAlternatives,
+			wantErr: ErrPsSubscriberStateMultipleAlternatives,
 		},
 		{
 			name: "multiple-with-net-det",
@@ -1290,7 +1290,7 @@ func TestPsSubscriberStateChoiceValidation(t *testing.T) {
 				PsDetached:         true,
 				NetDetNotReachable: &reason,
 			},
-			wantErr: ErrAtiPsSubscriberStateMultipleAlternatives,
+			wantErr: ErrPsSubscriberStateMultipleAlternatives,
 		},
 	}
 	for _, tc := range cases {
@@ -1797,18 +1797,18 @@ func TestMtMoFsmChoiceValidation(t *testing.T) {
 		msg     marshaler
 		wantErr error
 	}{
-		{"MtFsm/SmRpDa/None", &MtFsm{SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrMtFsmSmRpDaNoAlternative},
-		{"MtFsm/SmRpDa/IMSIAndNoSmRpDa", &MtFsm{SmRpDa: da2, SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrMtFsmSmRpDaMultipleAlternatives},
-		{"MtFsm/SmRpDa/IMSIAndLMSI", &MtFsm{SmRpDa: da3, SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrMtFsmSmRpDaMultipleAlternatives},
-		{"MtFsm/SmRpOa/None", &MtFsm{SmRpDa: mtBase.SmRpDa, TPDU: mtBase.TPDU}, ErrMtFsmSmRpOaNoAlternative},
-		{"MtFsm/SmRpOa/MSISDNAndNoSmRpOa", &MtFsm{SmRpDa: mtBase.SmRpDa, SmRpOa: oa2, TPDU: mtBase.TPDU}, ErrMtFsmSmRpOaMultipleAlternatives},
-		{"MtFsm/SmRpOa/MSISDNAndServiceCentreAddressOA", &MtFsm{SmRpDa: mtBase.SmRpDa, SmRpOa: oa3, TPDU: mtBase.TPDU}, ErrMtFsmSmRpOaMultipleAlternatives},
-		{"MoFsm/SmRpDa/None", &MoFsm{SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrMoFsmSmRpDaNoAlternative},
-		{"MoFsm/SmRpDa/IMSIAndNoSmRpDa", &MoFsm{SmRpDa: da2, SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrMoFsmSmRpDaMultipleAlternatives},
-		{"MoFsm/SmRpDa/IMSIAndLMSI", &MoFsm{SmRpDa: da3, SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrMoFsmSmRpDaMultipleAlternatives},
-		{"MoFsm/SmRpOa/None", &MoFsm{SmRpDa: moBase.SmRpDa, TPDU: moBase.TPDU}, ErrMoFsmSmRpOaNoAlternative},
-		{"MoFsm/SmRpOa/MSISDNAndNoSmRpOa", &MoFsm{SmRpDa: moBase.SmRpDa, SmRpOa: oa2, TPDU: moBase.TPDU}, ErrMoFsmSmRpOaMultipleAlternatives},
-		{"MoFsm/SmRpOa/MSISDNAndServiceCentreAddressOA", &MoFsm{SmRpDa: moBase.SmRpDa, SmRpOa: oa3, TPDU: moBase.TPDU}, ErrMoFsmSmRpOaMultipleAlternatives},
+		{"MtFsm/SmRpDa/None", &MtFsm{SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrSmRpDaNoAlternative},
+		{"MtFsm/SmRpDa/IMSIAndNoSmRpDa", &MtFsm{SmRpDa: da2, SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrSmRpDaMultipleAlternatives},
+		{"MtFsm/SmRpDa/IMSIAndLMSI", &MtFsm{SmRpDa: da3, SmRpOa: mtBase.SmRpOa, TPDU: mtBase.TPDU}, ErrSmRpDaMultipleAlternatives},
+		{"MtFsm/SmRpOa/None", &MtFsm{SmRpDa: mtBase.SmRpDa, TPDU: mtBase.TPDU}, ErrSmRpOaNoAlternative},
+		{"MtFsm/SmRpOa/MSISDNAndNoSmRpOa", &MtFsm{SmRpDa: mtBase.SmRpDa, SmRpOa: oa2, TPDU: mtBase.TPDU}, ErrSmRpOaMultipleAlternatives},
+		{"MtFsm/SmRpOa/MSISDNAndServiceCentreAddressOA", &MtFsm{SmRpDa: mtBase.SmRpDa, SmRpOa: oa3, TPDU: mtBase.TPDU}, ErrSmRpOaMultipleAlternatives},
+		{"MoFsm/SmRpDa/None", &MoFsm{SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrSmRpDaNoAlternative},
+		{"MoFsm/SmRpDa/IMSIAndNoSmRpDa", &MoFsm{SmRpDa: da2, SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrSmRpDaMultipleAlternatives},
+		{"MoFsm/SmRpDa/IMSIAndLMSI", &MoFsm{SmRpDa: da3, SmRpOa: moBase.SmRpOa, TPDU: moBase.TPDU}, ErrSmRpDaMultipleAlternatives},
+		{"MoFsm/SmRpOa/None", &MoFsm{SmRpDa: moBase.SmRpDa, TPDU: moBase.TPDU}, ErrSmRpOaNoAlternative},
+		{"MoFsm/SmRpOa/MSISDNAndNoSmRpOa", &MoFsm{SmRpDa: moBase.SmRpDa, SmRpOa: oa2, TPDU: moBase.TPDU}, ErrSmRpOaMultipleAlternatives},
+		{"MoFsm/SmRpOa/MSISDNAndServiceCentreAddressOA", &MoFsm{SmRpDa: moBase.SmRpDa, SmRpOa: oa3, TPDU: moBase.TPDU}, ErrSmRpOaMultipleAlternatives},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -1909,8 +1909,8 @@ func TestAdditionalNumberChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for both-set AdditionalNumber CHOICE")
 		}
-		if !errors.Is(err, ErrSriChoiceMultipleAlternatives) {
-			t.Errorf("expected ErrSriChoiceMultipleAlternatives, got: %v", err)
+		if !errors.Is(err, ErrAdditionalNumberMultipleAlternatives) {
+			t.Errorf("expected ErrAdditionalNumberMultipleAlternatives, got: %v", err)
 		}
 	})
 
@@ -1926,8 +1926,8 @@ func TestAdditionalNumberChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty AdditionalNumber CHOICE")
 		}
-		if !errors.Is(err, ErrSriChoiceNoAlternative) {
-			t.Errorf("expected ErrSriChoiceNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrAdditionalNumberNoAlternative) {
+			t.Errorf("expected ErrAdditionalNumberNoAlternative, got: %v", err)
 		}
 	})
 }
@@ -2450,8 +2450,8 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty EpsInfo CHOICE")
 		}
-		if !errors.Is(err, ErrSriChoiceNoAlternative) {
-			t.Errorf("expected ErrSriChoiceNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrEpsInfoNoAlternative) {
+			t.Errorf("expected ErrEpsInfoNoAlternative, got: %v", err)
 		}
 	})
 
@@ -2473,8 +2473,8 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for both-set EpsInfo CHOICE")
 		}
-		if !errors.Is(err, ErrSriChoiceMultipleAlternatives) {
-			t.Errorf("expected ErrSriChoiceMultipleAlternatives, got: %v", err)
+		if !errors.Is(err, ErrEpsInfoMultipleAlternatives) {
+			t.Errorf("expected ErrEpsInfoMultipleAlternatives, got: %v", err)
 		}
 	})
 }
@@ -3185,8 +3185,8 @@ func TestAuthenticationSetListChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for both CHOICE alternatives set")
 		}
-		if !errors.Is(err, ErrSaiAuthSetListChoiceMultipleAlternatives) {
-			t.Errorf("expected ErrSaiAuthSetListChoiceMultipleAlternatives, got: %v", err)
+		if !errors.Is(err, ErrAuthenticationSetListMultipleAlternatives) {
+			t.Errorf("expected ErrAuthenticationSetListMultipleAlternatives, got: %v", err)
 		}
 	})
 
@@ -3198,8 +3198,8 @@ func TestAuthenticationSetListChoiceValidation(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for no CHOICE alternative set")
 		}
-		if !errors.Is(err, ErrSaiAuthSetListChoiceNoAlternative) {
-			t.Errorf("expected ErrSaiAuthSetListChoiceNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrAuthenticationSetListNoAlternative) {
+			t.Errorf("expected ErrAuthenticationSetListNoAlternative, got: %v", err)
 		}
 	})
 }
@@ -3519,8 +3519,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing Identity")
 		}
-		if !errors.Is(err, ErrCancelLocIdentityChoiceNoAlternative) {
-			t.Errorf("expected ErrCancelLocIdentityChoiceNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrCancelLocationIdentityNoAlternative) {
+			t.Errorf("expected ErrCancelLocationIdentityNoAlternative, got: %v", err)
 		}
 	})
 
@@ -3538,8 +3538,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for multiple Identity alternatives")
 		}
-		if !errors.Is(err, ErrCancelLocIdentityChoiceMultiple) {
-			t.Errorf("expected ErrCancelLocIdentityChoiceMultiple, got: %v", err)
+		if !errors.Is(err, ErrCancelLocationIdentityMultipleAlternatives) {
+			t.Errorf("expected ErrCancelLocationIdentityMultipleAlternatives, got: %v", err)
 		}
 	})
 

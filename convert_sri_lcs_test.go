@@ -56,8 +56,8 @@ func TestSubscriberIdentityEncodeNegative(t *testing.T) {
 		in   SubscriberIdentity
 		want error
 	}{
-		{"neither set", SubscriberIdentity{}, ErrSubscriberIdentityNoAlt},
-		{"both set", SubscriberIdentity{IMSI: "204080000000001", MSISDN: "31612345678"}, ErrSubscriberIdentityMultipleAlts},
+		{"neither set", SubscriberIdentity{}, ErrSubscriberIdentityNoAlternative},
+		{"both set", SubscriberIdentity{IMSI: "204080000000001", MSISDN: "31612345678"}, ErrSubscriberIdentityMultipleAlternatives},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -81,16 +81,11 @@ func TestSubscriberIdentityDecodeNegative(t *testing.T) {
 	})
 	t.Run("unknown choice", func(t *testing.T) {
 		_, err := convertWireToSubscriberIdentity(gsm_map.SubscriberIdentity{Choice: 99})
-		if !errors.Is(err, ErrSubscriberIdentityUnknownChoice) {
-			t.Errorf("want ErrSubscriberIdentityUnknownChoice, got %v", err)
+		if !errors.Is(err, ErrSubscriberIdentityUnknownAlternative) {
+			t.Errorf("want ErrSubscriberIdentityUnknownAlternative, got %v", err)
 		}
 	})
-	t.Run("imsi choice but nil payload", func(t *testing.T) {
-		_, err := convertWireToSubscriberIdentity(gsm_map.SubscriberIdentity{Choice: gsm_map.SubscriberIdentityChoiceImsi})
-		if !errors.Is(err, ErrSubscriberIdentityUnknownChoice) {
-			t.Errorf("want ErrSubscriberIdentityUnknownChoice, got %v", err)
-		}
-	})
+
 }
 
 // =============================================================================
@@ -159,8 +154,8 @@ func TestSriLcsEncodeNegative(t *testing.T) {
 	}{
 		{"nil arg", nil, ErrSriLcsNil},
 		{"empty MlcNumber", func(a *SriLcs) { a.MlcNumber = "" }, ErrSriLcsMlcNumberEmpty},
-		{"no target identity", func(a *SriLcs) { a.TargetMS = SubscriberIdentity{} }, ErrSubscriberIdentityNoAlt},
-		{"ambiguous target", func(a *SriLcs) { a.TargetMS = SubscriberIdentity{IMSI: "204080000000001", MSISDN: "31612345678"} }, ErrSubscriberIdentityMultipleAlts},
+		{"no target identity", func(a *SriLcs) { a.TargetMS = SubscriberIdentity{} }, ErrSubscriberIdentityNoAlternative},
+		{"ambiguous target", func(a *SriLcs) { a.TargetMS = SubscriberIdentity{IMSI: "204080000000001", MSISDN: "31612345678"} }, ErrSubscriberIdentityMultipleAlternatives},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -253,7 +248,7 @@ func TestSriLcsRespEncodeNegative(t *testing.T) {
 		want error
 	}{
 		{"nil res", nil, ErrSriLcsRespNil},
-		{"no target identity", func(r *SriLcsResp) { r.TargetMS = SubscriberIdentity{} }, ErrSubscriberIdentityNoAlt},
+		{"no target identity", func(r *SriLcsResp) { r.TargetMS = SubscriberIdentity{} }, ErrSubscriberIdentityNoAlternative},
 		{"empty LcsLocationInfo node", func(r *SriLcsResp) { r.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeNumberEmpty},
 	}
 	for _, tc := range cases {

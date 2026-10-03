@@ -83,7 +83,7 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubsc
 	}
 
 	out := &CSGSubscriptionData{
-		CsgID:     HexBytes(append([]byte(nil), w.CsgId.Bytes...)),
+		CsgID:     bitStringFromWire(w.CsgId),
 		CsgIDBits: w.CsgId.BitLength,
 	}
 	if w.ExpirationDate != nil {

@@ -276,8 +276,9 @@ func TestVoiceGroupCallDataValidation(t *testing.T) {
 	t.Run("additionalInfoTooLong", func(t *testing.T) {
 		big := make(HexBytes, 17+1)
 		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
-			GroupId:        "123456",
-			AdditionalInfo: big,
+			GroupId:            "123456",
+			AdditionalInfo:     big,
+			AdditionalInfoBits: 18 * 8,
 		}))
 		if !matchesConstraint(err, "additionalInfo", "SIZE (1..136)") {
 			t.Errorf("want BER constraint error, got %v", err)
@@ -287,8 +288,9 @@ func TestVoiceGroupCallDataValidation(t *testing.T) {
 		// Exactly 17 bytes must be accepted.
 		ok := make(HexBytes, 17)
 		_, err := strictWire(convertVoiceGroupCallDataToWire(&VoiceGroupCallData{
-			GroupId:        "123456",
-			AdditionalInfo: ok,
+			GroupId:            "123456",
+			AdditionalInfo:     ok,
+			AdditionalInfoBits: 17 * 8,
 		}))
 		if err != nil {
 			t.Errorf("%d-octet AdditionalInfo should be accepted: %v", 17, err)
@@ -304,14 +306,11 @@ func TestVoiceGroupCallDataValidation(t *testing.T) {
 	})
 }
 
-// Per the VoiceGroupCallData.AdditionalInfo godoc, the HexBytes
-// representation is byte-aligned only — a wire BIT STRING whose
-// BitLength is not a multiple of 8 has its sub-byte trailing bits
-// discarded. The decoder uses BitLength/8 (floor), not ceiling.
-func TestVoiceGroupCallDataAdditionalInfoSubByteDiscarded(t *testing.T) {
-	// Wire carries 9 bits in 2 bytes; floor(9/8) = 1, so only the
-	// first byte survives the decode.
-	bs := runtime.BitString{Bytes: []byte{0xAB, 0x80}, BitLength: 9}
+// AdditionalInfo keeps every bit, including a value that is not
+// byte-aligned, and drops the padding bits of the last octet.
+func TestVoiceGroupCallDataAdditionalInfoBitExact(t *testing.T) {
+	// 9 bits, 1010 1011 1, with the seven padding bits set.
+	bs := runtime.BitString{Bytes: []byte{0xAB, 0xFF}, BitLength: 9}
 	w := &gsm_map.VoiceGroupCallData{
 		GroupId:        []byte{0x21, 0x43, 0x65}, // TBCD of "123456"
 		AdditionalInfo: &bs,
@@ -320,9 +319,15 @@ func TestVoiceGroupCallDataAdditionalInfoSubByteDiscarded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	want := HexBytes{0xAB}
-	if diff := cmp.Diff(want, got.AdditionalInfo); diff != "" {
-		t.Errorf("sub-byte truncation (-want +got):\n%s", diff)
+	if diff := cmp.Diff(HexBytes{0xAB, 0x80}, got.AdditionalInfo); diff != "" || got.AdditionalInfoBits != 9 {
+		t.Errorf("AdditionalInfo = %x (%d bits), want ab80 (9 bits)", got.AdditionalInfo, got.AdditionalInfoBits)
+	}
+	again, err := convertVoiceGroupCallDataToWire(got)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	if a := again.AdditionalInfo; a == nil || a.BitLength != 9 || !bytes.Equal(a.Bytes, []byte{0xAB, 0x80}) {
+		t.Errorf("re-encoded AdditionalInfo = %+v, want ab80 (9 bits)", a)
 	}
 }
 
@@ -407,8 +412,9 @@ func TestVoiceGroupCallDataRoundTrip(t *testing.T) {
 		{
 			name: "withAdditionalInfo",
 			in: &VoiceGroupCallData{
-				GroupId:        "123456",
-				AdditionalInfo: HexBytes{0x80, 0x40, 0x20},
+				GroupId:            "123456",
+				AdditionalInfo:     HexBytes{0x80, 0x40, 0x20},
+				AdditionalInfoBits: 24,
 			},
 		},
 		{

@@ -17,7 +17,7 @@ import (
 // unlistedEnums are wire values outside every enumeration below.
 var unlistedEnums = []int64{-1, 9, math.MaxInt64, math.MinInt64}
 
-// --- SubscriberStatus, §17.7.3 ---
+// --- SubscriberStatus, §17.7.1 ---
 
 func TestSubscriberStatusMembership(t *testing.T) {
 	for _, v := range []SubscriberStatus{SubscriberStatusServiceGranted, SubscriberStatusOperatorDeterminedBarring} {
@@ -45,7 +45,7 @@ func TestSubscriberStatusMembership(t *testing.T) {
 	}
 }
 
-// --- RegionalSubscriptionResponse, §17.7.3 ---
+// --- RegionalSubscriptionResponse, §17.7.1 ---
 
 func TestRegionalSubscriptionResponseMembership(t *testing.T) {
 	for _, v := range []RegionalSubscriptionResponse{RegionalSubscriptionResponseNetworkNodeAreaRestricted, RegionalSubscriptionResponseRegionalSubscNotSupported} {

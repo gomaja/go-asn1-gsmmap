@@ -9,8 +9,8 @@
 //
 // CHOICE pattern: each public CHOICE struct has separate optional
 // pointer fields per alternative. The encoder counts the populated
-// alternatives and returns ErrXxxChoiceMultipleAlternatives /
-// ErrXxxChoiceNoAlternative if the caller violated the exactly-one
+// alternatives and returns Err<Type>MultipleAlternatives or
+// Err<Type>NoAlternative if the caller violated the exactly-one
 // invariant. The decoder switches on the wire-side `.Choice` constant.
 
 package gsmmap
@@ -28,7 +28,7 @@ func convertSSSubscriptionOptionToWire(o *SSSubscriptionOption) (*gsm_map.SSSubs
 	hasOver := o.Override != nil
 	switch {
 	case hasCli && hasOver:
-		return nil, ErrSSSubscriptionOptionChoiceMultipleAlternatives
+		return nil, ErrSSSubscriptionOptionMultipleAlternatives
 	case hasCli:
 		if !isValidCliRestrictionOption(*o.CliRestriction) {
 			return nil, ErrCliRestrictionOptionInvalidValue
@@ -42,16 +42,13 @@ func convertSSSubscriptionOptionToWire(o *SSSubscriptionOption) (*gsm_map.SSSubs
 		v := gsm_map.NewSSSubscriptionOptionOverrideCategory(*o.Override)
 		return &v, nil
 	default:
-		return nil, ErrSSSubscriptionOptionChoiceNoAlternative
+		return nil, ErrSSSubscriptionOptionNoAlternative
 	}
 }
 
 func convertWireToSSSubscriptionOption(w *gsm_map.SSSubscriptionOption) (*SSSubscriptionOption, error) {
 	switch w.Choice {
 	case gsm_map.SSSubscriptionOptionChoiceCliRestrictionOption:
-		if w.CliRestrictionOption == nil {
-			return nil, ErrSSSubscriptionOptionChoiceNoAlternative
-		}
 		raw, err := narrowInt64(int64(*w.CliRestrictionOption))
 		if err != nil {
 			return nil, fmt.Errorf("CliRestrictionOption: %w", err)
@@ -62,9 +59,6 @@ func convertWireToSSSubscriptionOption(w *gsm_map.SSSubscriptionOption) (*SSSubs
 		}
 		return &SSSubscriptionOption{CliRestriction: &v}, nil
 	case gsm_map.SSSubscriptionOptionChoiceOverrideCategory:
-		if w.OverrideCategory == nil {
-			return nil, ErrSSSubscriptionOptionChoiceNoAlternative
-		}
 		raw, err := narrowInt64(int64(*w.OverrideCategory))
 		if err != nil {
 			return nil, fmt.Errorf("OverrideCategory: %w", err)
@@ -75,7 +69,7 @@ func convertWireToSSSubscriptionOption(w *gsm_map.SSSubscriptionOption) (*SSSubs
 		}
 		return &SSSubscriptionOption{Override: &v}, nil
 	default:
-		return nil, ErrSSSubscriptionOptionChoiceNoAlternative
+		return nil, ErrSSSubscriptionOptionUnknownAlternative
 	}
 }
 
@@ -563,11 +557,11 @@ func convertExtSSInfoToWire(i *ExtSSInfo) (*gsm_map.ExtSSInfo, error) {
 	}
 	switch count {
 	case 0:
-		return nil, ErrExtSSInfoChoiceNoAlternative
+		return nil, ErrExtSSInfoNoAlternative
 	case 1:
 		// fall through
 	default:
-		return nil, ErrExtSSInfoChoiceMultipleAlternatives
+		return nil, ErrExtSSInfoMultipleAlternatives
 	}
 	switch {
 	case i.ForwardingInfo != nil:
@@ -611,51 +605,36 @@ func convertExtSSInfoToWire(i *ExtSSInfo) (*gsm_map.ExtSSInfo, error) {
 func convertWireToExtSSInfo(w *gsm_map.ExtSSInfo) (*ExtSSInfo, error) {
 	switch w.Choice {
 	case gsm_map.ExtSSInfoChoiceForwardingInfo:
-		if w.ForwardingInfo == nil {
-			return nil, ErrExtSSInfoChoiceNoAlternative
-		}
 		d, err := convertWireToExtForwInfo(w.ForwardingInfo)
 		if err != nil {
 			return nil, fmt.Errorf("ForwardingInfo: %w", err)
 		}
 		return &ExtSSInfo{ForwardingInfo: d}, nil
 	case gsm_map.ExtSSInfoChoiceCallBarringInfo:
-		if w.CallBarringInfo == nil {
-			return nil, ErrExtSSInfoChoiceNoAlternative
-		}
 		d, err := convertWireToExtCallBarInfo(w.CallBarringInfo)
 		if err != nil {
 			return nil, fmt.Errorf("CallBarringInfo: %w", err)
 		}
 		return &ExtSSInfo{CallBarringInfo: d}, nil
 	case gsm_map.ExtSSInfoChoiceCugInfo:
-		if w.CugInfo == nil {
-			return nil, ErrExtSSInfoChoiceNoAlternative
-		}
 		d, err := convertWireToCUGInfo(w.CugInfo)
 		if err != nil {
 			return nil, fmt.Errorf("CugInfo: %w", err)
 		}
 		return &ExtSSInfo{CugInfo: d}, nil
 	case gsm_map.ExtSSInfoChoiceSsData:
-		if w.SsData == nil {
-			return nil, ErrExtSSInfoChoiceNoAlternative
-		}
 		d, err := convertWireToExtSSData(w.SsData)
 		if err != nil {
 			return nil, fmt.Errorf("SsData: %w", err)
 		}
 		return &ExtSSInfo{SsData: d}, nil
 	case gsm_map.ExtSSInfoChoiceEmlppInfo:
-		if w.EmlppInfo == nil {
-			return nil, ErrExtSSInfoChoiceNoAlternative
-		}
 		d, err := convertWireToEMLPPInfo(w.EmlppInfo)
 		if err != nil {
 			return nil, fmt.Errorf("EmlppInfo: %w", err)
 		}
 		return &ExtSSInfo{EmlppInfo: d}, nil
 	default:
-		return nil, ErrExtSSInfoChoiceNoAlternative
+		return nil, ErrExtSSInfoUnknownAlternative
 	}
 }

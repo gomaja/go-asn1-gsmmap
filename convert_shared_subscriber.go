@@ -294,10 +294,10 @@ func psSubscriberStateCount(p *PsSubscriberState) int {
 func convertPsSubscriberStateToWire(p *PsSubscriberState) (*gsm_map.PSSubscriberState, error) {
 	n := psSubscriberStateCount(p)
 	if n == 0 {
-		return nil, ErrAtiPsSubscriberStateNoAlternative
+		return nil, ErrPsSubscriberStateNoAlternative
 	}
 	if n > 1 {
-		return nil, ErrAtiPsSubscriberStateMultipleAlternatives
+		return nil, ErrPsSubscriberStateMultipleAlternatives
 	}
 
 	switch {
@@ -328,7 +328,7 @@ func convertPsSubscriberStateToWire(p *PsSubscriberState) (*gsm_map.PSSubscriber
 		v := gsm_map.NewPSSubscriberStatePsPDPActiveReachableForPaging(list)
 		return &v, nil
 	case p.NetDetNotReachable != nil:
-		// NotReachableReason — 0..3 (3GPP TS 29.002 V19.1.0 §17.7.8).
+		// NotReachableReason — 0..3 (3GPP TS 29.002 V19.1.0 §17.7.1).
 		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if *p.NetDetNotReachable < 0 || *p.NetDetNotReachable > 3 {
 			return nil, fmt.Errorf("PsSubscriberState.NetDetNotReachable=%d: %w", *p.NetDetNotReachable, ErrPsSubscriberStateNetDetNotReachableInvalid)
@@ -336,7 +336,7 @@ func convertPsSubscriberStateToWire(p *PsSubscriberState) (*gsm_map.PSSubscriber
 		v := gsm_map.NewPSSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(int64(*p.NetDetNotReachable)))
 		return &v, nil
 	}
-	return nil, ErrAtiPsSubscriberStateNoAlternative
+	return nil, ErrPsSubscriberStateNoAlternative
 }
 
 func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriberState, error) {
@@ -363,9 +363,6 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 		}
 		out.PsPDPActiveReachableForPaging = enc
 	case gsm_map.PSSubscriberStateChoiceNetDetNotReachable:
-		if w.NetDetNotReachable == nil {
-			return nil, fmt.Errorf("%w: PsSubscriberState: NetDetNotReachable alternative selected but reason is nil", ErrPsSubscriberStateReasonMissing)
-		}
 		// NotReachableReason — 0..3 per TS 29.002 (msPurged / imsiDetached /
 		// restrictedArea / notRegistered).
 		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
@@ -375,7 +372,7 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 		}
 		out.NetDetNotReachable = &v
 	default:
-		return nil, fmt.Errorf("%w: PsSubscriberState: unknown CHOICE value %d", ErrPsSubscriberStateChoiceInvalid, w.Choice)
+		return nil, fmt.Errorf("%w: PsSubscriberState: unknown CHOICE value %d", ErrPsSubscriberStateUnknownAlternative, w.Choice)
 	}
 	return out, nil
 }
@@ -544,7 +541,7 @@ func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInf
 
 func convertWireToUserCSGInformation(w *gsm_map.UserCSGInformation) *UserCSGInformation {
 	out := &UserCSGInformation{
-		CsgID:     append([]byte(nil), w.CsgId.Bytes...),
+		CsgID:     bitStringFromWire(w.CsgId),
 		CsgIDBits: w.CsgId.BitLength,
 	}
 	if w.AccessMode != nil {

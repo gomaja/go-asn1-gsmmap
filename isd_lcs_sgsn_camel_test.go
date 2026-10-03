@@ -460,8 +460,8 @@ func TestMOLRClass_SsCodeStrictSize(t *testing.T) {
 func TestGMLCAddress_EmptyRejected(t *testing.T) {
 	in := GMLCList{{Digits: "", Nature: 0x10, Plan: 0x01}}
 	_, err := convertGMLCListToWire(in)
-	if !errors.Is(err, ErrGMLCAddressEmpty) {
-		t.Fatalf("encode empty: want ErrGMLCAddressEmpty, got %v", err)
+	if !errors.Is(err, ErrGMLCListEntryEmpty) {
+		t.Fatalf("encode empty: want ErrGMLCListEntryEmpty, got %v", err)
 	}
 }
 

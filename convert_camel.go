@@ -303,8 +303,8 @@ func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria
 	if w.DestinationNumberList != nil && len(w.DestinationNumberList.Values) > 0 {
 		list := make([]ISDNNumber, len(w.DestinationNumberList.Values))
 		for i, n := range w.DestinationNumberList.Values {
-			// SIZE (1..9) is the ISDN-AddressString type, not the format of
-			// the number that §17.7.1 tells the receiver not to check.
+			// ISDN-AddressString SIZE (1..9) is in §17.7.8;
+			// DestinationNumberCriteria's receiver rule is in §17.7.1.
 			if !isISDNAddressStringSize(len(n)) {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %d octets: %w", i, len(n), ErrDestinationNumberInvalidSize)
 			}

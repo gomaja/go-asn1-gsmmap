@@ -3,6 +3,7 @@ package gsmmap
 
 import (
 	"bytes"
+	"errors"
 	"testing"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
@@ -39,8 +40,8 @@ func TestSriSentinelErrorsExist(t *testing.T) {
 		ErrSriMissingMSISDN,
 		ErrSriMissingGmscOrGsmSCFAddress,
 		ErrSriInvalidInterrogationType,
-		ErrSriChoiceMultipleAlternatives,
-		ErrSriChoiceNoAlternative,
+		ErrExtBasicServiceCodeMultipleAlternatives,
+		ErrExtBasicServiceCodeNoAlternative,
 	}
 	for _, e := range errs {
 		if e == nil {
@@ -181,12 +182,12 @@ func TestExtBasicServiceCodeRoundTrip(t *testing.T) {
 }
 
 func TestExtBasicServiceCodeChoiceValidation(t *testing.T) {
-	if _, err := convertExtBasicServiceCodeToWire(&ExtBasicServiceCode{}); err == nil {
-		t.Errorf("expected ErrSriChoiceNoAlternative for empty ExtBasicServiceCode")
+	if _, err := convertExtBasicServiceCodeToWire(&ExtBasicServiceCode{}); !errors.Is(err, ErrExtBasicServiceCodeNoAlternative) {
+		t.Errorf("expected ErrExtBasicServiceCodeNoAlternative for empty ExtBasicServiceCode, got %v", err)
 	}
 	both := &ExtBasicServiceCode{ExtBearerService: HexBytes{0x10}, ExtTeleservice: HexBytes{0x21}}
-	if _, err := convertExtBasicServiceCodeToWire(both); err == nil {
-		t.Errorf("expected ErrSriChoiceMultipleAlternatives for both set")
+	if _, err := convertExtBasicServiceCodeToWire(both); !errors.Is(err, ErrExtBasicServiceCodeMultipleAlternatives) {
+		t.Errorf("expected ErrExtBasicServiceCodeMultipleAlternatives for both set, got %v", err)
 	}
 }
 
@@ -219,8 +220,8 @@ func TestRoutingInfoRoundTrip(t *testing.T) {
 }
 
 func TestExtendedRoutingInfoChoiceValidation(t *testing.T) {
-	if _, err := convertExtendedRoutingInfoToWire(&ExtendedRoutingInfo{}); err == nil {
-		t.Errorf("expected ErrSriChoiceNoAlternative for empty ExtendedRoutingInfo")
+	if _, err := convertExtendedRoutingInfoToWire(&ExtendedRoutingInfo{}); !errors.Is(err, ErrExtendedRoutingInfoNoAlternative) {
+		t.Errorf("expected ErrExtendedRoutingInfoNoAlternative for empty ExtendedRoutingInfo, got %v", err)
 	}
 }
 

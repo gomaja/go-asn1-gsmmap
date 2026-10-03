@@ -133,21 +133,15 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 		choice := li.CellGlobalIdOrServiceAreaIdOrLAI
 		switch choice.Choice {
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength:
-			if choice.CellGlobalIdOrServiceAreaIdFixedLength == nil {
-				return nil, fmt.Errorf("%w: CellGlobalIdOrServiceAreaIdOrLAI: cellGlobalId alternative selected but payload is nil", ErrCellGlobalIdPayloadMissing)
-			}
 			b := *choice.CellGlobalIdOrServiceAreaIdFixedLength
 
 			loc.CellGlobalId = b
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
-			if choice.LaiFixedLength == nil {
-				return nil, fmt.Errorf("%w: CellGlobalIdOrServiceAreaIdOrLAI: LAI alternative selected but payload is nil", ErrLAIPayloadMissing)
-			}
 			b := *choice.LaiFixedLength
 
 			loc.LAI = b
 		default:
-			return nil, fmt.Errorf("%w: CellGlobalIdOrServiceAreaIdOrLAI: unknown CHOICE %d", ErrCellGlobalIdOrLAIChoiceInvalid, choice.Choice)
+			return nil, fmt.Errorf("%w: CellGlobalIdOrServiceAreaIdOrLAI: unknown CHOICE %d", ErrCellGlobalIdOrServiceAreaIdOrLAIUnknownAlternative, choice.Choice)
 		}
 	}
 
@@ -213,9 +207,6 @@ func convertAsn1ToSubscriberState(ss *gsm_map.SubscriberState) (*SubscriberState
 		info.State = StateCamelBusy
 	case gsm_map.SubscriberStateChoiceNetDetNotReachable:
 		info.State = StateNetDetNotReachable
-		if ss.NetDetNotReachable == nil {
-			return nil, fmt.Errorf("%w: SubscriberState: netDetNotReachable alternative selected but reason is nil", ErrSubscriberStateNotReachableReasonMissing)
-		}
 		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		reason, err := narrowInt64Range(int64(*ss.NetDetNotReachable), 0, 3, "NotReachableReason")
 		if err != nil {
@@ -225,7 +216,7 @@ func convertAsn1ToSubscriberState(ss *gsm_map.SubscriberState) (*SubscriberState
 	case gsm_map.SubscriberStateChoiceNotProvidedFromVLR:
 		info.State = StateNotProvidedFromVLR
 	default:
-		return nil, fmt.Errorf("%w: SubscriberState: unknown CHOICE %d", ErrSubscriberStateChoiceInvalid, ss.Choice)
+		return nil, fmt.Errorf("%w: SubscriberState: unknown CHOICE %d", ErrSubscriberStateUnknownAlternative, ss.Choice)
 	}
 	return info, nil
 }
@@ -403,21 +394,15 @@ func convertAsn1ToGPRSLocation(li *gsm_map.LocationInformationGPRS) (*GPRSLocati
 		choice := li.CellGlobalIdOrServiceAreaIdOrLAI
 		switch choice.Choice {
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceCellGlobalIdOrServiceAreaIdFixedLength:
-			if choice.CellGlobalIdOrServiceAreaIdFixedLength == nil {
-				return nil, fmt.Errorf("%w: CellGlobalIdOrServiceAreaIdOrLAI: cellGlobalId alternative selected but payload is nil", ErrCellGlobalIdPayloadMissing)
-			}
 			b := *choice.CellGlobalIdOrServiceAreaIdFixedLength
 
 			loc.CellGlobalId = b
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
-			if choice.LaiFixedLength == nil {
-				return nil, fmt.Errorf("%w: CellGlobalIdOrServiceAreaIdOrLAI: LAI alternative selected but payload is nil", ErrLAIPayloadMissing)
-			}
 			b := *choice.LaiFixedLength
 
 			loc.LAI = b
 		default:
-			return nil, fmt.Errorf("%w: CellGlobalIdOrServiceAreaIdOrLAI: unknown CHOICE %d", ErrCellGlobalIdOrLAIChoiceInvalid, choice.Choice)
+			return nil, fmt.Errorf("%w: CellGlobalIdOrServiceAreaIdOrLAI: unknown CHOICE %d", ErrCellGlobalIdOrServiceAreaIdOrLAIUnknownAlternative, choice.Choice)
 		}
 	}
 

@@ -92,15 +92,15 @@ What that means for a consumer:
 **Receiver and sender rules**
 
 - Decoders apply TS 29.002 receiver mappings and ignore rules; encoders accept only sender values. For example, CAMEL capability handling above 4 decodes as 4, while NoReplyConditionTime encodes only 5 through 30.
-- `MTSMSTPDUTypeSmsSUBMITREPORT` is removed: CAMEL phase 4 permits only `sms-DELIVER` and `sms-STATUS-REPORT` in MT-SMS TPDU criteria; the sender rejects and receiver ignores the other value.
+- `MTSMSTPDUTypeSmsSUBMITREPORT` is removed: CAMEL phase 4 permits only `sms-DELIVER` and `sms-STATUS-REPORT` in MT-SMS TPDU criteria; the sender rejects that value and the receiver ignores the entire TPDU-TypeCriterion containing it.
 - `MtFsm` and `MoFsm` expose SM-RP-DA and SM-RP-OA through `SmRpDa` and `SmRpOa` CHOICE fields. Their former shorthand identity and service-centre fields, including nature/plan fields, are removed.
 - CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`, `GPRSCSI`, `MGCSI`) omit `NotificationToCSE` and `CsiActive`; Parse drops those wire fields. Segmented CSI and SRI presence rules that depend on other segments remain the caller's responsibility.
 - `RoamingNotAllowedParam.RoamingNotAllowedCause` is a pointer, nil when the additional cause is present. `LCSQoS.LcsQosClass` decodes unrecognized values as `LCSQoSClassBestEffort`.
-- `ParseReturnErrorParameter(MapErrorCode, []byte)` replaces the per-error `Parse*Param` functions; `MapErrorCode(code).String()` replaces `GetErrorString(code)`.
+- `ParseReturnErrorParameter(MapErrorCode, []byte)` replaces the per-error `Parse*Param` functions; `MapErrorCode(code).String()` formats a MAP error code.
 
 **Renamed or retyped fields**
 
-- `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`. `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` become pointers to named feature structs; `ExtSupportedFeatures` gains `UnknownBits`, making it non-comparable, and both feature structs preserve bit lengths.
+- `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`. `VoiceGroupCallData.AdditionalInfo` gains `AdditionalInfoBits` and keeps values that are not byte-aligned. `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` become pointers to named feature structs; `ExtSupportedFeatures` gains `UnknownBits`, making it non-comparable, and both feature structs preserve bit lengths. `SupportedFeaturesBits` and `ExtSupportedFeaturesBits` are removed.
 - `ProvideSubscriberLocationRes.AgeOfLocationEstimate` and `SubscriberLocationReportArg.AgeOfLocationEstimate` change from `*int64` to `*int`; so does `InsertSubscriberDataArg.IstAlertTimer`. `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` become `[]MMCode`.
 - `GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan` in ATI and CAMEL structs. `SCANature/Plan` → `ServiceCentreAddressNature/Plan` in SRI-SM, AlertServiceCentre, and ReportSMDeliveryStatus; `SCADANature/Plan` and `SCAOANature/Plan` follow their full ServiceCentreAddress field names.
 - `UpdateLocation.MSCNumber/VLRNumber` → `MscNumber/VlrNumber`; `UpdateGprsLocation.SGSNNumber` → `SgsnNumber`; `PurgeMS.VLRNumber/SGSNNumber` → `VlrNumber/SgsnNumber`; `UpdateLocationRes.HLRNumber` and `UpdateGprsLocationRes.HLRNumber` → `HlrNumber`. Each associated nature/plan field follows the new base name.
@@ -194,7 +194,7 @@ if atiRes.SubscriberInfo.LocationInformation != nil {
     fmt.Println(atiRes.SubscriberInfo.LocationInformation.VlrNumber)
 }
 if atiRes.SubscriberInfo.SubscriberState != nil {
-    fmt.Println(atiRes.SubscriberInfo.SubscriberState.State) // e.g. StateAssumedIdle
+    fmt.Println(atiRes.SubscriberInfo.SubscriberState.State) // 0
 }
 ```
 
@@ -265,10 +265,8 @@ fmt.Println("SMS retry triggered for MSISDN:", parsed.MSISDN)
 ### PurgeMS (opCode 67)
 
 ```go
-// Build a PurgeMS request. PurgeMS is sent by the HLR to the VLR/SGSN to
-// purge subscriber data when the subscriber has been deactivated or is
-// permanently unreachable. The VLR/SGSN may reply with freeze-TMSI flags
-// indicating which TMSIs should be blocked.
+// Build a PurgeMS request. The VLR or SGSN sends it to the HLR when
+// deleting a subscriber record. The HLR replies with freeze-TMSI flags.
 purge := &gsmmap.PurgeMS{
     IMSI:      "204080012345678",
     VlrNumber: "31611111111",
@@ -280,20 +278,20 @@ if err != nil {
     log.Fatal(err)
 }
 
-// Parse a PurgeMS response received from the network
-respBytes := []byte{ /* PurgeMS-Res BER bytes from the VLR/SGSN */ }
+// Parse a PurgeMS response received from the HLR
+respBytes := []byte{ /* PurgeMS-Res BER bytes from the HLR */ }
 resp, err := gsmmap.ParsePurgeMSRes(respBytes)
 if err != nil {
     log.Fatal(err)
 }
 if resp.FreezeTMSI {
-    fmt.Println("VLR asked HLR to freeze the TMSI")
+    fmt.Println("HLR asked VLR to freeze the TMSI")
 }
 if resp.FreezePTMSI {
-    fmt.Println("SGSN asked HLR to freeze the P-TMSI")
+    fmt.Println("HLR asked SGSN to freeze the P-TMSI")
 }
 if resp.FreezeMTMSI {
-    fmt.Println("MME asked HLR to freeze the M-TMSI")
+    fmt.Println("Freeze M-TMSI requested")
 }
 ```
 
@@ -347,7 +345,7 @@ if resp.AuthenticationSetList != nil {
 ### ProvideSubscriberInfo (opCode 70)
 
 ```go
-// Build a ProvideSubscriberInfo request. PSI is sent by the HLR/gsmSCF to
+// Build a ProvideSubscriberInfo request. PSI is sent by the HLR to
 // the VLR/SGSN/MME to retrieve subscriber info (location, state, etc.)
 // given an IMSI (+optional LMSI). The set of fields returned is governed
 // by RequestedInfo — identical to the one used by ATI (opCode 71).
@@ -468,7 +466,7 @@ if err != nil {
     log.Fatal(err)
 }
 if resp.NumberPortabilityStatus != nil {
-    fmt.Println(*resp.NumberPortabilityStatus) // e.g. MnpOwnNumberPortedOut
+    fmt.Println(*resp.NumberPortabilityStatus) // ownNumberPortedOut
 }
 if resp.ExtendedRoutingInfo != nil && resp.ExtendedRoutingInfo.RoutingInfo != nil {
     ri := resp.ExtendedRoutingInfo.RoutingInfo
@@ -484,8 +482,9 @@ if resp.ExtendedRoutingInfo != nil && resp.ExtendedRoutingInfo.RoutingInfo != ni
 
 The `ExtendedRoutingInfo` CHOICE carries a `CamelRoutingInfo` alternative
 that exposes the GMSC's full CAMEL subscription information (T-CSI, O-CSI,
-D-CSI, and BCSM-CAMEL-TDP criteria lists) with field-level coverage. Every
-nested SEQUENCE and trigger detection point fields are represented in Go.
+D-CSI, and BCSM-CAMEL-TDP criteria lists) with field-level coverage. Nested SEQUENCE and trigger detection point
+fields are represented in Go, except fields documented above as omitted or
+ignored.
 Receiver mappings can normalize enum values; ignored or unsurfaced wire fields
 are dropped on Parse. Marshalled bytes need not match the input.
 
@@ -569,8 +568,8 @@ requires:
 
 | Coding | Decode | Encode |
 |---|---|---|
-| GSM 7 bit default alphabet (`0000 xxxx`, e.g. `0x0F`; `0010 0000`–`0010 0100`; `01x0 00xx`; `1111 00xx`) | yes, with the USSD packing of TS 23.038 §6.1.2.3.1 (a final `<CR>` pad is removed) and the extension table | yes |
-| UCS2 (`01xx 10xx`, e.g. `0x48`) | yes | yes, for characters up to U+FFFF |
+| GSM 7 bit default alphabet (`0000 xxxx`, e.g. `0x0F`; `0010 0000`–`0010 0100`; `010x 00xx`; `1111 00xx`) | yes, with the USSD packing of TS 23.038 §6.1.2.3.1 (a final `<CR>` pad is removed) and the extension table | yes |
+| UCS2 (`010x 10xx`, e.g. `0x48`) | yes | yes, for characters up to U+FFFF |
 | Reserved codings (e.g. `0010 0101`–`0011 1111`, `1111 1xxx`) | as GSM 7 bit, which §5 requires of a receiving entity | no (a sender must not use them) |
 | Language indication (`0x10`, `0x11`, `0x12`), compressed, 8 bit data, UDH, I1, WAP | `ErrUSSDUnsupportedDataCodingScheme` | `ErrUSSDUnsupportedDataCodingScheme` |
 

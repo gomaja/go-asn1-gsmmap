@@ -94,8 +94,8 @@ func TestMtFsmMandatoryFields(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing SmRpDa")
 		}
-		if !errors.Is(err, ErrMtFsmSmRpDaNoAlternative) {
-			t.Errorf("expected ErrMtFsmSmRpDaNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrSmRpDaNoAlternative) {
+			t.Errorf("expected ErrSmRpDaNoAlternative, got: %v", err)
 		}
 	})
 
@@ -106,8 +106,8 @@ func TestMtFsmMandatoryFields(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing SmRpOa")
 		}
-		if !errors.Is(err, ErrMtFsmSmRpOaNoAlternative) {
-			t.Errorf("expected ErrMtFsmSmRpOaNoAlternative, got: %v", err)
+		if !errors.Is(err, ErrSmRpOaNoAlternative) {
+			t.Errorf("expected ErrSmRpOaNoAlternative, got: %v", err)
 		}
 	})
 
