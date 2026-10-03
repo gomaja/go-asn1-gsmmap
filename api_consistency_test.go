@@ -238,3 +238,34 @@ func TestSAIMissingIMSISentinelPublic(t *testing.T) {
 		t.Errorf("Parse: %v", err)
 	}
 }
+
+func TestUpdateGprsLocationMissingIMSI(t *testing.T) {
+	_, err := (&UpdateGprsLocation{SgsnNumber: "12", SGSNAddress: "192.0.2.1"}).Marshal()
+	if !errors.Is(err, ErrIdentityEmpty) {
+		t.Fatalf("Marshal: err = %v, want ErrIdentityEmpty", err)
+	}
+}
+
+// BER does not require the unused bits of a BIT STRING's last octet to be
+// zero (ITU-T X.690 §11.2.1 makes it a DER/CER rule), so they carry no
+// feature bit.
+func TestExtSupportedFeaturesIgnoresPaddingBits(t *testing.T) {
+	// InsertSubscriberDataRes ext-SupportedFeatures [10]: one bit, '1'B, with
+	// the seven unused bits of the octet set to 0000001.
+	wire := []byte{0x30, 0x04, 0x8a, 0x02, 0x07, 0x81}
+	got, err := ParseInsertSubscriberDataRes(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ext := got.ExtSupportedFeatures
+	if ext == nil || !ext.UnlicensedSpectrumAsSecondaryRAT || ext.UnknownBits != nil {
+		t.Fatalf("ExtSupportedFeatures = %+v, want only UnlicensedSpectrumAsSecondaryRAT", ext)
+	}
+	out, err := got.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []byte{0x30, 0x04, 0x8a, 0x02, 0x07, 0x80}; !bytes.Equal(out, want) {
+		t.Errorf("Marshal = %x, want %x", out, want)
+	}
+}

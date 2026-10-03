@@ -503,6 +503,11 @@ func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedF
 	if len(bs.Bytes) > 0 {
 		out.UnknownBits = append(HexBytes(nil), bs.Bytes...)
 		out.UnknownBits[0] &^= 0x80
+		// The unused bits of the last octet carry no value in BER (ITU-T
+		// X.690 §11.2.1 requires them to be zero only in DER and CER).
+		if r := bs.BitLength % 8; r != 0 {
+			out.UnknownBits[len(out.UnknownBits)-1] &= 0xFF << uint(8-r)
+		}
 		for len(out.UnknownBits) > 0 && out.UnknownBits[len(out.UnknownBits)-1] == 0 {
 			out.UnknownBits = out.UnknownBits[:len(out.UnknownBits)-1]
 		}
