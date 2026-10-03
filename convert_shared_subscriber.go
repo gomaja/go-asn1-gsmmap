@@ -3,7 +3,6 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -531,19 +530,11 @@ func convertWireToGprsMSClass(w *gsm_map.GPRSMSClass) *GprsMSClass {
 // --- UserCSGInformation (opCode 71) ---
 
 func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInformation, error) {
-	if len(u.CsgID) > 0 && u.CsgIDBits == 0 {
-		return nil, fmt.Errorf("CsgIDBits must be set when CsgID has bytes (got len %d)", len(u.CsgID))
+	csgID, err := bitStringToWire("UserCSGInformation.CsgID", u.CsgID, u.CsgIDBits)
+	if err != nil {
+		return nil, err
 	}
-	// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
-	if u.CsgIDBits > len(u.CsgID)*8 {
-		return nil, fmt.Errorf("CsgIDBits (%d) exceeds len(CsgID)*8 (%d)", u.CsgIDBits, len(u.CsgID)*8)
-	}
-	out := &gsm_map.UserCSGInformation{
-		CsgId: runtime.BitString{
-			Bytes:     append([]byte(nil), u.CsgID...),
-			BitLength: u.CsgIDBits,
-		},
-	}
+	out := &gsm_map.UserCSGInformation{CsgId: csgID}
 	if u.AccessMode != nil {
 		out.AccessMode = []byte(u.AccessMode)
 	}

@@ -336,11 +336,12 @@ const (
 
 // EpsInfo is the EPS-Info CHOICE (opCode 23).
 // Set exactly one alternative: either PdnGwUpdate (non-nil) or
-// IsrInformationBits > 0 (IsrInformation carries the BIT STRING bytes).
+// IsrInformation, whose IsrInformationBits bits fill exactly
+// (IsrInformationBits+7)/8 octets.
 type EpsInfo struct {
 	PdnGwUpdate        *PdnGwUpdate
 	IsrInformation     HexBytes // BIT STRING content
-	IsrInformationBits int      // BitLength; 0 means unset
+	IsrInformationBits int      // BitLength; 0 with no octets means unset
 }
 
 // PdnGwUpdate SEQUENCE (opCode 23).
@@ -407,7 +408,7 @@ type SGSNCapability struct {
 	SmsCallBarringSupportIndicator                     bool // [7] NULL
 	SupportedRATTypesIndicator                         *SupportedRATTypes
 	SupportedFeatures                                  HexBytes // raw BIT STRING bytes [9]
-	SupportedFeaturesBits                              int      // BitLength; 0 means unset
+	SupportedFeaturesBits                              int      // BitLength, (bits+7)/8 octets; 0 with no octets means unset
 	TAdsDataRetrieval                                  bool     // [10] NULL
 	HomogeneousSupportOfIMSVoiceOverPSSessions         *bool    // [11] 3-state
 	CancellationTypeInitialAttach                      bool     // [12] NULL
@@ -415,7 +416,7 @@ type SGSNCapability struct {
 	UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions bool     // [15] NULL
 	ResetIdsSupported                                  bool     // [16] NULL
 	ExtSupportedFeatures                               HexBytes // raw BIT STRING bytes [17]
-	ExtSupportedFeaturesBits                           int      // BitLength; 0 means unset
+	ExtSupportedFeaturesBits                           int      // BitLength, (bits+7)/8 octets; 0 with no octets means unset
 }
 
 // UpdateGprsLocationRes represents an UpdateGprsLocation response (opCode 23).
@@ -568,7 +569,7 @@ type GprsMSClass struct {
 // UserCSGInformation is the UserCSGInformation SEQUENCE (opCode 71).
 type UserCSGInformation struct {
 	CsgID      HexBytes // [0] CSG-Id BIT STRING (raw bytes)
-	CsgIDBits  int      // BitLength for the BIT STRING
+	CsgIDBits  int      // BitLength; CsgID holds exactly (CsgIDBits+7)/8 octets
 	AccessMode HexBytes // [2]
 	CMI        HexBytes // [3]
 }
@@ -3617,6 +3618,8 @@ var (
 	ErrGroupIdDecodedEmpty       = errors.New("voiceGroupCallData/voiceBroadcastData: wire GroupId holds no digits and no LongGroupId is present")
 	ErrLongGroupIdDecodedEmpty   = errors.New("voiceGroupCallData/voiceBroadcastData: present wire LongGroupId holds no digits; presence cannot round-trip through the string-based API")
 
+	// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
+	ErrBitStringOctetsMismatch = errors.New("bitString: a BIT STRING of n bits must have exactly (n+7)/8 octets per X.690 §8.6.2")
 	// Encode still checks bit length against bytes: https://github.com/gomaja/go-asn1/issues/80.
 	ErrCSGIdInvalidSize = errors.New("csgSubscriptionData: CsgId BIT STRING (SIZE 27) requires exactly 4 octets carrying 27 bits; CsgIdBitLength must be set to 27")
 	ErrAPNInvalidSize   = errors.New("apn: each entry must be 2..63 octets per TS 29.002 MAP-MS-DataTypes.asn:1654")

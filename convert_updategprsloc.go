@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -343,12 +342,11 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 		out.SupportedRATTypesIndicator = &bs
 	}
 
-	if s.SupportedFeaturesBits > 0 {
-		// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
-		if len(s.SupportedFeatures) == 0 || s.SupportedFeaturesBits > len(s.SupportedFeatures)*8 {
-			return nil, fmt.Errorf("SGSNCapability: SupportedFeaturesBits (%d) inconsistent with bytes (%d)", s.SupportedFeaturesBits, len(s.SupportedFeatures))
+	if s.SupportedFeaturesBits != 0 || len(s.SupportedFeatures) > 0 {
+		bs, err := bitStringToWire("SGSNCapability.SupportedFeatures", s.SupportedFeatures, s.SupportedFeaturesBits)
+		if err != nil {
+			return nil, err
 		}
-		bs := runtime.BitString{Bytes: append([]byte(nil), s.SupportedFeatures...), BitLength: s.SupportedFeaturesBits}
 		out.SupportedFeatures = &bs
 	}
 
@@ -364,12 +362,11 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	out.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions = boolToNullPtr(s.UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions)
 	out.ResetIdsSupported = boolToNullPtr(s.ResetIdsSupported)
 
-	if s.ExtSupportedFeaturesBits > 0 {
-		// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
-		if len(s.ExtSupportedFeatures) == 0 || s.ExtSupportedFeaturesBits > len(s.ExtSupportedFeatures)*8 {
-			return nil, fmt.Errorf("SGSNCapability: ExtSupportedFeaturesBits (%d) inconsistent with bytes (%d)", s.ExtSupportedFeaturesBits, len(s.ExtSupportedFeatures))
+	if s.ExtSupportedFeaturesBits != 0 || len(s.ExtSupportedFeatures) > 0 {
+		bs, err := bitStringToWire("SGSNCapability.ExtSupportedFeatures", s.ExtSupportedFeatures, s.ExtSupportedFeaturesBits)
+		if err != nil {
+			return nil, err
 		}
-		bs := runtime.BitString{Bytes: append([]byte(nil), s.ExtSupportedFeatures...), BitLength: s.ExtSupportedFeaturesBits}
 		out.ExtSupportedFeatures = &bs
 	}
 
@@ -440,7 +437,7 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 
 func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 	hasPdn := e.PdnGwUpdate != nil
-	hasIsr := e.IsrInformationBits > 0
+	hasIsr := e.IsrInformationBits != 0 || len(e.IsrInformation) > 0
 	if hasPdn && hasIsr {
 		return nil, ErrSriChoiceMultipleAlternatives
 	}
@@ -456,12 +453,10 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 		return &v, nil
 	}
 	// IsrInformation is BIT STRING (SIZE(3..8)) per TS 29.002 §17.7.1.
-
-	// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
-	if len(e.IsrInformation) == 0 || e.IsrInformationBits > len(e.IsrInformation)*8 {
-		return nil, fmt.Errorf("EpsInfo: IsrInformationBits (%d) inconsistent with bytes (%d)", e.IsrInformationBits, len(e.IsrInformation))
+	bs, err := bitStringToWire("EpsInfo.IsrInformation", e.IsrInformation, e.IsrInformationBits)
+	if err != nil {
+		return nil, err
 	}
-	bs := runtime.BitString{Bytes: append([]byte(nil), e.IsrInformation...), BitLength: e.IsrInformationBits}
 	v := gsm_map.NewEPSInfoIsrInformation(bs)
 	return &v, nil
 }
