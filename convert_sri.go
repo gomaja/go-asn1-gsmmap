@@ -371,7 +371,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 // --- SRI Response (SendRoutingInfoRes) full converters ---
 
 func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
-	imsiBytes, err := encodeIdentityDigits(s.IMSI)
+	imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -542,7 +542,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// Imsi
 	if res.Imsi != nil {
-		imsi, err := decodeIdentityDigits(*res.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *res.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMSI: %w", err)
 		}

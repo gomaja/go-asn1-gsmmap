@@ -307,9 +307,9 @@ func TestParseUpdateGprsLocation(t *testing.T) {
 		},
 		{
 			name:                   "Valid UpdateGprsLocation with SGSNCapability",
-			hexString:              "301e04082143658709214365040791261806630000040504c0a80101a0028300",
+			hexString:              "301e040821436587092143f5040791261806630000040504c0a80101a0028300",
 			expectError:            false,
-			expectedIMSI:           "1234567890123456",
+			expectedIMSI:           "123456789012345",
 			expectedSGSNNumber:     "628160360000",
 			expectedSGSNAddress:    "192.168.1.1",
 			expectedGprsEnhSupport: true,
@@ -317,9 +317,9 @@ func TestParseUpdateGprsLocation(t *testing.T) {
 		},
 		{
 			name:                   "Valid UpdateGprsLocation with SGSNCapability and LCS",
-			hexString:              "302204082143658709214365040791261806630000040504c0a80101a0068300850206c0",
+			hexString:              "3022040821436587092143f5040791261806630000040504c0a80101a0068300850206c0",
 			expectError:            false,
-			expectedIMSI:           "1234567890123456",
+			expectedIMSI:           "123456789012345",
 			expectedSGSNNumber:     "628160360000",
 			expectedSGSNAddress:    "192.168.1.1",
 			expectedGprsEnhSupport: true,

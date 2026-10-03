@@ -165,7 +165,7 @@ func convertWireToSuperChargerInfo(w *gsm_map.SuperChargerInfo) (*SuperChargerIn
 }
 
 func convertAddInfoToWire(a *AddInfo) (*gsm_map.ADDInfo, error) {
-	imeisvBytes, err := encodeIdentityDigits(a.IMEISV)
+	imeisvBytes, err := encodeIdentityDigits(identityIMEISV, a.IMEISV)
 	if err != nil {
 		return nil, fmt.Errorf("encoding IMEISV: %w", err)
 	}
@@ -177,7 +177,7 @@ func convertAddInfoToWire(a *AddInfo) (*gsm_map.ADDInfo, error) {
 }
 
 func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
-	imeisv, err := decodeIdentityDigits(w.Imeisv)
+	imeisv, err := decodeIdentityDigits(identityIMEISV, w.Imeisv)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMEISV: %w", err)
 	}

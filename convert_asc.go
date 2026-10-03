@@ -34,7 +34,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 	}
 
 	if a.IMSI != "" {
-		imsiBytes, err := encodeIdentityDigits(a.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, a.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
@@ -128,7 +128,7 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	if arg.Imsi != nil {
-		imsi, err := decodeIdentityDigits(*arg.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *arg.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding optional IMSI: %w", err)
 		}

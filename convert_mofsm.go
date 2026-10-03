@@ -52,7 +52,7 @@ func convertSmRpDaToWireWithErrors(
 
 	switch {
 	case da.IMSI != "":
-		imsiBytes, err := encodeIdentityDigits(da.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, da.IMSI)
 		if err != nil {
 			return gsm_map.SMRPDA{}, fmt.Errorf("encoding SmRpDa IMSI: %w", err)
 		}
@@ -78,7 +78,7 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 		if w.Imsi == nil {
 			return nil, fmt.Errorf("SMRPDA IMSI is nil")
 		}
-		imsi, err := decodeIdentityDigits(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpDa IMSI: %w", err)
 		}
@@ -236,7 +236,7 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 
 	// Optional fields (post-extension marker).
 	if m.IMSI != "" {
-		imsiBytes, err := encodeIdentityDigits(m.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, m.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
@@ -287,7 +287,7 @@ func convertArgToMoFsm(arg *gsm_map.MOForwardSMArg) (*MoFsm, error) {
 
 	// Optional fields (post-extension marker).
 	if arg.Imsi != nil {
-		imsi, err := decodeIdentityDigits(*arg.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *arg.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding IMSI: %w", err)
 		}

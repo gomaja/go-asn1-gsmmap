@@ -36,14 +36,14 @@ func isValidTypeOfUpdate(v TypeOfUpdate) bool {
 // assumes its input has been validated and focuses on conversion.
 func convertCancelLocationIdentityToWire(id *CancelLocationIdentity) (gsm_map.Identity, error) {
 	if id.IMSI != "" {
-		imsiBytes, err := encodeIdentityDigits(id.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, id.IMSI)
 		if err != nil {
 			return gsm_map.Identity{}, fmt.Errorf(errEncodingIMSI, err)
 		}
 		return gsm_map.NewIdentityImsi(gsm_map.IMSI(imsiBytes)), nil
 	}
 
-	imsiBytes, err := encodeIdentityDigits(id.IMSIWithLMSI.IMSI)
+	imsiBytes, err := encodeIdentityDigits(identityIMSI, id.IMSIWithLMSI.IMSI)
 	if err != nil {
 		return gsm_map.Identity{}, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -61,7 +61,7 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 		if id.Imsi == nil {
 			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
 		}
-		imsi, err := decodeIdentityDigits(*id.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *id.Imsi)
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}
@@ -71,7 +71,7 @@ func convertWireToCancelLocationIdentity(id gsm_map.Identity) (CancelLocationIde
 			return CancelLocationIdentity{}, ErrCancelLocIdentityChoiceNoAlternative
 		}
 
-		imsi, err := decodeIdentityDigits(id.ImsiWithLMSI.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, id.ImsiWithLMSI.Imsi)
 		if err != nil {
 			return CancelLocationIdentity{}, fmt.Errorf("decoding IMSI: %w", err)
 		}

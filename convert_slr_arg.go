@@ -71,10 +71,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	// [1] imsi
 	if a.IMSI != "" {
-		if len(a.IMSI) < pslIMSIDigitsMin || len(a.IMSI) > pslIMSIDigitsMax {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.IMSI digits=%d: %w", len(a.IMSI), ErrSLRArgIMSIInvalidSize)
-		}
-		imsiBytes, err := encodeIdentityDigits(a.IMSI)
+		imsiBytes, err := encodeIdentityDigits(identityIMSI, a.IMSI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.IMSI: %w", err)
 		}
@@ -83,10 +80,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	// [2] imei
 	if a.IMEI != "" {
-		if len(a.IMEI) != pslIMEIDigits {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.IMEI digits=%d: %w", len(a.IMEI), ErrSLRArgIMEIInvalidSize)
-		}
-		imeiBytes, err := encodeIdentityDigits(a.IMEI)
+		imeiBytes, err := encodeIdentityDigits(identityIMEI, a.IMEI)
 		if err != nil {
 			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.IMEI: %w", err)
 		}
@@ -290,22 +284,16 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.MSISDNPlan = plan
 	}
 	if w.Imsi != nil {
-		imsi, err := decodeIdentityDigits(*w.Imsi)
+		imsi, err := decodeIdentityDigits(identityIMSI, *w.Imsi)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.IMSI: %w", err)
-		}
-		if len(imsi) < pslIMSIDigitsMin || len(imsi) > pslIMSIDigitsMax {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.IMSI digits=%d: %w", len(imsi), ErrSLRArgIMSIInvalidSize)
 		}
 		out.IMSI = imsi
 	}
 	if w.Imei != nil {
-		imei, err := decodeIdentityDigits(*w.Imei)
+		imei, err := decodeIdentityDigits(identityIMEI, *w.Imei)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.IMEI: %w", err)
-		}
-		if len(imei) != pslIMEIDigits {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.IMEI digits=%d: %w", len(imei), ErrSLRArgIMEIInvalidSize)
 		}
 		out.IMEI = imei
 	}

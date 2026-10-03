@@ -2764,12 +2764,12 @@ type ProvideSubscriberLocationArg struct {
 	// Optional.
 	LcsClientID               *LCSClientID
 	PrivacyOverride           bool     // [1] NULL flag
-	IMSI                      string   // TBCD-decoded digits; "" = absent (5..15 BCD digits per TS 29.002, TBCD-STRING SIZE 3..8 octets)
+	IMSI                      string   // TBCD-decoded digits; "" = absent (6..15 digits, ErrIMSIInvalidLength)
 	MSISDN                    string   // ISDN-AddressString digits; "" = absent
 	MSISDNNature              uint8    // address nature indicator
 	MSISDNPlan                uint8    // numbering plan indicator
 	LMSI                      HexBytes // 4 octets opaque
-	IMEI                      string   // TBCD-decoded digits; "" = absent (15 BCD digits per TS 29.002)
+	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; ErrIMEIInvalidLength)
 	LcsPriority               LCSPriority
 	LcsQoS                    *LCSQoS
 	SupportedGADShapes        *SupportedGADShapes
@@ -3166,8 +3166,8 @@ type SubscriberLocationReportArg struct {
 	MSISDN       string // [0] ISDN-AddressString digits; "" = absent
 	MSISDNNature uint8
 	MSISDNPlan   uint8
-	IMSI         string // [1] TBCD-decoded digits; "" = absent (5..15 BCD digits)
-	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 BCD digits)
+	IMSI         string // [1] TBCD-decoded digits; "" = absent (6..15 digits, ErrIMSIInvalidLength)
+	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; ErrIMEIInvalidLength)
 
 	// Optional emergency-services routing identifiers (ISDN-AddressString).
 	NaESRD       string // [3] North-American Emergency Service Routing Digits; "" = absent
@@ -3527,6 +3527,19 @@ var (
 	// empty or decodes to no digits (e.g. all TBCD filler).
 	ErrIdentityEmpty = errors.New("identity: IMSI, IMEI or IMEISV holds no digits")
 
+	// ErrIMSIInvalidLength is returned when an IMSI does not have 6 to 15
+	// digits: a three-digit MCC, a two- or three-digit MNC and an MSIN, "Not
+	// more than 15 digits" (3GPP TS 23.003 V20.1.0 §2.2, §2.3).
+	ErrIMSIInvalidLength = errors.New("identity: IMSI must have 6 to 15 digits (MCC, MNC and MSIN) per 3GPP TS 23.003 V20.1.0 §2.2")
+	// ErrIMEIInvalidLength is returned when an IMEI field does not hold 15
+	// digits (IMEI, 3GPP TS 23.003 V20.1.0 §6.2.1) or 16 digits (with the
+	// software version number, §6.2.2), the two forms 3GPP TS 29.002 V19.1.0
+	// §17.7.8 IMEI carries.
+	ErrIMEIInvalidLength = errors.New("identity: IMEI must have 15 digits, or 16 with the software version number, per 3GPP TS 23.003 V20.1.0 §6.2 and 3GPP TS 29.002 V19.1.0 §17.7.8")
+	// ErrIMEISVInvalidLength is returned when an IMEISV does not have 16
+	// digits (3GPP TS 23.003 V20.1.0 §6.2.2).
+	ErrIMEISVInvalidLength = errors.New("identity: IMEISV must have 16 digits per 3GPP TS 23.003 V20.1.0 §6.2.2")
+
 	// ErrAddressStringEmpty is returned when an AddressString has no octets
 	// at all, not even the nature/plan octet.
 	ErrAddressStringEmpty = errors.New("address: AddressString has no octets")
@@ -3706,8 +3719,6 @@ var (
 	ErrPSLArgMlcNumberEmpty        = errors.New("provideSubscriberLocationArg: MlcNumber digits are mandatory; empty value is not permitted on encode")
 	ErrPSLArgMlcNumberDecodedEmpty = errors.New("provideSubscriberLocationArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrPSLArgMSISDNDecodedEmpty    = errors.New("provideSubscriberLocationArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrPSLArgIMSIInvalidSize       = errors.New("provideSubscriberLocationArg: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8 octets per ITU E.212)")
-	ErrPSLArgIMEIInvalidSize       = errors.New("provideSubscriberLocationArg: IMEI must be exactly 15 BCD digits per 3GPP TS 23.003 (TBCD-STRING SIZE 8 octets)")
 
 	ErrPSLResNil                      = errors.New("provideSubscriberLocationRes: argument must not be nil")
 	ErrPSLResCellGlobalIdAndLAIMutex  = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
@@ -3720,8 +3731,6 @@ var (
 
 	// SubscriberLocationReportArg top-level (TS 29.002 MAP-LCS-DataTypes.asn:622).
 	ErrSLRArgNil                     = errors.New("subscriberLocationReportArg: nil argument is not permitted")
-	ErrSLRArgIMSIInvalidSize         = errors.New("subscriberLocationReportArg: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8)")
-	ErrSLRArgIMEIInvalidSize         = errors.New("subscriberLocationReportArg: IMEI must be exactly 15 BCD digits per 3GPP TS 23.003")
 	ErrSLRArgMSISDNDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgNaESRDDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire NaESRD decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSLRArgNaESRKDecodedEmpty      = errors.New("subscriberLocationReportArg: present wire NaESRK decoded to empty digits; presence cannot round-trip through string-based API")
@@ -3758,7 +3767,6 @@ var (
 	ErrReportSMDeliveryStatusSCADecodedEmpty    = errors.New("reportSMDeliveryStatus: present wire ServiceCentreAddress decoded to empty digits; presence cannot round-trip through string-based API")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrReportSMDeliveryStatusOutcomeInvalid       = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 MAP-SM-DataTypes.asn")
-	ErrReportSMDeliveryStatusIMSIInvalidSize      = errors.New("reportSMDeliveryStatus: IMSI must be 5..15 BCD digits per TS 29.002 MAP-CommonDataTypes.asn (TBCD-STRING SIZE 3..8)")
 	ErrReportSMDeliveryStatusResNil               = errors.New("reportSMDeliveryStatusRes: nil argument is not permitted")
 	ErrReportSMDeliveryStatusResStoredMSISDNEmpty = errors.New("reportSMDeliveryStatusRes: present wire StoredMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 )

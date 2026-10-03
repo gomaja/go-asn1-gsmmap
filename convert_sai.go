@@ -161,7 +161,7 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 		return nil, ErrSaiMissingIMSI
 	}
 
-	imsiBytes, err := encodeIdentityDigits(s.IMSI)
+	imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
@@ -203,7 +203,7 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 // convertArgToSendAuthenticationInfo converts a wire-level
 // gsm_map.SendAuthenticationInfoArg back into the public SendAuthenticationInfo.
 func convertArgToSendAuthenticationInfo(arg *gsm_map.SendAuthenticationInfoArg) (*SendAuthenticationInfo, error) {
-	imsi, err := decodeIdentityDigits(arg.Imsi)
+	imsi, err := decodeIdentityDigits(identityIMSI, arg.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}

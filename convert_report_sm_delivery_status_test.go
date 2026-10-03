@@ -144,8 +144,8 @@ func TestReportSMDeliveryStatusEncodeNegative(t *testing.T) {
 		{"empty ServiceCentreAddress", func(r *ReportSMDeliveryStatus) { r.ServiceCentreAddress = "" }, ErrReportSMDeliveryStatusSCAEmpty},
 		{"outcome out of range", func(r *ReportSMDeliveryStatus) { r.SmDeliveryOutcome = SmDeliveryOutcome(9) }, ErrReportSMDeliveryStatusOutcomeInvalid},
 		{"diagnostic out of range", func(r *ReportSMDeliveryStatus) { r.AbsentSubscriberDiagnosticSM = &bad }, nil},
-		{"IMSI too short", func(r *ReportSMDeliveryStatus) { r.IMSI = "1234" }, ErrReportSMDeliveryStatusIMSIInvalidSize},
-		{"IMSI too long", func(r *ReportSMDeliveryStatus) { r.IMSI = "1234567890123456" }, ErrReportSMDeliveryStatusIMSIInvalidSize},
+		{"IMSI too short", func(r *ReportSMDeliveryStatus) { r.IMSI = "1234" }, ErrIMSIInvalidLength},
+		{"IMSI too long", func(r *ReportSMDeliveryStatus) { r.IMSI = "1234567890123456" }, ErrIMSIInvalidLength},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -181,7 +181,7 @@ func TestReportSMDeliveryStatusDecodeNegative(t *testing.T) {
 	}
 	emptyAddr := func() []byte { return []byte{0x91} } // header only, no TBCD digits
 	diag999 := gsm_map.AbsentSubscriberDiagnosticSM(999)
-	imsiShort := gsm_map.IMSI{0x21, 0xf3} // 3 digits after TBCD decode (< 5)
+	imsiShort := gsm_map.IMSI{0x21, 0xf3} // 3 digits after TBCD decode (< 6)
 
 	cases := []struct {
 		name string
@@ -192,7 +192,7 @@ func TestReportSMDeliveryStatusDecodeNegative(t *testing.T) {
 		{"MSISDN present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.Msisdn = emptyAddr() }, ErrReportSMDeliveryStatusMSISDNDecodedEmpty},
 		{"SCA present but empty", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.ServiceCentreAddress = emptyAddr() }, ErrReportSMDeliveryStatusSCADecodedEmpty},
 		{"diagnostic out of range on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { w.AbsentSubscriberDiagnosticSM = &diag999 }, nil},
-		{"IMSI invalid size on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { v := imsiShort; w.Imsi = &v }, ErrReportSMDeliveryStatusIMSIInvalidSize},
+		{"IMSI invalid size on wire", func(w *gsm_map.ReportSMDeliveryStatusArg) { v := imsiShort; w.Imsi = &v }, ErrIMSIInvalidLength},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
