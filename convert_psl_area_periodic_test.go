@@ -248,7 +248,7 @@ func TestPeriodicLDRInfoOutOfRangeRejected(t *testing.T) {
 }
 
 // Spec-mandated cap: ReportingAmount × ReportingInterval ≤ 8639999
-// (TS 29.002 MAP-LCS-DataTypes.asn:375-376).
+// (3GPP TS 29.002 V19.1.0 §17.7.13).
 func TestPeriodicLDRInfoProductCapRejected(t *testing.T) {
 	in := &PeriodicLDRInfo{ReportingAmount: 1000, ReportingInterval: 10000} // 10,000,000 > cap
 	_, err := convertPeriodicLDRInfoToWire(in)
@@ -420,7 +420,7 @@ func TestPSLAreaPeriodicNilPassThrough(t *testing.T) {
 // TestAreaOutOfRangeTypeRejected, TestAreaEventInfoOccurrenceInfoOutOfRangeRejected,
 // and TestReportingPLMNRanTechnologyOutOfRangeRejected.)
 func TestPSLAreaPeriodicDecoderLenientForExtensibleEnums(t *testing.T) {
-	// AreaType — extensible (TS 29.002:337).
+	// AreaType — extensible (3GPP TS 29.002 V19.1.0 §17.7.13).
 	w := &gsm_map.Area{
 		AreaType:           gsm_map.AreaType(99),
 		AreaIdentification: gsm_map.AreaIdentification{0x01, 0x02},
@@ -430,7 +430,7 @@ func TestPSLAreaPeriodicDecoderLenientForExtensibleEnums(t *testing.T) {
 		t.Errorf("AreaType not preserved: want 99, got %d", got.AreaType)
 	}
 
-	// OccurrenceInfo — extensible (TS 29.002:361).
+	// OccurrenceInfo — extensible (3GPP TS 29.002 V19.1.0 §17.7.13).
 	occ := gsm_map.OccurrenceInfo(99)
 	wAEI := &gsm_map.AreaEventInfo{
 		AreaDefinition: gsm_map.AreaDefinition{
@@ -445,7 +445,7 @@ func TestPSLAreaPeriodicDecoderLenientForExtensibleEnums(t *testing.T) {
 		t.Errorf("OccurrenceInfo not preserved: got %v", gotAEI.OccurrenceInfo)
 	}
 
-	// RANTechnology — extensible (TS 29.002:420).
+	// RANTechnology — extensible (3GPP TS 29.002 V19.1.0 §17.7.13).
 	tech := gsm_map.RANTechnology(99)
 	wRP := &gsm_map.ReportingPLMN{
 		PlmnId:        gsm_map.PLMNId{0x32, 0xf4, 0x10},

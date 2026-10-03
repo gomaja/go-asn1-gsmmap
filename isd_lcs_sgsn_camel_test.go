@@ -379,7 +379,7 @@ func TestGPRSCamelTDPData_RoundTrip(t *testing.T) {
 }
 
 func TestGPRSCamelTDPData_DefaultGPRSHandlingLenientRemap(t *testing.T) {
-	// Per TS 29.002 MAP-MS-DataTypes.asn:1638-1640 spec exception clause:
+	// Per 3GPP TS 29.002 V19.1.0 §17.7.1 spec exception clause:
 	//   - values 2..31 → continueTransaction(0)
 	//   - values >31   → releaseTransaction(1)
 	addr, _ := encodeAddressField("31611111111", 0x10, 0x01)

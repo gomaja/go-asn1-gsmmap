@@ -18,7 +18,7 @@ import (
 )
 
 // ============================================================================
-// Area — TS 29.002 MAP-LCS-DataTypes.asn:332
+// Area — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertAreaToWire(a *Area) (*gsm_map.Area, error) {
@@ -48,7 +48,7 @@ func convertWireToArea(w *gsm_map.Area) *Area {
 }
 
 // ============================================================================
-// AreaList — TS 29.002 MAP-LCS-DataTypes.asn:328 (SIZE 1..maxNumOfAreas=10)
+// AreaList — 3GPP TS 29.002 V19.1.0 §17.7.13 (SIZE 1..maxNumOfAreas=10)
 // ============================================================================
 
 func convertAreaListToWire(list AreaList) (*gsm_map.AreaList, error) {
@@ -76,7 +76,7 @@ func convertWireToAreaList(w *gsm_map.AreaList) AreaList {
 }
 
 // ============================================================================
-// AreaDefinition — TS 29.002 MAP-LCS-DataTypes.asn:324
+// AreaDefinition — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertAreaDefinitionToWire(d *AreaDefinition) (*gsm_map.AreaDefinition, error) {
@@ -98,7 +98,7 @@ func convertWireToAreaDefinition(w *gsm_map.AreaDefinition) *AreaDefinition {
 }
 
 // ============================================================================
-// AreaEventInfo — TS 29.002 MAP-LCS-DataTypes.asn:318
+// AreaEventInfo — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertAreaEventInfoToWire(a *AreaEventInfo) (*gsm_map.AreaEventInfo, error) {
@@ -112,7 +112,7 @@ func convertAreaEventInfoToWire(a *AreaEventInfo) (*gsm_map.AreaEventInfo, error
 	out := &gsm_map.AreaEventInfo{AreaDefinition: *def}
 	if a.OccurrenceInfo != nil {
 		v := *a.OccurrenceInfo
-		// OccurrenceInfo is extensible (TS 29.002:361); encoder
+		// OccurrenceInfo is extensible (3GPP TS 29.002 V19.1.0 §17.7.13); encoder
 		// strict (0..1), decoder lenient.
 		if int64(v) < 0 || int64(v) > 1 {
 			return nil, fmt.Errorf("AreaEventInfo.OccurrenceInfo=%d: %w", v, ErrOccurrenceInfoInvalid)
@@ -146,7 +146,7 @@ func convertWireToAreaEventInfo(w *gsm_map.AreaEventInfo) *AreaEventInfo {
 }
 
 // ============================================================================
-// PeriodicLDRInfo — TS 29.002 MAP-LCS-DataTypes.asn:369
+// PeriodicLDRInfo — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 //
 // Per spec at lines 375-376: ReportingInterval × ReportingAmount must
@@ -184,7 +184,7 @@ func convertWireToPeriodicLDRInfo(w *gsm_map.PeriodicLDRInfo) (*PeriodicLDRInfo,
 }
 
 // ============================================================================
-// ReportingPLMN — TS 29.002 MAP-LCS-DataTypes.asn:414
+// ReportingPLMN — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertReportingPLMNToWire(r *ReportingPLMN) (*gsm_map.ReportingPLMN, error) {
@@ -197,7 +197,7 @@ func convertReportingPLMNToWire(r *ReportingPLMN) (*gsm_map.ReportingPLMN, error
 	}
 	if r.RanTechnology != nil {
 		v := *r.RanTechnology
-		// RANTechnology is extensible (TS 29.002:420); encoder strict
+		// RANTechnology is extensible (3GPP TS 29.002 V19.1.0 §17.7.13); encoder strict
 		// (0..1), decoder lenient.
 		if int64(v) < 0 || int64(v) > 1 {
 			return nil, fmt.Errorf("ReportingPLMN.RanTechnology=%d: %w", v, ErrRANTechnologyInvalid)
@@ -225,7 +225,7 @@ func convertWireToReportingPLMN(w *gsm_map.ReportingPLMN) *ReportingPLMN {
 }
 
 // ============================================================================
-// PLMNList — TS 29.002 MAP-LCS-DataTypes.asn:409 (SIZE 1..maxNumOfReportingPLMN=20)
+// PLMNList — 3GPP TS 29.002 V19.1.0 §17.7.13 (SIZE 1..maxNumOfReportingPLMN=20)
 // ============================================================================
 
 func convertPLMNListToWire(list PLMNList) (*gsm_map.PLMNList, error) {
@@ -253,7 +253,7 @@ func convertWireToPLMNList(w *gsm_map.PLMNList) PLMNList {
 }
 
 // ============================================================================
-// ReportingPLMNList — TS 29.002 MAP-LCS-DataTypes.asn:404
+// ReportingPLMNList — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertReportingPLMNListToWire(r *ReportingPLMNList) (*gsm_map.ReportingPLMNList, error) {

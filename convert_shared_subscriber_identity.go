@@ -1,10 +1,9 @@
 // convert_shared_subscriber_identity.go
 //
 // Shared converter for the SubscriberIdentity CHOICE (IMSI or MSISDN)
-// per TS 29.002 MAP-CommonDataTypes.asn. Used by SendRoutingInfoForLCS
-// (opCode 85) and AnyTimeInterrogation (opCode 71). MSISDN carries its
-// AddressString Nature/Plan, so any MSISDN survives a decode→encode round
-// trip.
+// per 3GPP TS 29.002 V19.1.0 §17.7.8. Used by SendRoutingInfoForLCS
+// (opCode 85) and AnyTimeInterrogation (opCode 71). MSISDN nature and plan
+// are exposed with the decoded digits.
 
 package gsmmap
 
@@ -41,8 +40,8 @@ func convertSubscriberIdentityToWire(s SubscriberIdentity) (gsm_map.SubscriberId
 }
 
 // convertWireToSubscriberIdentity decodes the SubscriberIdentity CHOICE.
-// A present-but-empty decoded value is rejected so the string-based
-// public type round-trips faithfully.
+// A present address that decodes to empty digits is rejected because the
+// public type uses an empty string to mean absence.
 func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberIdentity, error) {
 	var out SubscriberIdentity
 	switch w.Choice {

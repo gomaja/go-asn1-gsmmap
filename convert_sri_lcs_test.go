@@ -254,7 +254,7 @@ func TestSriLcsRespEncodeNegative(t *testing.T) {
 	}{
 		{"nil res", nil, ErrSriLcsRespNil},
 		{"no target identity", func(r *SriLcsResp) { r.TargetMS = SubscriberIdentity{} }, ErrSubscriberIdentityNoAlt},
-		{"empty LcsLocationInfo node", func(r *SriLcsResp) { r.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeEmpty},
+		{"empty LcsLocationInfo node", func(r *SriLcsResp) { r.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeNumberEmpty},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -1,6 +1,6 @@
 // Ext-SS-Info CHOICE converters for InsertSubscriberData.
 //
-// Covers TS 29.002 MAP-MS-DataTypes.asn:1826-onwards: the 5-alternative
+// Covers 3GPP TS 29.002 V19.1.0 §17.7.1: the 5-alternative
 // CHOICE used inside Ext-SS-InfoList plus all directly-referenced
 // nested SEQUENCEs (Ext-ForwInfo, Ext-CallBarInfo, CUG-Info,
 // Ext-SS-Data, EMLPP-Info) and CHOICEs (SS-SubscriptionOption).

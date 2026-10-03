@@ -130,7 +130,7 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 		}
 		return &AuthenticationSetList{Quintuplets: out}, nil
 	default:
-		return nil, fmt.Errorf("sai: unknown AuthenticationSetList CHOICE %d", w.Choice)
+		return nil, fmt.Errorf("%w: sai: unknown AuthenticationSetList CHOICE %d", ErrSaiAuthenticationSetListChoiceInvalid, w.Choice)
 	}
 }
 

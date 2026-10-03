@@ -21,7 +21,7 @@ import (
 // ============================================================================
 
 // DeferredLocationEventType (BIT STRING SIZE 1..16, 5 named bits) per
-// TS 29.002 MAP-LCS-DataTypes.asn:165.
+// 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
 // Encode rule: BitLength is the position of the highest set bit + 1
 // (minimum 1 to satisfy the SIZE 1..16 lower bound).
@@ -83,8 +83,7 @@ func hasUnlistedDeferredLocationEvent(bs runtime.BitString) bool {
 	return false
 }
 
-// SupportedGADShapes (BIT STRING SIZE 7..16, 7 named bits) per TS 29.002
-// MAP-LCS-DataTypes.asn:280.
+// SupportedGADShapes (BIT STRING SIZE 7..16, 7 named bits) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
 // Encode rule: always emit 7 bits to satisfy the SIZE 7..16 lower bound,
 // even when no flag is set.
@@ -129,7 +128,7 @@ func convertBitStringToSupportedGADShapes(bs runtime.BitString) *SupportedGADSha
 }
 
 // ============================================================================
-// LocationType — TS 29.002 MAP-LCS-DataTypes.asn:148
+// LocationType — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 // isRecognizedLocationEstimateType reports whether v is one of the
@@ -170,7 +169,7 @@ func convertWireToLocationType(w *gsm_map.LocationType) *LocationType {
 }
 
 // ============================================================================
-// LCSCodeword — TS 29.002 MAP-LCS-DataTypes.asn:293
+// LCSCodeword — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertLCSCodewordToWire(c *LCSCodeword) *gsm_map.LCSCodeword {
@@ -197,7 +196,7 @@ func convertWireToLCSCodeword(w *gsm_map.LCSCodeword) *LCSCodeword {
 }
 
 // ============================================================================
-// LCSPrivacyCheck — TS 29.002 MAP-LCS-DataTypes.asn:302
+// LCSPrivacyCheck — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 // isRecognizedPrivacyCheckRelatedAction reports whether v is one of the
@@ -245,7 +244,7 @@ func convertWireToLCSPrivacyCheck(w *gsm_map.LCSPrivacyCheck) *LCSPrivacyCheck {
 }
 
 // ============================================================================
-// ResponseTime — TS 29.002 MAP-LCS-DataTypes.asn:261
+// ResponseTime — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 //
 // ResponseTimeCategory is an extensible ENUMERATED with a spec exception
@@ -270,7 +269,7 @@ func convertWireToResponseTime(w *gsm_map.ResponseTime) *ResponseTime {
 		return nil
 	}
 	cat := w.ResponseTimeCategory
-	// Per TS 29.002 MAP-LCS-DataTypes.asn:270-271, an unrecognized value
+	// Per 3GPP TS 29.002 V19.1.0 §17.7.13, an unrecognized value
 	// shall be treated the same as delaytolerant(1).
 	if cat != ResponseTimeLowdelay && cat != ResponseTimeDelaytolerant {
 		cat = ResponseTimeDelaytolerant
@@ -281,7 +280,7 @@ func convertWireToResponseTime(w *gsm_map.ResponseTime) *ResponseTime {
 }
 
 // ============================================================================
-// LCSQoS — TS 29.002 MAP-LCS-DataTypes.asn:237
+// LCSQoS — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
@@ -291,7 +290,7 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 	out := &gsm_map.LCSQoS{}
 
 	if len(q.HorizontalAccuracy) > 0 {
-		// Spec mandates bit 8 = 0 (TS 29.002 MAP-LCS-DataTypes.asn:250):
+		// Spec mandates bit 8 = 0 (3GPP TS 29.002 V19.1.0 §17.7.13):
 		// only the low 7 bits encode the uncertainty code per TS 23.032.
 		if q.HorizontalAccuracy[0]&0x80 != 0 {
 			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy=0x%02x: %w", q.HorizontalAccuracy[0], ErrHorizontalAccuracyReservedBit)
@@ -301,7 +300,7 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 	}
 	out.VerticalCoordinateRequest = boolToNullPtr(q.VerticalCoordinateRequest)
 	if len(q.VerticalAccuracy) > 0 {
-		// Spec mandates bit 8 = 0 (TS 29.002 MAP-LCS-DataTypes.asn:256):
+		// Spec mandates bit 8 = 0 (3GPP TS 29.002 V19.1.0 §17.7.13):
 		// only the low 7 bits encode the vertical uncertainty code per TS 23.032.
 		if q.VerticalAccuracy[0]&0x80 != 0 {
 			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy=0x%02x: %w", q.VerticalAccuracy[0], ErrVerticalAccuracyReservedBit)

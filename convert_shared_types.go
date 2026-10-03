@@ -202,7 +202,7 @@ func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
 // istSupportIndicatorFromWire decodes an IST-SupportIndicator (SendRoutingInfo
 // and UpdateLocation VLR-Capability). 3GPP TS 29.002 V19.1.0 §17.7.1:
 // "reception of values > 1 shall be mapped to ' istCommandSupported '". The
-// mapping runs on the int64 wire value so a value beyond a 32-bit int still
+// mapping runs on the int64 wire value so a value beyond a 32-bit int
 // maps. A negative value lies outside the rule; the type is extensible, so
 // it is kept (§17.1.4). Only a value the platform int cannot hold is an
 // error.

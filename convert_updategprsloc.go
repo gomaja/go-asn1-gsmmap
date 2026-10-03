@@ -11,10 +11,10 @@ import (
 
 func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsLocationArg, error) {
 	if u.IMSI == "" {
-		return nil, fmt.Errorf("UpdateGprsLocation: IMSI is mandatory and must be non-empty")
+		return nil, fmt.Errorf("UpdateGprsLocation: %w", ErrIdentityEmpty)
 	}
 	if u.SgsnNumber == "" {
-		return nil, ErrUpdateGprsLocationMissingSGSNNumber
+		return nil, ErrUpdateGprsLocationMissingSgsnNumber
 	}
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, u.IMSI)
 	if err != nil {
@@ -98,7 +98,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	arg.EpsSubscriptionDataNotNeeded = boolToNullPtr(u.EpsSubscriptionDataNotNeeded)
 
 	// [14] ue-SRVCC-Capability — extensible enum per TS 29.002
-	// MAP-MS-DataTypes.asn:690: only a listed value is sent.
+	// 3GPP TS 29.002 V19.1.0 §17.7.1: only a listed value is sent.
 	if u.UeSrvccCapability != nil {
 		v := *u.UeSrvccCapability
 		if v != UeSrvccNotSupported && v != UeSrvccSupported {
@@ -113,7 +113,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		for i, raw := range u.EplmnList {
 			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
+				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
 			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
@@ -131,7 +131,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	}
 
 	// [17] smsRegisterRequest — extensible enum per TS 29.002
-	// MAP-MS-DataTypes.asn:576; preserve unknown values per Postel's law.
+	// 3GPP TS 29.002 V19.1.0 §17.7.1; preserve unknown values per Postel's law.
 	if u.SmsRegisterRequest != nil {
 		v := *u.SmsRegisterRequest
 		// SMSRegisterRequest is extensible: only a listed value is sent.
@@ -163,7 +163,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 		for i, raw := range u.AdjacentPLMNList {
 			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
+				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
 			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
@@ -184,7 +184,7 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 		return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 	}
 	if sgsnNum == "" {
-		return nil, ErrUpdateGprsLocationMissingSGSNNumber
+		return nil, ErrUpdateGprsLocationMissingSgsnNumber
 	}
 
 	sgsnAddr, err := gsn.Parse(arg.SgsnAddress)
@@ -263,7 +263,7 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 		for i, plmn := range arg.EplmnList.Values {
 			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
+				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
 			}
 			list[i] = HexBytes(plmn)
 		}
@@ -304,7 +304,7 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 		for i, plmn := range arg.AdjacentPLMNList.Values {
 			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
+				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
 			}
 			list[i] = HexBytes(plmn)
 		}
@@ -530,13 +530,13 @@ func convertWireToPdnGwUpdate(w *gsm_map.PDNGWUpdate) (*PdnGwUpdate, error) {
 
 func convertPdnGwIdentityToWire(p *PdnGwIdentity) (*gsm_map.PDNGWIdentity, error) {
 	if len(p.IPv4Address) > 0 && len(p.IPv4Address) != 4 {
-		return nil, fmt.Errorf("PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", len(p.IPv4Address))
+		return nil, fmt.Errorf("%w: PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", ErrPdnGwIdentityIPv4AddressInvalidLength, len(p.IPv4Address))
 	}
 	if len(p.IPv6Address) > 0 && len(p.IPv6Address) != 16 {
-		return nil, fmt.Errorf("PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", len(p.IPv6Address))
+		return nil, fmt.Errorf("%w: PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", ErrPdnGwIdentityIPv6AddressInvalidLength, len(p.IPv6Address))
 	}
 	if len(p.IPv4Address) == 0 && len(p.IPv6Address) == 0 && len(p.Name) == 0 {
-		return nil, fmt.Errorf("PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be set")
+		return nil, fmt.Errorf("%w: PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be set", ErrPdnGwIdentityAddressMissing)
 	}
 	out := &gsm_map.PDNGWIdentity{}
 	if len(p.IPv4Address) > 0 {
@@ -562,14 +562,14 @@ func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error
 	if w.PdnGwIpv4Address != nil {
 		ip4 := append([]byte(nil), (*w.PdnGwIpv4Address)...)
 		if len(ip4) != 4 {
-			return nil, fmt.Errorf("PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", len(ip4))
+			return nil, fmt.Errorf("%w: PdnGwIdentity: IPv4Address must be exactly 4 octets, got %d", ErrPdnGwIdentityIPv4AddressInvalidLength, len(ip4))
 		}
 		out.IPv4Address = HexBytes(ip4)
 	}
 	if w.PdnGwIpv6Address != nil {
 		ip6 := append([]byte(nil), (*w.PdnGwIpv6Address)...)
 		if len(ip6) != 16 {
-			return nil, fmt.Errorf("PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", len(ip6))
+			return nil, fmt.Errorf("%w: PdnGwIdentity: IPv6Address must be exactly 16 octets, got %d", ErrPdnGwIdentityIPv6AddressInvalidLength, len(ip6))
 		}
 		out.IPv6Address = HexBytes(ip6)
 	}
@@ -577,7 +577,7 @@ func convertWireToPdnGwIdentity(w *gsm_map.PDNGWIdentity) (*PdnGwIdentity, error
 		out.Name = HexBytes(append([]byte(nil), (*w.PdnGwName)...))
 	}
 	if len(out.IPv4Address) == 0 && len(out.IPv6Address) == 0 && len(out.Name) == 0 {
-		return nil, fmt.Errorf("PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be present")
+		return nil, fmt.Errorf("%w: PdnGwIdentity: at least one of IPv4Address, IPv6Address, or Name must be present", ErrPdnGwIdentityAddressMissing)
 	}
 	return out, nil
 }

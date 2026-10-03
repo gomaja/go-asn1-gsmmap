@@ -71,97 +71,46 @@ What that means for a consumer:
 
 ### Migrating from v1.0.x
 
-- `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`; `CSGIdBitLength` and `ErrCSGIdInvalidSize` are removed.
-- `ForwardingData.LongForwardedToNumber` changes from `HexBytes` to digits plus `LongForwardedToNumberNature/Plan`.
-- `ExtForwFeature.ForwardedToNature/Plan` → `ForwardedToNumberNature/Plan`; its long FTN gains its own `LongForwardedToNumberNature/Plan`.
-- `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` change from raw octets plus bit length fields to pointers to the named feature structs.
-- `SupportedFeatures` gains `BitLength` to preserve valid trailing zero bits beyond the shortest encoding.
-- `ExtSupportedFeatures` gains `UnknownBits` and `BitLength` to preserve unnamed bits and trailing zero bits through Parse/Marshal.
-- `ProvideSubscriberLocationRes.AgeOfLocationEstimate` changes from `*int64` to `*int`.
-- `SubscriberLocationReportArg.AgeOfLocationEstimate` changes from `*int64` to `*int`.
-- `InsertSubscriberDataArg.IstAlertTimer` changes from `*int64` to `*int`.
-- `AnyTimeInterrogation.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
-- `OBcsmCamelTDPData.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
-- `TBcsmCamelTDPData.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
-- `DPAnalysedInfoCriterium.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
-- `SSCSI.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
-- `MCSI.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
-- `SMSCAMELTDPData.GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan`.
-- `SriSm.SCANature/Plan` → `ServiceCentreAddressNature/Plan`.
-- `SmRpDa.SCADANature/Plan` → `ServiceCentreAddressDANature/Plan`.
-- `SmRpOa.SCAOANature/Plan` → `ServiceCentreAddressOANature/Plan`.
-- `UpdateLocation.MSCNumber/VLRNumber` → `MscNumber/VlrNumber`; `MSCNature/Plan` and `VLRNature/Plan` → matching `MscNumberNature/Plan` and `VlrNumberNature/Plan`.
-- `UpdateGprsLocation.SGSNNumber` → `SgsnNumber`; `SGSNNature/Plan` → `SgsnNumberNature/Plan`.
-- `Sri.GmscNature/Plan` → `GmscOrGsmSCFAddressNature/Plan`.
-- `SriResp.VmscNature/Plan` → `VmscAddressNature/Plan`.
-- `AlertServiceCentre.SCANature/Plan` → `ServiceCentreAddressNature/Plan`.
-- `ReportSMDeliveryStatus.SCANature/Plan` → `ServiceCentreAddressNature/Plan`.
-- `PurgeMS.VLRNumber/SGSNNumber` → `VlrNumber/SgsnNumber`; the corresponding nature/plan fields follow those names.
-- Mandatory digitless addresses now return the same sentinel on `Marshal` and `Parse`; SAI uses `ErrIdentityEmpty`, and GroupId uses `ErrGroupIdMissingWithoutLong`.
-- `MaxResetIdOctets` is removed; Reset-Id remains constrained to 1..4 octets.
-- `MtFsm` and `MoFsm` carry the SM-RP-DA and SM-RP-OA CHOICEs only, as
-  `SmRpDa SmRpDa` and `SmRpOa SmRpOa`. The shorthand fields (`MtFsm.IMSI`,
-  `MtFsm.ServiceCentreAddressOA`, `MoFsm.ServiceCentreAddressDA`,
-  `MoFsm.MSISDN` and their nature/plan fields) are gone; set exactly one
-  alternative of each CHOICE.
-- An address nature or numbering plan of 0 now means unknown, as on the wire.
-  Set `address.NatureInternational` / `address.PlanISDN` (or any other value)
-  explicitly; parsing and marshalling reproduces every address exactly.
-- `ParseReturnErrorParameter` takes a `MapErrorCode` and is the only way to
-  decode an error parameter; the per-error `Parse*Param` functions are no
-  longer exported. `GetErrorString(code)` is `MapErrorCode(code).String()`.
-- A value outside its ASN.1 constraint is rejected by the go-asn1 BER codec
-  on both `Marshal` and `Parse`: an OCTET STRING, BIT STRING or SEQUENCE OF
-  of the wrong size, or an INTEGER out of range. The error wraps a
-  `*ber.ConstraintError` (package `github.com/gomaja/go-asn1/runtime/ber`),
-  which names the field and the constraint; inspect it with `errors.As`.
-  Package sentinels for bounds enforced on every path by the codec, such as
-  `ErrAbsentSubscriberDiagnosticSMOutOfRange`, are gone. Remaining size
-  sentinels cover SEQUENCE OF element bounds
-  ([go-asn1#79](https://github.com/gomaja/go-asn1/issues/79)) and BIT STRING
-  length consistency ([go-asn1#80](https://github.com/gomaja/go-asn1/issues/80)).
-- TBCD digits use the alphabet of TS 29.002 §17.7.8, `0-9 * # a b c`, not
-  hexadecimal; IMSI, IMEI and IMEISV must be decimal digits. `GroupId` and
-  `LongGroupId` are TBCD digit strings, padded with filler to their field
-  size on the wire.
-- Identity digit counts follow TS 23.003 V20.1.0 on `Marshal` and `Parse`:
-  an IMSI or HLR-Id has 6 to 15 digits, an IMEI has 15 digits ending in the
-  spare digit 0 or 16 with the SVN, and an IMEISV has 16. `Parse` accepts
-  any 15th IMEI digit, because some peers send the check digit there.
-- An address holding only its nature/plan octet, or only filler, fails to
-  `Parse`: a mandatory one with the error `Marshal` returns for the missing
-  field, an optional one with its `Err*DecodedEmpty` sentinel.
-- The decoders apply the receiver rules of TS 29.002 V19.1.0: values the
-  specification maps are mapped (e.g. CAMEL capability handling above 4 is
-  phase 4, DefaultCallHandling 2-31 is continueCall), and elements the
-  specification says to ignore are dropped instead of failing the message.
-  An unknown value of an extensible ENUMERATED is kept (§17.1.4) unless the
-  specification says to reject it. `RoamingNotAllowedParam.RoamingNotAllowedCause`
-  is a pointer, nil when the additional cause is present (§17.7.7).
-- The encoders accept only the values a sender may send, for example
-  NoReplyConditionTime 5 to 30, and one CAMEL TDP data entry per trigger
-  detection point in an O-CSI, T-CSI, SMS-CSI or GPRS-CSI.
-- A CSI and a SendRoutingInfoRes may be segmented over several messages
-  (TS 29.002 §17.7.1, §17.7.3). `Marshal` and `Parse` handle one message,
-  so a presence rule that depends on the segment, such as the SMS-CSI TDP
-  list in the first segment or the IMSI in one SendRoutingInfoRes segment,
-  is checked by the caller.
-- The `DataCodingScheme` of `LCSClientName`, `LCSRequestorID` and
-  `LCSCodeword` is a `USSDDataCodingScheme`, the type of every
-  USSD-DataCodingScheme, so their strings decode with
-  `DataCodingScheme.Decode`.
-- `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` are `[]MMCode` (were
-  `[]byte` and `[]HexBytes`), with `MMCode*` constants for the CS and PS
-  domain events.
-- The CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`,
-  `GPRSCSI`, `MGCSI`) no longer have `NotificationToCSE` and `CsiActive`:
-  TS 29.002 §17.7.1 allows them only in ATSI, ATM ack and NSDC messages,
-  which this package does not implement. `Parse` drops them.
-- `LCSQoS.LcsQosClass` carries lcs-qos-class, which `Parse` dropped; an
-  unrecognized value decodes as `LCSQoSClassBestEffort` (§17.7.13).
-- `ErrAddressStringEmpty` and `ErrCamelInvalidMobilityTriggerOctet` are
-  gone: a zero-octet AddressString fails its SIZE check first, and a
-  wrong-size MM-Code is `ErrMMCodeInvalidSize` in both CSIs.
+**Dependencies and errors**
+
+- The main branch requires the current `go-asn1` and `go-sms` modules. Codec-enforced ASN.1 sizes and integer ranges return `*ber.ConstraintError` (`errors.As`), while package semantic checks return named `Err*` sentinels (`errors.Is`).
+- Removed constraint and bounds sentinels include `ErrSaiInvalidPLMNId`, `ErrIntervalTimeOutOfRange`, `ErrGPRSDataListSize`, and `ErrUtranBaroPressureMeasOutOfRange`. Element-size, bit-length, and sender-rule checks retain dedicated sentinels where the codec does not check them.
+- `ErrCamelInvalidCamelCapabilityHandling` is `ErrCamelCapabilityHandlingOutOfRange`. Other removed `Err*` names for duplicated presence, identity, size, receiver, and digitless-address checks are replaced by the applicable current semantic sentinel or codec error; update `errors.Is` checks by condition.
+- `ErrReportSMDeliveryStatusResStoredMSISDNEmpty` → `ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty`; `ErrLCSClientIDDialedByMSEmpty` splits into `ErrLCSClientIDDialedByMSDecodedEmpty` on decode and `ErrLCSClientIDDialedByMSNaturePlanWithoutDigits` on encode.
+- Error names follow current Go fields: `ErrUpdateLocationMissingMSCNumber` → `ErrUpdateLocationMissingMscNumber`, `ErrUpdateLocationMissingVLRNumber` → `ErrUpdateLocationMissingVlrNumber`, and `ErrUpdateGprsLocationMissingSGSNNumber` → `ErrUpdateGprsLocationMissingSgsnNumber`.
+- The decoded-empty names for `Isd.SgsnNumber`, `LocationInformation.{MscNumber,VlrNumber}`, `LocationInformationGPRS.SgsnNumber`, and `PurgeMS.{SgsnNumber,VlrNumber}` likewise use `Sgsn`, `Msc`, and `Vlr` in place of `SGSN`, `MSC`, and `VLR`.
+- `ErrSriMissingGmsc` → `ErrSriMissingGmscOrGsmSCFAddress`; SM-RP-DA/OA service-centre address sentinels add `DA`/`OA` to match their fields. `ErrLCSLocationInfoNetworkNodeEmpty` → `ErrLCSLocationInfoNetworkNodeNumberEmpty`, and `ErrReportSMDeliveryStatusSCAEmpty` → `ErrReportSMDeliveryStatusServiceCentreAddressEmpty`.
+
+**Identities and addresses**
+
+- `InsertSubscriberDataArg.IMSI` and `SriSmCorrelationID.HlrID` change from `HexBytes` to decimal digit strings. IMSI, IMEI, IMEISV, and HLR-Id follow TS 23.003 digit counts; `GroupId` and `LongGroupId` use TBCD digit strings. Parse accepts any 15th IMEI digit, while Marshal requires the spare digit 0.
+- Identity failures use `ErrIMSIInvalidLength`, `ErrIMEIInvalidLength`, `ErrIMEISVInvalidLength`, `ErrIdentityEmpty`, or `ErrIdentityNotDigits`. A missing or digitless IMSI returns `ErrIdentityEmpty` on both `Marshal` and `Parse`; `ErrSaiMissingIMSI`, `ErrPurgeMSMissingIMSI`, `ErrUpdateLocationMissingIMSI`, `ErrPsiMissingIMSI`, and `ErrCancelLocIdentityMissingIMSI` are gone.
+- `ForwardingData.LongForwardedToNumber` changes from `HexBytes` to digits plus `LongForwardedToNumberNature/Plan`; `ExtForwFeature.ForwardedToNature/Plan` become `ForwardedToNumberNature/Plan`, and its long FTN has separate nature/plan fields.
+- Address nature and plan zero mean unknown. Set them explicitly for outgoing messages; parsing can normalize a trailing all-filler octet away and set the address extension bit to 1 when remarshal occurs.
+- A present optional wire address that decodes to no digits fails with an `Err*DecodedEmpty` sentinel. Mandatory digitless addresses return the corresponding missing-field or identity sentinel.
+
+**Receiver and sender rules**
+
+- Decoders apply TS 29.002 receiver mappings and ignore rules; encoders accept only sender values. For example, CAMEL capability handling above 4 decodes as 4, while NoReplyConditionTime encodes only 5 through 30.
+- `MTSMSTPDUTypeSmsSUBMITREPORT` is removed: CAMEL phase 4 permits only `sms-DELIVER` and `sms-STATUS-REPORT` in MT-SMS TPDU criteria; the sender rejects and receiver ignores the other value.
+- `MtFsm` and `MoFsm` expose SM-RP-DA and SM-RP-OA through `SmRpDa` and `SmRpOa` CHOICE fields. Their former shorthand identity and service-centre fields, including nature/plan fields, are removed.
+- CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`, `GPRSCSI`, `MGCSI`) omit `NotificationToCSE` and `CsiActive`; Parse drops those wire fields. Segmented CSI and SRI presence rules that depend on other segments remain the caller's responsibility.
+- `RoamingNotAllowedParam.RoamingNotAllowedCause` is a pointer, nil when the additional cause is present. `LCSQoS.LcsQosClass` decodes unrecognized values as `LCSQoSClassBestEffort`.
+- `ParseReturnErrorParameter(MapErrorCode, []byte)` replaces the per-error `Parse*Param` functions; `MapErrorCode(code).String()` replaces `GetErrorString(code)`.
+
+**Renamed or retyped fields**
+
+- `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`. `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` become pointers to named feature structs; `ExtSupportedFeatures` gains `UnknownBits`, making it non-comparable, and both feature structs preserve bit lengths.
+- `ProvideSubscriberLocationRes.AgeOfLocationEstimate` and `SubscriberLocationReportArg.AgeOfLocationEstimate` change from `*int64` to `*int`; so does `InsertSubscriberDataArg.IstAlertTimer`. `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` become `[]MMCode`.
+- `GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan` in ATI and CAMEL structs. `SCANature/Plan` → `ServiceCentreAddressNature/Plan` in SRI-SM, AlertServiceCentre, and ReportSMDeliveryStatus; `SCADANature/Plan` and `SCAOANature/Plan` follow their full ServiceCentreAddress field names.
+- `UpdateLocation.MSCNumber/VLRNumber` → `MscNumber/VlrNumber`; `UpdateGprsLocation.SGSNNumber` → `SgsnNumber`; `PurgeMS.VLRNumber/SGSNNumber` → `VlrNumber/SgsnNumber`. Each associated nature/plan field follows the new base name.
+- `Sri.GmscNature/Plan` → `GmscOrGsmSCFAddressNature/Plan`, and `SriResp.VmscNature/Plan` → `VmscAddressNature/Plan`.
+- LCS client and codeword data coding schemes use `USSDDataCodingScheme`, with strings decoded by `DataCodingScheme.Decode`.
+
+**Removed identifiers**
+
+- 53 exported min/max and bound constants are removed; examples include `AreaListMaxEntries`, `MaxNumOfResetId`, `ReportingIntervalMax`, and `VelocityEstimateMinLen`. Use the codec constraints and current semantic errors rather than these constants.
+- `ErrAddressStringEmpty`, `ErrCamelInvalidMobilityTriggerOctet`, `CSGIdBitLength`, and `MaxResetIdOctets` are removed. Use `ErrMMCodeInvalidSize` for wrong-size MM-Code values.
 
 ## Usage
 
@@ -171,6 +120,7 @@ What that means for a consumer:
 import gsmmap "github.com/gomaja/go-asn1-gsmmap"
 
 // Parse a SendRoutingInfoForSM request
+var berData []byte // BER request bytes received from the network
 sriSm, err := gsmmap.ParseSriSm(berData)
 if err != nil {
     log.Fatal(err)
@@ -179,7 +129,8 @@ fmt.Println(sriSm.MSISDN)              // "1234567890"
 fmt.Println(sriSm.ServiceCentreAddress) // "9876543210"
 
 // Parse an MT-ForwardSM
-mtFsm, err := gsmmap.ParseMtFsm(berData)
+var mtFsmBytes []byte // BER MT-ForwardSM bytes received from the network
+mtFsm, err := gsmmap.ParseMtFsm(mtFsmBytes)
 if err != nil {
     log.Fatal(err)
 }
@@ -201,8 +152,8 @@ sriSm := &gsmmap.SriSm{
     MSISDNPlan:           address.PlanISDN,
     SmRpPri:              true,
     ServiceCentreAddress: "9876543210",
-    SCANature:            address.NatureInternational,
-    SCAPlan:              address.PlanISDN,
+    ServiceCentreAddressNature:            address.NatureInternational,
+    ServiceCentreAddressPlan:              address.PlanISDN,
 }
 
 berData, err := sriSm.Marshal()
@@ -223,14 +174,22 @@ ati := &gsmmap.AnyTimeInterrogation{
         SubscriberState:     true,
     },
     GsmSCFAddress: "1234567890",
-    GsmSCFNature:  address.NatureInternational,
-    GsmSCFPlan:    address.PlanISDN,
+    GsmSCFAddressNature:  address.NatureInternational,
+    GsmSCFAddressPlan:    address.PlanISDN,
 }
 
 data, err := ati.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+_ = data // send the request bytes to the HLR
 
-// Parse an ATI response
-atiRes, err := gsmmap.ParseAnyTimeInterrogationRes(data)
+// Parse an ATI response received from the HLR
+var respBytes []byte // BER response bytes received from the HLR
+atiRes, err := gsmmap.ParseAnyTimeInterrogationRes(respBytes)
+if err != nil {
+    log.Fatal(err)
+}
 if atiRes.SubscriberInfo.LocationInformation != nil {
     fmt.Println(atiRes.SubscriberInfo.LocationInformation.VlrNumber)
 }
@@ -286,8 +245,8 @@ asc := &gsmmap.AlertServiceCentre{
     MSISDNNature:         address.NatureInternational,
     MSISDNPlan:           address.PlanISDN,
     ServiceCentreAddress: "31611111111",
-    SCANature:            address.NatureInternational,
-    SCAPlan:              address.PlanISDN,
+    ServiceCentreAddressNature:            address.NatureInternational,
+    ServiceCentreAddressPlan:              address.PlanISDN,
     SmsGmscAlertEvent:    &event,
 }
 data, err := asc.Marshal()
@@ -312,9 +271,9 @@ fmt.Println("SMS retry triggered for MSISDN:", parsed.MSISDN)
 // indicating which TMSIs should be blocked.
 purge := &gsmmap.PurgeMS{
     IMSI:      "204080012345678",
-    VLRNumber: "31611111111",
-    VLRNature: address.NatureInternational,
-    VLRPlan:   address.PlanISDN,
+    VlrNumber: "31611111111",
+    VlrNumberNature: address.NatureInternational,
+    VlrNumberPlan:   address.PlanISDN,
 }
 data, err := purge.Marshal()
 if err != nil {
@@ -493,13 +452,21 @@ sri := &gsmmap.Sri{
     MSISDNPlan:          address.PlanISDN,
     InterrogationType:   gsmmap.InterrogationBasicCall,
     GmscOrGsmSCFAddress: "31201111111",
-    GmscNature:          address.NatureInternational,
-    GmscPlan:            address.PlanISDN,
+    GmscOrGsmSCFAddressNature:          address.NatureInternational,
+    GmscOrGsmSCFAddressPlan:            address.PlanISDN,
 }
 data, err := sri.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+_ = data // send the request bytes to the network
 
 // Parse an SRI response received from the network
+var respBytes []byte // BER response bytes received from the network
 resp, err := gsmmap.ParseSriResp(respBytes)
+if err != nil {
+    log.Fatal(err)
+}
 if resp.NumberPortabilityStatus != nil {
     fmt.Println(*resp.NumberPortabilityStatus) // e.g. MnpOwnNumberPortedOut
 }
@@ -518,8 +485,9 @@ if resp.ExtendedRoutingInfo != nil && resp.ExtendedRoutingInfo.RoutingInfo != ni
 The `ExtendedRoutingInfo` CHOICE carries a `CamelRoutingInfo` alternative
 that exposes the GMSC's full CAMEL subscription information (T-CSI, O-CSI,
 D-CSI, and BCSM-CAMEL-TDP criteria lists) with field-level coverage. Every
-nested SEQUENCE, enum, and trigger-detection-point round-trips between Go
-and BER without data loss.
+nested SEQUENCE and trigger detection point fields are represented in Go.
+Receiver mappings can normalize enum values; ignored or unsurfaced wire fields
+are dropped on Parse. Marshalled bytes need not match the input.
 
 ```go
 phase := 2
@@ -540,13 +508,16 @@ resp := &gsmmap.SriResp{
                         },
                     },
                     CamelCapabilityHandling: &phase,
-                    NotificationToCSE:       true,
                 },
             },
         },
     },
 }
 data, err := resp.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+_ = data // send the response bytes
 ```
 
 ### USSD (opCodes 59, 60, 61)
@@ -564,6 +535,7 @@ as a `[]uint64`.
 
 ```go
 // A USSD gateway receiving processUnstructuredSS-Request (opCode 59)
+var invokeParameter []byte // BER invoke parameter received from the network
 arg, err := gsmmap.ParseUSSDArg(invokeParameter)
 if err != nil {
     log.Fatal(err)
@@ -571,8 +543,9 @@ if err != nil {
 text, err := arg.DataCodingScheme.Decode(arg.USSDString) // "*100#"
 if err != nil {
     // e.g. errors.Is(err, gsmmap.ErrUSSDUnsupportedDataCodingScheme):
-    // answer with the unknownAlphabet error (gsmmap.MapErrorUnknownAlphabet)
+    log.Fatal(err) // answer with MapErrorUnknownAlphabet in a TCAP gateway
 }
+fmt.Println(text)
 
 // Answer with USSD-Res
 reply, err := gsmmap.USSDDataCodingSchemeGSM7.Encode("Balance: 10.00 EUR")
@@ -584,6 +557,10 @@ res := &gsmmap.USSDRes{
     USSDString:       reply,
 }
 resultParameter, err := res.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+_ = resultParameter // send the result bytes
 ```
 
 `USSDDataCodingScheme` interprets the data coding scheme as the Cell
@@ -607,7 +584,12 @@ name, e.g. `"ussd-Busy"`), and `ParseReturnErrorParameter` decodes the
 parameter of a TCAP ReturnError into the error's parameter type:
 
 ```go
+var errorCode int64 // TCAP ReturnError local error code
+var parameter []byte // BER parameter received with the error
 p, err := gsmmap.ParseReturnErrorParameter(gsmmap.MapErrorCode(errorCode), parameter)
+if err != nil {
+    log.Fatal(err)
+}
 switch v := p.(type) {
 case *gsmmap.SystemFailureParam:
     fmt.Println(v)
@@ -626,11 +608,11 @@ This library provides a **layered API**:
 - **Public types** (`SriSm`, `MtFsm`, etc.) use plain Go types — strings for phone numbers, bools for flags, `tpdu.TPDU` for SMS data.
 - **Internally**, these are converted to/from [go-asn1](https://github.com/gomaja/go-asn1)'s generated `gsm_map.*` structs for BER encoding.
 - **OpCode constants** can be imported directly from `github.com/gomaja/go-asn1/telecom/ss7/gsm_map` if needed for TCAP integration.
-- **Validation** of ASN.1 constraints (sizes and integer ranges) is done by go-asn1's strict BER codec, once, on both encode and decode. This package checks only what the codec does not: TS 29.002 semantics (presence rules, receiver mappings, the TBCD alphabet), and, until go-asn1 covers them, the SIZE of SEQUENCE OF elements ([go-asn1#79](https://github.com/gomaja/go-asn1/issues/79)), BIT STRING length consistency ([go-asn1#80](https://github.com/gomaja/go-asn1/issues/80)) and non-extensible ENUMERATED values ([go-asn1#81](https://github.com/gomaja/go-asn1/issues/81)).
+- **Validation** of ASN.1 constraints (sizes and integer ranges) is done by go-asn1's strict BER codec on encode and decode. This package also checks TS 23.003 identity digit counts and TS 29.002 semantics (presence rules, receiver mappings, the TBCD alphabet), and, until go-asn1 covers them, the SIZE of SEQUENCE OF elements ([go-asn1#79](https://github.com/gomaja/go-asn1/issues/79)), BIT STRING length consistency ([go-asn1#80](https://github.com/gomaja/go-asn1/issues/80)) and non-extensible ENUMERATED values ([go-asn1#81](https://github.com/gomaja/go-asn1/issues/81)).
 
 ### Address handling
 
-Phone numbers are stored as digit strings in the TBCD alphabet of TS 29.002 §17.7.8 (`0-9 * # a b c`). The nature of address and numbering plan are companion fields (e.g., `MSISDNNature`, `MSISDNPlan`) holding the `address.Nature*` / `address.Plan*` values. Zero is unknown, exactly as on the wire, so a parsed address marshals back to the same octets; set the nature and plan explicitly when building a message.
+Phone numbers are stored as digit strings in the TBCD alphabet of TS 29.002 §17.7.8 (`0-9 * # a b c`). The nature of address and numbering plan are companion fields (e.g., `MSISDNNature`, `MSISDNPlan`) holding the `address.Nature*` / `address.Plan*` values. Zero is unknown, exactly as on the wire, so Parse preserves the decoded digits, nature, and plan; remarshal drops a trailing all-filler octet (for example, `91 21 43 FF` becomes `91 21 43`) and sets an address extension bit of 0 to 1; set the nature and plan explicitly when building a message.
 
 ### Sub-packages
 

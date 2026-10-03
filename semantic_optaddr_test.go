@@ -43,10 +43,10 @@ func semOptionalAddressCases() []semAddressCase {
 		}, semParse(ParseCancelLocation), ErrCancelLocNewVLRNumberDecodedEmpty},
 		{"PurgeMS vlr-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.PurgeMSArg{Imsi: semAddrIMSI, VlrNumber: ptr(a)}
-		}, semParse(ParsePurgeMS), ErrPurgeMSVLRNumberDecodedEmpty},
+		}, semParse(ParsePurgeMS), ErrPurgeMSVlrNumberDecodedEmpty},
 		{"PurgeMS sgsn-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.PurgeMSArg{Imsi: semAddrIMSI, SgsnNumber: ptr(a)}
-		}, semParse(ParsePurgeMS), ErrPurgeMSSGSNNumberDecodedEmpty},
+		}, semParse(ParsePurgeMS), ErrPurgeMSSgsnNumberDecodedEmpty},
 		{"SendRoutingInfoRes vmsc-Address", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.SendRoutingInfoRes{Imsi: imsi(), VmscAddress: ptr(a)}
 		}, semParse(ParseSriResp), ErrSriRespVmscAddressDecodedEmpty},
@@ -65,13 +65,13 @@ func semOptionalAddressCases() []semAddressCase {
 		}, semParse(ParseSriSmResp), ErrSriSmRespSmsfNon3gppNumberDecodedEmpty},
 		{"AnyTimeInterrogationRes locationInformation vlr-number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{LocationInformation: &gsm_map.LocationInformation{VlrNumber: ptr(a)}}}
-		}, semParse(ParseAnyTimeInterrogationRes), ErrLocationInformationVLRNumberDecodedEmpty},
+		}, semParse(ParseAnyTimeInterrogationRes), ErrLocationInformationVlrNumberDecodedEmpty},
 		{"AnyTimeInterrogationRes locationInformation msc-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{LocationInformation: &gsm_map.LocationInformation{MscNumber: ptr(a)}}}
-		}, semParse(ParseAnyTimeInterrogationRes), ErrLocationInformationMSCNumberDecodedEmpty},
+		}, semParse(ParseAnyTimeInterrogationRes), ErrLocationInformationMscNumberDecodedEmpty},
 		{"AnyTimeInterrogationRes locationInformationGPRS sgsn-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{LocationInformationGPRS: &gsm_map.LocationInformationGPRS{SgsnNumber: ptr(a)}}}
-		}, semParse(ParseAnyTimeInterrogationRes), ErrLocationInformationGPRSSGSNNumberDecodedEmpty},
+		}, semParse(ParseAnyTimeInterrogationRes), ErrLocationInformationGPRSSgsnNumberDecodedEmpty},
 		{"AnyTimeInterrogationRes mnpInfoRes msisdn", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{MnpInfoRes: &gsm_map.MNPInfoRes{Msisdn: ptr(a)}}}
 		}, semParse(ParseAnyTimeInterrogationRes), ErrMnpInfoResMSISDNDecodedEmpty},
@@ -93,7 +93,7 @@ func semOptionalAddressCases() []semAddressCase {
 		}, semParse(ParseMtFsm), ErrMtFsmSmsGmscAddressDecodedEmpty},
 		{"InsertSubscriberData sgsn-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.InsertSubscriberDataArg{SgsnNumber: ptr(a)}
-		}, semParse(ParseInsertSubscriberData), ErrIsdSGSNNumberDecodedEmpty},
+		}, semParse(ParseInsertSubscriberData), ErrIsdSgsnNumberDecodedEmpty},
 		{"InsertSubscriberData additionalMSISDN", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.InsertSubscriberDataArg{AdditionalMSISDN: ptr(a)}
 		}, semParse(ParseInsertSubscriberData), ErrIsdAdditionalMSISDNDecodedEmpty},

@@ -286,7 +286,7 @@ func packBits(set []bool, minBits int) runtime.BitString {
 	return runtime.BitString{Bytes: out, BitLength: bitLen}
 }
 
-// ODBGeneralData: 29 named bits (SIZE 15..32) per MAP-MS-DataTypes.asn:1776.
+// ODBGeneralData: 29 named bits (SIZE 15..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertODBGeneralDataToBitString(o *ODBGeneralData) runtime.BitString {
 	bits := []bool{
 		o.AllOGCallsBarred,                                                // 0
@@ -356,7 +356,7 @@ func convertBitStringToODBGeneralData(bs runtime.BitString) *ODBGeneralData {
 	return o
 }
 
-// ODBHPLMNData: 4 named bits (SIZE 4..32) per MAP-MS-DataTypes.asn:1812.
+// ODBHPLMNData: 4 named bits (SIZE 4..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertODBHPLMNDataToBitString(o *ODBHPLMNData) runtime.BitString {
 	bits := []bool{o.PLMNSpecificBarringType1, o.PLMNSpecificBarringType2, o.PLMNSpecificBarringType3, o.PLMNSpecificBarringType4}
 	return packBits(bits, 4)
@@ -371,7 +371,7 @@ func convertBitStringToODBHPLMNData(bs runtime.BitString) *ODBHPLMNData {
 	}
 }
 
-// AccessRestrictionData: 8 named bits (SIZE 2..8) per MAP-MS-DataTypes.asn:1454.
+// AccessRestrictionData: 8 named bits (SIZE 2..8) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertAccessRestrictionDataToBitString(a *AccessRestrictionData) runtime.BitString {
 	bits := []bool{
 		a.UtranNotAllowed, a.GeranNotAllowed, a.GanNotAllowed, a.IHSPAEvolutionNotAllowed,
@@ -393,7 +393,7 @@ func convertBitStringToAccessRestrictionData(bs runtime.BitString) *AccessRestri
 	}
 }
 
-// ExtAccessRestrictionData: 2 named bits (SIZE 1..32) per MAP-MS-DataTypes.asn:1471.
+// ExtAccessRestrictionData: 2 named bits (SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertExtAccessRestrictionDataToBitString(e *ExtAccessRestrictionData) runtime.BitString {
 	bits := []bool{e.NrAsSecondaryRATNotAllowed, e.UnlicensedSpectrumAsSecondaryRATNotAllowed}
 	return packBits(bits, 1)
@@ -406,7 +406,7 @@ func convertBitStringToExtAccessRestrictionData(bs runtime.BitString) *ExtAccess
 	}
 }
 
-// SupportedFeatures: 40 named bits (SIZE 26..40) per MAP-MS-DataTypes.asn:642.
+// SupportedFeatures: 40 named bits (SIZE 26..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertSupportedFeaturesToBitString(s *SupportedFeatures) runtime.BitString {
 	bits := []bool{
 		s.OdbAllApn, s.OdbHPLMNApn, s.OdbVPLMNApn, s.OdbAllOg, s.OdbAllInternationalOg,
@@ -516,7 +516,7 @@ func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedF
 	return out
 }
 
-// AdditionalSubscriptions: 3 named bits (SIZE 3..8) per MAP-MS-DataTypes.asn:2711.
+// AdditionalSubscriptions: 3 named bits (SIZE 3..8) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // "Other bits than listed above shall be discarded" per spec.
 func convertAdditionalSubscriptionsToBitString(a *AdditionalSubscriptions) runtime.BitString {
 	bits := []bool{a.PrivilegedUplinkRequest, a.EmergencyUplinkRequest, a.EmergencyReset}

@@ -95,7 +95,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 		return nil, fmt.Errorf("unmarshaling TPDU: %w", tpduErr)
 	}
 	if tpduResult == nil {
-		return nil, fmt.Errorf("unmarshaling TPDU: nil result")
+		return nil, fmt.Errorf("%w: unmarshaling TPDU: nil result", ErrTPDUDecodedNil)
 	}
 	if err := validateMtForwardSMArgTPDU(*tpduResult); err != nil {
 		return nil, err

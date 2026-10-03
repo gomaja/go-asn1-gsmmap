@@ -8,7 +8,7 @@ import (
 
 // ============================================================================
 // GPRSCamelTDPData / GPRSCamelTDPDataList
-// — TS 29.002 MAP-MS-DataTypes.asn:1620-1635
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 // isValidGPRSTriggerDetectionPoint reports whether v is a listed
@@ -74,7 +74,7 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 
 	sk := w.ServiceKey
 	// DefaultGPRSHandling: spec exception clause (TS 29.002
-	// MAP-MS-DataTypes.asn:1638-1640) says decoders MUST treat
+	// 3GPP TS 29.002 V19.1.0 §17.7.1) says decoders MUST treat
 	//   - values 2..31  as continueTransaction (0)
 	//   - values >  31  as releaseTransaction (1)
 	// A negative value lies outside both ranges; the type is extensible,
@@ -127,7 +127,7 @@ func convertWireToGPRSCamelTDPDataList(w *gsm_map.GPRSCamelTDPDataList) (GPRSCam
 }
 
 // ============================================================================
-// GPRSCSI — TS 29.002 MAP-MS-DataTypes.asn:1606
+// GPRSCSI — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 // convertGPRSCSIToWire encodes a GPRS-CSI. The list and
@@ -177,7 +177,7 @@ func convertWireToGPRSCSI(w *gsm_map.GPRSCSI) (*GPRSCSI, error) {
 }
 
 // ============================================================================
-// MGCSI — TS 29.002 MAP-MS-DataTypes.asn:2528
+// MGCSI — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
@@ -242,7 +242,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 }
 
 // ============================================================================
-// SGSNCAMELSubscriptionInfo — TS 29.002 MAP-MS-DataTypes.asn:1596
+// SGSNCAMELSubscriptionInfo — 3GPP TS 29.002 V19.1.0 §17.7.1
 // SMSCSI / MTSmsCAMELTDPCriteria converters shared with VLR CAMEL data.
 // (convert_camel.go: convertSMSCSIToWire/convertWireToSMSCSI,
 // convertMTSmsCAMELTDPCriteriaToWire/convertWireToMTSmsCAMELTDPCriteria).

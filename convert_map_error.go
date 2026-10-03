@@ -87,19 +87,19 @@ func convertWireToCallBarredParam(w *gsm_map.CallBarredParam) (*CallBarredParam,
 	switch w.Choice {
 	case gsm_map.CallBarredParamChoiceCallBarringCause:
 		if w.CallBarringCause == nil {
-			return nil, fmt.Errorf("CallBarredParam: choice=CallBarringCause but payload is nil")
+			return nil, fmt.Errorf("%w: CallBarredParam: choice=CallBarringCause but payload is nil", ErrCallBarredCausePayloadMissing)
 		}
 		v := *w.CallBarringCause
-		// CallBarringCause is non-extensible (TS 29.002 MAP-ER-DataTypes.asn);
+		// CallBarringCause is non-extensible (3GPP TS 29.002 V19.1.0 §17.7.7);
 		// reject out-of-range values per project convention.
 		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if int64(v) < 0 || int64(v) > 1 {
-			return nil, fmt.Errorf("CallBarredParam.CallBarringCause=%d: must be 0..1 per TS 29.002 MAP-ER-DataTypes.asn", v)
+			return nil, fmt.Errorf("CallBarredParam.CallBarringCause=%d: %w", v, ErrCallBarringCauseInvalid)
 		}
 		out.CallBarringCause = &v
 	case gsm_map.CallBarredParamChoiceExtensibleCallBarredParam:
 		if w.ExtensibleCallBarredParam == nil {
-			return nil, fmt.Errorf("CallBarredParam: choice=ExtensibleCallBarredParam but payload is nil")
+			return nil, fmt.Errorf("%w: CallBarredParam: choice=ExtensibleCallBarredParam but payload is nil", ErrCallBarredExtensiblePayloadMissing)
 		}
 		ext, err := convertWireToExtensibleCallBarredParam(w.ExtensibleCallBarredParam)
 		if err != nil {
@@ -107,7 +107,7 @@ func convertWireToCallBarredParam(w *gsm_map.CallBarredParam) (*CallBarredParam,
 		}
 		out.ExtensibleCallBarredParam = ext
 	default:
-		return nil, fmt.Errorf("CallBarredParam: unsupported choice %d", w.Choice)
+		return nil, fmt.Errorf("%w: CallBarredParam: unsupported choice %d", ErrCallBarredChoiceInvalid, w.Choice)
 	}
 	return out, nil
 }
@@ -124,7 +124,7 @@ func convertWireToExtensibleCallBarredParam(w *gsm_map.ExtensibleCallBarredParam
 		v := *w.CallBarringCause
 		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 		if int64(v) < 0 || int64(v) > 1 {
-			return nil, fmt.Errorf("ExtensibleCallBarredParam.CallBarringCause=%d: must be 0..1 per TS 29.002 MAP-ER-DataTypes.asn", v)
+			return nil, fmt.Errorf("ExtensibleCallBarredParam.CallBarringCause=%d: %w", v, ErrCallBarringCauseInvalid)
 		}
 		out.CallBarringCause = &v
 	}
@@ -151,7 +151,7 @@ func convertWireToSystemFailureParam(w *gsm_map.SystemFailureParam) (*SystemFail
 	switch w.Choice {
 	case gsm_map.SystemFailureParamChoiceNetworkResource:
 		if w.NetworkResource == nil {
-			return nil, fmt.Errorf("SystemFailureParam: choice=NetworkResource but payload is nil")
+			return nil, fmt.Errorf("%w: SystemFailureParam: choice=NetworkResource but payload is nil", ErrSystemFailureNetworkResourcePayloadMissing)
 		}
 		v := *w.NetworkResource
 		if !isValidNetworkResource(v) {
@@ -160,7 +160,7 @@ func convertWireToSystemFailureParam(w *gsm_map.SystemFailureParam) (*SystemFail
 		out.NetworkResource = &v
 	case gsm_map.SystemFailureParamChoiceExtensibleSystemFailureParam:
 		if w.ExtensibleSystemFailureParam == nil {
-			return nil, fmt.Errorf("SystemFailureParam: choice=ExtensibleSystemFailureParam but payload is nil")
+			return nil, fmt.Errorf("%w: SystemFailureParam: choice=ExtensibleSystemFailureParam but payload is nil", ErrSystemFailureExtensiblePayloadMissing)
 		}
 		ext, err := convertWireToExtensibleSystemFailureParam(w.ExtensibleSystemFailureParam)
 		if err != nil {
@@ -168,7 +168,7 @@ func convertWireToSystemFailureParam(w *gsm_map.SystemFailureParam) (*SystemFail
 		}
 		out.ExtensibleSystemFailureParam = ext
 	default:
-		return nil, fmt.Errorf("SystemFailureParam: unsupported choice %d", w.Choice)
+		return nil, fmt.Errorf("%w: SystemFailureParam: unsupported choice %d", ErrSystemFailureChoiceInvalid, w.Choice)
 	}
 	return out, nil
 }
@@ -217,15 +217,14 @@ func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) (*Ro
 		out.AdditionalRoamingNotAllowedCause = &v
 		return out, nil
 	}
-	// RoamingNotAllowedCause is non-extensible per TS 29.002
-	// MAP-ER-DataTypes.asn with non-contiguous values: 0
+	// RoamingNotAllowedCause is non-extensible (3GPP TS 29.002 V19.1.0 §17.7.7) with non-contiguous values: 0
 	// (plmnRoamingNotAllowed) and 3 (operatorDeterminedBarring).
 	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	switch w.RoamingNotAllowedCause {
 	case gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
 		gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring:
 	default:
-		return nil, fmt.Errorf("RoamingNotAllowedParam.RoamingNotAllowedCause=%d: must be 0 (plmnRoamingNotAllowed) or 3 (operatorDeterminedBarring) per TS 29.002 MAP-ER-DataTypes.asn", w.RoamingNotAllowedCause)
+		return nil, fmt.Errorf("RoamingNotAllowedParam.RoamingNotAllowedCause=%d: %w", w.RoamingNotAllowedCause, ErrRoamingNotAllowedCauseInvalid)
 	}
 	c := w.RoamingNotAllowedCause
 	out.RoamingNotAllowedCause = &c

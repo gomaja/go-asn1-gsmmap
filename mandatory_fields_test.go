@@ -14,7 +14,7 @@ import (
 )
 
 // UpdateLocationArg has mandatory imsi, msc-Number, vlr-Number
-// (MAP-MS-DataTypes.asn:256-259).
+// (3GPP TS 29.002 V19.1.0 §17.7.1).
 func TestUpdateLocationMandatoryFields(t *testing.T) {
 	base := func() *UpdateLocation {
 		return &UpdateLocation{
@@ -43,8 +43,8 @@ func TestUpdateLocationMandatoryFields(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing MscNumber")
 		}
-		if !errors.Is(err, ErrUpdateLocationMissingMSCNumber) {
-			t.Errorf("expected ErrUpdateLocationMissingMSCNumber, got: %v", err)
+		if !errors.Is(err, ErrUpdateLocationMissingMscNumber) {
+			t.Errorf("expected ErrUpdateLocationMissingMscNumber, got: %v", err)
 		}
 	})
 
@@ -55,8 +55,8 @@ func TestUpdateLocationMandatoryFields(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing VlrNumber")
 		}
-		if !errors.Is(err, ErrUpdateLocationMissingVLRNumber) {
-			t.Errorf("expected ErrUpdateLocationMissingVLRNumber, got: %v", err)
+		if !errors.Is(err, ErrUpdateLocationMissingVlrNumber) {
+			t.Errorf("expected ErrUpdateLocationMissingVlrNumber, got: %v", err)
 		}
 	})
 
@@ -123,7 +123,7 @@ func TestMtFsmMandatoryFields(t *testing.T) {
 }
 
 // RoutingInfoForSM-Arg has mandatory msisdn and serviceCentreAddress
-// (MAP-SM-DataTypes.asn:63-66).
+// (3GPP TS 29.002 V19.1.0 §17.7.6).
 func TestSriSmMandatoryFields(t *testing.T) {
 	base := func() *SriSm {
 		return &SriSm{

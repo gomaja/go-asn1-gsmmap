@@ -15,7 +15,8 @@ const errEncodingIMSI = "encoding IMSI: %w"
 // V19.1.0 §17.7.8) with the given nature of address (address.Nature*,
 // bits 7..5) and numbering plan (address.Plan*, bits 4..1). Zero is
 // address.NatureUnknown / address.PlanUnknown, exactly as on the wire, so a
-// decoded address encodes back to the same octets.
+// decoded nature and plan are retained; encoding canonicalizes the
+// extension bit and drops trailing all-filler TBCD octets.
 func encodeAddressField(digits string, nature, plan uint8) ([]byte, error) {
 	if nature&^0b01110000 != 0 {
 		return nil, fmt.Errorf("nature of address 0x%02X: %w", nature, ErrAddressNatureInvalid)
@@ -118,7 +119,7 @@ func int64PtrTo(p *int64) (*int, error) {
 // no-op because int == int64.
 func narrowInt64(v int64) (int, error) {
 	if v < math.MinInt || v > math.MaxInt {
-		return 0, fmt.Errorf("value %d does not fit in Go int on this platform", v)
+		return 0, fmt.Errorf("%w: value %d does not fit in Go int on this platform", ErrGoIntOverflow, v)
 	}
 	return int(v), nil
 }
@@ -127,10 +128,10 @@ func narrowInt64(v int64) (int, error) {
 // application-defined inclusive range [lo, hi]. Callers pass a field
 // name for inclusion in the error message. Delegates to narrowInt64
 // after the range check so callers passing a [lo, hi] that exceeds the
-// platform int bounds still get the overflow safeguard.
+// platform int bounds get the overflow safeguard.
 func narrowInt64Range(v int64, lo, hi int64, field string) (int, error) {
 	if v < lo || v > hi {
-		return 0, fmt.Errorf("%s out of range %d..%d: %d", field, lo, hi, v)
+		return 0, fmt.Errorf("%w: %s out of range %d..%d: %d", ErrIntegerOutOfRange, field, lo, hi, v)
 	}
 	return narrowInt64(v)
 }
@@ -141,10 +142,10 @@ func bigIntFromInt64(v int64) *big.Int {
 
 func int64FromBigInt(v *big.Int, field string) (int64, error) {
 	if v == nil {
-		return 0, fmt.Errorf("%s is nil", field)
+		return 0, fmt.Errorf("%w: %s is nil", ErrIntegerMissing, field)
 	}
 	if !v.IsInt64() {
-		return 0, fmt.Errorf("%s overflows int64: %s", field, v.String())
+		return 0, fmt.Errorf("%w: %s overflows int64: %s", ErrInt64Overflow, field, v.String())
 	}
 	return v.Int64(), nil
 }
@@ -198,7 +199,7 @@ var (
 	// shall be set to zero, when transmitted by the MS." and "The Check Digit
 	// is not part of the digits transmitted". Marshal rejects a 15-digit
 	// IMEI that does not end in 0 (ErrIMEISpareDigitNotZero). Parse accepts
-	// any 15th digit, so a peer that transmits the Check Digit still
+	// any 15th digit, so a peer that transmits the Check Digit
 	// decodes; such a value does not marshal again.
 	identityIMEI = identity{min: 15, max: 16, err: ErrIMEIInvalidLength, spareDigit: true}
 
@@ -223,7 +224,7 @@ func encodeIdentityDigits(id identity, digits string) ([]byte, error) {
 }
 
 // decodeIdentityDigits is the inverse of encodeIdentityDigits, with the
-// same rules.
+// encode-only spare-digit rule.
 func decodeIdentityDigits(id identity, raw []byte) (string, error) {
 	digits, err := tbcd.Decode(raw)
 	if err != nil {

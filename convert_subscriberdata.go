@@ -19,7 +19,7 @@ import (
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// --- ODB-Data (MAP-MS-DataTypes.asn:1770) ---
+// --- ODB-Data (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
 func convertODBDataToWire(o *ODBData) (*gsm_map.ODBData, error) {
 	if o.OdbGeneralData == nil {
@@ -45,7 +45,7 @@ func convertWireToODBData(w *gsm_map.ODBData) *ODBData {
 	return out
 }
 
-// --- ZoneCode / ZoneCodeList (MAP-MS-DataTypes.asn:2070) ---
+// --- ZoneCode / ZoneCodeList (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
 func convertZoneCodeListToWire(z ZoneCodeList) (*gsm_map.ZoneCodeList, error) {
 	out := gsm_map.ZoneCodeList{Values: make([]gsm_map.ZoneCode, 0, len(z))}
@@ -73,7 +73,7 @@ func convertWireToZoneCodeList(w *gsm_map.ZoneCodeList) (ZoneCodeList, error) {
 	return out, nil
 }
 
-// --- VoiceBroadcastData / VBSDataList (MAP-MS-DataTypes.asn:2685, 2717) ---
+// --- VoiceBroadcastData / VBSDataList (3GPP TS 29.002 V19.1.0 §17.7.1, 2717) ---
 
 func convertVoiceBroadcastDataToWire(v *VoiceBroadcastData) (*gsm_map.VoiceBroadcastData, error) {
 	gid, err := encodeGroupID(v.GroupId, v.LongGroupId != "")
@@ -141,7 +141,7 @@ func convertWireToVBSDataList(w *gsm_map.VBSDataList) (VBSDataList, error) {
 	return out, nil
 }
 
-// --- VoiceGroupCallData / VGCSDataList (MAP-MS-DataTypes.asn:2688, 2695) ---
+// --- VoiceGroupCallData / VGCSDataList (3GPP TS 29.002 V19.1.0 §17.7.1, 2695) ---
 
 func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroupCallData, error) {
 	gid, err := encodeGroupID(v.GroupId, v.LongGroupId != "")

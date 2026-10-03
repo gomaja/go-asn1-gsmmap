@@ -7,7 +7,7 @@ import (
 )
 
 // validateExtQoSHierarchy enforces the spec hierarchy from
-// MAP-MS-DataTypes.asn:1534-1538: Ext2 requires Ext, Ext3 requires
+// 3GPP TS 29.002 V19.1.0 §17.7.1: Ext2 requires Ext, Ext3 requires
 // Ext2, Ext4 requires Ext3. Each parameter is true when the
 // corresponding Ext{N}-QoS-Subscribed field is present.
 func validateExtQoSHierarchy(ext, ext2, ext3, ext4 bool) error {
@@ -24,7 +24,7 @@ func validateExtQoSHierarchy(ext, ext2, ext3, ext4 bool) error {
 }
 
 // ============================================================================
-// AMBR — TS 29.002 MAP-MS-DataTypes.asn:1386
+// AMBR — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertAMBRToWire(a *AMBR) (*gsm_map.AMBR, error) {
@@ -96,7 +96,7 @@ func convertWireToAMBR(w *gsm_map.AMBR) (*AMBR, error) {
 }
 
 // ============================================================================
-// PDP-Context — TS 29.002 MAP-MS-DataTypes.asn:1522
+// PDP-Context — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
@@ -314,7 +314,7 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 }
 
 // ============================================================================
-// GPRSDataList / GPRSSubscriptionData — TS 29.002 MAP-MS-DataTypes.asn:1517-1595
+// GPRSDataList / GPRSSubscriptionData — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertGPRSDataListToWire(list GPRSDataList) (*gsm_map.GPRSDataList, error) {
@@ -393,8 +393,7 @@ func convertWireToGPRSSubscriptionData(w *gsm_map.GPRSSubscriptionData) (*GPRSSu
 }
 
 // ============================================================================
-// LSAData / LSADataList / LSAInformation — TS 29.002
-// MAP-MS-DataTypes.asn:1706-1726
+// LSAData / LSADataList / LSAInformation — per 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertLSADataToWire(l *LSAData) (*gsm_map.LSAData, error) {

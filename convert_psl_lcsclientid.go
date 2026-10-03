@@ -12,8 +12,8 @@
 //     LcsClientExternalID (existing converter from convert_isd_lcs.go),
 //     LcsClientDialedByMS (AddressString digits + Nature/Plan triple),
 //     LcsClientInternalID (existing alias),
-//     LcsClientName (this PR), LcsAPN (HexBytes opaque),
-//     LcsRequestorID (this PR))
+//     LcsClientName, LcsAPN (HexBytes opaque),
+//     LcsRequestorID)
 
 package gsmmap
 
@@ -24,7 +24,7 @@ import (
 )
 
 // ============================================================================
-// LCSClientName — TS 29.002 MAP-LCS-DataTypes.asn:199
+// LCSClientName — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertLCSClientNameToWire(c *LCSClientName) (*gsm_map.LCSClientName, error) {
@@ -38,7 +38,7 @@ func convertLCSClientNameToWire(c *LCSClientName) (*gsm_map.LCSClientName, error
 	}
 	if c.LcsFormatIndicator != nil {
 		v := *c.LcsFormatIndicator
-		// LCSFormatIndicator is extensible (TS 29.002:224); encoder
+		// LCSFormatIndicator is extensible (3GPP TS 29.002 V19.1.0 §17.7.13); encoder
 		// strict, decoder lenient (3GPP TS 29.002 V19.1.0 §17.1.4).
 		if int64(v) < 0 || int64(v) > 4 {
 			return nil, fmt.Errorf("LCSClientName.LcsFormatIndicator=%d: %w", v, ErrLCSFormatIndicatorInvalid)
@@ -66,7 +66,7 @@ func convertWireToLCSClientName(w *gsm_map.LCSClientName) *LCSClientName {
 }
 
 // ============================================================================
-// LCSRequestorID — TS 29.002 MAP-LCS-DataTypes.asn:214
+// LCSRequestorID — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 
 func convertLCSRequestorIDToWire(r *LCSRequestorID) (*gsm_map.LCSRequestorID, error) {
@@ -106,10 +106,10 @@ func convertWireToLCSRequestorID(w *gsm_map.LCSRequestorID) *LCSRequestorID {
 }
 
 // ============================================================================
-// LCSClientID — TS 29.002 MAP-LCS-DataTypes.asn:178
+// LCSClientID — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 //
-// LcsClientType is an extensible ENUMERATED (TS 29.002:188); encoder is
+// LcsClientType is an extensible ENUMERATED (3GPP TS 29.002 V19.1.0 §17.7.13); encoder is
 // strict (0..3). convertWireToLCSClientID copies any value; the
 // ProvideSubscriberLocation-Arg and SubscriberLocationReport-Arg decoders
 // apply the receiver rule (see checkLCSClientType).
@@ -155,13 +155,12 @@ func convertLCSClientIDToWire(c *LCSClientID) (*gsm_map.LCSClientID, error) {
 		}
 		out.LcsClientExternalID = ext
 	}
-	// Symmetry with the decode-side ErrLCSClientIDDialedByMSEmpty
-	// invariant: empty digits combined with non-zero Nature/Plan
+	// The address metadata requires digits: empty digits combined with non-zero Nature/Plan
 	// indicates a caller bug (Nature/Plan are only meaningful when
 	// digits are present).
 	if c.LcsClientDialedByMS == "" {
 		if c.LcsClientDialedByMSNature != 0 || c.LcsClientDialedByMSPlan != 0 {
-			return nil, fmt.Errorf("LCSClientID.LcsClientDialedByMS: %w", ErrLCSClientIDDialedByMSEmpty)
+			return nil, fmt.Errorf("LCSClientID.LcsClientDialedByMS: %w", ErrLCSClientIDDialedByMSNaturePlanWithoutDigits)
 		}
 	} else {
 		isdn, err := encodeAddressField(c.LcsClientDialedByMS, c.LcsClientDialedByMSNature, c.LcsClientDialedByMSPlan)
@@ -225,7 +224,7 @@ func convertWireToLCSClientID(w *gsm_map.LCSClientID) (*LCSClientID, error) {
 		// an explicitly present wire AddressString that decodes to
 		// empty digits cannot round-trip through the string-based API.
 		if s == "" {
-			return nil, fmt.Errorf("LCSClientID.LcsClientDialedByMS: %w", ErrLCSClientIDDialedByMSEmpty)
+			return nil, fmt.Errorf("LCSClientID.LcsClientDialedByMS: %w", ErrLCSClientIDDialedByMSDecodedEmpty)
 		}
 		out.LcsClientDialedByMS = s
 		out.LcsClientDialedByMSNature = nature

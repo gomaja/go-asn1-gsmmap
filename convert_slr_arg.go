@@ -16,7 +16,7 @@ import (
 	"github.com/gomaja/go-asn1-gsmmap/gsn"
 )
 
-// LcsEvent value bounds per TS 29.002 MAP-LCS-DataTypes.asn:681
+// LcsEvent value bounds per 3GPP TS 29.002 V19.1.0 §17.7.13
 // (ENUMERATED 0..5, extensible). The encoder sends only these values and
 // the decoder rejects any other (3GPP TS 29.002 V19.1.0 §17.7.13).
 const (

@@ -7,7 +7,7 @@ import (
 )
 
 // ============================================================================
-// AllocationRetentionPriority — TS 29.002 MAP-MS-DataTypes.asn:1420
+// AllocationRetentionPriority — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertAllocationRetentionPriorityToWire(a *AllocationRetentionPriority) *gsm_map.AllocationRetentionPriority {
@@ -47,7 +47,7 @@ func convertWireToAllocationRetentionPriority(w *gsm_map.AllocationRetentionPrio
 }
 
 // ============================================================================
-// EPSQoSSubscribed — TS 29.002 MAP-MS-DataTypes.asn:1380
+// EPSQoSSubscribed — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertEPSQoSSubscribedToWire(q *EPSQoSSubscribed) (*gsm_map.EPSQoSSubscribed, error) {
@@ -77,7 +77,7 @@ func convertWireToEPSQoSSubscribed(w *gsm_map.EPSQoSSubscribed) (*EPSQoSSubscrib
 }
 
 // ============================================================================
-// SpecificAPNInfo / SpecificAPNInfoList — TS 29.002 MAP-MS-DataTypes.asn:1398-1408
+// SpecificAPNInfo / SpecificAPNInfoList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // PdnGwIdentity is the public type shared with
 // UpdateGprsLocation; convertPdnGwIdentityToWire / convertWireToPdnGwIdentity
 // in convert_updategprsloc.go enforce IPv4=4 octets, IPv6=16 octets,
@@ -199,7 +199,7 @@ func convertWireToWLANOffloadability(w *gsm_map.WLANOffloadability) (*WLANOffloa
 }
 
 // ============================================================================
-// APNConfiguration — TS 29.002 MAP-MS-DataTypes.asn:1327
+// APNConfiguration — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfiguration, error) {
@@ -442,7 +442,7 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 
 // ============================================================================
 // EPSDataList / APNConfigurationProfile / EPSSubscriptionData
-// — TS 29.002 MAP-MS-DataTypes.asn:1283-1325
+// — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
 func convertEPSDataListToWire(list EPSDataList) (*gsm_map.EPSDataList, error) {

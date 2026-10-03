@@ -14,10 +14,10 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	// (3GPP TS 29.002 V19.1.0 §17.7.1). An empty IMSI fails in
 	// encodeIdentityDigits with ErrIdentityEmpty.
 	if u.MscNumber == "" {
-		return nil, ErrUpdateLocationMissingMSCNumber
+		return nil, ErrUpdateLocationMissingMscNumber
 	}
 	if u.VlrNumber == "" {
-		return nil, ErrUpdateLocationMissingVLRNumber
+		return nil, ErrUpdateLocationMissingVlrNumber
 	}
 
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, u.IMSI)
@@ -140,7 +140,7 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		for i, raw := range u.EplmnList {
 			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(raw))
+				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
 			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
@@ -160,12 +160,12 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
-	msc, mscNature, mscPlan, err := decodeAddressWithDigits(arg.MscNumber, ErrUpdateLocationMissingMSCNumber)
+	msc, mscNature, mscPlan, err := decodeAddressWithDigits(arg.MscNumber, ErrUpdateLocationMissingMscNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MscNumber: %w", err)
 	}
 
-	vlr, vlrNature, vlrPlan, err := decodeAddressWithDigits(arg.VlrNumber, ErrUpdateLocationMissingVLRNumber)
+	vlr, vlrNature, vlrPlan, err := decodeAddressWithDigits(arg.VlrNumber, ErrUpdateLocationMissingVlrNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding VlrNumber: %w", err)
 	}
@@ -197,7 +197,7 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		// istCommandSupported(1), ... } per TS 29.002. Spec exception:
 		// "reception of values > 1 shall be mapped to 'istCommandSupported'".
 		// Apply the mapping in int64 space first so wire values that exceed
-		// platform int still satisfy the spec mandate on 32-bit builds.
+		// platform int satisfy the spec mandate on 32-bit builds.
 		if arg.VlrCapability.IstSupportIndicator != nil {
 			v, err := istSupportIndicatorFromWire(*arg.VlrCapability.IstSupportIndicator)
 			if err != nil {
@@ -276,7 +276,7 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 		for i, plmn := range arg.EplmnList.Values {
 			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] PLMNId must be exactly 3 octets, got %d", i, len(plmn))
+				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
 			}
 			list[i] = HexBytes(plmn)
 		}

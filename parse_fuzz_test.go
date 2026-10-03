@@ -124,9 +124,8 @@ func berSeeds(tb testing.TB) [][]byte {
 	return seeds
 }
 
-// strictEncodeErrors are the only errors Marshal may return for a value a
-// Parse function returned. Each marks a value the package decodes
-// leniently, as 3GPP TS 29.002 V19.1.0 tells a receiver to, but never sends:
+// strictEncodeErrors lists values Parse accepts but Marshal rejects. The
+// reasons include receiver mappings and deliberate decode leniency:
 var strictEncodeErrors = []error{
 	// A reserved AlertingPattern (§17.7.8) is decoded and not sent.
 	ErrAlertingPatternReserved,
