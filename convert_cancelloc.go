@@ -224,7 +224,7 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 	}
 
 	if arg.NewMSCNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.NewMSCNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.NewMSCNumber, ErrCancelLocNewMSCNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding NewMSCNumber: %w", err)
 		}
@@ -234,7 +234,7 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 	}
 
 	if arg.NewVLRNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.NewVLRNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.NewVLRNumber, ErrCancelLocNewVLRNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding NewVLRNumber: %w", err)
 		}

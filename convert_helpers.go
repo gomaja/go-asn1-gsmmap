@@ -47,14 +47,16 @@ func decodeAddressField(encoded []byte) (digits string, nature, plan uint8, err 
 	return digits, nat, pl, nil
 }
 
-// decodeMandatoryAddressField decodes an AddressString that must carry
-// digits: a mandatory field or a selected CHOICE alternative. The public
-// types hold an address as its digits, "" meaning missing, so an address
-// with only its nature/plan octet (SIZE (1..n) allows it, 3GPP TS 29.002
-// V19.1.0 §17.7.8) or only filler would decode to a value Marshal rejects.
-// It is rejected with empty, the sentinel the encoder returns for the
-// missing field where there is one, so a parsed message marshals again.
-func decodeMandatoryAddressField(encoded []byte, empty error) (digits string, nature, plan uint8, err error) {
+// decodeAddressWithDigits decodes an AddressString that is present on the
+// wire: a mandatory field, a selected CHOICE alternative or a present
+// OPTIONAL field. The public types hold an address as its digits, ""
+// meaning missing or absent, so an address with only its nature/plan octet
+// (SIZE (1..n) allows it, 3GPP TS 29.002 V19.1.0 §17.7.8) or only filler
+// would decode to a value Marshal rejects (mandatory) or drops (OPTIONAL).
+// It is rejected with empty: for a mandatory field the sentinel the encoder
+// returns for the missing field, otherwise the field's "...DecodedEmpty"
+// sentinel. A parsed message therefore marshals back to the same fields.
+func decodeAddressWithDigits(encoded []byte, empty error) (digits string, nature, plan uint8, err error) {
 	digits, nature, plan, err = decodeAddressField(encoded)
 	if err != nil {
 		return "", 0, 0, err

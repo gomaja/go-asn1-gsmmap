@@ -40,7 +40,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		if w.MscNumber == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		num, nature, plan, err := decodeMandatoryAddressField(*w.MscNumber, ErrAdditionalNumberMscNumberDecodedEmpty)
+		num, nature, plan, err := decodeAddressWithDigits(*w.MscNumber, ErrAdditionalNumberMscNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MscNumber: %w", err)
 		}
@@ -51,7 +51,7 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 		if w.SgsnNumber == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		num, nature, plan, err := decodeMandatoryAddressField(*w.SgsnNumber, ErrAdditionalNumberSgsnNumberDecodedEmpty)
+		num, nature, plan, err := decodeAddressWithDigits(*w.SgsnNumber, ErrAdditionalNumberSgsnNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
@@ -232,7 +232,7 @@ func convertForwardingDataToWire(f *ForwardingData) (*gsm_map.ForwardingData, er
 func convertWireToForwardingData(w *gsm_map.ForwardingData) (*ForwardingData, error) {
 	out := &ForwardingData{}
 	if w.ForwardedToNumber != nil {
-		digits, nat, pl, err := decodeAddressField(*w.ForwardedToNumber)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.ForwardedToNumber, ErrForwardingDataForwardedToNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ForwardedToNumber: %w", err)
 		}
@@ -347,7 +347,7 @@ func convertWireToRoutingInfo(w *gsm_map.RoutingInfo) (*RoutingInfo, error) {
 		if w.RoamingNumber == nil {
 			return nil, ErrSriChoiceNoAlternative
 		}
-		digits, nat, pl, err := decodeMandatoryAddressField(*w.RoamingNumber, ErrRoutingInfoRoamingNumberDecodedEmpty)
+		digits, nat, pl, err := decodeAddressWithDigits(*w.RoamingNumber, ErrRoutingInfoRoamingNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding RoamingNumber: %w", err)
 		}

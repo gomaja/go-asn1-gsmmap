@@ -109,11 +109,11 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 // convertArgToAlertServiceCentre converts a wire-level
 // gsm_map.AlertServiceCentreArg back into the public AlertServiceCentre type.
 func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertServiceCentre, error) {
-	msisdn, msisdnNature, msisdnPlan, err := decodeMandatoryAddressField(arg.Msisdn, ErrAscMissingMSISDN)
+	msisdn, msisdnNature, msisdnPlan, err := decodeAddressWithDigits(arg.Msisdn, ErrAscMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
-	sca, scaNature, scaPlan, err := decodeMandatoryAddressField(arg.ServiceCentreAddress, ErrAscMissingServiceCentreAddress)
+	sca, scaNature, scaPlan, err := decodeAddressWithDigits(arg.ServiceCentreAddress, ErrAscMissingServiceCentreAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ServiceCentreAddress: %w", err)
 	}
@@ -160,7 +160,7 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	if arg.NewSGSNNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.NewSGSNNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.NewSGSNNumber, ErrAscNewSGSNNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding NewSGSNNumber: %w", err)
 		}
@@ -174,7 +174,7 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	if arg.NewMMENumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.NewMMENumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.NewMMENumber, ErrAscNewMMENumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding NewMMENumber: %w", err)
 		}
@@ -188,7 +188,7 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 	}
 
 	if arg.NewMSCNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.NewMSCNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.NewMSCNumber, ErrAscNewMSCNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding NewMSCNumber: %w", err)
 		}

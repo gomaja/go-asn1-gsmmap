@@ -485,7 +485,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
 		if s == "" {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.SgsnNumber: %w", ErrIsdMSISDNDecodedEmpty)
+			return nil, fmt.Errorf("InsertSubscriberDataArg.SgsnNumber: %w", ErrIsdSGSNNumberDecodedEmpty)
 		}
 		out.SgsnNumber = s
 		out.SgsnNumberNature = nature
@@ -519,7 +519,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 			return nil, fmt.Errorf("decoding AdditionalMSISDN: %w", err)
 		}
 		if s == "" {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.AdditionalMSISDN: %w", ErrIsdMSISDNDecodedEmpty)
+			return nil, fmt.Errorf("InsertSubscriberDataArg.AdditionalMSISDN: %w", ErrIsdAdditionalMSISDNDecodedEmpty)
 		}
 		out.AdditionalMSISDN = s
 		out.AdditionalMSISDNNature = nature

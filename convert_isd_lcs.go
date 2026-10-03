@@ -32,12 +32,9 @@ func convertWireToLCSClientExternalID(w *gsm_map.LCSClientExternalID) (*LCSClien
 	}
 	out := &LCSClientExternalID{}
 	if w.ExternalAddress != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.ExternalAddress))
+		s, nature, plan, err := decodeAddressWithDigits([]byte(*w.ExternalAddress), ErrLCSClientExternalIDExternalAddressDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding LCSClientExternalID.ExternalAddress: %w", err)
-		}
-		if s == "" {
-			return nil, fmt.Errorf("decoding LCSClientExternalID.ExternalAddress: present wire field decoded to empty digits")
 		}
 		out.ExternalAddress = s
 		out.ExternalAddressNature = nature

@@ -3577,6 +3577,34 @@ var (
 	// round-trip.
 	ErrIscStoredMSISDNDecodedEmpty = errors.New("informServiceCentre: present wire storedMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 
+	// A present OPTIONAL address that holds only its nature/plan octet (or
+	// filler) has no digits. The public field uses "" for absent, so the
+	// address could not round-trip and is rejected on decode.
+	ErrAscNewSGSNNumberDecodedEmpty                    = errors.New("alertServiceCentre: present wire newSGSN-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrAscNewMMENumberDecodedEmpty                     = errors.New("alertServiceCentre: present wire newMME-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrAscNewMSCNumberDecodedEmpty                     = errors.New("alertServiceCentre: present wire newMSC-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrCancelLocNewMSCNumberDecodedEmpty               = errors.New("cancelLocation: present wire newMSC-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrCancelLocNewVLRNumberDecodedEmpty               = errors.New("cancelLocation: present wire newVLR-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrExtForwFeatureForwardedToNumberDecodedEmpty     = errors.New("extForwFeature: present wire forwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrExtForwFeatureLongForwardedToNumberDecodedEmpty = errors.New("extForwFeature: present wire longForwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrForwardingDataForwardedToNumberDecodedEmpty     = errors.New("forwardingData: present wire forwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriSmRespSmsf3gppNumberDecodedEmpty             = errors.New("sriSmResp: present wire smsf-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriSmRespSmsfNon3gppNumberDecodedEmpty          = errors.New("sriSmResp: present wire smsf-non-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPurgeMSVLRNumberDecodedEmpty                    = errors.New("purgeMS: present wire vlr-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrPurgeMSSGSNNumberDecodedEmpty                   = errors.New("purgeMS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrMnpInfoResMSISDNDecodedEmpty                    = errors.New("mnpInfoRes: present wire msisdn decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrUpdateGprsLocationMmeNumberForMTSMSDecodedEmpty = errors.New("updateGprsLocation: present wire mmeNumberforMTSMS decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriRespVmscAddressDecodedEmpty                  = errors.New("sriResp: present wire vmsc-Address decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriRespMSISDNDecodedEmpty                       = errors.New("sriResp: present wire msisdn decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLocationInformationVLRNumberDecodedEmpty        = errors.New("locationInformation: present wire vlr-number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLocationInformationMSCNumberDecodedEmpty        = errors.New("locationInformation: present wire msc-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLocationInformationGPRSSGSNNumberDecodedEmpty   = errors.New("locationInformationGPRS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrMtFsmSmsGmscAddressDecodedEmpty                 = errors.New("mtFsm: present wire smsGmscAddress decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrIsdSGSNNumberDecodedEmpty                       = errors.New("insertSubscriberDataArg: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrIsdAdditionalMSISDNDecodedEmpty                 = errors.New("insertSubscriberDataArg: present wire additionalMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrEPSSubscriptionDataStnSrDecodedEmpty            = errors.New("epsSubscriptionData: present wire stn-sr decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrLCSClientExternalIDExternalAddressDecodedEmpty  = errors.New("lcsClientExternalID: present wire externalAddress decoded to empty digits; presence cannot round-trip through string-based API")
+
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.

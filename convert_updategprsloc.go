@@ -260,7 +260,7 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	}
 
 	if arg.MmeNumberforMTSMS != nil {
-		mme, nature, plan, err := decodeAddressField(*arg.MmeNumberforMTSMS)
+		mme, nature, plan, err := decodeAddressWithDigits(*arg.MmeNumberforMTSMS, ErrUpdateGprsLocationMmeNumberForMTSMSDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MmeNumberForMTSMS: %w", err)
 		}

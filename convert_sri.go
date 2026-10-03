@@ -195,12 +195,12 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 }
 
 func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
-	msisdn, msisdnNature, msisdnPlan, err := decodeMandatoryAddressField(arg.Msisdn, ErrSriMissingMSISDN)
+	msisdn, msisdnNature, msisdnPlan, err := decodeAddressWithDigits(arg.Msisdn, ErrSriMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
 
-	gmsc, gmscNature, gmscPlan, err := decodeMandatoryAddressField(arg.GmscOrGsmSCFAddress, ErrSriMissingGmsc)
+	gmsc, gmscNature, gmscPlan, err := decodeAddressWithDigits(arg.GmscOrGsmSCFAddress, ErrSriMissingGmsc)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GmscOrGsmSCFAddress: %w", err)
 	}
@@ -597,7 +597,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// VmscAddress
 	if res.VmscAddress != nil {
-		digits, nat, pl, err := decodeAddressField(*res.VmscAddress)
+		digits, nat, pl, err := decodeAddressWithDigits(*res.VmscAddress, ErrSriRespVmscAddressDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding VmscAddress: %w", err)
 		}
@@ -618,7 +618,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// Msisdn
 	if res.Msisdn != nil {
-		digits, nat, pl, err := decodeAddressField(*res.Msisdn)
+		digits, nat, pl, err := decodeAddressWithDigits(*res.Msisdn, ErrSriRespMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MSISDN: %w", err)
 		}

@@ -188,7 +188,7 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		out.BasicService = bs
 	}
 	if w.ForwardedToNumber != nil {
-		digits, nat, plan, err := decodeAddressField(*w.ForwardedToNumber)
+		digits, nat, plan, err := decodeAddressWithDigits(*w.ForwardedToNumber, ErrExtForwFeatureForwardedToNumberDecodedEmpty)
 		if err != nil {
 			return ExtForwFeature{}, fmt.Errorf("ForwardedToNumber: %w", err)
 		}
@@ -228,7 +228,7 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		// decoded nat/plan into the shared fields. When ForwardedToNumber
 		// is also present, its values were already written above and
 		// take precedence (consistent with the encoder's behavior).
-		digits, nat, plan, err := decodeAddressField(*w.LongForwardedToNumber)
+		digits, nat, plan, err := decodeAddressWithDigits(*w.LongForwardedToNumber, ErrExtForwFeatureLongForwardedToNumberDecodedEmpty)
 		if err != nil {
 			return ExtForwFeature{}, fmt.Errorf("LongForwardedToNumber: %w", err)
 		}

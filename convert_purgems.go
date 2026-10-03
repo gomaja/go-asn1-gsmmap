@@ -85,7 +85,7 @@ func convertArgToPurgeMS(arg *gsm_map.PurgeMSArg) (*PurgeMS, error) {
 	out := &PurgeMS{IMSI: imsi}
 
 	if arg.VlrNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.VlrNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.VlrNumber, ErrPurgeMSVLRNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding VLRNumber: %w", err)
 		}
@@ -95,7 +95,7 @@ func convertArgToPurgeMS(arg *gsm_map.PurgeMSArg) (*PurgeMS, error) {
 	}
 
 	if arg.SgsnNumber != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.SgsnNumber)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.SgsnNumber, ErrPurgeMSSGSNNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SGSNNumber: %w", err)
 		}

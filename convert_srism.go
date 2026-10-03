@@ -91,12 +91,12 @@ func convertSriSmToArg(s *SriSm) (*gsm_map.RoutingInfoForSMArg, error) {
 }
 
 func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
-	msisdn, msisdnNature, msisdnPlan, err := decodeMandatoryAddressField(arg.Msisdn, ErrSriSmMissingMSISDN)
+	msisdn, msisdnNature, msisdnPlan, err := decodeAddressWithDigits(arg.Msisdn, ErrSriSmMissingMSISDN)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MSISDN: %w", err)
 	}
 
-	sca, scaNature, scaPlan, err := decodeMandatoryAddressField(arg.ServiceCentreAddress, ErrSriSmMissingServiceCentreAddress)
+	sca, scaNature, scaPlan, err := decodeAddressWithDigits(arg.ServiceCentreAddress, ErrSriSmMissingServiceCentreAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ServiceCentreAddress: %w", err)
 	}
@@ -286,7 +286,7 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
-	nnn, nnnNature, nnnPlan, err := decodeMandatoryAddressField(res.LocationInfoWithLMSI.NetworkNodeNumber, ErrSriSmRespMissingNetworkNodeNumber)
+	nnn, nnnNature, nnnPlan, err := decodeAddressWithDigits(res.LocationInfoWithLMSI.NetworkNodeNumber, ErrSriSmRespMissingNetworkNodeNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding NetworkNodeNumber: %w", err)
 	}
@@ -343,7 +343,7 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 
 	// Smsf3gppNumber
 	if res.LocationInfoWithLMSI.Smsf3gppNumber != nil {
-		num, nature, plan, err := decodeAddressField(*res.LocationInfoWithLMSI.Smsf3gppNumber)
+		num, nature, plan, err := decodeAddressWithDigits(*res.LocationInfoWithLMSI.Smsf3gppNumber, ErrSriSmRespSmsf3gppNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding Smsf3gppNumber: %w", err)
 		}
@@ -359,7 +359,7 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 
 	// SmsfNon3gppNumber
 	if res.LocationInfoWithLMSI.SmsfNon3gppNumber != nil {
-		num, nature, plan, err := decodeAddressField(*res.LocationInfoWithLMSI.SmsfNon3gppNumber)
+		num, nature, plan, err := decodeAddressWithDigits(*res.LocationInfoWithLMSI.SmsfNon3gppNumber, ErrSriSmRespSmsfNon3gppNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmsfNon3gppNumber: %w", err)
 		}

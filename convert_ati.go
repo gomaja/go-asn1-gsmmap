@@ -104,7 +104,7 @@ func convertArgToATI(arg *gsm_map.AnyTimeInterrogationArg) (*AnyTimeInterrogatio
 	ati.RequestedInfo = buildRequestedInfoFromWire(&arg.RequestedInfo)
 
 	// GsmSCFAddress
-	scf, scfNature, scfPlan, err := decodeMandatoryAddressField(arg.GsmSCFAddress, ErrAtiMissingGsmSCFAddress)
+	scf, scfNature, scfPlan, err := decodeAddressWithDigits(arg.GsmSCFAddress, ErrAtiMissingGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GsmSCFAddress: %w", err)
 	}
