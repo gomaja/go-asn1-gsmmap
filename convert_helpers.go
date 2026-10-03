@@ -158,6 +158,9 @@ func validateAPN(b HexBytes, field string) error {
 type identity struct {
 	min, max int
 	err      error
+	// spareDigit marks an identity whose min-digit form ends in a spare
+	// digit that is sent as 0 (the IMEI, see identityIMEI).
+	spareDigit bool
 }
 
 var (
@@ -179,7 +182,16 @@ var (
 	// Number (SVN) [...] If the SVN is not present the last octet shall
 	// contain the digit 0 and a filler. If present the SVN shall be included
 	// in the last octet."
-	identityIMEI = identity{min: 15, max: 16, err: ErrIMEIInvalidLength}
+	//
+	// The 15th digit is therefore the spare digit 0, not the Check Digit:
+	// TS 23.003 V20.1.0 §6.2.1 "Check Digit (CD) / Spare Digit (SD): If this
+	// is the Check Digit see paragraph below; if this digit is Spare Digit it
+	// shall be set to zero, when transmitted by the MS." and "The Check Digit
+	// is not part of the digits transmitted". Marshal rejects a 15-digit
+	// IMEI that does not end in 0 (ErrIMEISpareDigitNotZero). Parse accepts
+	// any 15th digit, so a peer that transmits the Check Digit still
+	// decodes; such a value does not marshal again.
+	identityIMEI = identity{min: 15, max: 16, err: ErrIMEIInvalidLength, spareDigit: true}
 
 	// identityIMEISV: the IMEISV parameter (3GPP TS 29.002 V19.1.0
 	// §7.6.2.3a, ADD-Info imeisv), 16 digits per 3GPP TS 23.003 V20.1.0
@@ -194,6 +206,9 @@ var (
 func encodeIdentityDigits(id identity, digits string) ([]byte, error) {
 	if err := checkIdentityDigits(id, digits); err != nil {
 		return nil, err
+	}
+	if id.spareDigit && len(digits) == id.min && digits[len(digits)-1] != '0' {
+		return nil, fmt.Errorf("%w (got %q)", ErrIMEISpareDigitNotZero, digits[len(digits)-1])
 	}
 	return tbcd.Encode(digits)
 }

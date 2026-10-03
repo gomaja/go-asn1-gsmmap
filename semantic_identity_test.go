@@ -11,7 +11,6 @@ package gsmmap
 import (
 	"encoding/hex"
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/gomaja/go-asn1/runtime/ber"
@@ -21,9 +20,10 @@ import (
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
-// semDigits returns n digits.
+// semDigits returns n digits. The 15th is 0, the spare digit a 15-digit
+// IMEI ends in (semantic_imei_test.go).
 func semDigits(n int) string {
-	return strings.Repeat("1234567890", 2)[:n]
+	return "12345678901234067890"[:n]
 }
 
 func semTBCD(t *testing.T, digits string) []byte {

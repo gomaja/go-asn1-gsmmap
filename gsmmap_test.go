@@ -796,7 +796,7 @@ func TestATIResGPRSLocationRoundTrip(t *testing.T) {
 func TestATIResIMEIRoundTrip(t *testing.T) {
 	res := &AnyTimeInterrogationRes{
 		SubscriberInfo: SubscriberInfo{
-			IMEI: "353456789012345",
+			IMEI: "353456789012340",
 		},
 	}
 
@@ -810,7 +810,7 @@ func TestATIResIMEIRoundTrip(t *testing.T) {
 		t.Fatalf("Parse error: %v", err)
 	}
 
-	if parsed.SubscriberInfo.IMEI != "353456789012345" {
+	if parsed.SubscriberInfo.IMEI != "353456789012340" {
 		t.Errorf("IMEI: got %s, want 353456789012345", parsed.SubscriberInfo.IMEI)
 	}
 }
@@ -830,7 +830,7 @@ func TestATIResFullRoundTrip(t *testing.T) {
 				State:              StateNetDetNotReachable,
 				NotReachableReason: &reason,
 			},
-			IMEI:               "353456789012345",
+			IMEI:               "353456789012340",
 			MsClassmark2:       []byte{0x33, 0x19, 0x83},
 			TimeZone:           []byte{0x08, 0x00}, // TimeZone SIZE (2..3), TS 29.002 §17.7.1.
 			DaylightSavingTime: &dst,
@@ -866,7 +866,7 @@ func TestATIResFullRoundTrip(t *testing.T) {
 	}
 
 	// IMEI
-	if si.IMEI != "353456789012345" {
+	if si.IMEI != "353456789012340" {
 		t.Errorf("IMEI: got %s, want 353456789012345", si.IMEI)
 	}
 

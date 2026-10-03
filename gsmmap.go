@@ -514,7 +514,7 @@ type SubscriberInfo struct {
 	SubscriberState                  *SubscriberStateInfo              // [1]
 	LocationInformationGPRS          *GPRSLocationInformation          // [3]
 	PsSubscriberState                *PsSubscriberState                // [4] CHOICE
-	IMEI                             string                            // [5] decoded TBCD; empty if absent
+	IMEI                             string                            // [5] digits; empty if absent (15 digits ending in the spare digit 0, or 16 with the SVN)
 	MsClassmark2                     HexBytes                          // [6] raw octets; nil if absent
 	GprsMSClass                      *GprsMSClass                      // [7]
 	MnpInfoRes                       *MnpInfoRes                       // [8]
@@ -2784,7 +2784,7 @@ type ProvideSubscriberLocationArg struct {
 	MSISDNNature              uint8    // address nature indicator
 	MSISDNPlan                uint8    // numbering plan indicator
 	LMSI                      HexBytes // 4 octets opaque
-	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; ErrIMEIInvalidLength)
+	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits ending in the spare digit 0, or 16 with the SVN)
 	LcsPriority               LCSPriority
 	LcsQoS                    *LCSQoS
 	SupportedGADShapes        *SupportedGADShapes
@@ -3184,7 +3184,7 @@ type SubscriberLocationReportArg struct {
 	MSISDNNature uint8
 	MSISDNPlan   uint8
 	IMSI         string // [1] TBCD-decoded digits; "" = absent (6..15 digits, ErrIMSIInvalidLength)
-	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; ErrIMEIInvalidLength)
+	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits ending in the spare digit 0, or 16 with the SVN)
 
 	// Optional emergency-services routing identifiers (ISDN-AddressString).
 	NaESRD       string // [3] North-American Emergency Service Routing Digits; "" = absent
@@ -3573,7 +3573,8 @@ var (
 	ErrIMEIInvalidLength = errors.New("identity: IMEI must have 15 digits, or 16 with the software version number, per 3GPP TS 23.003 V20.1.0 §6.2 and 3GPP TS 29.002 V19.1.0 §17.7.8")
 	// ErrIMEISVInvalidLength is returned when an IMEISV does not have 16
 	// digits (3GPP TS 23.003 V20.1.0 §6.2.2).
-	ErrIMEISVInvalidLength = errors.New("identity: IMEISV must have 16 digits per 3GPP TS 23.003 V20.1.0 §6.2.2")
+	ErrIMEISpareDigitNotZero = errors.New("identity: a 15-digit IMEI carries the spare digit 0 in its last position, not the check digit, per 3GPP TS 29.002 V19.1.0 §17.7.8 and 3GPP TS 23.003 V20.1.0 §6.2.1")
+	ErrIMEISVInvalidLength   = errors.New("identity: IMEISV must have 16 digits per 3GPP TS 23.003 V20.1.0 §6.2.2")
 
 	// ErrAddressStringEmpty is returned when an AddressString has no octets
 	// at all, not even the nature/plan octet.
