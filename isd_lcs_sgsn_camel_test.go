@@ -397,7 +397,7 @@ func TestGPRSCamelTDPData_DefaultGPRSHandlingLenientRemap(t *testing.T) {
 		w := &gsm_map.GPRSCamelTDPData{
 			GprsTriggerDetectionPoint: gsm_map.GPRSTriggerDetectionPointAttach,
 			ServiceKey:                gsm_map.ServiceKey(1),
-			GsmSCFAddress:             gsm_map.ISDNAddressString(addr),
+			GsmSCFAddress:             addr,
 			DefaultSessionHandling:    gsm_map.DefaultGPRSHandling(tc.wire),
 		}
 		out, err := convertWireToGPRSCamelTDPData(w)

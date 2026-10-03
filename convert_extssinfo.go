@@ -143,7 +143,7 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 		if err != nil {
 			return gsm_map.ExtForwFeature{}, fmt.Errorf("ForwardedToNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(enc)
+		v := enc
 		out.ForwardedToNumber = &v
 	}
 	if f.ForwardedToSubaddress != nil {
@@ -163,7 +163,7 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 		}
 		v64 := int64(*f.NoReplyConditionTime)
 
-		v := gsm_map.ExtNoRepCondTime(v64)
+		v := v64
 		out.NoReplyConditionTime = &v
 	}
 	if f.LongForwardedToNumber != "" {
@@ -171,7 +171,7 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 		if err != nil {
 			return gsm_map.ExtForwFeature{}, fmt.Errorf("LongForwardedToNumber: %w", err)
 		}
-		v := gsm_map.FTNAddressString(enc)
+		v := enc
 		out.LongForwardedToNumber = &v
 	}
 	return out, nil
@@ -196,8 +196,6 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		out.ForwardedToPlan = plan
 	}
 	if w.ForwardedToSubaddress != nil {
-		// ISDN-SubaddressString SIZE(1..21) per TS 29.002.
-
 		out.ForwardedToSubaddress = HexBytes(*w.ForwardedToSubaddress)
 	}
 	if w.ForwardingOptions != nil {
@@ -207,7 +205,7 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		// 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime: "If received:
 		// values 1-4 shall be mapped on to value 5", "values 31-100 shall be
 		// mapped on to value 30". The codec has enforced INTEGER (1..100).
-		v64 := int64(*w.NoReplyConditionTime)
+		v64 := *w.NoReplyConditionTime
 
 		switch {
 		case v64 >= 1 && v64 <= 4:
@@ -341,7 +339,7 @@ func convertCUGSubscriptionToWire(s *CUGSubscription) (gsm_map.CUGSubscription, 
 		return gsm_map.CUGSubscription{}, ErrIntraCUGOptionsInvalidValue
 	}
 	out := gsm_map.CUGSubscription{
-		CugIndex:        gsm_map.CUGIndex(int64(s.CugIndex)),
+		CugIndex:        int64(s.CugIndex),
 		CugInterlock:    gsm_map.CUGInterlock(s.CugInterlock),
 		IntraCUGOptions: s.IntraCUGOptions,
 	}
@@ -392,7 +390,7 @@ func convertCUGFeatureToWire(f *CUGFeature) (gsm_map.CUGFeature, error) {
 	}
 	if f.PreferentialCUGIndex != nil {
 		v := *f.PreferentialCUGIndex
-		idx := gsm_map.CUGIndex(int64(v))
+		idx := int64(v)
 		out.PreferentialCUGIndicator = &idx
 	}
 	return out, nil
@@ -534,13 +532,13 @@ func convertEMLPPInfoToWire(e *EMLPPInfo) (*gsm_map.EMLPPInfo, error) {
 		return nil, err
 	}
 	return &gsm_map.EMLPPInfo{
-		MaximumentitledPriority: gsm_map.EMLPPPriority(int64(e.MaximumEntitledPriority)),
-		DefaultPriority:         gsm_map.EMLPPPriority(int64(e.DefaultPriority)),
+		MaximumentitledPriority: int64(e.MaximumEntitledPriority),
+		DefaultPriority:         int64(e.DefaultPriority),
 	}, nil
 }
 
 func convertWireToEMLPPInfo(w *gsm_map.EMLPPInfo) (*EMLPPInfo, error) {
-	// Lenient decode per TS 29.002: 7..15 → 4. Apply in int64 space.
+	// Spare values 7..15 map to priority 4 (3GPP TS 29.002 V19.1.0 §17.7.8).
 	mapPriority := func(v int64) int {
 		if v >= 7 && v <= 15 {
 			return 4

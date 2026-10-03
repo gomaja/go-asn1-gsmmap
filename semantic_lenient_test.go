@@ -81,7 +81,7 @@ func semLenientCases() []semLenientCase {
 			return w
 		}},
 		{ErrIMEISpareDigitNotZero, asParser(ParseAnyTimeInterrogationRes), func(t *testing.T) semWire {
-			imei := gsm_map.IMEI(semTBCD(t, "490154203237518"))
+			imei := semTBCD(t, "490154203237518")
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{Imei: &imei}}
 		}},
 		{ErrCancelLocInvalidCancellationType, asParser(ParseCancelLocation), cancel(3, nil)},
@@ -258,7 +258,7 @@ func TestSriRespWithoutIMSI(t *testing.T) {
 		t.Fatalf("UnmarshalBER: %v", err)
 	}
 	if w.Imsi != nil {
-		t.Errorf("wire imsi = %x, want absent", []byte(*w.Imsi))
+		t.Errorf("wire imsi = %x, want absent", *w.Imsi)
 	}
 	got, err := ParseSriResp(data)
 	if err != nil {

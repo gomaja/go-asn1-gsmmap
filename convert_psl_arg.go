@@ -40,7 +40,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 
 	out := &gsm_map.ProvideSubscriberLocationArg{
 		LocationType: *loc,
-		MlcNumber:    gsm_map.ISDNAddressString(mlcWire),
+		MlcNumber:    mlcWire,
 	}
 
 	// Optional fields.
@@ -58,7 +58,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMSI: %w", err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		out.Imsi = &v
 	}
 	if a.MSISDN != "" {
@@ -66,7 +66,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.MSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.Msisdn = &v
 	}
 	if len(a.LMSI) > 0 {
@@ -78,7 +78,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.IMEI: %w", err)
 		}
-		v := gsm_map.IMEI(imeiBytes)
+		v := imeiBytes
 		out.Imei = &v
 	}
 	if len(a.LcsPriority) > 0 {
@@ -103,7 +103,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 	if a.LcsServiceTypeID != nil {
 		v := *a.LcsServiceTypeID
 
-		w := gsm_map.LCSServiceTypeID(v)
+		w := v
 		out.LcsServiceTypeID = &w
 	}
 	if a.LcsCodeword != nil {
@@ -128,7 +128,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		if err != nil {
 			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.HGmlcAddress: %w", err)
 		}
-		v := gsm_map.GSNAddress(gsnAddr)
+		v := gsnAddr
 		out.HGmlcAddress = &v
 	}
 	out.MoLrShortCircuitIndicator = boolToNullPtr(a.MoLrShortCircuitIndicator)
@@ -192,7 +192,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 	}
 
 	loc := convertWireToLocationType(&w.LocationType)
-	mlcStr, mlcNature, mlcPlan, err := decodeAddressField([]byte(w.MlcNumber))
+	mlcStr, mlcNature, mlcPlan, err := decodeAddressField(w.MlcNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.MlcNumber: %w", err)
 	}
@@ -224,7 +224,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.IMSI = imsi
 	}
 	if w.Msisdn != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.Msisdn))
+		s, nature, plan, err := decodeAddressField(*w.Msisdn)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.MSISDN: %w", err)
 		}
@@ -262,7 +262,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.LcsReferenceNumber = LCSReferenceNumber(*w.LcsReferenceNumber)
 	}
 	if w.LcsServiceTypeID != nil {
-		v := int64(*w.LcsServiceTypeID)
+		v := *w.LcsServiceTypeID
 
 		out.LcsServiceTypeID = &v
 	}

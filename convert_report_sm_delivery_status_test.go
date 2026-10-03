@@ -215,7 +215,7 @@ func TestReportSMDeliveryStatusDecodeNegative(t *testing.T) {
 	}
 
 	t.Run("Res StoredMSISDN present but empty", func(t *testing.T) {
-		ea := gsm_map.ISDNAddressString(emptyAddr())
+		ea := emptyAddr()
 		w := &gsm_map.ReportSMDeliveryStatusRes{StoredMSISDN: &ea}
 		_, err := convertResToReportSMDeliveryStatusRes(w)
 		if !errors.Is(err, ErrReportSMDeliveryStatusResStoredMSISDNEmpty) {

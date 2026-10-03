@@ -39,9 +39,9 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	}
 
 	arg := &gsm_map.UpdateLocationArg{
-		Imsi:      gsm_map.IMSI(imsiBytes),
-		MscNumber: gsm_map.ISDNAddressString(mscNumber),
-		VlrNumber: gsm_map.ISDNAddressString(vlrNumber),
+		Imsi:      imsiBytes,
+		MscNumber: mscNumber,
+		VlrNumber: vlrNumber,
 	}
 
 	if u.VlrCapability != nil {
@@ -110,7 +110,7 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		if err != nil {
 			return nil, fmt.Errorf("encoding VGmlcAddress: %w", err)
 		}
-		v := gsm_map.GSNAddress(gsnAddr)
+		v := gsnAddr
 		arg.VGmlcAddress = &v
 	}
 
@@ -186,11 +186,11 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 	if arg.VlrCapability != nil {
 		vlrCap := &VlrCapability{}
 
-		if arg.VlrCapability.SupportedCamelPhases != nil && arg.VlrCapability.SupportedCamelPhases.BitLength > 0 {
+		if arg.VlrCapability.SupportedCamelPhases != nil {
 			vlrCap.SupportedCamelPhases = convertBitStringToCamelPhases(*arg.VlrCapability.SupportedCamelPhases)
 		}
 
-		if arg.VlrCapability.SupportedLCSCapabilitySets != nil && arg.VlrCapability.SupportedLCSCapabilitySets.BitLength > 0 {
+		if arg.VlrCapability.SupportedLCSCapabilitySets != nil {
 			vlrCap.SupportedLCSCapabilitySets = convertBitStringToLCSCaps(*arg.VlrCapability.SupportedLCSCapabilitySets)
 		}
 
@@ -219,11 +219,11 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 		vlrCap.LongFTNSupported = nullPtrToBool(arg.VlrCapability.LongFTNSupported)
 
-		if arg.VlrCapability.OfferedCamel4CSIs != nil && arg.VlrCapability.OfferedCamel4CSIs.BitLength > 0 {
+		if arg.VlrCapability.OfferedCamel4CSIs != nil {
 			vlrCap.OfferedCamel4CSIs = convertBitStringToOfferedCamel4CSIs(*arg.VlrCapability.OfferedCamel4CSIs)
 		}
 
-		if arg.VlrCapability.SupportedRATTypesIndicator != nil && arg.VlrCapability.SupportedRATTypesIndicator.BitLength > 0 {
+		if arg.VlrCapability.SupportedRATTypesIndicator != nil {
 			vlrCap.SupportedRATTypesIndicator = convertBitStringToSupportedRATTypes(*arg.VlrCapability.SupportedRATTypesIndicator)
 		}
 
@@ -305,7 +305,7 @@ func convertUpdateLocationResToRes(u *UpdateLocationRes) (*gsm_map.UpdateLocatio
 	}
 
 	res := &gsm_map.UpdateLocationRes{
-		HlrNumber:            gsm_map.ISDNAddressString(hlr),
+		HlrNumber:            hlr,
 		AddCapability:        boolToNullPtr(u.AddCapability),
 		PagingAreaCapability: boolToNullPtr(u.PagingAreaCapability),
 	}

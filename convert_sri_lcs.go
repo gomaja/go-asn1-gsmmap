@@ -38,7 +38,7 @@ func convertSriLcsToArg(a *SriLcs) (*gsm_map.RoutingInfoForLCSArg, error) {
 		return nil, fmt.Errorf("SriLcs.TargetMS: %w", err)
 	}
 	return &gsm_map.RoutingInfoForLCSArg{
-		MlcNumber: gsm_map.ISDNAddressString(mlc),
+		MlcNumber: mlc,
 		TargetMS:  target,
 	}, nil
 }
@@ -47,7 +47,7 @@ func convertArgToSriLcs(w *gsm_map.RoutingInfoForLCSArg) (*SriLcs, error) {
 	if w == nil {
 		return nil, ErrSriLcsNil
 	}
-	mlc, nature, plan, err := decodeAddressField([]byte(w.MlcNumber))
+	mlc, nature, plan, err := decodeAddressField(w.MlcNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SriLcs.MlcNumber: %w", err)
 	}
@@ -146,7 +146,7 @@ func encodeOptionalGSN(ipStr, field string, dst **gsm_map.GSNAddress) error {
 	if err != nil {
 		return fmt.Errorf("encoding %s: %w", field, err)
 	}
-	v := gsm_map.GSNAddress(b)
+	v := b
 	*dst = &v
 	return nil
 }

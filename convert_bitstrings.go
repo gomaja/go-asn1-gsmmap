@@ -46,9 +46,7 @@ func convertCamelPhasesToBitString(cp *SupportedCamelPhases) runtime.BitString {
 
 func convertBitStringToCamelPhases(bs runtime.BitString) *SupportedCamelPhases {
 	cp := &SupportedCamelPhases{}
-	if bs.BitLength > 0 {
-		cp.Phase1 = bs.Has(0)
-	}
+	cp.Phase1 = bs.Has(0)
 	if bs.BitLength > 1 {
 		cp.Phase2 = bs.Has(1)
 	}
@@ -87,9 +85,7 @@ func convertLCSCapsToBitString(lcs *SupportedLCSCapabilitySets) runtime.BitStrin
 
 func convertBitStringToLCSCaps(bs runtime.BitString) *SupportedLCSCapabilitySets {
 	lcs := &SupportedLCSCapabilitySets{}
-	if bs.BitLength > 0 {
-		lcs.LcsCapabilitySet1 = bs.Has(0)
-	}
+	lcs.LcsCapabilitySet1 = bs.Has(0)
 	if bs.BitLength > 1 {
 		lcs.LcsCapabilitySet2 = bs.Has(1)
 	}
@@ -120,9 +116,7 @@ func convertRequestedNodesToBitString(rn *RequestedNodes) runtime.BitString {
 
 func convertBitStringToRequestedNodes(bs runtime.BitString) *RequestedNodes {
 	rn := &RequestedNodes{}
-	if bs.BitLength > 0 {
-		rn.MME = bs.Has(0)
-	}
+	rn.MME = bs.Has(0)
 	if bs.BitLength > 1 {
 		rn.SGSN = bs.Has(1)
 	}
@@ -143,9 +137,7 @@ func convertAllowedServicesToBitString(a *AllowedServicesFlags) runtime.BitStrin
 
 func convertBitStringToAllowedServices(bs runtime.BitString) *AllowedServicesFlags {
 	a := &AllowedServicesFlags{}
-	if bs.BitLength > 0 {
-		a.FirstServiceAllowed = bs.Has(0)
-	}
+	a.FirstServiceAllowed = bs.Has(0)
 	if bs.BitLength > 1 {
 		a.SecondServiceAllowed = bs.Has(1)
 	}
@@ -166,9 +158,7 @@ func convertSuppressMTSSToBitString(s *SuppressMTSSFlags) runtime.BitString {
 
 func convertBitStringToSuppressMTSS(bs runtime.BitString) *SuppressMTSSFlags {
 	s := &SuppressMTSSFlags{}
-	if bs.BitLength > 0 {
-		s.SuppressCUG = bs.Has(0)
-	}
+	s.SuppressCUG = bs.Has(0)
 	if bs.BitLength > 1 {
 		s.SuppressCCBS = bs.Has(1)
 	}
@@ -205,9 +195,7 @@ func convertOfferedCamel4CSIsToBitString(o *OfferedCamel4CSIs) runtime.BitString
 
 func convertBitStringToOfferedCamel4CSIs(bs runtime.BitString) *OfferedCamel4CSIs {
 	o := &OfferedCamel4CSIs{}
-	if bs.BitLength > 0 {
-		o.OCSI = bs.Has(0)
-	}
+	o.OCSI = bs.Has(0)
 	if bs.BitLength > 1 {
 		o.DCSI = bs.Has(1)
 	}
@@ -252,9 +240,7 @@ func convertSupportedRATTypesToBitString(r *SupportedRATTypes) runtime.BitString
 
 func convertBitStringToSupportedRATTypes(bs runtime.BitString) *SupportedRATTypes {
 	r := &SupportedRATTypes{}
-	if bs.BitLength > 0 {
-		r.UTRAN = bs.Has(0)
-	}
+	r.UTRAN = bs.Has(0)
 	if bs.BitLength > 1 {
 		r.GERAN = bs.Has(1)
 	}

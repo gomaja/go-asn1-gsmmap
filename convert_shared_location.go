@@ -21,7 +21,7 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 		if err != nil {
 			return nil, fmt.Errorf("encoding VlrNumber: %w", err)
 		}
-		vlrAddr := gsm_map.ISDNAddressString(vlr)
+		vlrAddr := vlr
 		li.VlrNumber = &vlrAddr
 	}
 
@@ -30,7 +30,7 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 		if err != nil {
 			return nil, fmt.Errorf("encoding MscNumber: %w", err)
 		}
-		mscAddr := gsm_map.ISDNAddressString(msc)
+		mscAddr := msc
 		li.MscNumber = &mscAddr
 	}
 
@@ -39,7 +39,7 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 		if err != nil {
 			return nil, fmt.Errorf("encoding GeographicalInformation: %w", err)
 		}
-		gi := gsm_map.GeographicalInformation(raw)
+		gi := raw
 		li.GeographicalInformation = &gi
 	}
 
@@ -118,7 +118,7 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 	}
 
 	if li.GeographicalInformation != nil {
-		gi, err := DecodeGeographicalInfo([]byte(*li.GeographicalInformation))
+		gi, err := DecodeGeographicalInfo(*li.GeographicalInformation)
 		if err != nil {
 			return nil, fmt.Errorf("decoding GeographicalInformation: %w", err)
 		}
@@ -126,7 +126,7 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 	}
 
 	if li.GeodeticInformation != nil {
-		loc.GeodeticInformation = []byte(*li.GeodeticInformation)
+		loc.GeodeticInformation = *li.GeodeticInformation
 	}
 
 	if li.CellGlobalIdOrServiceAreaIdOrLAI != nil {
@@ -136,14 +136,14 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 			if choice.CellGlobalIdOrServiceAreaIdFixedLength == nil {
 				return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: cellGlobalId alternative selected but payload is nil")
 			}
-			b := []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
+			b := *choice.CellGlobalIdOrServiceAreaIdFixedLength
 
 			loc.CellGlobalId = b
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
 			if choice.LaiFixedLength == nil {
 				return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: LAI alternative selected but payload is nil")
 			}
-			b := []byte(*choice.LaiFixedLength)
+			b := *choice.LaiFixedLength
 
 			loc.LAI = b
 		default:
@@ -152,11 +152,11 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 	}
 
 	if li.LocationNumber != nil {
-		loc.LocationNumber = []byte(*li.LocationNumber)
+		loc.LocationNumber = *li.LocationNumber
 	}
 
 	if li.SelectedLSAId != nil {
-		loc.SelectedLSAId = []byte(*li.SelectedLSAId)
+		loc.SelectedLSAId = *li.SelectedLSAId
 	}
 
 	if li.UserCSGInformation != nil {
@@ -255,7 +255,7 @@ func convertEPSLocationToAsn1(loc *EPSLocationInformation) (*gsm_map.LocationInf
 		if err != nil {
 			return nil, fmt.Errorf("encoding GeographicalInformation: %w", err)
 		}
-		gi := gsm_map.GeographicalInformation(raw)
+		gi := raw
 		li.GeographicalInformation = &gi
 	}
 
@@ -285,19 +285,19 @@ func convertAsn1ToEPSLocation(li *gsm_map.LocationInformationEPS) (*EPSLocationI
 	}
 
 	if li.EUtranCellGlobalIdentity != nil {
-		b := []byte(*li.EUtranCellGlobalIdentity)
+		b := *li.EUtranCellGlobalIdentity
 
 		loc.EUtranCellGlobalIdentity = b
 	}
 
 	if li.TrackingAreaIdentity != nil {
-		b := []byte(*li.TrackingAreaIdentity)
+		b := *li.TrackingAreaIdentity
 
 		loc.TrackingAreaIdentity = b
 	}
 
 	if li.GeographicalInformation != nil {
-		gi, err := DecodeGeographicalInfo([]byte(*li.GeographicalInformation))
+		gi, err := DecodeGeographicalInfo(*li.GeographicalInformation)
 		if err != nil {
 			return nil, fmt.Errorf("decoding GeographicalInformation: %w", err)
 		}
@@ -305,13 +305,13 @@ func convertAsn1ToEPSLocation(li *gsm_map.LocationInformationEPS) (*EPSLocationI
 	}
 
 	if li.GeodeticInformation != nil {
-		loc.GeodeticInformation = []byte(*li.GeodeticInformation)
+		loc.GeodeticInformation = *li.GeodeticInformation
 	}
 
 	loc.CurrentLocationRetrieved = li.CurrentLocationRetrieved != nil
 
 	if li.MmeName != nil {
-		loc.MmeName = []byte(*li.MmeName)
+		loc.MmeName = *li.MmeName
 	}
 
 	return loc, nil
@@ -349,7 +349,7 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 		if err != nil {
 			return nil, fmt.Errorf("encoding GeographicalInformation: %w", err)
 		}
-		gi := gsm_map.GeographicalInformation(raw)
+		gi := raw
 		li.GeographicalInformation = &gi
 	}
 
@@ -363,7 +363,7 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 		if err != nil {
 			return nil, fmt.Errorf("encoding SgsnNumber: %w", err)
 		}
-		sgsnAddr := gsm_map.ISDNAddressString(sgsn)
+		sgsnAddr := sgsn
 		li.SgsnNumber = &sgsnAddr
 	}
 
@@ -406,14 +406,14 @@ func convertAsn1ToGPRSLocation(li *gsm_map.LocationInformationGPRS) (*GPRSLocati
 			if choice.CellGlobalIdOrServiceAreaIdFixedLength == nil {
 				return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: cellGlobalId alternative selected but payload is nil")
 			}
-			b := []byte(*choice.CellGlobalIdOrServiceAreaIdFixedLength)
+			b := *choice.CellGlobalIdOrServiceAreaIdFixedLength
 
 			loc.CellGlobalId = b
 		case gsm_map.CellGlobalIdOrServiceAreaIdOrLAIChoiceLaiFixedLength:
 			if choice.LaiFixedLength == nil {
 				return nil, fmt.Errorf("CellGlobalIdOrServiceAreaIdOrLAI: LAI alternative selected but payload is nil")
 			}
-			b := []byte(*choice.LaiFixedLength)
+			b := *choice.LaiFixedLength
 
 			loc.LAI = b
 		default:
@@ -422,13 +422,13 @@ func convertAsn1ToGPRSLocation(li *gsm_map.LocationInformationGPRS) (*GPRSLocati
 	}
 
 	if li.RouteingAreaIdentity != nil {
-		b := []byte(*li.RouteingAreaIdentity)
+		b := *li.RouteingAreaIdentity
 
 		loc.RouteingAreaIdentity = b
 	}
 
 	if li.GeographicalInformation != nil {
-		gi, err := DecodeGeographicalInfo([]byte(*li.GeographicalInformation))
+		gi, err := DecodeGeographicalInfo(*li.GeographicalInformation)
 		if err != nil {
 			return nil, fmt.Errorf("decoding GeographicalInformation: %w", err)
 		}
@@ -436,7 +436,7 @@ func convertAsn1ToGPRSLocation(li *gsm_map.LocationInformationGPRS) (*GPRSLocati
 	}
 
 	if li.GeodeticInformation != nil {
-		loc.GeodeticInformation = []byte(*li.GeodeticInformation)
+		loc.GeodeticInformation = *li.GeodeticInformation
 	}
 
 	if li.SgsnNumber != nil {
@@ -450,7 +450,7 @@ func convertAsn1ToGPRSLocation(li *gsm_map.LocationInformationGPRS) (*GPRSLocati
 	}
 
 	if li.SelectedLSAIdentity != nil {
-		loc.SelectedLSAIdentity = []byte(*li.SelectedLSAIdentity)
+		loc.SelectedLSAIdentity = *li.SelectedLSAIdentity
 	}
 
 	if li.UserCSGInformation != nil {

@@ -2,9 +2,7 @@
 //
 // Top-level converter for ProvideSubscriberLocationRes (opCode 83) and
 // the ServingNodeAddress CHOICE codec referenced by PSL-Res's
-// targetServingNodeForHandover field. PR E of the staged PSL
-// implementation: completes the ProvideSubscriberLocation operation
-// after PRs #43/#44/#45/#46 (PSL-Arg).
+// targetServingNodeForHandover field.
 
 package gsmmap
 
@@ -57,14 +55,14 @@ func convertServingNodeAddressToWire(s *ServingNodeAddress) (*gsm_map.ServingNod
 		if err != nil {
 			return nil, fmt.Errorf("encoding ServingNodeAddress.MscNumber: %w", err)
 		}
-		v := gsm_map.NewServingNodeAddressMscNumber(gsm_map.ISDNAddressString(isdn))
+		v := gsm_map.NewServingNodeAddressMscNumber(isdn)
 		return &v, nil
 	case sgsnSet:
 		isdn, err := encodeAddressField(s.SgsnNumber, s.SgsnNumberNature, s.SgsnNumberPlan)
 		if err != nil {
 			return nil, fmt.Errorf("encoding ServingNodeAddress.SgsnNumber: %w", err)
 		}
-		v := gsm_map.NewServingNodeAddressSgsnNumber(gsm_map.ISDNAddressString(isdn))
+		v := gsm_map.NewServingNodeAddressSgsnNumber(isdn)
 		return &v, nil
 	default: // mmeSet
 
@@ -83,7 +81,7 @@ func convertWireToServingNodeAddress(w *gsm_map.ServingNodeAddress) (*ServingNod
 		if w.MscNumber == nil {
 			return nil, ErrServingNodeAddressNoAlt
 		}
-		s, nature, plan, err := decodeAddressField([]byte(*w.MscNumber))
+		s, nature, plan, err := decodeAddressField(*w.MscNumber)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ServingNodeAddress.MscNumber: %w", err)
 		}
@@ -97,7 +95,7 @@ func convertWireToServingNodeAddress(w *gsm_map.ServingNodeAddress) (*ServingNod
 		if w.SgsnNumber == nil {
 			return nil, ErrServingNodeAddressNoAlt
 		}
-		s, nature, plan, err := decodeAddressField([]byte(*w.SgsnNumber))
+		s, nature, plan, err := decodeAddressField(*w.SgsnNumber)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ServingNodeAddress.SgsnNumber: %w", err)
 		}
@@ -189,7 +187,7 @@ func convertProvideSubscriberLocationResToWire(r *ProvideSubscriberLocationRes) 
 	}
 
 	if r.AgeOfLocationEstimate != nil {
-		v := gsm_map.AgeOfLocationInformation(*r.AgeOfLocationEstimate)
+		v := *r.AgeOfLocationEstimate
 		out.AgeOfLocationEstimate = &v
 	}
 	if len(r.AddLocationEstimate) > 0 {
@@ -273,7 +271,7 @@ func convertWireToProvideSubscriberLocationRes(w *gsm_map.ProvideSubscriberLocat
 	}
 
 	if w.AgeOfLocationEstimate != nil {
-		v := int64(*w.AgeOfLocationEstimate)
+		v := *w.AgeOfLocationEstimate
 		out.AgeOfLocationEstimate = &v
 	}
 	if w.AddLocationEstimate != nil {

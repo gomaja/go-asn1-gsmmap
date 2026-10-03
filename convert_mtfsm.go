@@ -32,7 +32,7 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 	arg := &gsm_map.MTForwardSMArg{
 		SmRPDA: smRpDa,
 		SmRPOA: smRpOa,
-		SmRPUI: gsm_map.SignalInfo(tpduBytes),
+		SmRPUI: tpduBytes,
 	}
 
 	arg.MoreMessagesToSend = boolToNullPtr(m.MoreMessagesToSend)
@@ -65,7 +65,7 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding SmsGmscAddress: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.SmsGmscAddress = &v
 	}
 	if m.SmsGmscDiameterAddress != nil {
@@ -126,7 +126,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 		mtFsm.MaximumRetransmissionTime = HexBytes(*arg.MaximumRetransmissionTime)
 	}
 	if arg.SmsGmscAddress != nil {
-		addr, nature, plan, err := decodeAddressWithDigits([]byte(*arg.SmsGmscAddress), ErrMtFsmSmsGmscAddressDecodedEmpty)
+		addr, nature, plan, err := decodeAddressWithDigits(*arg.SmsGmscAddress, ErrMtFsmSmsGmscAddressDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmsGmscAddress: %w", err)
 		}

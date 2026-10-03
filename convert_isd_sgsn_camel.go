@@ -46,10 +46,10 @@ func convertGPRSCamelTDPDataToWire(d *GPRSCamelTDPData) (*gsm_map.GPRSCamelTDPDa
 		return nil, fmt.Errorf("%w (got %d)", ErrDefaultGPRSHandlingInvalid, d.DefaultSessionHandling)
 	}
 	return &gsm_map.GPRSCamelTDPData{
-		GprsTriggerDetectionPoint: gsm_map.GPRSTriggerDetectionPoint(d.GprsTriggerDetectionPoint),
-		ServiceKey:                gsm_map.ServiceKey(d.ServiceKey),
-		GsmSCFAddress:             gsm_map.ISDNAddressString(addr),
-		DefaultSessionHandling:    gsm_map.DefaultGPRSHandling(d.DefaultSessionHandling),
+		GprsTriggerDetectionPoint: d.GprsTriggerDetectionPoint,
+		ServiceKey:                d.ServiceKey,
+		GsmSCFAddress:             addr,
+		DefaultSessionHandling:    d.DefaultSessionHandling,
 	}, nil
 }
 
@@ -64,7 +64,7 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 		return nil, nil
 	}
 
-	addr, nature, plan, err := decodeAddressField([]byte(w.GsmSCFAddress))
+	addr, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GPRSCamelTDPData.GsmSCFAddress: %w", err)
 	}
@@ -79,7 +79,7 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 	//   - values >  31  as releaseTransaction (1)
 	// A negative value lies outside both ranges; the type is extensible,
 	// so it is kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal rejects it.
-	dgh := DefaultGPRSHandling(w.DefaultSessionHandling)
+	dgh := w.DefaultSessionHandling
 	switch {
 	case dgh >= 2 && dgh <= 31:
 		dgh = DefaultGPRSContinueTransaction
@@ -207,8 +207,8 @@ func convertMGCSIToWire(m *MGCSI) (*gsm_map.MGCSI, error) {
 	}
 	return &gsm_map.MGCSI{
 		MobilityTriggers:  &mt,
-		ServiceKey:        gsm_map.ServiceKey(m.ServiceKey),
-		GsmSCFAddress:     gsm_map.ISDNAddressString(addr),
+		ServiceKey:        m.ServiceKey,
+		GsmSCFAddress:     addr,
 		NotificationToCSE: boolToNullPtr(m.NotificationToCSE),
 		CsiActive:         boolToNullPtr(m.CsiActive),
 	}, nil
@@ -231,7 +231,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 		mt[i] = HexBytes(c)
 	}
 
-	addr, nature, plan, err := decodeAddressField([]byte(w.GsmSCFAddress))
+	addr, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MGCSI.GsmSCFAddress: %w", err)
 	}
@@ -253,7 +253,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 
 // ============================================================================
 // SGSNCAMELSubscriptionInfo — TS 29.002 MAP-MS-DataTypes.asn:1596
-// SMSCSI / MTSmsCAMELTDPCriteria converters reused from PR C
+// SMSCSI / MTSmsCAMELTDPCriteria converters shared with VLR CAMEL data.
 // (convert_camel.go: convertSMSCSIToWire/convertWireToSMSCSI,
 // convertMTSmsCAMELTDPCriteriaToWire/convertWireToMTSmsCAMELTDPCriteria).
 // ============================================================================

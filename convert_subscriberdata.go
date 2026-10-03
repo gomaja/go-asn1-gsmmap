@@ -186,10 +186,6 @@ func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroup
 		// zero bytes; callers who need sub-byte handling should read the
 		// underlying BIT STRING directly.
 		byteLen := w.AdditionalInfo.BitLength / 8
-		// A short Bytes slice can still accompany BitLength; keep the slice in bounds.
-		if byteLen > len(w.AdditionalInfo.Bytes) {
-			byteLen = len(w.AdditionalInfo.Bytes)
-		}
 		if byteLen > 0 {
 			out.AdditionalInfo = HexBytes(w.AdditionalInfo.Bytes[:byteLen])
 		}
@@ -258,7 +254,7 @@ func encodeGroupID(gid string, hasLong bool) (gsm_map.GroupId, error) {
 	if err != nil {
 		return nil, err
 	}
-	return gsm_map.GroupId(enc), nil
+	return enc, nil
 }
 
 // encodeLongGroupID encodes a Long-Group-Id per TS 29.002 V19.1.0:
@@ -271,7 +267,7 @@ func encodeLongGroupID(s string) (gsm_map.LongGroupId, error) {
 	if err != nil {
 		return nil, err
 	}
-	return gsm_map.LongGroupId(enc), nil
+	return enc, nil
 }
 
 // The fixed sizes of GroupId ::= TBCD-STRING (SIZE (3)) and

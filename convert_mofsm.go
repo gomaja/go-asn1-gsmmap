@@ -56,7 +56,7 @@ func convertSmRpDaToWireWithErrors(
 		if err != nil {
 			return gsm_map.SMRPDA{}, fmt.Errorf("encoding SmRpDa IMSI: %w", err)
 		}
-		return gsm_map.NewSMRPDAImsi(gsm_map.IMSI(imsiBytes)), nil
+		return gsm_map.NewSMRPDAImsi(imsiBytes), nil
 	case len(da.LMSI) > 0:
 
 		return gsm_map.NewSMRPDALmsi(gsm_map.LMSI(da.LMSI)), nil
@@ -65,7 +65,7 @@ func convertSmRpDaToWireWithErrors(
 		if err != nil {
 			return gsm_map.SMRPDA{}, fmt.Errorf("encoding SmRpDa ServiceCentreAddressDA: %w", err)
 		}
-		return gsm_map.NewSMRPDAServiceCentreAddressDA(gsm_map.AddressString(scaDA)), nil
+		return gsm_map.NewSMRPDAServiceCentreAddressDA(scaDA), nil
 	default: // da.NoSmRpDa
 		return gsm_map.NewSMRPDANoSMRPDA(struct{}{}), nil
 	}
@@ -155,13 +155,13 @@ func convertSmRpOaToWireWithErrors(
 		if err != nil {
 			return gsm_map.SMRPOA{}, fmt.Errorf("encoding SmRpOa MSISDN: %w", err)
 		}
-		return gsm_map.NewSMRPOAMsisdn(gsm_map.ISDNAddressString(msisdn)), nil
+		return gsm_map.NewSMRPOAMsisdn(msisdn), nil
 	case oa.ServiceCentreAddressOA != "":
 		scaOA, err := encodeAddressField(oa.ServiceCentreAddressOA, oa.SCAOANature, oa.SCAOAPlan)
 		if err != nil {
 			return gsm_map.SMRPOA{}, fmt.Errorf("encoding SmRpOa ServiceCentreAddressOA: %w", err)
 		}
-		return gsm_map.NewSMRPOAServiceCentreAddressOA(gsm_map.AddressString(scaOA)), nil
+		return gsm_map.NewSMRPOAServiceCentreAddressOA(scaOA), nil
 	default: // oa.NoSmRpOa
 		return gsm_map.NewSMRPOANoSMRPOA(struct{}{}), nil
 	}
@@ -231,7 +231,7 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 	arg := &gsm_map.MOForwardSMArg{
 		SmRPDA: smRpDa,
 		SmRPOA: smRpOa,
-		SmRPUI: gsm_map.SignalInfo(tpduBytes),
+		SmRPUI: tpduBytes,
 	}
 
 	// Optional fields (post-extension marker).
@@ -240,7 +240,7 @@ func convertMoFsmToArg(m *MoFsm) (*gsm_map.MOForwardSMArg, error) {
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		arg.Imsi = &v
 	}
 	if m.CorrelationID != nil {
@@ -301,7 +301,7 @@ func convertArgToMoFsm(arg *gsm_map.MOForwardSMArg) (*MoFsm, error) {
 		moFsm.CorrelationID = cid
 	}
 	if arg.SmDeliveryOutcome != nil {
-		v := SmDeliveryOutcome(*arg.SmDeliveryOutcome)
+		v := *arg.SmDeliveryOutcome
 		moFsm.SmDeliveryOutcome = &v
 	}
 

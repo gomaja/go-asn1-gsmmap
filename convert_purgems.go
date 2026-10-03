@@ -21,7 +21,7 @@ func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
 	}
 
 	arg := &gsm_map.PurgeMSArg{
-		Imsi: gsm_map.IMSI(imsiBytes),
+		Imsi: imsiBytes,
 	}
 
 	// [0] VLR-Number
@@ -30,7 +30,7 @@ func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding VLRNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.VlrNumber = &v
 	}
 
@@ -40,7 +40,7 @@ func convertPurgeMSToArg(p *PurgeMS) (*gsm_map.PurgeMSArg, error) {
 		if err != nil {
 			return nil, fmt.Errorf("encoding SGSNNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.SgsnNumber = &v
 	}
 

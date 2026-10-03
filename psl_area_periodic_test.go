@@ -99,13 +99,13 @@ func TestPSLAreaIdentificationAlias(t *testing.T) {
 // values flow without conversion; range-bound constants match the spec.
 func TestPSLAreaPeriodicIntegerAliases(t *testing.T) {
 	var iv IntervalTime = 60
-	if int64(iv) != 60 {
+	if iv != 60 {
 		t.Errorf("IntervalTime alias: want 60, got %d", iv)
 	}
 
 	var amt ReportingAmount = 10
 	var ivl ReportingInterval = 60
-	if int64(amt) != 10 || int64(ivl) != 60 {
+	if amt != 10 || ivl != 60 {
 		t.Errorf("ReportingAmount/Interval aliases: want 10/60, got %d/%d", amt, ivl)
 	}
 

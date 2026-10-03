@@ -265,9 +265,9 @@ func newSriArg() *gsm_map.SendRoutingInfoArg {
 		panic(err)
 	}
 	return &gsm_map.SendRoutingInfoArg{
-		Msisdn:              gsm_map.ISDNAddressString(msisdn),
+		Msisdn:              msisdn,
 		InterrogationType:   gsm_map.InterrogationType(0),
-		GmscOrGsmSCFAddress: gsm_map.ISDNAddressString(gsmscf),
+		GmscOrGsmSCFAddress: gsmscf,
 	}
 }
 
@@ -292,9 +292,9 @@ func newUpdateLocationArg() *gsm_map.UpdateLocationArg {
 		panic(err)
 	}
 	return &gsm_map.UpdateLocationArg{
-		Imsi:      gsm_map.IMSI(imsi),
-		MscNumber: gsm_map.ISDNAddressString(msc),
-		VlrNumber: gsm_map.ISDNAddressString(vlr),
+		Imsi:      imsi,
+		MscNumber: msc,
+		VlrNumber: vlr,
 	}
 }
 
@@ -305,7 +305,7 @@ func newSaiArg() *gsm_map.SendAuthenticationInfoArg {
 		panic(err)
 	}
 	return &gsm_map.SendAuthenticationInfoArg{
-		Imsi:                     gsm_map.IMSI(imsi),
+		Imsi:                     imsi,
 		NumberOfRequestedVectors: gsm_map.NumberOfRequestedVectors(1),
 	}
 }

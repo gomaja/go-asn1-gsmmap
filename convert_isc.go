@@ -36,9 +36,7 @@ func convertMwStatusToBitString(m *MwStatusFlags) runtime.BitString {
 
 func convertBitStringToMwStatus(bs runtime.BitString) *MwStatusFlags {
 	m := &MwStatusFlags{}
-	if bs.BitLength > 0 {
-		m.SCAddressNotIncluded = bs.Has(0)
-	}
+	m.SCAddressNotIncluded = bs.Has(0)
 	if bs.BitLength > 1 {
 		m.MnrfSet = bs.Has(1)
 	}
@@ -83,7 +81,7 @@ func convertInformServiceCentreToArg(i *InformServiceCentre) (*gsm_map.InformSer
 		if err != nil {
 			return nil, fmt.Errorf("encoding StoredMSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(encoded)
+		v := encoded
 		arg.StoredMSISDN = &v
 	}
 

@@ -65,8 +65,8 @@ type AdditionalNumber struct {
 
 // NetworkNodeDiameterAddress SEQUENCE.
 type NetworkNodeDiameterAddress struct {
-	DiameterName  HexBytes // DiameterIdentity
-	DiameterRealm HexBytes // DiameterIdentity
+	DiameterName  HexBytes // DiameterIdentity FQDN (RFC 6733 §4.3.1)
+	DiameterRealm HexBytes // DiameterIdentity FQDN or realm (RFC 6733 §4.3.1)
 }
 
 // IpSmGwGuidance SEQUENCE (IP-SM-GW-Guidance).
@@ -303,9 +303,7 @@ type UpdateLocationRes struct {
 	PagingAreaCapability bool  // [0] NULL
 }
 
-// UsedRatType per 3GPP TS 29.002 (opCode 23). Aliased from go-asn1 per
-// project rule "GSM-MAP spec constants must come from go-asn1 library,
-// not defined locally".
+// UsedRatType aliases the go-asn1 type for 3GPP TS 29.002 (opCode 23).
 type UsedRatType = gsm_map.UsedRATType
 
 const (
@@ -390,8 +388,8 @@ type UpdateGprsLocation struct {
 	MmeNumberForMTSMSPlan          uint8
 	SmsRegisterRequest             *SmsRegisterRequest // [17]
 	SmsOnly                        bool                // [18] NULL
-	SgsnName                       HexBytes            // [19] DiameterIdentity
-	SgsnRealm                      HexBytes            // [20] DiameterIdentity
+	SgsnName                       HexBytes            // [19] DiameterIdentity FQDN (RFC 6733 §4.3.1)
+	SgsnRealm                      HexBytes            // [20] DiameterIdentity FQDN or realm (RFC 6733 §4.3.1)
 	LgdSupportIndicator            bool                // [21] NULL
 	RemovalofMMERegistrationforSMS bool                // [22] NULL
 	AdjacentPLMNList               []HexBytes          // [23] list of 3-octet PLMNIds
@@ -642,7 +640,7 @@ type EPSLocationInformation struct {
 	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
 	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
 	CurrentLocationRetrieved bool
-	MmeName                  HexBytes // raw DiameterIdentity; nil if absent
+	MmeName                  HexBytes // raw DiameterIdentity FQDN (RFC 6733 §4.3.1); nil if absent
 }
 
 // GPRSLocationInformation contains GPRS domain location data (opCode 71).
@@ -1927,8 +1925,7 @@ type AMBR struct {
 }
 
 // SIPTOPermission (ENUMERATED) per TS 29.002 MAP-MS-DataTypes.asn:1567.
-// Constants alias the go-asn1 spec exports per project rule "GSM-MAP
-// spec constants must come from go-asn1 library, not defined locally".
+// Constants alias the go-asn1 spec exports.
 type SIPTOPermission = gsm_map.SIPTOPermission
 
 const (
@@ -2087,7 +2084,7 @@ type EPSQoSSubscribed struct {
 }
 
 // SpecificAPNInfo (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1403.
-// Reuses the pre-existing PdnGwIdentity public type (gsmmap.go:366),
+// PdnGwIdentity is the shared public type,
 // which enforces strict spec sizes (IPv4=4, IPv6=16) and the
 // "at least one identity present" rule.
 type SpecificAPNInfo struct {
@@ -2267,7 +2264,7 @@ type ServiceTypeList []ServiceType
 
 // LCSPrivacyClass (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1976.
 // SsCode is a single-octet SS-Code; SsStatus is the Ext-SS-Status
-// OCTET STRING (SIZE 1..5) shared with PR D's Ext-SS-Info tree.
+// OCTET STRING (SIZE 1..5) shared with Ext-SS-Info.
 type LCSPrivacyClass struct {
 	SsCode                SsCode                // mandatory
 	SsStatus              HexBytes              // mandatory, Ext-SS-Status 1..5 octets
@@ -2738,12 +2735,9 @@ const (
 //
 // MscNumber and SgsnNumber are ISDN-AddressString digits + Nature/Plan
 // triples (consistent with the rest of the public API). MmeNumber is a
-// DiameterIdentity (9..255 octets per 3GPP TS 29.002 V19.1.0 §17.7.8;
-// FQDN content per RFC 6733 §4.3.1, replacing RFC 3588 cited there).
-// The field name
-// matches the ASN.1 spec literal `mme-Number [2] DiameterIdentity`
-// even though the type is a name/FQDN — this preserves the
-// match-upstream-spec convention used elsewhere in the package.
+// DiameterIdentity (9..255 octets per 3GPP TS 29.002 V19.1.0 §17.7.8).
+// It names an MME by FQDN (RFC 6733 §4.3.1), although the ASN.1 field
+// is named `mme-Number [2] DiameterIdentity`.
 type ServingNodeAddress struct {
 	MscNumber        string // ISDN-AddressString digits; "" = alternative not selected
 	MscNumberNature  uint8
@@ -2751,7 +2745,7 @@ type ServingNodeAddress struct {
 	SgsnNumber       string // ISDN-AddressString digits; "" = alternative not selected
 	SgsnNumberNature uint8
 	SgsnNumberPlan   uint8
-	MmeNumber        HexBytes // DiameterIdentity octets; nil/empty = alternative not selected
+	MmeNumber        HexBytes // DiameterIdentity FQDN (RFC 6733 §4.3.1); nil/empty = alternative not selected
 }
 
 const (
@@ -3140,8 +3134,8 @@ type SequenceNumber = gsm_map.SequenceNumber
 // value "0") surfaced as digits + Nature/Plan triple consistent with
 // the rest of the public API. The DiameterIdentity fields (MmeName,
 // AaaServerName, SgsnName, SgsnRealm) are 9..255 octets per 3GPP TS
-// 29.002 V19.1.0 §17.7.8; FQDN content is per RFC 6733 §4.3.1,
-// replacing RFC 3588 cited there.
+// 29.002 V19.1.0 §17.7.8. Node names are FQDNs; SgsnRealm is a realm
+// (RFC 6733 §4.3.1).
 type LCSLocationInfo struct {
 	NetworkNodeNumber       string // mandatory ISDN-AddressString digits
 	NetworkNodeNumberNature uint8  // address nature indicator
@@ -3152,10 +3146,10 @@ type LCSLocationInfo struct {
 	AdditionalNumber            *AdditionalNumber           // [3] optional
 	SupportedLCSCapabilitySets  *SupportedLCSCapabilitySets // [4] optional
 	AdditionalLCSCapabilitySets *SupportedLCSCapabilitySets // [5] optional
-	MmeName                     HexBytes                    // [6] optional DiameterIdentity
-	AaaServerName               HexBytes                    // [8] optional DiameterIdentity
-	SgsnName                    HexBytes                    // [9] optional DiameterIdentity
-	SgsnRealm                   HexBytes                    // [10] optional DiameterIdentity
+	MmeName                     HexBytes                    // [6] optional DiameterIdentity FQDN (RFC 6733 §4.3.1)
+	AaaServerName               HexBytes                    // [8] optional DiameterIdentity FQDN (RFC 6733 §4.3.1)
+	SgsnName                    HexBytes                    // [9] optional DiameterIdentity FQDN (RFC 6733 §4.3.1)
+	SgsnRealm                   HexBytes                    // [10] optional DiameterIdentity FQDN or realm (RFC 6733 §4.3.1)
 	// ExtensionContainer at [1] is opaque metadata not surfaced (per
 	// the package convention; see APNConfiguration). It is dropped on
 	// decode and emitted as absent on encode.
@@ -3407,9 +3401,9 @@ type MGCSI struct {
 // MAP-MS-DataTypes.asn:1596. All fields optional.
 type SGSNCAMELSubscriptionInfo struct {
 	GprsCSI                   *GPRSCSI                // [0] optional
-	MoSmsCSI                  *SMSCSI                 // [1] optional, reuses PR C type
-	MtSmsCSI                  *SMSCSI                 // [3] optional, reuses PR C type
-	MtSmsCAMELTDPCriteriaList []MTSmsCAMELTDPCriteria // [4] optional, reuses PR C type
+	MoSmsCSI                  *SMSCSI                 // [1] optional
+	MtSmsCSI                  *SMSCSI                 // [3] optional
+	MtSmsCAMELTDPCriteriaList []MTSmsCAMELTDPCriteria // [4] optional
 	MgCsi                     *MGCSI                  // [5] optional
 }
 
@@ -3479,7 +3473,7 @@ type InsertSubscriberDataArg struct {
 	SgsnNumber                     string // [34] optional ISDN-AddressString
 	SgsnNumberNature               uint8
 	SgsnNumberPlan                 uint8
-	MmeName                        HexBytes // [35] optional DiameterIdentity (FQDN)
+	MmeName                        HexBytes // [35] optional DiameterIdentity FQDN (RFC 6733 §4.3.1)
 
 	SubscribedPeriodicRAUTAUtimer *int64 // [36] optional INTEGER
 	VplmnLIPAAllowed              bool   // [37] optional NULL
@@ -3749,7 +3743,8 @@ var (
 	ErrBitStringOctetsMismatch = errors.New("bitString: a BIT STRING of n bits must have exactly (n+7)/8 octets per X.690 §8.6.2")
 	// Encode still checks bit length against bytes: https://github.com/gomaja/go-asn1/issues/80.
 	ErrCSGIdInvalidSize = errors.New("csgSubscriptionData: CsgId BIT STRING (SIZE 27) requires exactly 4 octets carrying 27 bits; CsgIdBitLength must be set to 27")
-	ErrAPNInvalidSize   = errors.New("apn: each entry must be 2..63 octets per TS 29.002 MAP-MS-DataTypes.asn:1654")
+	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
+	ErrAPNInvalidSize = errors.New("apn: each entry must be 2..63 octets per TS 29.002 MAP-MS-DataTypes.asn:1654")
 
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrResetIdInvalidSize = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")

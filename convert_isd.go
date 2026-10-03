@@ -69,7 +69,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		if err != nil {
 			return nil, fmt.Errorf(errEncodingIMSI, err)
 		}
-		v := gsm_map.IMSI(imsiBytes)
+		v := imsiBytes
 		out.Imsi = &v
 	}
 	if a.MSISDN != "" {
@@ -77,7 +77,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		if err != nil {
 			return nil, fmt.Errorf("encoding MSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.Msisdn = &v
 	}
 	if len(a.Category) > 0 {
@@ -180,7 +180,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.LcsInformation = w
 	}
 	if a.IstAlertTimer != nil {
-		v := gsm_map.ISTAlertTimerValue(*a.IstAlertTimer)
+		v := *a.IstAlertTimer
 		out.IstAlertTimer = &v
 	}
 	if len(a.SuperChargerSupportedInHLR) > 0 {
@@ -236,7 +236,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		if err != nil {
 			return nil, fmt.Errorf("encoding SgsnNumber: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.SgsnNumber = &v
 	}
 	if len(a.MmeName) > 0 {
@@ -244,7 +244,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.MmeName = &v
 	}
 	if a.SubscribedPeriodicRAUTAUtimer != nil {
-		v := gsm_map.SubscribedPeriodicRAUTAUtimer(*a.SubscribedPeriodicRAUTAUtimer)
+		v := *a.SubscribedPeriodicRAUTAUtimer
 		out.SubscribedPeriodicRAUTAUtimer = &v
 	}
 	if a.MdtUserConsent != nil {
@@ -252,7 +252,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.MdtUserConsent = &v
 	}
 	if a.SubscribedPeriodicLAUtimer != nil {
-		v := gsm_map.SubscribedPeriodicLAUtimer(*a.SubscribedPeriodicLAUtimer)
+		v := *a.SubscribedPeriodicLAUtimer
 		out.SubscribedPeriodicLAUtimer = &v
 	}
 	if a.VplmnCsgSubscriptionDataList != nil {
@@ -267,7 +267,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		if err != nil {
 			return nil, fmt.Errorf("encoding AdditionalMSISDN: %w", err)
 		}
-		v := gsm_map.ISDNAddressString(isdn)
+		v := isdn
 		out.AdditionalMSISDN = &v
 	}
 	if a.AdjacentAccessRestrictionDataList != nil {
@@ -289,7 +289,7 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.UeUsageType = &v
 	}
 	if a.DlBufferingSuggestedPacketCount != nil {
-		v := gsm_map.DLBufferingSuggestedPacketCount(*a.DlBufferingSuggestedPacketCount)
+		v := *a.DlBufferingSuggestedPacketCount
 		out.DlBufferingSuggestedPacketCount = &v
 	}
 	if a.ResetIdList != nil {
@@ -339,7 +339,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.IMSI = imsi
 	}
 	if w.Msisdn != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.Msisdn))
+		s, nature, plan, err := decodeAddressField(*w.Msisdn)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MSISDN: %w", err)
 		}
@@ -444,7 +444,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.LcsInformation = v
 	}
 	if w.IstAlertTimer != nil {
-		v := int64(*w.IstAlertTimer)
+		v := *w.IstAlertTimer
 		out.IstAlertTimer = &v
 	}
 	if w.SuperChargerSupportedInHLR != nil {
@@ -492,7 +492,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.CsgSubscriptionDataList = l
 	}
 	if w.SgsnNumber != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.SgsnNumber))
+		s, nature, plan, err := decodeAddressField(*w.SgsnNumber)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
 		}
@@ -507,7 +507,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.MmeName = HexBytes(*w.MmeName)
 	}
 	if w.SubscribedPeriodicRAUTAUtimer != nil {
-		v := int64(*w.SubscribedPeriodicRAUTAUtimer)
+		v := *w.SubscribedPeriodicRAUTAUtimer
 		out.SubscribedPeriodicRAUTAUtimer = &v
 	}
 	if w.MdtUserConsent != nil {
@@ -515,7 +515,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.MdtUserConsent = &v
 	}
 	if w.SubscribedPeriodicLAUtimer != nil {
-		v := int64(*w.SubscribedPeriodicLAUtimer)
+		v := *w.SubscribedPeriodicLAUtimer
 		out.SubscribedPeriodicLAUtimer = &v
 	}
 	if w.VplmnCsgSubscriptionDataList != nil {
@@ -526,7 +526,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.VplmnCsgSubscriptionDataList = l
 	}
 	if w.AdditionalMSISDN != nil {
-		s, nature, plan, err := decodeAddressField([]byte(*w.AdditionalMSISDN))
+		s, nature, plan, err := decodeAddressField(*w.AdditionalMSISDN)
 		if err != nil {
 			return nil, fmt.Errorf("decoding AdditionalMSISDN: %w", err)
 		}
@@ -555,7 +555,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.UeUsageType = HexBytes(*w.UeUsageType)
 	}
 	if w.DlBufferingSuggestedPacketCount != nil {
-		v := int64(*w.DlBufferingSuggestedPacketCount)
+		v := *w.DlBufferingSuggestedPacketCount
 		out.DlBufferingSuggestedPacketCount = &v
 	}
 	if w.ResetIdList != nil {

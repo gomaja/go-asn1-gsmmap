@@ -179,7 +179,7 @@ func TestVoiceBroadcastDataValidation(t *testing.T) {
 			t.Fatalf("encode: %v", err)
 		}
 		if !bytes.Equal(w.Groupid, []byte{0xff, 0xff, 0xff}) {
-			t.Errorf("GroupId wire = %x, want ffffff", []byte(w.Groupid))
+			t.Errorf("GroupId wire = %x, want ffffff", w.Groupid)
 		}
 	})
 	t.Run("nonFillerGroupIdWithLongId", func(t *testing.T) {
@@ -229,7 +229,7 @@ func TestVoiceBroadcastDataValidation(t *testing.T) {
 				t.Fatalf("GroupId %q: %v", gid, err)
 			}
 			if !bytes.Equal(w.Groupid, want) {
-				t.Errorf("GroupId %q wire = %x, want %x", gid, []byte(w.Groupid), want)
+				t.Errorf("GroupId %q wire = %x, want %x", gid, w.Groupid, want)
 			}
 			got, err := convertWireToVoiceBroadcastData(w)
 			if err != nil || got.GroupId != gid {

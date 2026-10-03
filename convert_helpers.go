@@ -33,9 +33,8 @@ func encodeAddressField(digits string, nature, plan uint8) ([]byte, error) {
 // decodeAddressField decodes an AddressString byte slice into a phone number string and address components.
 func decodeAddressField(encoded []byte) (digits string, nature, plan uint8, err error) {
 	// A zero-octet AddressString has no nature/plan octet and violates
-	// SIZE (1..9). address.Decode yields nil digits for it, which the TBCD
-	// decoder used to reject as a nil input; tbcd.Decode now treats nil as an
-	// empty string, so the check lives here.
+	// SIZE (1..9). address.Decode yields nil digits for it, and tbcd.Decode
+	// treats nil as an empty string, so the check lives here.
 	if len(encoded) == 0 {
 		return "", 0, 0, ErrAddressStringEmpty
 	}

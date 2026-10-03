@@ -78,7 +78,7 @@ func TestPSLGeoInfoByteAliases(t *testing.T) {
 // directly without explicit casts.
 func TestPSLUtranBaroPressureMeasAlias(t *testing.T) {
 	var v UtranBaroPressureMeas = 65000
-	if int64(v) != 65000 {
+	if v != 65000 {
 		t.Fatalf("UtranBaroPressureMeas alias: want 65000, got %d", v)
 	}
 
@@ -95,7 +95,7 @@ func TestPSLGeoInfoZeroValues(t *testing.T) {
 		t.Error("VelocityEstimate zero value should have len 0")
 	}
 	var b UtranBaroPressureMeas
-	if int64(b) != 0 {
+	if b != 0 {
 		t.Error("UtranBaroPressureMeas zero value should be 0")
 	}
 }

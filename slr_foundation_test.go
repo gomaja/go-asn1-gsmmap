@@ -75,7 +75,7 @@ func TestSLRLCSEventString(t *testing.T) {
 // the range bounds match the spec (shares maxReportingAmount).
 func TestSLRSequenceNumberAlias(t *testing.T) {
 	var s SequenceNumber = 100
-	if int64(s) != 100 {
+	if s != 100 {
 		t.Fatalf("SequenceNumber alias: want 100, got %d", s)
 	}
 

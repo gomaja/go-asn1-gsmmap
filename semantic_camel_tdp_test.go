@@ -112,19 +112,19 @@ func smsTDPs(l []SMSCAMELTDPData) []int64 {
 }
 
 func setOWire(e *gsm_map.OBcsmCamelTDPData, tdp, sk int64) {
-	e.OBcsmTriggerDetectionPoint, e.ServiceKey = OBcsmTriggerDetectionPoint(tdp), gsm_map.ServiceKey(sk)
+	e.OBcsmTriggerDetectionPoint, e.ServiceKey = OBcsmTriggerDetectionPoint(tdp), sk
 }
 
 func setTWire(e *gsm_map.TBcsmCamelTDPData, tdp, sk int64) {
-	e.TBcsmTriggerDetectionPoint, e.ServiceKey = TBcsmTriggerDetectionPoint(tdp), gsm_map.ServiceKey(sk)
+	e.TBcsmTriggerDetectionPoint, e.ServiceKey = TBcsmTriggerDetectionPoint(tdp), sk
 }
 
 func setSMSWire(e *gsm_map.SMSCAMELTDPData, tdp, sk int64) {
-	e.SmsTriggerDetectionPoint, e.ServiceKey = SMSTriggerDetectionPoint(tdp), gsm_map.ServiceKey(sk)
+	e.SmsTriggerDetectionPoint, e.ServiceKey = SMSTriggerDetectionPoint(tdp), sk
 }
 
 func setGPRSWire(e *gsm_map.GPRSCamelTDPData, tdp, sk int64) {
-	e.GprsTriggerDetectionPoint, e.ServiceKey = gsm_map.GPRSTriggerDetectionPoint(tdp), gsm_map.ServiceKey(sk)
+	e.GprsTriggerDetectionPoint, e.ServiceKey = gsm_map.GPRSTriggerDetectionPoint(tdp), sk
 }
 
 func parseISDBytes(t *testing.T, w *gsm_map.InsertSubscriberDataArg) (*InsertSubscriberDataArg, error) {

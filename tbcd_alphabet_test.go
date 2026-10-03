@@ -101,7 +101,7 @@ func sriSmArgWithAddresses(t *testing.T, msisdn []byte, imsi []byte) []byte {
 		ServiceCentreAddress: []byte{0x91, 0x21},
 	}
 	if imsi != nil {
-		i := gsm_map.IMSI(imsi)
+		i := imsi
 		w.Imsi = &i
 	}
 	data, err := w.MarshalBER()

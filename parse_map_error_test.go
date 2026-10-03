@@ -19,7 +19,7 @@ import (
 func TestParseAbsentSubscriberSMParamRoundTrip(t *testing.T) {
 	// Build a wire-form fixture, marshal it, then parse it back.
 	imsiTBCD, _ := tbcd.Encode("001010123456789")
-	wireImsi := gsm_map.IMSI(imsiTBCD)
+	wireImsi := imsiTBCD
 	diag := gsm_map.AbsentSubscriberDiagnosticSM(1)    // imsiDetached
 	addDiag := gsm_map.AbsentSubscriberDiagnosticSM(4) // msPurged-ForNonGPRS
 	wire := &gsm_map.AbsentSubscriberSMParam{
