@@ -87,9 +87,11 @@ What that means for a consumer:
   of the wrong size, or an INTEGER out of range. The error wraps a
   `*ber.ConstraintError` (package `github.com/gomaja/go-asn1/runtime/ber`),
   which names the field and the constraint; inspect it with `errors.As`.
-  The package's own sentinels for those bounds, such as
-  `ErrAbsentSubscriberDiagnosticSMOutOfRange` and the `Err*InvalidSize` /
-  `Err*ListSize` errors, are removed.
+  Package sentinels for bounds enforced on every path by the codec, such as
+  `ErrAbsentSubscriberDiagnosticSMOutOfRange`, are gone. Remaining size
+  sentinels cover SEQUENCE OF element bounds
+  ([go-asn1#79](https://github.com/gomaja/go-asn1/issues/79)) and BIT STRING
+  length consistency ([go-asn1#80](https://github.com/gomaja/go-asn1/issues/80)).
 - TBCD digits use the alphabet of TS 29.002 §17.7.8, `0-9 * # a b c`, not
   hexadecimal; IMSI, IMEI and IMEISV must be decimal digits. `GroupId` and
   `LongGroupId` are TBCD digit strings, padded with filler to their field

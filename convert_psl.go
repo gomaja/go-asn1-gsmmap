@@ -5,12 +5,7 @@
 // AreaEventInfo, PeriodicLDRInfo, ReportingPLMNList) and the top-level
 // ProvideSubscriberLocationArg/Res live in the other convert_psl_*.go files.
 //
-// Each converter pair:
-//   convertXToWire(*X) (*gsm_map.X, error)   — public type → wire
-//   convertWireToX(*gsm_map.X) (*X, error)   — wire → public type
-//
-// Validation (size/range/enum) lives in the converters and surfaces the
-// sentinels defined in gsmmap.go.
+// Converters for semantic sender rules return the sentinels in gsmmap.go.
 
 package gsmmap
 
@@ -63,27 +58,16 @@ func convertDeferredLocationEventTypeToBitString(d *DeferredLocationEventType) r
 	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
 }
 
-// convertBitStringToDeferredLocationEventType validates the wire size
-// (1..16 bits) and decodes the 5 named bits. Bits past the 5 named bits
-// are tolerated and ignored on decode (forward-compat).
-func convertBitStringToDeferredLocationEventType(bs runtime.BitString) (*DeferredLocationEventType, error) {
-	d := &DeferredLocationEventType{}
-	if bs.BitLength > 0 {
-		d.MsAvailable = bs.Has(0)
+// convertBitStringToDeferredLocationEventType decodes the 5 named bits.
+// Bits past them are tolerated and ignored on decode.
+func convertBitStringToDeferredLocationEventType(bs runtime.BitString) *DeferredLocationEventType {
+	return &DeferredLocationEventType{
+		MsAvailable:      bs.Has(0),
+		EnteringIntoArea: bs.Has(1),
+		LeavingFromArea:  bs.Has(2),
+		BeingInsideArea:  bs.Has(3),
+		PeriodicLDR:      bs.Has(4),
 	}
-	if bs.BitLength > 1 {
-		d.EnteringIntoArea = bs.Has(1)
-	}
-	if bs.BitLength > 2 {
-		d.LeavingFromArea = bs.Has(2)
-	}
-	if bs.BitLength > 3 {
-		d.BeingInsideArea = bs.Has(3)
-	}
-	if bs.BitLength > 4 {
-		d.PeriodicLDR = bs.Has(4)
-	}
-	return d, nil
 }
 
 // SupportedGADShapes (BIT STRING SIZE 7..16, 7 named bits) per TS 29.002
@@ -117,10 +101,9 @@ func convertSupportedGADShapesToBitString(g *SupportedGADShapes) runtime.BitStri
 	return runtime.BitString{Bytes: []byte{b}, BitLength: 7}
 }
 
-// convertBitStringToSupportedGADShapes validates the wire size (7..16
-// bits) and decodes the 7 named bits. Bits past the 7 named bits are
-// tolerated and ignored on decode.
-func convertBitStringToSupportedGADShapes(bs runtime.BitString) (*SupportedGADShapes, error) {
+// convertBitStringToSupportedGADShapes decodes the 7 named bits.
+// Bits past them are tolerated and ignored on decode.
+func convertBitStringToSupportedGADShapes(bs runtime.BitString) *SupportedGADShapes {
 	g := &SupportedGADShapes{}
 	g.EllipsoidPoint = bs.Has(0)
 	g.EllipsoidPointWithUncertaintyCircle = bs.Has(1)
@@ -129,7 +112,7 @@ func convertBitStringToSupportedGADShapes(bs runtime.BitString) (*SupportedGADSh
 	g.EllipsoidPointWithAltitude = bs.Has(4)
 	g.EllipsoidPointWithAltitudeAndUncertaintyEllipsoid = bs.Has(5)
 	g.EllipsoidArc = bs.Has(6)
-	return g, nil
+	return g
 }
 
 // ============================================================================
@@ -153,49 +136,44 @@ func convertLocationTypeToWire(l *LocationType) (*gsm_map.LocationType, error) {
 	return out, nil
 }
 
-func convertWireToLocationType(w *gsm_map.LocationType) (*LocationType, error) {
+func convertWireToLocationType(w *gsm_map.LocationType) *LocationType {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	out := &LocationType{
 		LocationEstimateType: w.LocationEstimateType,
 	}
 	if w.DeferredLocationEventType != nil {
-		d, err := convertBitStringToDeferredLocationEventType(*w.DeferredLocationEventType)
-		if err != nil {
-			return nil, fmt.Errorf("LocationType.DeferredLocationEventType: %w", err)
-		}
-		out.DeferredLocationEventType = d
+		out.DeferredLocationEventType = convertBitStringToDeferredLocationEventType(*w.DeferredLocationEventType)
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
 // LCSCodeword — TS 29.002 MAP-LCS-DataTypes.asn:293
 // ============================================================================
 
-func convertLCSCodewordToWire(c *LCSCodeword) (*gsm_map.LCSCodeword, error) {
+func convertLCSCodewordToWire(c *LCSCodeword) *gsm_map.LCSCodeword {
 	if c == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := &gsm_map.LCSCodeword{
 		DataCodingScheme:  gsm_map.USSDDataCodingScheme{byte(c.DataCodingScheme)},
 		LcsCodewordString: gsm_map.LCSCodewordString(c.LcsCodewordString),
 	}
-	return out, nil
+	return out
 }
 
-func convertWireToLCSCodeword(w *gsm_map.LCSCodeword) (*LCSCodeword, error) {
+func convertWireToLCSCodeword(w *gsm_map.LCSCodeword) *LCSCodeword {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	dcs := USSDDataCodingScheme(w.DataCodingScheme[0])
-
 	return &LCSCodeword{
 		DataCodingScheme:  dcs,
 		LcsCodewordString: HexBytes(w.LcsCodewordString),
-	}, nil
+	}
 }
 
 // ============================================================================
@@ -265,9 +243,9 @@ func convertResponseTimeToWire(r *ResponseTime) (*gsm_map.ResponseTime, error) {
 	}, nil
 }
 
-func convertWireToResponseTime(w *gsm_map.ResponseTime) (*ResponseTime, error) {
+func convertWireToResponseTime(w *gsm_map.ResponseTime) *ResponseTime {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	cat := w.ResponseTimeCategory
 	// Per TS 29.002 MAP-LCS-DataTypes.asn:270-271, an unrecognized value
@@ -277,7 +255,7 @@ func convertWireToResponseTime(w *gsm_map.ResponseTime) (*ResponseTime, error) {
 	}
 	return &ResponseTime{
 		ResponseTimeCategory: cat,
-	}, nil
+	}
 }
 
 // ============================================================================
@@ -339,11 +317,7 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 		out.VerticalAccuracy = HexBytes(*w.VerticalAccuracy)
 	}
 	if w.ResponseTime != nil {
-		rt, err := convertWireToResponseTime(w.ResponseTime)
-		if err != nil {
-			return nil, fmt.Errorf("LCSQoS.ResponseTime: %w", err)
-		}
-		out.ResponseTime = rt
+		out.ResponseTime = convertWireToResponseTime(w.ResponseTime)
 	}
 	out.VelocityRequest = nullPtrToBool(w.VelocityRequest)
 	return out, nil

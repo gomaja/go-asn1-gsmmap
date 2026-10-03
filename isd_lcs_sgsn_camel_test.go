@@ -133,10 +133,7 @@ func TestPLMNClientList_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
-	out, err := convertWireToPLMNClientList(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	out := convertWireToPLMNClientList(w)
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch")
 	}
@@ -172,10 +169,7 @@ func TestServiceType_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
-	out, err := convertWireToServiceType(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	out := convertWireToServiceType(w)
 	if !reflect.DeepEqual(&in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, *out)
 	}
@@ -257,21 +251,15 @@ func TestLCSPrivacyExceptionList_BoundsRejected(t *testing.T) {
 
 func TestMOLRClass_RoundTrip(t *testing.T) {
 	in := MOLRClass{SsCode: SsCode(0x42), SsStatus: HexBytes{0x01}}
-	w, err := convertMOLRClassToWire(&in)
-	if err != nil {
-		t.Fatalf("toWire: %v", err)
-	}
-	out, err := convertWireToMOLRClass(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	w := convertMOLRClassToWire(&in)
+	out := convertWireToMOLRClass(w)
 	if !reflect.DeepEqual(&in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, *out)
 	}
 }
 
 func TestMOLRList_BoundsRejected(t *testing.T) {
-	_, err := strictWire(convertMOLRListToWire(MOLRList{}))
+	_, err := strictWire(convertMOLRListToWire(MOLRList{}), nil)
 	if !matchesConstraint(err, "molr-List", "SIZE (1..3)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
@@ -279,7 +267,7 @@ func TestMOLRList_BoundsRejected(t *testing.T) {
 	for i := range too {
 		too[i] = MOLRClass{SsCode: SsCode(byte(i)), SsStatus: HexBytes{0x01}}
 	}
-	_, err = strictWire(convertMOLRListToWire(too))
+	_, err = strictWire(convertMOLRListToWire(too), nil)
 	if !matchesConstraint(err, "molr-List", "SIZE (1..3)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}

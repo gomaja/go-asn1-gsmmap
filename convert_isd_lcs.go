@@ -219,9 +219,9 @@ func convertPLMNClientListToWire(list PLMNClientList) (*gsm_map.PLMNClientList, 
 	return &out, nil
 }
 
-func convertWireToPLMNClientList(w *gsm_map.PLMNClientList) (PLMNClientList, error) {
+func convertWireToPLMNClientList(w *gsm_map.PLMNClientList) PLMNClientList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := make(PLMNClientList, len(w.Values))
@@ -230,7 +230,7 @@ func convertWireToPLMNClientList(w *gsm_map.PLMNClientList) (PLMNClientList, err
 	for i, v := range w.Values {
 		out[i] = LCSClientInternalID(v)
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -260,16 +260,16 @@ func convertServiceTypeToWire(s *ServiceType) (*gsm_map.ServiceType, error) {
 	return out, nil
 }
 
-func convertWireToServiceType(w *gsm_map.ServiceType) (*ServiceType, error) {
+func convertWireToServiceType(w *gsm_map.ServiceType) *ServiceType {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	return &ServiceType{
-		ServiceTypeIdentity:  int64(w.ServiceTypeIdentity),
+		ServiceTypeIdentity:  w.ServiceTypeIdentity,
 		GmlcRestriction:      gmlcRestrictionFromWire(w.GmlcRestriction),
 		NotificationToMSUser: notificationToMSUserFromWire(w.NotificationToMSUser),
-	}, nil
+	}
 }
 
 func convertServiceTypeListToWire(list ServiceTypeList) (*gsm_map.ServiceTypeList, error) {
@@ -288,20 +288,16 @@ func convertServiceTypeListToWire(list ServiceTypeList) (*gsm_map.ServiceTypeLis
 	return &out, nil
 }
 
-func convertWireToServiceTypeList(w *gsm_map.ServiceTypeList) (ServiceTypeList, error) {
+func convertWireToServiceTypeList(w *gsm_map.ServiceTypeList) ServiceTypeList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := make(ServiceTypeList, len(w.Values))
 	for i, s := range w.Values {
-		v, err := convertWireToServiceType(&s)
-		if err != nil {
-			return nil, fmt.Errorf("ServiceTypeList[%d]: %w", i, err)
-		}
-		out[i] = *v
+		out[i] = *convertWireToServiceType(&s)
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -374,11 +370,7 @@ func convertWireToLCSPrivacyClass(w *gsm_map.LCSPrivacyClass) (*LCSPrivacyClass,
 		out.ExternalClientList = l
 	}
 	if w.PlmnClientList != nil {
-		l, err := convertWireToPLMNClientList(w.PlmnClientList)
-		if err != nil {
-			return nil, fmt.Errorf("LCSPrivacyClass.PlmnClientList: %w", err)
-		}
-		out.PlmnClientList = l
+		out.PlmnClientList = convertWireToPLMNClientList(w.PlmnClientList)
 	}
 	if w.ExtExternalClientList != nil {
 		l, err := convertWireToExtExternalClientList(w.ExtExternalClientList)
@@ -388,11 +380,7 @@ func convertWireToLCSPrivacyClass(w *gsm_map.LCSPrivacyClass) (*LCSPrivacyClass,
 		out.ExtExternalClientList = l
 	}
 	if w.ServiceTypeList != nil {
-		l, err := convertWireToServiceTypeList(w.ServiceTypeList)
-		if err != nil {
-			return nil, fmt.Errorf("LCSPrivacyClass.ServiceTypeList: %w", err)
-		}
-		out.ServiceTypeList = l
+		out.ServiceTypeList = convertWireToServiceTypeList(w.ServiceTypeList)
 	}
 	return out, nil
 }
@@ -433,58 +421,50 @@ func convertWireToLCSPrivacyExceptionList(w *gsm_map.LCSPrivacyExceptionList) (L
 // MOLRClass / MOLRList — TS 29.002 MAP-MS-DataTypes.asn:2059-2068
 // ============================================================================
 
-func convertMOLRClassToWire(c *MOLRClass) (*gsm_map.MOLRClass, error) {
+func convertMOLRClassToWire(c *MOLRClass) *gsm_map.MOLRClass {
 	if c == nil {
-		return nil, nil
+		return nil
 	}
 
 	return &gsm_map.MOLRClass{
 		SsCode:   gsm_map.SSCode{byte(c.SsCode)},
 		SsStatus: gsm_map.ExtSSStatus(c.SsStatus),
-	}, nil
+	}
 }
 
-func convertWireToMOLRClass(w *gsm_map.MOLRClass) (*MOLRClass, error) {
+func convertWireToMOLRClass(w *gsm_map.MOLRClass) *MOLRClass {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	return &MOLRClass{
 		SsCode:   SsCode(w.SsCode[0]),
 		SsStatus: HexBytes(w.SsStatus),
-	}, nil
+	}
 }
 
-func convertMOLRListToWire(list MOLRList) (*gsm_map.MOLRList, error) {
+func convertMOLRListToWire(list MOLRList) *gsm_map.MOLRList {
 	if list == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := gsm_map.MOLRList{Values: make([]gsm_map.MOLRClass, len(list))}
 	for i, c := range list {
-		w, err := convertMOLRClassToWire(&c)
-		if err != nil {
-			return nil, fmt.Errorf("MOLRList[%d]: %w", i, err)
-		}
-		out.Values[i] = *w
+		out.Values[i] = *convertMOLRClassToWire(&c)
 	}
-	return &out, nil
+	return &out
 }
 
-func convertWireToMOLRList(w *gsm_map.MOLRList) (MOLRList, error) {
+func convertWireToMOLRList(w *gsm_map.MOLRList) MOLRList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := make(MOLRList, len(w.Values))
 	for i, c := range w.Values {
-		v, err := convertWireToMOLRClass(&c)
-		if err != nil {
-			return nil, fmt.Errorf("MOLRList[%d]: %w", i, err)
-		}
-		out[i] = *v
+		out[i] = *convertWireToMOLRClass(&c)
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -553,11 +533,7 @@ func convertLCSInformationToWire(l *LCSInformation) (*gsm_map.LCSInformation, er
 		out.LcsPrivacyExceptionList = pe
 	}
 	if l.MolrList != nil {
-		ml, err := convertMOLRListToWire(l.MolrList)
-		if err != nil {
-			return nil, err
-		}
-		out.MolrList = ml
+		out.MolrList = convertMOLRListToWire(l.MolrList)
 	}
 	if l.AddLcsPrivacyExceptionList != nil {
 		al, err := convertLCSPrivacyExceptionListToWire(l.AddLcsPrivacyExceptionList)
@@ -589,11 +565,7 @@ func convertWireToLCSInformation(w *gsm_map.LCSInformation) (*LCSInformation, er
 		out.LcsPrivacyExceptionList = pe
 	}
 	if w.MolrList != nil {
-		ml, err := convertWireToMOLRList(w.MolrList)
-		if err != nil {
-			return nil, err
-		}
-		out.MolrList = ml
+		out.MolrList = convertWireToMOLRList(w.MolrList)
 	}
 	if w.AddLcsPrivacyExceptionList != nil {
 		al, err := convertWireToLCSPrivacyExceptionList(w.AddLcsPrivacyExceptionList)

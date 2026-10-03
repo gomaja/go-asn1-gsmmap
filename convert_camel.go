@@ -177,8 +177,7 @@ func convertWireToOBcsmTDPData(w *gsm_map.OBcsmCamelTDPData) (*OBcsmCamelTDPData
 	if !isValidOBcsmTDP(w.OBcsmTriggerDetectionPoint) {
 		return nil, nil
 	}
-	sk := int64(w.ServiceKey)
-
+	sk := w.ServiceKey
 	dch := defaultCallHandlingFromWire(w.DefaultCallHandling)
 	digits, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
@@ -231,8 +230,7 @@ func convertWireToTBcsmTDPData(w *gsm_map.TBcsmCamelTDPData) (*TBcsmCamelTDPData
 	if !isValidTBcsmTDP(w.TBcsmTriggerDetectionPoint) {
 		return nil, nil
 	}
-	sk := int64(w.ServiceKey)
-
+	sk := w.ServiceKey
 	dch := defaultCallHandlingFromWire(w.DefaultCallHandling)
 	digits, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
@@ -622,8 +620,7 @@ func convertDPAnalysedInfoCriteriumToWire(c *DPAnalysedInfoCriterium) (gsm_map.D
 
 // convertWireToDPAnalysedInfoCriterium decodes a single D-CSI entry.
 func convertWireToDPAnalysedInfoCriterium(w *gsm_map.DPAnalysedInfoCriterium) (DPAnalysedInfoCriterium, error) {
-	sk := int64(w.ServiceKey)
-
+	sk := w.ServiceKey
 	dch := defaultCallHandlingFromWire(w.DefaultCallHandling)
 	dnDigits, dnNature, dnPlan, err := decodeAddressField(w.DialledNumber)
 	if err != nil {
@@ -895,8 +892,7 @@ func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
 }
 
 func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
-	sk := int64(w.ServiceKey)
-
+	sk := w.ServiceKey
 	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding M-CSI.GsmSCFAddress: %w", err)
@@ -1011,8 +1007,7 @@ func convertWireToSMSCAMELTDPData(w *gsm_map.SMSCAMELTDPData, tdp SMSTriggerDete
 	if w.SmsTriggerDetectionPoint != tdp {
 		return nil, nil
 	}
-	sk := int64(w.ServiceKey)
-
+	sk := w.ServiceKey
 	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SMS-CAMEL-TDP-Data.GsmSCFAddress: %w", err)
@@ -1258,8 +1253,6 @@ func convertWireToVlrCamelSubscriptionInfo(w *gsm_map.VlrCamelSubscriptionInfo) 
 		out.SsCSI = d
 	}
 	if w.OBcsmCamelTDPCriteriaList != nil {
-		// Per spec SIZE(1..10), a non-nil empty wire list is malformed.
-		// Match the encoder's strictness.
 		// Absent when the receiver ignores every entry.
 		list, err := convertIgnorableWireList("OBcsmCamelTDPCriteriaList", w.OBcsmCamelTDPCriteriaList.Values, convertWireToOBcsmTDPCriteria)
 		if err != nil {

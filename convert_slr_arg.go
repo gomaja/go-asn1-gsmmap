@@ -24,9 +24,8 @@ const (
 )
 
 // convertSubscriberLocationReportArgToWire builds the wire-form
-// gsm_map.SubscriberLocationReportArg from the public type. Validates
-// every field; the first error is returned with field context wrapped
-// via %w on the relevant sentinel.
+// gsm_map.SubscriberLocationReportArg from the public type. Semantic
+// validation errors carry field context and the relevant sentinel.
 //
 // Per spec, one of MSISDN or IMSI must be present. That cross-field
 // invariant is the caller's responsibility — the encoder does not

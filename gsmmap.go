@@ -1154,9 +1154,9 @@ type ExtCallBarInfo struct {
 //
 // ForwardedToNumber + ForwardingOptions + NoReplyConditionTime are all
 // optional on the wire; the encoder writes whatever subset the caller
-// populated. ForwardingOptions is 1..5 octets per spec; the encoder
-// rejects anything outside that range. NoReplyConditionTime is 5..30 on
-// encode (ErrNoReplyConditionTimeOutOfRange); the decoder maps the reserved
+// populated. ForwardingOptions is 1..5 octets per spec.
+// NoReplyConditionTime is 5..30 on encode
+// (ErrNoReplyConditionTimeOutOfRange); the decoder maps the reserved
 // 1..4 → 5 and 31..100 → 30 (3GPP TS 29.002 V19.1.0 §17.7.1).
 type ExtForwFeature struct {
 	BasicService          *ExtBasicServiceCode // optional
@@ -1304,8 +1304,6 @@ type SriResp struct {
 	ReleaseResourcesSupported       bool
 	GsmBearerCapability             *ExternalSignalInfo
 }
-
-// SM-DeliveryTimerValue range per 3GPP TS 29.002.
 
 // MwStatusFlags is the MW-Status BIT STRING (6 bits defined).
 // Bit 0=scAddressNotIncluded, 1=mnrfSet, 2=mcefSet, 3=mnrgSet, 4=mnr5gSet, 5=mnr5gn3gSet.
@@ -2175,12 +2173,6 @@ type EPSSubscriptionData struct {
 	SubscribedVsrvcc bool   // [9] optional NULL — true when present
 }
 
-// EPS-DataList and SpecificAPNInfoList are bounded by the upstream
-// constants gsm_map.MaxNumOfAPNConfigurations (50) and
-// gsm_map.MaxNumOfSpecificAPNInfos (50) respectively — converters
-// reference those constants directly per project rule
-// "GSM-MAP spec constants must come from go-asn1, not defined locally".
-
 // ============================================================================
 // LCS-Information (TS 29.002 MAP-MS-DataTypes.asn:1490)
 // ============================================================================
@@ -2727,7 +2719,9 @@ const (
 //
 // MscNumber and SgsnNumber are ISDN-AddressString digits + Nature/Plan
 // triples (consistent with the rest of the public API). MmeNumber is a
-// DiameterIdentity (FQDN, 9..255 octets per RFC 6733). The field name
+// DiameterIdentity (9..255 octets per 3GPP TS 29.002 V19.1.0 §17.7.8;
+// FQDN content per RFC 6733 §4.3.1, replacing RFC 3588 cited there).
+// The field name
 // matches the ASN.1 spec literal `mme-Number [2] DiameterIdentity`
 // even though the type is a name/FQDN — this preserves the
 // match-upstream-spec convention used elsewhere in the package.
@@ -3121,8 +3115,9 @@ type SequenceNumber = gsm_map.SequenceNumber
 // NetworkNodeNumber is an ISDN-AddressString (MSC, SGSN, or the dummy
 // value "0") surfaced as digits + Nature/Plan triple consistent with
 // the rest of the public API. The DiameterIdentity fields (MmeName,
-// AaaServerName, SgsnName, SgsnRealm) are opaque FQDN octets per
-// RFC 6733.
+// AaaServerName, SgsnName, SgsnRealm) are 9..255 octets per 3GPP TS
+// 29.002 V19.1.0 §17.7.8; FQDN content is per RFC 6733 §4.3.1,
+// replacing RFC 3588 cited there.
 type LCSLocationInfo struct {
 	NetworkNodeNumber       string // mandatory ISDN-AddressString digits
 	NetworkNodeNumberNature uint8  // address nature indicator
@@ -3133,7 +3128,7 @@ type LCSLocationInfo struct {
 	AdditionalNumber            *AdditionalNumber           // [3] optional
 	SupportedLCSCapabilitySets  *SupportedLCSCapabilitySets // [4] optional
 	AdditionalLCSCapabilitySets *SupportedLCSCapabilitySets // [5] optional
-	MmeName                     HexBytes                    // [6] optional DiameterIdentity (9..255 octets per RFC 6733)
+	MmeName                     HexBytes                    // [6] optional DiameterIdentity
 	AaaServerName               HexBytes                    // [8] optional DiameterIdentity
 	SgsnName                    HexBytes                    // [9] optional DiameterIdentity
 	SgsnRealm                   HexBytes                    // [10] optional DiameterIdentity
@@ -3646,7 +3641,7 @@ var (
 	ErrSaiMissingIMSI                           = errors.New("sai: IMSI is empty")
 	ErrSaiAuthSetListChoiceMultipleAlternatives = errors.New("sai: AuthenticationSetList CHOICE has multiple alternatives set")
 	ErrSaiAuthSetListChoiceNoAlternative        = errors.New("sai: AuthenticationSetList CHOICE has no alternative set")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts defined values; receivers map 6..15 to vlr and values above 17 to sgsn (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrSaiInvalidRequestingNodeType = errors.New("sai: RequestingNodeType must be one of vlr(0), sgsn(1), s-cscf(2), bsf(3), gan-aaa-server(4), wlan-aaa-server(5), mme(16), mme-sgsn(17)")
 
 	ErrPsiMissingIMSI = errors.New("psi: IMSI is empty")
@@ -3654,9 +3649,9 @@ var (
 	ErrCancelLocIdentityChoiceNoAlternative = errors.New("cancelLocation: Identity CHOICE has no alternative set")
 	ErrCancelLocIdentityChoiceMultiple      = errors.New("cancelLocation: Identity CHOICE has multiple alternatives set")
 	ErrCancelLocIdentityMissingIMSI         = errors.New("cancelLocation: IMSIWithLMSI.IMSI is empty")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrCancelLocInvalidCancellationType = errors.New("cancelLocation: CancellationType must be one of updateProcedure(0), subscriptionWithdraw(1), initialAttachProcedure(2) (extensible enum: unknown values preserved on decode)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrCancelLocInvalidTypeOfUpdate       = errors.New("cancelLocation: TypeOfUpdate must be one of sgsn-change(0), mme-change(1) (extensible enum: unknown values preserved on decode)")
 	ErrCancelLocTypeOfUpdateNotApplicable = errors.New("cancelLocation: TypeOfUpdate is only valid when CancellationType is updateProcedure or initialAttachProcedure")
 	ErrCancelLocMtrfBothSet               = errors.New("cancelLocation: MtrfSupportedAndAuthorized and MtrfSupportedAndNotAuthorized are mutually exclusive")
@@ -3746,7 +3741,7 @@ var (
 
 	ErrGMLCRestrictionInvalid      = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
 	ErrNotificationToMSUserInvalid = errors.New("notificationToMSUser: must be 0..3 per TS 29.002 MAP-MS-DataTypes.asn:2035")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrLCSClientInternalIDInvalid = errors.New("lcsClientInternalID: LCSClientInternalID must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.8 (extensible enum: unknown values preserved on decode)")
 	ErrGMLCAddressEmpty           = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
 
@@ -3769,27 +3764,27 @@ var (
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrMMCodeInvalidSize = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
 
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
 	ErrLocationEstimateTypeInvalid = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (extensible enum: unknown values preserved on decode)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 gives conditional receiver handling of unknown values.
 	ErrLCSClientTypeInvalid = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (extensible enum: unknown values preserved on decode)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrLCSFormatIndicatorInvalid        = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
 	ErrPrivacyCheckRelatedActionInvalid = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:457 (extensible enum: unknown values preserved on decode)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; receivers map unknown values to delaytolerant (3GPP TS 29.002 V19.1.0 §17.7.13).
 	ErrResponseTimeCategoryInvalid   = errors.New("responseTime: ResponseTimeCategory encoder requires lowdelay(0) or delaytolerant(1); decoder applies spec exception clause TS 29.002 MAP-LCS-DataTypes.asn:270-271 (unrecognized values → delaytolerant)")
 	ErrHorizontalAccuracyReservedBit = errors.New("lcsQoS: HorizontalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:250 (only the low 7 bits encode the uncertainty code per TS 23.032)")
 	ErrVerticalAccuracyReservedBit   = errors.New("lcsQoS: VerticalAccuracy bit 8 must be 0 per TS 29.002 MAP-LCS-DataTypes.asn:256 (only the low 7 bits encode the vertical uncertainty code per TS 23.032)")
 	ErrLCSClientIDDialedByMSEmpty    = errors.New("lcsClientID: LcsClientDialedByMSNature/Plan must not be set when LcsClientDialedByMS digits are empty (presence cannot round-trip through string-based API)")
 
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrAreaTypeInvalid = errors.New("area: AreaType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:337 (extensible enum: unknown values preserved on decode)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrOccurrenceInfoInvalid      = errors.New("areaEventInfo: OccurrenceInfo must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:361 (extensible enum: unknown values preserved on decode)")
 	ErrPeriodicLDRProductExceeded = errors.New("periodicLDRInfo: ReportingInterval × ReportingAmount must not exceed 8639999 (99d 23h 59m 59s) per TS 29.002 MAP-LCS-DataTypes.asn:375-376")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrRANTechnologyInvalid                     = errors.New("reportingPLMN: RanTechnology must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:420 (extensible enum: unknown values preserved on decode)")
 	ErrTerminationCauseInvalid                  = errors.New("deferredmt-lrData: TerminationCause must be 0..9; the decoder treats unrecognized values as errorundefined(1) per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrServingNodeAddressMultipleAlts           = errors.New("servingNodeAddress: CHOICE has multiple alternatives set; pick exactly one of MscNumber, SgsnNumber, or MmeNumber")
@@ -3806,7 +3801,7 @@ var (
 	ErrPSLResCellGlobalIdAndLAIMutex  = errors.New("provideSubscriberLocationRes: CellGlobalId and LAI are mutually exclusive (CellIdOrSai CHOICE); set at most one (leaving both empty omits the field)")
 	ErrPSLResCellIdOrSaiInvalidChoice = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+	// Encoder accepts only defined LCS-Event values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
 	ErrLCSEventInvalid                        = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (extensible enum: unknown values preserved on decode)")
 	ErrLCSLocationInfoNetworkNodeEmpty        = errors.New("lcsLocationInfo: NetworkNodeNumber digits are mandatory; empty value is not permitted on encode")
 	ErrLCSLocationInfoNetworkNodeDecodedEmpty = errors.New("lcsLocationInfo: present wire NetworkNodeNumber decoded to empty digits; presence cannot round-trip through string-based API")

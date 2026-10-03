@@ -72,7 +72,7 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 		return nil, fmt.Errorf("decoding GPRSCamelTDPData.GsmSCFAddress: empty digits in mandatory ISDN-AddressString")
 	}
 
-	sk := int64(w.ServiceKey)
+	sk := w.ServiceKey
 	// DefaultGPRSHandling: spec exception clause (TS 29.002
 	// MAP-MS-DataTypes.asn:1638-1640) says decoders MUST treat
 	//   - values 2..31  as continueTransaction (0)
@@ -239,7 +239,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 		return nil, fmt.Errorf("decoding MGCSI.GsmSCFAddress: empty digits in mandatory ISDN-AddressString")
 	}
 
-	sk := int64(w.ServiceKey)
+	sk := w.ServiceKey
 	return &MGCSI{
 		MobilityTriggers:    mt,
 		ServiceKey:          sk,
@@ -285,9 +285,7 @@ func convertSGSNCAMELSubscriptionInfoToWire(s *SGSNCAMELSubscriptionInfo) (*gsm_
 		out.MtSmsCSI = v
 	}
 	if s.MtSmsCAMELTDPCriteriaList != nil {
-		// Reuse PR C per-element converter. List bound is enforced by
-		// the SMS-CSI domain (1..10 entries per spec).
-
+		// Reuse the SMS-CSI entry converter.
 		list := gsm_map.MTSmsCAMELTDPCriteriaList{Values: make([]gsm_map.MTSmsCAMELTDPCriteria, len(s.MtSmsCAMELTDPCriteriaList))}
 		for i, c := range s.MtSmsCAMELTDPCriteriaList {
 			w, err := convertMTSmsCAMELTDPCriteriaToWire(&c)

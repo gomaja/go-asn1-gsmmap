@@ -179,17 +179,14 @@ func convertWireToVoiceGroupCallData(w *gsm_map.VoiceGroupCallData) (*VoiceGroup
 	if w.AdditionalSubscriptions != nil {
 		out.AdditionalSubscriptions = convertBitStringToAdditionalSubscriptions(*w.AdditionalSubscriptions)
 	}
-	if w.AdditionalInfo != nil && w.AdditionalInfo.BitLength > 0 {
+	if w.AdditionalInfo != nil {
 		// Byte-aligned-only public type per the VoiceGroupCallData.Additional-
 		// Info godoc: take full octets only (BitLength / 8, floor),
 		// discarding any sub-byte trailing bits. A BitLength of 7 surfaces
 		// zero bytes; callers who need sub-byte handling should read the
 		// underlying BIT STRING directly.
 		byteLen := w.AdditionalInfo.BitLength / 8
-		// Spec max is 136 bits = 17 octets; reject larger inputs. Use the
-		// ceiling of BitLength to catch over-spec encodings that also
-		// carry sub-byte trailing bits.
-
+		// A short Bytes slice can still accompany BitLength; keep the slice in bounds.
 		if byteLen > len(w.AdditionalInfo.Bytes) {
 			byteLen = len(w.AdditionalInfo.Bytes)
 		}

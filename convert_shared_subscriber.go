@@ -379,9 +379,7 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 
 // encodePDPContextInfoList serializes each gsm_map.PDPContextInfo entry to
 // its BER-encoded bytes, keeping them opaque from the caller's perspective.
-// Enforces PDP-ContextInfoList SIZE(1..50) strictly — callers only invoke
-// this when the list CHOICE alternative is selected, so an empty list is
-// a spec violation, not "absent".
+// Each entry is checked by the strict BER codec when it is marshalled.
 func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, error) {
 	if list == nil {
 		list = &gsm_map.PDPContextInfoList{}
@@ -400,8 +398,8 @@ func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, err
 }
 
 // decodePDPContextInfoList deserializes each opaque PDPContextInfo entry
-// back into its gsm_map.PDPContextInfo struct. Enforces SIZE(1..50) strictly
-// (callers only invoke this when the list CHOICE alternative is selected).
+// back into its gsm_map.PDPContextInfo struct. The list size is checked
+// when its containing value is marshalled.
 func decodePDPContextInfoList(list []HexBytes) (*gsm_map.PDPContextInfoList, error) {
 	out := gsm_map.PDPContextInfoList{Values: make([]gsm_map.PDPContextInfo, len(list))}
 	for i, b := range list {
@@ -444,7 +442,7 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 
 	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if m.NumberPortabilityStatus != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+		// Sender accepts defined values; receivers ignore unknown values (3GPP TS 29.002 V19.1.0 §17.7.1).
 		switch *m.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
@@ -490,7 +488,7 @@ func convertWireToMnpInfoRes(w *gsm_map.MNPInfoRes) (*MnpInfoRes, error) {
 		// Match against the defined set in int64 space so wire values that
 		// exceed platform int are also treated as unknown (ignored), not as
 		// decode errors — consistent with the spec's "ignore" mandate.
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+		// Unknown extensions are ignored per 3GPP TS 29.002 V19.1.0 §17.7.1.
 		switch *w.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut,
 			MnpForeignNumberPortedToForeignNetwork,

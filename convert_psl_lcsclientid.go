@@ -49,9 +49,9 @@ func convertLCSClientNameToWire(c *LCSClientName) (*gsm_map.LCSClientName, error
 	return out, nil
 }
 
-func convertWireToLCSClientName(w *gsm_map.LCSClientName) (*LCSClientName, error) {
+func convertWireToLCSClientName(w *gsm_map.LCSClientName) *LCSClientName {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	dcs := USSDDataCodingScheme(w.DataCodingScheme[0])
 
@@ -63,7 +63,7 @@ func convertWireToLCSClientName(w *gsm_map.LCSClientName) (*LCSClientName, error
 		v := *w.LcsFormatIndicator
 		out.LcsFormatIndicator = &v
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -89,9 +89,9 @@ func convertLCSRequestorIDToWire(r *LCSRequestorID) (*gsm_map.LCSRequestorID, er
 	return out, nil
 }
 
-func convertWireToLCSRequestorID(w *gsm_map.LCSRequestorID) (*LCSRequestorID, error) {
+func convertWireToLCSRequestorID(w *gsm_map.LCSRequestorID) *LCSRequestorID {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	dcs := USSDDataCodingScheme(w.DataCodingScheme[0])
 
@@ -103,7 +103,7 @@ func convertWireToLCSRequestorID(w *gsm_map.LCSRequestorID) (*LCSRequestorID, er
 		v := *w.LcsFormatIndicator
 		out.LcsFormatIndicator = &v
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -216,11 +216,7 @@ func convertWireToLCSClientID(w *gsm_map.LCSClientID) (*LCSClientID, error) {
 		out.LcsClientInternalID = &v
 	}
 	if w.LcsClientName != nil {
-		nm, err := convertWireToLCSClientName(w.LcsClientName)
-		if err != nil {
-			return nil, fmt.Errorf("LCSClientID.LcsClientName: %w", err)
-		}
-		out.LcsClientName = nm
+		out.LcsClientName = convertWireToLCSClientName(w.LcsClientName)
 	}
 	if w.LcsAPN != nil {
 		apn := HexBytes(*w.LcsAPN)
@@ -228,11 +224,7 @@ func convertWireToLCSClientID(w *gsm_map.LCSClientID) (*LCSClientID, error) {
 		out.LcsAPN = apn
 	}
 	if w.LcsRequestorID != nil {
-		rid, err := convertWireToLCSRequestorID(w.LcsRequestorID)
-		if err != nil {
-			return nil, fmt.Errorf("LCSClientID.LcsRequestorID: %w", err)
-		}
-		out.LcsRequestorID = rid
+		out.LcsRequestorID = convertWireToLCSRequestorID(w.LcsRequestorID)
 	}
 	return out, nil
 }

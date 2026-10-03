@@ -29,8 +29,6 @@ func validateSri(s *Sri) error {
 	if s.SupportedCCBSPhase != nil && *s.SupportedCCBSPhase != 1 {
 		return fmt.Errorf("%w (got %d)", ErrSriInvalidSupportedCCBSPhase, *s.SupportedCCBSPhase)
 	}
-	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
-
 	return nil
 }
 
@@ -151,7 +149,7 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// IstSupportIndicator
 	if s.IstSupportIndicator != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+		// Sender accepts defined values; receivers map values above 1 to istCommandSupported (3GPP TS 29.002 V19.1.0 §17.7.1).
 		if *s.IstSupportIndicator < 0 || *s.IstSupportIndicator > 1 {
 			return nil, fmt.Errorf("IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *s.IstSupportIndicator)
 		}
@@ -463,7 +461,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// NumberPortabilityStatus — defined values 0,1,2,4,5 per TS 29.002.
 	if s.NumberPortabilityStatus != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+		// Sender accepts defined values; receivers ignore unknown values (3GPP TS 29.002 V19.1.0 §17.7.1).
 		switch *s.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut, MnpForeignNumberPortedToForeignNetwork,
 			MnpOwnNumberNotPortedOut, MnpForeignNumberPortedIn:
@@ -523,7 +521,7 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// UnavailabilityCause — 1..6 per TS 29.002.
 	if s.UnavailabilityCause != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+		// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 		if *s.UnavailabilityCause < 1 || *s.UnavailabilityCause > 6 {
 			return nil, fmt.Errorf("UnavailabilityCause: %w (got %d)", ErrUnavailabilityCauseInvalid, *s.UnavailabilityCause)
 		}
@@ -643,7 +641,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	// exceed platform int are also treated as unknown (ignored), not as
 	// decode errors — consistent with the spec's "ignore" mandate.
 	if res.NumberPortabilityStatus != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
+		// Unknown extensions are ignored per 3GPP TS 29.002 V19.1.0 §17.7.1.
 		switch *res.NumberPortabilityStatus {
 		case MnpNotKnownToBePorted, MnpOwnNumberPortedOut,
 			MnpForeignNumberPortedToForeignNetwork,

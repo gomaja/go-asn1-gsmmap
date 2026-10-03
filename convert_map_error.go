@@ -46,9 +46,6 @@ func convertWireToAbsentSubscriberSMParam(w *gsm_map.AbsentSubscriberSMParam) (*
 		if err != nil {
 			return nil, fmt.Errorf("decoding AbsentSubscriberSMParam.UserIdentifierAlert: %w", err)
 		}
-		if uid == "" {
-			return nil, fmt.Errorf("AbsentSubscriberSMParam.UserIdentifierAlert: present wire field decoded to empty digits; presence cannot round-trip through string-based API")
-		}
 		out.UserIdentifierAlert = uid
 	}
 	return out, nil

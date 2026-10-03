@@ -35,17 +35,16 @@ func convertAreaToWire(a *Area) (*gsm_map.Area, error) {
 	}, nil
 }
 
-func convertWireToArea(w *gsm_map.Area) (*Area, error) {
+func convertWireToArea(w *gsm_map.Area) *Area {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
-	// AreaType is extensible (TS 29.002:337); decoder lenient,
-	// preserving unknown values per Postel.
+	// AreaType preserves unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	return &Area{
 		AreaType:           w.AreaType,
 		AreaIdentification: HexBytes(w.AreaIdentification),
-	}, nil
+	}
 }
 
 // ============================================================================
@@ -64,20 +63,16 @@ func convertAreaListToWire(list AreaList) (*gsm_map.AreaList, error) {
 	return &out, nil
 }
 
-func convertWireToAreaList(w *gsm_map.AreaList) (AreaList, error) {
+func convertWireToAreaList(w *gsm_map.AreaList) AreaList {
 	if w == nil {
 		w = &gsm_map.AreaList{}
 	}
 
 	out := make(AreaList, 0, len(w.Values))
 	for i := range w.Values {
-		area, err := convertWireToArea(&w.Values[i])
-		if err != nil {
-			return nil, fmt.Errorf("AreaList[%d]: %w", i, err)
-		}
-		out = append(out, *area)
+		out = append(out, *convertWireToArea(&w.Values[i]))
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -95,15 +90,11 @@ func convertAreaDefinitionToWire(d *AreaDefinition) (*gsm_map.AreaDefinition, er
 	return &gsm_map.AreaDefinition{AreaList: list}, nil
 }
 
-func convertWireToAreaDefinition(w *gsm_map.AreaDefinition) (*AreaDefinition, error) {
+func convertWireToAreaDefinition(w *gsm_map.AreaDefinition) *AreaDefinition {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
-	list, err := convertWireToAreaList(w.AreaList)
-	if err != nil {
-		return nil, fmt.Errorf("AreaDefinition: %w", err)
-	}
-	return &AreaDefinition{AreaList: list}, nil
+	return &AreaDefinition{AreaList: convertWireToAreaList(w.AreaList)}
 }
 
 // ============================================================================
@@ -136,14 +127,11 @@ func convertAreaEventInfoToWire(a *AreaEventInfo) (*gsm_map.AreaEventInfo, error
 	return out, nil
 }
 
-func convertWireToAreaEventInfo(w *gsm_map.AreaEventInfo) (*AreaEventInfo, error) {
+func convertWireToAreaEventInfo(w *gsm_map.AreaEventInfo) *AreaEventInfo {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
-	def, err := convertWireToAreaDefinition(&w.AreaDefinition)
-	if err != nil {
-		return nil, fmt.Errorf("AreaEventInfo.AreaDefinition: %w", err)
-	}
+	def := convertWireToAreaDefinition(&w.AreaDefinition)
 	out := &AreaEventInfo{AreaDefinition: *def}
 	if w.OccurrenceInfo != nil {
 		v := *w.OccurrenceInfo
@@ -154,7 +142,7 @@ func convertWireToAreaEventInfo(w *gsm_map.AreaEventInfo) (*AreaEventInfo, error
 
 		out.IntervalTime = &v
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -220,9 +208,9 @@ func convertReportingPLMNToWire(r *ReportingPLMN) (*gsm_map.ReportingPLMN, error
 	return out, nil
 }
 
-func convertWireToReportingPLMN(w *gsm_map.ReportingPLMN) (*ReportingPLMN, error) {
+func convertWireToReportingPLMN(w *gsm_map.ReportingPLMN) *ReportingPLMN {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := &ReportingPLMN{
@@ -233,7 +221,7 @@ func convertWireToReportingPLMN(w *gsm_map.ReportingPLMN) (*ReportingPLMN, error
 		out.RanTechnology = &v
 	}
 	out.RanPeriodicLocationSupport = nullPtrToBool(w.RanPeriodicLocationSupport)
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -252,20 +240,16 @@ func convertPLMNListToWire(list PLMNList) (*gsm_map.PLMNList, error) {
 	return &out, nil
 }
 
-func convertWireToPLMNList(w *gsm_map.PLMNList) (PLMNList, error) {
+func convertWireToPLMNList(w *gsm_map.PLMNList) PLMNList {
 	if w == nil {
 		w = &gsm_map.PLMNList{}
 	}
 
 	out := make(PLMNList, 0, len(w.Values))
 	for i := range w.Values {
-		plmn, err := convertWireToReportingPLMN(&w.Values[i])
-		if err != nil {
-			return nil, fmt.Errorf("PLMNList[%d]: %w", i, err)
-		}
-		out = append(out, *plmn)
+		out = append(out, *convertWireToReportingPLMN(&w.Values[i]))
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -287,16 +271,12 @@ func convertReportingPLMNListToWire(r *ReportingPLMNList) (*gsm_map.ReportingPLM
 	return out, nil
 }
 
-func convertWireToReportingPLMNList(w *gsm_map.ReportingPLMNList) (*ReportingPLMNList, error) {
+func convertWireToReportingPLMNList(w *gsm_map.ReportingPLMNList) *ReportingPLMNList {
 	if w == nil {
-		return nil, nil
-	}
-	list, err := convertWireToPLMNList(w.PlmnList)
-	if err != nil {
-		return nil, fmt.Errorf("ReportingPLMNList: %w", err)
+		return nil
 	}
 	return &ReportingPLMNList{
 		PlmnListPrioritized: nullPtrToBool(w.PlmnListPrioritized),
-		PlmnList:            list,
-	}, nil
+		PlmnList:            convertWireToPLMNList(w.PlmnList),
+	}
 }

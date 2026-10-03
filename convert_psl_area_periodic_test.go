@@ -36,10 +36,7 @@ func TestAreaRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToArea(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToArea(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -88,10 +85,7 @@ func TestAreaListRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode: %v", err)
 	}
-	out, err := convertWireToAreaList(wire)
-	if err != nil {
-		t.Fatalf("decode: %v", err)
-	}
+	out := convertWireToAreaList(wire)
 	if !reflect.DeepEqual(in, out) {
 		t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", in, out)
 	}
@@ -148,10 +142,7 @@ func TestAreaEventInfoRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToAreaEventInfo(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToAreaEventInfo(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -300,10 +291,7 @@ func TestReportingPLMNRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToReportingPLMN(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToReportingPLMN(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -357,10 +345,7 @@ func TestReportingPLMNListRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToReportingPLMNList(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToReportingPLMNList(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -409,23 +394,23 @@ func TestPSLAreaPeriodicNilPassThrough(t *testing.T) {
 	}
 
 	// Decode-side nil pass-through.
-	if out, err := convertWireToArea(nil); err != nil || out != nil {
-		t.Errorf("WireToArea nil: got out=%v err=%v", out, err)
+	if out := convertWireToArea(nil); out != nil {
+		t.Errorf("WireToArea nil: got out=%v", out)
 	}
-	if out, err := convertWireToAreaDefinition(nil); err != nil || out != nil {
-		t.Errorf("WireToAreaDefinition nil: got out=%v err=%v", out, err)
+	if out := convertWireToAreaDefinition(nil); out != nil {
+		t.Errorf("WireToAreaDefinition nil: got out=%v", out)
 	}
-	if out, err := convertWireToAreaEventInfo(nil); err != nil || out != nil {
-		t.Errorf("WireToAreaEventInfo nil: got out=%v err=%v", out, err)
+	if out := convertWireToAreaEventInfo(nil); out != nil {
+		t.Errorf("WireToAreaEventInfo nil: got out=%v", out)
 	}
 	if out, err := convertWireToPeriodicLDRInfo(nil); err != nil || out != nil {
 		t.Errorf("WireToPeriodicLDRInfo nil: got out=%v err=%v", out, err)
 	}
-	if out, err := convertWireToReportingPLMN(nil); err != nil || out != nil {
-		t.Errorf("WireToReportingPLMN nil: got out=%v err=%v", out, err)
+	if out := convertWireToReportingPLMN(nil); out != nil {
+		t.Errorf("WireToReportingPLMN nil: got out=%v", out)
 	}
-	if out, err := convertWireToReportingPLMNList(nil); err != nil || out != nil {
-		t.Errorf("WireToReportingPLMNList nil: got out=%v err=%v", out, err)
+	if out := convertWireToReportingPLMNList(nil); out != nil {
+		t.Errorf("WireToReportingPLMNList nil: got out=%v", out)
 	}
 }
 
@@ -440,10 +425,7 @@ func TestPSLAreaPeriodicDecoderLenientForExtensibleEnums(t *testing.T) {
 		AreaType:           gsm_map.AreaType(99),
 		AreaIdentification: gsm_map.AreaIdentification{0x01, 0x02},
 	}
-	got, err := convertWireToArea(w)
-	if err != nil {
-		t.Fatalf("AreaType=99 decode: unexpected error %v", err)
-	}
+	got := convertWireToArea(w)
 	if int64(got.AreaType) != 99 {
 		t.Errorf("AreaType not preserved: want 99, got %d", got.AreaType)
 	}
@@ -458,10 +440,7 @@ func TestPSLAreaPeriodicDecoderLenientForExtensibleEnums(t *testing.T) {
 		},
 		OccurrenceInfo: &occ,
 	}
-	gotAEI, err := convertWireToAreaEventInfo(wAEI)
-	if err != nil {
-		t.Fatalf("OccurrenceInfo=99 decode: unexpected error %v", err)
-	}
+	gotAEI := convertWireToAreaEventInfo(wAEI)
 	if gotAEI.OccurrenceInfo == nil || int64(*gotAEI.OccurrenceInfo) != 99 {
 		t.Errorf("OccurrenceInfo not preserved: got %v", gotAEI.OccurrenceInfo)
 	}
@@ -472,10 +451,7 @@ func TestPSLAreaPeriodicDecoderLenientForExtensibleEnums(t *testing.T) {
 		PlmnId:        gsm_map.PLMNId{0x32, 0xf4, 0x10},
 		RanTechnology: &tech,
 	}
-	gotRP, err := convertWireToReportingPLMN(wRP)
-	if err != nil {
-		t.Fatalf("RanTechnology=99 decode: unexpected error %v", err)
-	}
+	gotRP := convertWireToReportingPLMN(wRP)
 	if gotRP.RanTechnology == nil || int64(*gotRP.RanTechnology) != 99 {
 		t.Errorf("RanTechnology not preserved: got %v", gotRP.RanTechnology)
 	}

@@ -16,9 +16,8 @@ import (
 )
 
 // convertProvideSubscriberLocationArgToWire builds the wire-form
-// gsm_map.ProvideSubscriberLocationArg from the public type. Validates
-// every field; the first error is returned with field context wrapped
-// via %w on the relevant sentinel.
+// gsm_map.ProvideSubscriberLocationArg from the public type. Semantic
+// validation errors carry field context and the relevant sentinel.
 func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) (*gsm_map.ProvideSubscriberLocationArg, error) {
 	if a == nil {
 		return nil, ErrPSLArgNil
@@ -108,11 +107,7 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		out.LcsServiceTypeID = &w
 	}
 	if a.LcsCodeword != nil {
-		v, err := convertLCSCodewordToWire(a.LcsCodeword)
-		if err != nil {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsCodeword: %w", err)
-		}
-		out.LcsCodeword = v
+		out.LcsCodeword = convertLCSCodewordToWire(a.LcsCodeword)
 	}
 	if a.LcsPrivacyCheck != nil {
 		v, err := convertLCSPrivacyCheckToWire(a.LcsPrivacyCheck)
@@ -171,10 +166,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		return nil, ErrPSLArgNil
 	}
 
-	loc, err := convertWireToLocationType(&w.LocationType)
-	if err != nil {
-		return nil, fmt.Errorf("ProvideSubscriberLocationArg.LocationType: %w", err)
-	}
+	loc := convertWireToLocationType(&w.LocationType)
 	mlcStr, mlcNature, mlcPlan, err := decodeAddressField([]byte(w.MlcNumber))
 	if err != nil {
 		return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.MlcNumber: %w", err)
@@ -239,11 +231,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.LcsQoS = v
 	}
 	if w.SupportedGADShapes != nil {
-		v, err := convertBitStringToSupportedGADShapes(*w.SupportedGADShapes)
-		if err != nil {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.SupportedGADShapes: %w", err)
-		}
-		out.SupportedGADShapes = v
+		out.SupportedGADShapes = convertBitStringToSupportedGADShapes(*w.SupportedGADShapes)
 	}
 	if w.LcsReferenceNumber != nil {
 		out.LcsReferenceNumber = LCSReferenceNumber(*w.LcsReferenceNumber)
@@ -254,19 +242,11 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.LcsServiceTypeID = &v
 	}
 	if w.LcsCodeword != nil {
-		v, err := convertWireToLCSCodeword(w.LcsCodeword)
-		if err != nil {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsCodeword: %w", err)
-		}
-		out.LcsCodeword = v
+		out.LcsCodeword = convertWireToLCSCodeword(w.LcsCodeword)
 	}
 	out.LcsPrivacyCheck = convertWireToLCSPrivacyCheck(w.LcsPrivacyCheck)
 	if w.AreaEventInfo != nil {
-		v, err := convertWireToAreaEventInfo(w.AreaEventInfo)
-		if err != nil {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.AreaEventInfo: %w", err)
-		}
-		out.AreaEventInfo = v
+		out.AreaEventInfo = convertWireToAreaEventInfo(w.AreaEventInfo)
 	}
 	if w.HGmlcAddress != nil {
 		addr, err := gsn.Parse(*w.HGmlcAddress)
@@ -285,11 +265,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.PeriodicLDRInfo = v
 	}
 	if w.ReportingPLMNList != nil {
-		v, err := convertWireToReportingPLMNList(w.ReportingPLMNList)
-		if err != nil {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.ReportingPLMNList: %w", err)
-		}
-		out.ReportingPLMNList = v
+		out.ReportingPLMNList = convertWireToReportingPLMNList(w.ReportingPLMNList)
 	}
 
 	return out, nil

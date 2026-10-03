@@ -42,10 +42,7 @@ func TestLCSClientNameRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToLCSClientName(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToLCSClientName(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -58,9 +55,9 @@ func TestLCSClientNameNilPassesThrough(t *testing.T) {
 	if err != nil || wire != nil {
 		t.Errorf("nil → nil expected, got wire=%v err=%v", wire, err)
 	}
-	out, err := convertWireToLCSClientName(nil)
-	if err != nil || out != nil {
-		t.Errorf("nil → nil expected, got out=%v err=%v", out, err)
+	out := convertWireToLCSClientName(nil)
+	if out != nil {
+		t.Errorf("nil → nil expected, got out=%v", out)
 	}
 }
 
@@ -126,10 +123,7 @@ func TestLCSRequestorIDRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToLCSRequestorID(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToLCSRequestorID(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -142,9 +136,9 @@ func TestLCSRequestorIDNilPassesThrough(t *testing.T) {
 	if err != nil || wire != nil {
 		t.Errorf("nil → nil expected, got wire=%v err=%v", wire, err)
 	}
-	out, err := convertWireToLCSRequestorID(nil)
-	if err != nil || out != nil {
-		t.Errorf("nil → nil expected, got out=%v err=%v", out, err)
+	out := convertWireToLCSRequestorID(nil)
+	if out != nil {
+		t.Errorf("nil → nil expected, got out=%v", out)
 	}
 }
 
