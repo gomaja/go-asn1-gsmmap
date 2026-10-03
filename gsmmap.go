@@ -622,8 +622,8 @@ type CSLocationInformation struct {
 	MscNumberPlan            uint8
 	GeographicalInformation  *GeographicalInfo   // decoded per 3GPP TS 23.032; nil if absent
 	GeodeticInformation      HexBytes            // raw 10 octets; nil if absent
-	CellGlobalId             HexBytes            // raw fixed-length cell ID or SAI; nil if absent
-	LAI                      HexBytes            // raw 5-octet LAI; nil if absent
+	CellGlobalId             HexBytes            // raw fixed-length cell ID or SAI; empty if absent
+	LAI                      HexBytes            // raw 5-octet LAI; empty if absent
 	LocationNumber           HexBytes            // raw octets; nil if absent
 	SelectedLSAId            HexBytes            // [5] LSAIdentity; nil if absent
 	UserCSGInformation       *UserCSGInformation // [11]
@@ -645,8 +645,8 @@ type EPSLocationInformation struct {
 // GPRSLocationInformation contains GPRS domain location data (opCode 71).
 type GPRSLocationInformation struct {
 	AgeOfLocationInformation *int              // minutes; nil if absent
-	CellGlobalId             HexBytes          // raw fixed-length cell ID or SAI; nil if absent
-	LAI                      HexBytes          // raw 5-octet LAI; nil if absent
+	CellGlobalId             HexBytes          // raw fixed-length cell ID or SAI; empty if absent
+	LAI                      HexBytes          // raw 5-octet LAI; empty if absent
 	RouteingAreaIdentity     HexBytes          // raw octets; nil if absent
 	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
 	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
