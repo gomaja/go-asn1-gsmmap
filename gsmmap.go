@@ -1155,9 +1155,9 @@ type ExtCallBarInfo struct {
 // ForwardedToNumber + ForwardingOptions + NoReplyConditionTime are all
 // optional on the wire; the encoder writes whatever subset the caller
 // populated. ForwardingOptions is 1..5 octets per spec; the encoder
-// rejects anything outside that range. NoReplyConditionTime is 1..100;
-// the lenient decoder maps 1..4 → 5 and 31..100 → 30 per spec exception
-// handling.
+// rejects anything outside that range. NoReplyConditionTime is 5..30 on
+// encode (ErrNoReplyConditionTimeOutOfRange); the decoder maps the reserved
+// 1..4 → 5 and 31..100 → 30 (3GPP TS 29.002 V19.1.0 §17.7.1).
 type ExtForwFeature struct {
 	BasicService          *ExtBasicServiceCode // optional
 	SsStatus              HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status
@@ -1166,7 +1166,7 @@ type ExtForwFeature struct {
 	ForwardedToPlan       uint8
 	ForwardedToSubaddress HexBytes // [8] optional ISDN-SubaddressString
 	ForwardingOptions     HexBytes // [6] optional 1..5 octets
-	NoReplyConditionTime  *int     // [7] optional 1..100 (post-decode normalised to 5..30)
+	NoReplyConditionTime  *int     // [7] optional 5..30 (reserved wire values are mapped to 5 or 30)
 	LongForwardedToNumber string   // [10] optional FTN-AddressString
 }
 
@@ -3693,6 +3693,10 @@ var (
 	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
 	ErrOverrideCategoryInvalidValue = errors.New("extSSInfo: OverrideCategory must be overrideEnabled(0) or overrideDisabled(1)")
 	ErrEMLPPPriorityOutOfRange      = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
+	// ErrNoReplyConditionTimeOutOfRange is returned when an Ext-ForwFeature
+	// NoReplyConditionTime lies outside 5..30, the only values a sender uses
+	// (3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime).
+	ErrNoReplyConditionTimeOutOfRange = errors.New("extSSInfo: NoReplyConditionTime must be 5..30 per 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime (values 1..4 and 31..100 are reserved and are mapped to 5 and 30 on decode)")
 
 	ErrODBDataMissingGeneralData = errors.New("odbData: OdbGeneralData is mandatory and must be non-nil")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.

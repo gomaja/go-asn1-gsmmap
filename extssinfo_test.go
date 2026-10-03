@@ -6,6 +6,7 @@ package gsmmap
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
@@ -181,8 +182,8 @@ func TestExtForwInfoValidation(t *testing.T) {
 				NoReplyConditionTime: &bad,
 			}},
 		}))
-		if !matchesConstraint(err, "noReplyConditionTime", "(1..100)") {
-			t.Errorf("want BER constraint error, got %v", err)
+		if !errors.Is(err, ErrNoReplyConditionTimeOutOfRange) {
+			t.Errorf("want ErrNoReplyConditionTimeOutOfRange, got %v", err)
 		}
 	})
 }
@@ -298,6 +299,101 @@ func TestExtForwFeatureLenientNoRepCondTime(t *testing.T) {
 			gotV := got.ForwardingFeatureList[0].NoReplyConditionTime
 			if gotV == nil || *gotV != tc.want {
 				t.Errorf("wire=%d: got %v, want %d", tc.wire, gotV, tc.want)
+			}
+		})
+	}
+}
+
+// noRepCondTimeISD returns an InsertSubscriberDataArg provisioning call
+// forwarding on no reply (SS-Code cfnry) with NoReplyConditionTime v.
+func noRepCondTimeISD(v int) *InsertSubscriberDataArg {
+	return &InsertSubscriberDataArg{ProvisionedSS: []ExtSSInfo{{ForwardingInfo: &ExtForwInfo{
+		SsCode: 0x2A,
+		ForwardingFeatureList: []ExtForwFeature{{
+			SsStatus:             HexBytes{0x05},
+			ForwardedToNumber:    "31611111111",
+			ForwardedToNature:    16,
+			ForwardedToPlan:      1,
+			NoReplyConditionTime: &v,
+		}},
+	}}}}
+}
+
+// 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime ::= INTEGER (1..100):
+// "Only values 5-30 are used. Values in the ranges 1-4 and 31-100 are
+// reserved for future use". A sender sends only 5..30.
+func TestMarshalNoReplyConditionTimeSenderRange(t *testing.T) {
+	for _, tc := range []struct {
+		v    int
+		want error
+	}{
+		{5, nil},
+		{20, nil},
+		{30, nil},
+		{4, ErrNoReplyConditionTimeOutOfRange},
+		{31, ErrNoReplyConditionTimeOutOfRange},
+		{1, ErrNoReplyConditionTimeOutOfRange},
+		{100, ErrNoReplyConditionTimeOutOfRange},
+		{0, ErrNoReplyConditionTimeOutOfRange},
+		{101, ErrNoReplyConditionTimeOutOfRange},
+		{-1, ErrNoReplyConditionTimeOutOfRange},
+	} {
+		t.Run(fmt.Sprint(tc.v), func(t *testing.T) {
+			data, err := noRepCondTimeISD(tc.v).Marshal()
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("Marshal: err = %v, want %v", err, tc.want)
+			}
+			if err != nil {
+				return
+			}
+			got, err := ParseInsertSubscriberData(data)
+			if err != nil {
+				t.Fatalf("ParseInsertSubscriberData: %v", err)
+			}
+			gotV := got.ProvisionedSS[0].ForwardingInfo.ForwardingFeatureList[0].NoReplyConditionTime
+			if gotV == nil || *gotV != tc.v {
+				t.Errorf("NoReplyConditionTime = %v, want %d", gotV, tc.v)
+			}
+		})
+	}
+}
+
+// "If received: values 1-4 shall be mapped on to value 5", "values 31-100
+// shall be mapped on to value 30" (§17.7.1 Ext-NoRepCondTime). The mapped
+// value is one a sender uses, so the parsed message marshals again.
+func TestParseNoReplyConditionTimeMapsReserved(t *testing.T) {
+	for _, tc := range []struct {
+		wire int64
+		want int
+	}{
+		{1, 5},
+		{4, 5},
+		{5, 5},
+		{30, 30},
+		{31, 30},
+		{100, 30},
+	} {
+		t.Run(fmt.Sprint(tc.wire), func(t *testing.T) {
+			w, err := convertInsertSubscriberDataArgToWire(noRepCondTimeISD(20))
+			if err != nil {
+				t.Fatalf("convertInsertSubscriberDataArgToWire: %v", err)
+			}
+			v := gsm_map.ExtNoRepCondTime(tc.wire)
+			w.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].NoReplyConditionTime = &v
+			data, err := w.MarshalBER()
+			if err != nil {
+				t.Fatalf("MarshalBER: %v", err)
+			}
+			got, err := ParseInsertSubscriberData(data)
+			if err != nil {
+				t.Fatalf("ParseInsertSubscriberData: %v", err)
+			}
+			gotV := got.ProvisionedSS[0].ForwardingInfo.ForwardingFeatureList[0].NoReplyConditionTime
+			if gotV == nil || *gotV != tc.want {
+				t.Errorf("wire %d: NoReplyConditionTime = %v, want %d", tc.wire, gotV, tc.want)
+			}
+			if err := checkParseRoundTrip("InsertSubscriberData", asParser(ParseInsertSubscriberData), data); err != nil {
+				t.Error(err)
 			}
 		})
 	}

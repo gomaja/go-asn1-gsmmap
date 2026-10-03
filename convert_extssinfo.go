@@ -162,6 +162,12 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 		out.ForwardingOptions = &v
 	}
 	if f.NoReplyConditionTime != nil {
+		// 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime: "Only values
+		// 5-30 are used. Values in the ranges 1-4 and 31-100 are reserved
+		// for future use".
+		if *f.NoReplyConditionTime < 5 || *f.NoReplyConditionTime > 30 {
+			return gsm_map.ExtForwFeature{}, fmt.Errorf("NoReplyConditionTime: %w (got %d)", ErrNoReplyConditionTimeOutOfRange, *f.NoReplyConditionTime)
+		}
 		v64 := int64(*f.NoReplyConditionTime)
 
 		v := gsm_map.ExtNoRepCondTime(v64)
@@ -205,9 +211,9 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		out.ForwardingOptions = HexBytes(*w.ForwardingOptions)
 	}
 	if w.NoReplyConditionTime != nil {
-		// Per TS 29.002: 1..4 → 5; 31..100 → 30; outside 1..100 is
-		// out of spec entirely. Apply the lenient mapping in int64
-		// space so 32-bit narrowing can't bypass it.
+		// 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime: "If received:
+		// values 1-4 shall be mapped on to value 5", "values 31-100 shall be
+		// mapped on to value 30". The codec has enforced INTEGER (1..100).
 		v64 := int64(*w.NoReplyConditionTime)
 
 		switch {
