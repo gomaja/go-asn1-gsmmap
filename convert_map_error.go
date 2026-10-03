@@ -63,9 +63,17 @@ func convertWireToUnknownSubscriberParam(w *gsm_map.UnknownSubscriberParam) (*Un
 		return nil, nil
 	}
 	out := &UnknownSubscriberParam{}
-	if w.UnknownSubscriberDiagnostic != nil {
-		v := *w.UnknownSubscriberDiagnostic
-		out.UnknownSubscriberDiagnostic = &v
+	// 3GPP TS 29.002 V19.1.0 §17.7.7 UnknownSubscriberDiagnostic: "if unknown
+	// values are received in UnknownSubscriberDiagnostic they shall be
+	// discarded".
+	if v := w.UnknownSubscriberDiagnostic; v != nil {
+		switch *v {
+		case gsm_map.UnknownSubscriberDiagnosticImsiUnknown,
+			gsm_map.UnknownSubscriberDiagnosticGprsEpsSubscriptionUnknown,
+			gsm_map.UnknownSubscriberDiagnosticNpdbMismatch:
+			d := *v
+			out.UnknownSubscriberDiagnostic = &d
+		}
 	}
 	return out, nil
 }
@@ -166,13 +174,17 @@ func convertWireToExtensibleSystemFailureParam(w *gsm_map.ExtensibleSystemFailur
 		v := *w.NetworkResource
 		out.NetworkResource = &v
 	}
-	if w.AdditionalNetworkResource != nil {
-		v := *w.AdditionalNetworkResource
-		out.AdditionalNetworkResource = &v
+	// 3GPP TS 29.002 V19.1.0 §17.7.8 AdditionalNetworkResource: "if unknown
+	// value is received in AdditionalNetworkResource it shall be ignored."
+	if v := w.AdditionalNetworkResource; v != nil && *v >= gsm_map.AdditionalNetworkResourceSgsn && *v <= gsm_map.AdditionalNetworkResourceMme {
+		r := *v
+		out.AdditionalNetworkResource = &r
 	}
-	if w.FailureCauseParam != nil {
-		v := *w.FailureCauseParam
-		out.FailureCauseParam = &v
+	// 3GPP TS 29.002 V19.1.0 §17.7.7 FailureCauseParam: "if unknown value is
+	// received in FailureCauseParam it shall be ignored".
+	if v := w.FailureCauseParam; v != nil && *v == gsm_map.FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests {
+		c := *v
+		out.FailureCauseParam = &c
 	}
 	return out, nil
 }
@@ -189,12 +201,18 @@ func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) (*Ro
 	// MAP-ER-DataTypes.asn with non-contiguous values: 0
 	// (plmnRoamingNotAllowed) and 3 (operatorDeterminedBarring).
 	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	switch w.RoamingNotAllowedCause {
-	case gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
-		gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring:
-		// valid
-	default:
-		return nil, fmt.Errorf("RoamingNotAllowedParam.RoamingNotAllowedCause=%d: must be 0 (plmnRoamingNotAllowed) or 3 (operatorDeterminedBarring) per TS 29.002 MAP-ER-DataTypes.asn", w.RoamingNotAllowedCause)
+	// 3GPP TS 29.002 V19.1.0 §17.7.7: "if the additionalRoamingNotallowedCause
+	// is received by the MSC/VLR or SGSN then the roamingNotAllowedCause
+	// shall be discarded." With the additional cause present the cause is
+	// not checked and is passed through for the receiver to discard.
+	if w.AdditionalRoamingNotAllowedCause == nil {
+		switch w.RoamingNotAllowedCause {
+		case gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
+			gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring:
+			// valid
+		default:
+			return nil, fmt.Errorf("RoamingNotAllowedParam.RoamingNotAllowedCause=%d: must be 0 (plmnRoamingNotAllowed) or 3 (operatorDeterminedBarring) per TS 29.002 MAP-ER-DataTypes.asn", w.RoamingNotAllowedCause)
+		}
 	}
 	out := &RoamingNotAllowedParam{
 		RoamingNotAllowedCause: w.RoamingNotAllowedCause,
@@ -256,9 +274,12 @@ func convertWireToAbsentSubscriberParam(w *gsm_map.AbsentSubscriberParam) (*Abse
 		return nil, nil
 	}
 	out := &AbsentSubscriberParam{}
-	if w.AbsentSubscriberReason != nil {
-		v := *w.AbsentSubscriberReason
-		out.AbsentSubscriberReason = &v
+	// 3GPP TS 29.002 V19.1.0 §17.7.7 AbsentSubscriberReason: "at reception of
+	// other values than the ones listed the AbsentSubscriberReason shall be
+	// ignored."
+	if v := w.AbsentSubscriberReason; v != nil && *v >= gsm_map.AbsentSubscriberReasonImsiDetach && *v <= gsm_map.AbsentSubscriberReasonBusySubscriber {
+		r := *v
+		out.AbsentSubscriberReason = &r
 	}
 	return out, nil
 }

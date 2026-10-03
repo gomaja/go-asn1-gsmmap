@@ -161,6 +161,9 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	}
 	if a.NetworkAccessMode != nil {
 		v := *a.NetworkAccessMode
+		if !isListedNetworkAccessMode(v) {
+			return nil, fmt.Errorf("%w (got %d)", ErrNetworkAccessModeInvalid, v)
+		}
 		out.NetworkAccessMode = &v
 	}
 	if a.LsaInformation != nil {
@@ -421,7 +424,9 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		}
 		out.GprsSubscriptionData = v
 	}
-	if w.NetworkAccessMode != nil {
+	// 3GPP TS 29.002 V19.1.0 §17.7.1 NetworkAccessMode: "if unknown values
+	// are received in NetworkAccessMode they shall be discarded."
+	if w.NetworkAccessMode != nil && isListedNetworkAccessMode(*w.NetworkAccessMode) {
 		v := *w.NetworkAccessMode
 		out.NetworkAccessMode = &v
 	}
@@ -691,3 +696,16 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 // Public ParseInsertSubscriberData/Res functions live in parse.go;
 // Marshal methods live in marshal.go (matching the package convention
 // established by every other operation).
+
+// isListedNetworkAccessMode reports whether v is one of the NetworkAccessMode
+// values of 3GPP TS 29.002 V19.1.0 §17.7.1: packetAndCircuit (0),
+// onlyCircuit (1), onlyPacket (2).
+func isListedNetworkAccessMode(v NetworkAccessMode) bool {
+	switch v {
+	case gsm_map.NetworkAccessModePacketAndCircuit,
+		gsm_map.NetworkAccessModeOnlyCircuit,
+		gsm_map.NetworkAccessModeOnlyPacket:
+		return true
+	}
+	return false
+}

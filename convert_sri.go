@@ -142,7 +142,11 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// AdditionalSignalInfo
 	if s.AdditionalSignalInfo != nil {
-		arg.AdditionalSignalInfo = convertExtExternalSignalInfoToWire(s.AdditionalSignalInfo)
+		v, err := convertExtExternalSignalInfoToWire(s.AdditionalSignalInfo)
+		if err != nil {
+			return nil, fmt.Errorf("AdditionalSignalInfo: %w", err)
+		}
+		arg.AdditionalSignalInfo = v
 	}
 
 	// IstSupportIndicator

@@ -3023,7 +3023,9 @@ type ExtensibleSystemFailureParam struct {
 // RoamingNotAllowedParam (SEQUENCE) per TS 29.002 MAP-ER-DataTypes.asn.
 // Returned with errorCode 8 (roamingNotAllowed). Mandatory cause +
 // optional additional cause distinguish PLMN-roaming-not-allowed from
-// operator-determined-barring.
+// operator-determined-barring. With AdditionalRoamingNotAllowedCause present
+// the receiver discards RoamingNotAllowedCause (3GPP TS 29.002 V19.1.0
+// §17.7.7), so Parse does not check it then and passes it through.
 type RoamingNotAllowedParam struct {
 	RoamingNotAllowedCause           gsm_map.RoamingNotAllowedCause            // untagged, mandatory
 	AdditionalRoamingNotAllowedCause *gsm_map.AdditionalRoamingNotAllowedCause // [0]
@@ -3519,6 +3521,11 @@ var (
 
 	ErrSriSmMissingSipUriB = errors.New("sriSm: CorrelationID.SipUriB is mandatory but empty")
 
+	// ErrExtProtocolIDInvalid: the encoder sends only ets-300356 (1); the
+	// decoder ignores an Ext-ExternalSignalInfo with any other value per
+	// 3GPP TS 29.002 V19.1.0 §17.7.8.
+	ErrExtProtocolIDInvalid = errors.New("extExternalSignalInfo: ExtProtocolID must be ets-300356(1); a receiver ignores the whole Ext-ExternalSignalInfo with any other value per 3GPP TS 29.002 V19.1.0 §17.7.8")
+
 	ErrMtFsmUnexpectedTPDUType = errors.New("mtFsm: unexpected TPDU type")
 	ErrMoFsmUnexpectedTPDUType = errors.New("moFsm: unexpected TPDU type")
 
@@ -3725,7 +3732,10 @@ var (
 	ErrGMLCAddressEmpty           = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
 
 	ErrIsdArgNil = errors.New("insertSubscriberDataArg: argument must not be nil")
-	ErrIsdResNil = errors.New("insertSubscriberDataRes: argument must not be nil")
+	// ErrNetworkAccessModeInvalid: the encoder sends only the listed values;
+	// the decoder discards any other per 3GPP TS 29.002 V19.1.0 §17.7.1.
+	ErrNetworkAccessModeInvalid = errors.New("insertSubscriberDataArg: NetworkAccessMode must be packetAndCircuit(0), onlyCircuit(1) or onlyPacket(2); a receiver discards any other value per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrIsdResNil                = errors.New("insertSubscriberDataRes: argument must not be nil")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrIsdBearerServiceCodeSize = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.

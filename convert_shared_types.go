@@ -475,14 +475,25 @@ func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) *ExternalSig
 	}
 }
 
-func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) *gsm_map.ExtExternalSignalInfo {
-	return &gsm_map.ExtExternalSignalInfo{
-		ExtProtocolId: gsm_map.ExtProtocolId(int64(e.ExtProtocolID)),
-		SignalInfo:    gsm_map.SignalInfo(e.SignalInfo),
+func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) (*gsm_map.ExtExternalSignalInfo, error) {
+	if gsm_map.ExtProtocolId(e.ExtProtocolID) != gsm_map.ExtProtocolIdEts300356 {
+		return nil, fmt.Errorf("%w (got %d)", ErrExtProtocolIDInvalid, e.ExtProtocolID)
 	}
+	return &gsm_map.ExtExternalSignalInfo{
+		ExtProtocolId: gsm_map.ExtProtocolIdEts300356,
+		SignalInfo:    gsm_map.SignalInfo(e.SignalInfo),
+	}, nil
 }
 
+// convertWireToExtExternalSignalInfo decodes an Ext-ExternalSignalInfo. 3GPP
+// TS 29.002 V19.1.0 §17.7.8 Ext-ProtocolId: "For Ext-ExternalSignalInfo
+// sequences containing this parameter with any other value than the ones
+// listed the receiver shall ignore the whole Ext-ExternalSignalInfo
+// sequence." It returns nil for such a sequence.
 func convertWireToExtExternalSignalInfo(w *gsm_map.ExtExternalSignalInfo) *ExtExternalSignalInfo {
+	if w.ExtProtocolId != gsm_map.ExtProtocolIdEts300356 {
+		return nil
+	}
 	return &ExtExternalSignalInfo{
 		ExtProtocolID: int(w.ExtProtocolId),
 		SignalInfo:    HexBytes(w.SignalInfo),
