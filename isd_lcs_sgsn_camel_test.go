@@ -506,13 +506,16 @@ func TestGPRSCamelTDPDataList_BoundsRejected(t *testing.T) {
 	if !matchesConstraint(err, "gprs-CamelTDPDataList", "SIZE (1..10)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
+	// Five TDPs are listed, so a longer list repeats one, which the
+	// one-instance rule (3GPP TS 29.002 V19.1.0 §17.7.1) rejects before
+	// the codec's SIZE (1..10).
 	too := make(GPRSCamelTDPDataList, 11)
 	for i := range too {
 		too[i] = makeGPRSCamelTDPData()
 	}
 	_, err = strictWire(convertGPRSCamelTDPDataListToWire(too))
-	if !matchesConstraint(err, "gprs-CamelTDPDataList", "SIZE (1..10)") {
-		t.Fatalf("over-max: want size err, got %v", err)
+	if !errors.Is(err, ErrCamelDuplicateTriggerDetectionPoint) {
+		t.Fatalf("over-max: want ErrCamelDuplicateTriggerDetectionPoint, got %v", err)
 	}
 }
 

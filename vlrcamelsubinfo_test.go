@@ -157,13 +157,6 @@ func TestSMSCSIRoundTrip(t *testing.T) {
 					GsmSCFNature:             16, GsmSCFPlan: 1,
 					DefaultSMSHandling: DefaultSMSHandlingContinueTransaction,
 				},
-				{
-					SmsTriggerDetectionPoint: tdp,
-					ServiceKey:               200,
-					GsmSCFAddress:            "31655555555",
-					GsmSCFNature:             16, GsmSCFPlan: 1,
-					DefaultSMSHandling: DefaultSMSHandlingReleaseTransaction,
-				},
 			},
 			CamelCapabilityHandling: &cch,
 		}
@@ -184,7 +177,9 @@ func TestSMSCSIRoundTrip(t *testing.T) {
 func TestSMSCSIValidation(t *testing.T) {
 	cch := 2
 	t.Run("oversizeTDPList", func(t *testing.T) {
-		// Eleven entries violate the BER SIZE (1..10) constraint.
+		// Eleven entries repeat the one TDP an MO-SMS-CSI lists; the
+		// one-instance rule (3GPP TS 29.002 V19.1.0 §17.7.1) rejects the
+		// second before the codec's SIZE (1..10).
 		big := make([]SMSCAMELTDPData, 11)
 		for i := range big {
 			big[i] = SMSCAMELTDPData{
@@ -197,8 +192,8 @@ func TestSMSCSIValidation(t *testing.T) {
 			SmsCAMELTDPDataList:     big,
 			CamelCapabilityHandling: &cch,
 		}, moSMSTriggerDetectionPoint))
-		if !matchesConstraint(err, "sms-CAMEL-TDP-DataList", "SIZE (1..10)") {
-			t.Errorf("want BER constraint error, got %v", err)
+		if !errors.Is(err, ErrCamelDuplicateTriggerDetectionPoint) {
+			t.Errorf("want ErrCamelDuplicateTriggerDetectionPoint, got %v", err)
 		}
 	})
 	t.Run("invalidTriggerDetectionPoint", func(t *testing.T) {

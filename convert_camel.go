@@ -112,6 +112,37 @@ func convertIgnorableWireList[W, T any](field string, ws []W, conv func(*W) (*T,
 	return out, nil
 }
 
+// checkTDPOnce records tdp in seen and reports
+// ErrCamelDuplicateTriggerDetectionPoint when an earlier entry of the list
+// had it: 3GPP TS 29.002 V19.1.0 §17.7.1 "O-BcsmCamelTDPDataList shall not
+// contain more than one instance of O-BcsmCamelTDPData containing the same
+// value for o-BcsmTriggerDetectionPoint", and the same for
+// T-BcsmCamelTDPDataList, SMS-CAMEL-TDP-DataList and GPRS-CamelTDPDataList.
+func checkTDPOnce[K ~int64](seen map[K]bool, tdp K) error {
+	if seen[tdp] {
+		return fmt.Errorf("%w (got %d)", ErrCamelDuplicateTriggerDetectionPoint, tdp)
+	}
+	seen[tdp] = true
+	return nil
+}
+
+// convertTDPDataWireList is convertIgnorableWireList for a CAMEL TDP data
+// list: no two kept entries may share a trigger detection point (tdp, see
+// checkTDPOnce). Entries the receiver ignores do not count.
+func convertTDPDataWireList[W, T any, K ~int64](field string, ws []W, conv func(*W) (*T, error), tdp func(*T) K) ([]T, error) {
+	seen := map[K]bool{}
+	return convertIgnorableWireList(field, ws, func(w *W) (*T, error) {
+		v, err := conv(w)
+		if err != nil || v == nil {
+			return v, err
+		}
+		if err := checkTDPOnce(seen, tdp(v)); err != nil {
+			return nil, err
+		}
+		return v, nil
+	})
+}
+
 // convertOBcsmTDPDataToWire encodes a single O-BCSM TDP entry.
 func convertOBcsmTDPDataToWire(d *OBcsmCamelTDPData) (gsm_map.OBcsmCamelTDPData, error) {
 	if !isValidOBcsmTDP(d.OBcsmTriggerDetectionPoint) {
@@ -469,9 +500,13 @@ func convertOCSIToWire(o *OCSI) (*gsm_map.OCSI, error) {
 		return nil, err
 	}
 	list := gsm_map.OBcsmCamelTDPDataList{Values: make([]gsm_map.OBcsmCamelTDPData, len(o.OBcsmCamelTDPDataList))}
+	seen := map[OBcsmTriggerDetectionPoint]bool{}
 	for i := range o.OBcsmCamelTDPDataList {
 		w, err := convertOBcsmTDPDataToWire(&o.OBcsmCamelTDPDataList[i])
 		if err != nil {
+			return nil, fmt.Errorf("OBcsmCamelTDPDataList[%d]: %w", i, err)
+		}
+		if err := checkTDPOnce(seen, w.OBcsmTriggerDetectionPoint); err != nil {
 			return nil, fmt.Errorf("OBcsmCamelTDPDataList[%d]: %w", i, err)
 		}
 		list.Values[i] = w
@@ -491,7 +526,8 @@ func convertOCSIToWire(o *OCSI) (*gsm_map.OCSI, error) {
 // arms its TDPs only through O-BcsmCamelTDPDataList, SIZE (1..10), so with
 // none left the receiver holds no O-CSI.
 func convertWireToOCSI(w *gsm_map.OCSI) (*OCSI, error) {
-	list, err := convertIgnorableWireList("OBcsmCamelTDPDataList", w.OBcsmCamelTDPDataList.Values, convertWireToOBcsmTDPData)
+	list, err := convertTDPDataWireList("OBcsmCamelTDPDataList", w.OBcsmCamelTDPDataList.Values, convertWireToOBcsmTDPData,
+		func(d *OBcsmCamelTDPData) OBcsmTriggerDetectionPoint { return d.OBcsmTriggerDetectionPoint })
 	if err != nil {
 		return nil, err
 	}
@@ -513,9 +549,13 @@ func convertTCSIToWire(t *TCSI) (*gsm_map.TCSI, error) {
 		return nil, err
 	}
 	list := gsm_map.TBcsmCamelTDPDataList{Values: make([]gsm_map.TBcsmCamelTDPData, len(t.TBcsmCamelTDPDataList))}
+	seen := map[TBcsmTriggerDetectionPoint]bool{}
 	for i := range t.TBcsmCamelTDPDataList {
 		w, err := convertTBcsmTDPDataToWire(&t.TBcsmCamelTDPDataList[i])
 		if err != nil {
+			return nil, fmt.Errorf("TBcsmCamelTDPDataList[%d]: %w", i, err)
+		}
+		if err := checkTDPOnce(seen, w.TBcsmTriggerDetectionPoint); err != nil {
 			return nil, fmt.Errorf("TBcsmCamelTDPDataList[%d]: %w", i, err)
 		}
 		list.Values[i] = w
@@ -535,7 +575,8 @@ func convertTCSIToWire(t *TCSI) (*gsm_map.TCSI, error) {
 // T-CSI arms its TDPs only through T-BcsmCamelTDPDataList, SIZE (1..10), so
 // with none left the receiver holds no T-CSI.
 func convertWireToTCSI(w *gsm_map.TCSI) (*TCSI, error) {
-	list, err := convertIgnorableWireList("TBcsmCamelTDPDataList", w.TBcsmCamelTDPDataList.Values, convertWireToTBcsmTDPData)
+	list, err := convertTDPDataWireList("TBcsmCamelTDPDataList", w.TBcsmCamelTDPDataList.Values, convertWireToTBcsmTDPData,
+		func(d *TBcsmCamelTDPData) TBcsmTriggerDetectionPoint { return d.TBcsmTriggerDetectionPoint })
 	if err != nil {
 		return nil, err
 	}
@@ -1017,9 +1058,13 @@ func convertSMSCSIToWire(s *SMSCSI, tdp SMSTriggerDetectionPoint) (*gsm_map.SMSC
 	}
 	if len(s.SmsCAMELTDPDataList) > 0 {
 		list := gsm_map.SMSCAMELTDPDataList{Values: make([]gsm_map.SMSCAMELTDPData, len(s.SmsCAMELTDPDataList))}
+		seen := map[SMSTriggerDetectionPoint]bool{}
 		for i := range s.SmsCAMELTDPDataList {
 			w, err := convertSMSCAMELTDPDataToWire(&s.SmsCAMELTDPDataList[i], tdp)
 			if err != nil {
+				return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
+			}
+			if err := checkTDPOnce(seen, w.SmsTriggerDetectionPoint); err != nil {
 				return nil, fmt.Errorf("SmsCAMELTDPDataList[%d]: %w", i, err)
 			}
 			list.Values[i] = w
@@ -1048,7 +1093,8 @@ func convertWireToSMSCSI(w *gsm_map.SMSCSI, tdp SMSTriggerDetectionPoint) (*SMSC
 		decode := func(d *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData, error) {
 			return convertWireToSMSCAMELTDPData(d, tdp)
 		}
-		list, err := convertIgnorableWireList("SmsCAMELTDPDataList", w.SmsCAMELTDPDataList.Values, decode)
+		list, err := convertTDPDataWireList("SmsCAMELTDPDataList", w.SmsCAMELTDPDataList.Values, decode,
+			func(d *SMSCAMELTDPData) SMSTriggerDetectionPoint { return d.SmsTriggerDetectionPoint })
 		if err != nil {
 			return nil, err
 		}

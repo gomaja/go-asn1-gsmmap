@@ -102,9 +102,13 @@ func convertGPRSCamelTDPDataListToWire(list GPRSCamelTDPDataList) (*gsm_map.GPRS
 	}
 
 	out := gsm_map.GPRSCamelTDPDataList{Values: make([]gsm_map.GPRSCamelTDPData, len(list))}
+	seen := map[GPRSTriggerDetectionPoint]bool{}
 	for i, d := range list {
 		w, err := convertGPRSCamelTDPDataToWire(&d)
 		if err != nil {
+			return nil, fmt.Errorf("GPRSCamelTDPDataList[%d]: %w", i, err)
+		}
+		if err := checkTDPOnce(seen, w.GprsTriggerDetectionPoint); err != nil {
 			return nil, fmt.Errorf("GPRSCamelTDPDataList[%d]: %w", i, err)
 		}
 		out.Values[i] = *w
@@ -118,7 +122,8 @@ func convertWireToGPRSCamelTDPDataList(w *gsm_map.GPRSCamelTDPDataList) (GPRSCam
 	if w == nil {
 		return nil, nil
 	}
-	return convertIgnorableWireList("GPRSCamelTDPDataList", w.Values, convertWireToGPRSCamelTDPData)
+	return convertTDPDataWireList("GPRSCamelTDPDataList", w.Values, convertWireToGPRSCamelTDPData,
+		func(d *GPRSCamelTDPData) GPRSTriggerDetectionPoint { return d.GprsTriggerDetectionPoint })
 }
 
 // ============================================================================

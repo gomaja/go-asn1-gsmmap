@@ -3680,6 +3680,11 @@ var (
 	ErrCamelInvalidSMSTriggerDetectionPoint = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) in an MO-SMS-CSI and sms-DeliveryRequest(2) in an MT-SMS-CSI or MT-smsCAMELTDP-Criteria; a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelInvalidDefaultSMSHandling       = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
 	ErrCamelInvalidMTSMSTPDUType            = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0) or sms-STATUS-REPORT(2); sms-SUBMIT-REPORT(1) is not used in CAMEL phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	// ErrCamelDuplicateTriggerDetectionPoint is returned when an
+	// O-BcsmCamelTDPDataList, T-BcsmCamelTDPDataList, SMS-CAMEL-TDP-DataList
+	// or GPRS-CamelTDPDataList holds two entries with the same trigger
+	// detection point. On decode only the entries the receiver keeps count.
+	ErrCamelDuplicateTriggerDetectionPoint = errors.New("camel: a CAMEL TDP data list shall not contain more than one instance with the same trigger detection point per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// Ext-SS-Info CHOICE / nested SEQUENCE validation
 	ErrExtSSInfoChoiceNoAlternative        = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")

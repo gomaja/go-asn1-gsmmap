@@ -11,7 +11,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/google/go-cmp/cmp"
 
@@ -163,12 +162,12 @@ func TestParseIgnoresTPDUCriterionWithSubmitReport(t *testing.T) {
 
 // --- SMS-CSI presence ---
 
-// The upper bound stays the codec's SIZE (1..10) check.
+// An MO-SMS-CSI lists only sms-CollectedInfo, and SMS-CAMEL-TDP-DataList
+// "shall not contain more than one instance of SMS-CAMEL-TDP-Data containing
+// the same value for sms-TriggerDetectionPoint", so the list holds one
+// entry, within the codec's SIZE (1..10).
 func TestMarshalSMSCSITDPDataListSize(t *testing.T) {
-	list := make([]SMSCAMELTDPData, 10)
-	for i := range list {
-		list[i] = semSMSTDPData(SMSTriggerDetectionPointSmsCollectedInfo)
-	}
+	list := []SMSCAMELTDPData{semSMSTDPData(SMSTriggerDetectionPointSmsCollectedInfo)}
 	in := &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{
 		MoSmsCSI: &SMSCSI{SmsCAMELTDPDataList: list, CamelCapabilityHandling: semPhase()},
 	}}
@@ -176,10 +175,8 @@ func TestMarshalSMSCSITDPDataListSize(t *testing.T) {
 	semWantEqual(t, "ISD", in, got)
 
 	in.VlrCamelSubscriptionInfo.MoSmsCSI.SmsCAMELTDPDataList = append(list, semSMSTDPData(SMSTriggerDetectionPointSmsCollectedInfo))
-	_, err := in.Marshal()
-	var ce *ber.ConstraintError
-	if !errors.As(err, &ce) || ce.Path != "sms-CAMEL-TDP-DataList" || ce.Constraint != "SIZE (1..10)" {
-		t.Errorf("11 entries: err = %v, want the sms-CAMEL-TDP-DataList SIZE (1..10) violation", err)
+	if _, err := in.Marshal(); !errors.Is(err, ErrCamelDuplicateTriggerDetectionPoint) {
+		t.Errorf("2 entries: err = %v, want ErrCamelDuplicateTriggerDetectionPoint", err)
 	}
 }
 
