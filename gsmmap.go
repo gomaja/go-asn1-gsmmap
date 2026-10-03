@@ -2404,10 +2404,11 @@ type GMLCAddress struct {
 type GMLCList []GMLCAddress
 
 // LCSInformation (SEQUENCE) per TS 29.002 MAP-MS-DataTypes.asn:1490.
-// All four lists are OPTIONAL. AddLcsPrivacyExceptionList may only be
-// present alongside LcsPrivacyExceptionList (extension list per LCS
-// release). Callers requiring that invariant should validate at their
-// layer.
+// All four lists are OPTIONAL. AddLcsPrivacyExceptionList requires an
+// LcsPrivacyExceptionList of four classes and no SS-Code in both lists
+// (ErrLCSAddPrivacyExceptionListNotAllowed,
+// ErrLCSPrivacyClassDuplicateSSCode); Parse discards an
+// AddLcsPrivacyExceptionList received without four classes.
 type LCSInformation struct {
 	GmlcList                   GMLCList                // [0] optional, 1..5 entries when present
 	LcsPrivacyExceptionList    LCSPrivacyExceptionList // [1] optional, 1..4 entries when present
@@ -3946,6 +3947,16 @@ var (
 	ErrGMLCAddressEmpty           = errors.New("gmlcAddress: Address is mandatory; empty digits are not permitted on encode or decode")
 	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
 	ErrGMLCAddressInvalidSize = errors.New("gmlcList: each entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	// ErrLCSAddPrivacyExceptionListNotAllowed: "add-lcs-PrivacyExceptionList
+	// may be sent only if lcs-PrivacyExceptionList is present and contains four
+	// instances of LCS-PrivacyClass" (3GPP TS 29.002 V19.1.0 §17.7.1). Marshal
+	// rejects it otherwise; Parse discards it, as the clause requires.
+	ErrLCSAddPrivacyExceptionListNotAllowed = errors.New("lcsInformation: AddLcsPrivacyExceptionList requires LcsPrivacyExceptionList with four LCS-PrivacyClass entries per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	// ErrLCSPrivacyClassDuplicateSSCode: "If an LCS-PrivacyClass is received
+	// both in lcs-PrivacyExceptionList and in add-lcs-PrivacyExceptionList
+	// with the same SS-Code, then the error unexpected data value shall be
+	// returned" (3GPP TS 29.002 V19.1.0 §17.7.1). Marshal and Parse reject it.
+	ErrLCSPrivacyClassDuplicateSSCode = errors.New("lcsInformation: an SS-Code appears in both LcsPrivacyExceptionList and AddLcsPrivacyExceptionList per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	ErrIsdArgNil = errors.New("insertSubscriberDataArg: argument must not be nil")
 	// ErrNetworkAccessModeInvalid: the encoder sends only the listed values;

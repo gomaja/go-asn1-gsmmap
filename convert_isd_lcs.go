@@ -540,6 +540,12 @@ func convertLCSInformationToWire(l *LCSInformation) (*gsm_map.LCSInformation, er
 		out.MolrList = convertMOLRListToWire(l.MolrList)
 	}
 	if l.AddLcsPrivacyExceptionList != nil {
+		if len(l.LcsPrivacyExceptionList) != maxNumOfPrivacyClass {
+			return nil, ErrLCSAddPrivacyExceptionListNotAllowed
+		}
+		if err := checkPrivacyClassSSCodesDistinct(l.LcsPrivacyExceptionList, l.AddLcsPrivacyExceptionList); err != nil {
+			return nil, err
+		}
 		al, err := convertLCSPrivacyExceptionListToWire(l.AddLcsPrivacyExceptionList)
 		if err != nil {
 			return nil, fmt.Errorf("LCSInformation.AddLcsPrivacyExceptionList: %w", err)
@@ -571,12 +577,36 @@ func convertWireToLCSInformation(w *gsm_map.LCSInformation) (*LCSInformation, er
 	if w.MolrList != nil {
 		out.MolrList = convertWireToMOLRList(w.MolrList)
 	}
-	if w.AddLcsPrivacyExceptionList != nil {
+	// "If the mentioned condition is not satisfied the receiving node shall
+	// discard add-lcs-PrivacyExceptionList" (see
+	// ErrLCSAddPrivacyExceptionListNotAllowed).
+	if w.AddLcsPrivacyExceptionList != nil && len(out.LcsPrivacyExceptionList) == maxNumOfPrivacyClass {
 		al, err := convertWireToLCSPrivacyExceptionList(w.AddLcsPrivacyExceptionList)
 		if err != nil {
 			return nil, fmt.Errorf("LCSInformation.AddLcsPrivacyExceptionList: %w", err)
 		}
+		if err := checkPrivacyClassSSCodesDistinct(out.LcsPrivacyExceptionList, al); err != nil {
+			return nil, err
+		}
 		out.AddLcsPrivacyExceptionList = al
 	}
 	return out, nil
+}
+
+// maxNumOfPrivacyClass is the LCS-PrivacyExceptionList bound, and the
+// number of classes lcs-PrivacyExceptionList must hold before
+// add-lcs-PrivacyExceptionList may be sent (3GPP TS 29.002 V19.1.0 §17.7.1).
+const maxNumOfPrivacyClass = 4
+
+// checkPrivacyClassSSCodesDistinct returns ErrLCSPrivacyClassDuplicateSSCode
+// when an SS-Code of add is also in list.
+func checkPrivacyClassSSCodesDistinct(list, add LCSPrivacyExceptionList) error {
+	for i, a := range add {
+		for _, c := range list {
+			if a.SsCode == c.SsCode {
+				return fmt.Errorf("LCSInformation.AddLcsPrivacyExceptionList[%d] SS-Code 0x%02X: %w", i, uint8(a.SsCode), ErrLCSPrivacyClassDuplicateSSCode)
+			}
+		}
+	}
+	return nil
 }
