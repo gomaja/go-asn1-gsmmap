@@ -136,7 +136,7 @@ func TestSLRResEncodeNegative(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := strictWire(convertSubscriberLocationReportResToWire(tc.in))
 			if !matchesExpected(err, tc.want, tc.path, tc.constraint) {
-				t.Errorf("want errors.Is(_, %v), got %v", tc.want, err)
+				t.Errorf("want errors.Is(_, %v) or %s %s, got %v", tc.want, tc.path, tc.constraint, err)
 			}
 		})
 	}

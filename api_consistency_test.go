@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"bytes"
 	"errors"
+	"math"
 	"testing"
 
 	"github.com/gomaja/go-asn1/runtime"
@@ -348,5 +349,28 @@ func TestBitStringToWireClearsPaddingBits(t *testing.T) {
 	}
 	if !bytes.Equal(first, second) {
 		t.Errorf("Marshal → Parse → Marshal changed the octets: %x, then %x", first, second)
+	}
+}
+
+// A feature bit length above SIZE (..40) is rejected by the codec as a
+// constraint error; Marshal neither panics nor allocates for it.
+func TestFeatureBitLengthOutOfRange(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		caps *SGSNCapability
+		path string
+		size string
+	}{
+		{"SupportedFeatures 2^30", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: 1 << 30}}, "supportedFeatures", "SIZE (26..40)"},
+		{"SupportedFeatures MaxInt", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: math.MaxInt}}, "supportedFeatures", "SIZE (26..40)"},
+		{"ExtSupportedFeatures 41", &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{BitLength: 41}}, "ext-SupportedFeatures", "SIZE (1..40)"},
+		{"ExtSupportedFeatures MaxInt", &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{BitLength: math.MaxInt}}, "ext-SupportedFeatures", "SIZE (1..40)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := (&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "12", SGSNAddress: "192.0.2.1", SGSNCapability: tc.caps}).Marshal()
+			if !matchesConstraint(err, tc.path, tc.size) {
+				t.Fatalf("Marshal: err = %v, want %s %s", err, tc.path, tc.size)
+			}
+		})
 	}
 }

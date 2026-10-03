@@ -121,18 +121,22 @@ func TestUnknownSubscriberDiagnosticDiscardsUnknown(t *testing.T) {
 // shall be ignored".
 func TestExtensibleSystemFailureParamIgnoresUnknown(t *testing.T) {
 	for _, tc := range []struct {
-		resource gsm_map.AdditionalNetworkResource
-		cause    gsm_map.FailureCauseParam
-		kept     bool
-	}{{0, 0, true}, {7, 0, true}, {8, 1, false}, {-1, -1, false}, {math.MaxInt64, math.MaxInt64, false}} {
+		resource                gsm_map.AdditionalNetworkResource
+		cause                   gsm_map.FailureCauseParam
+		keptResource, keptCause bool
+	}{
+		{0, 0, true, true}, {7, 0, true, true}, {8, 1, false, false},
+		{7, 1, true, false}, {8, 0, false, true},
+		{-1, -1, false, false}, {math.MaxInt64, math.MaxInt64, false, false},
+	} {
 		r, c := tc.resource, tc.cause
 		w := gsm_map.NewSystemFailureParamExtensibleSystemFailureParam(gsm_map.ExtensibleSystemFailureParam{AdditionalNetworkResource: &r, FailureCauseParam: &c})
 		got := semParseError(t, MapErrorSystemFailure, &w).(*SystemFailureParam).ExtensibleSystemFailureParam
-		if kept := got.AdditionalNetworkResource != nil; kept != tc.kept || kept && *got.AdditionalNetworkResource != tc.resource {
-			t.Errorf("%d: AdditionalNetworkResource = %v, want kept %t", tc.resource, got.AdditionalNetworkResource, tc.kept)
+		if kept := got.AdditionalNetworkResource != nil; kept != tc.keptResource || kept && *got.AdditionalNetworkResource != tc.resource {
+			t.Errorf("%d: AdditionalNetworkResource = %v, want kept %t", tc.resource, got.AdditionalNetworkResource, tc.keptResource)
 		}
-		if kept := got.FailureCauseParam != nil; kept != tc.kept || kept && *got.FailureCauseParam != tc.cause {
-			t.Errorf("%d: FailureCauseParam = %v, want kept %t", tc.cause, got.FailureCauseParam, tc.kept)
+		if kept := got.FailureCauseParam != nil; kept != tc.keptCause || kept && *got.FailureCauseParam != tc.cause {
+			t.Errorf("%d: FailureCauseParam = %v, want kept %t", tc.cause, got.FailureCauseParam, tc.keptCause)
 		}
 	}
 }

@@ -439,10 +439,7 @@ func convertSupportedFeaturesToBitString(s *SupportedFeatures) runtime.BitString
 		s.NonIPPDNTypeAPNs, s.NonIPPDPTypeAPNs, s.NrAsSecondaryRAT,
 	}
 	bs := packBits(bits, 26)
-	if s.BitLength > bs.BitLength {
-		bs.BitLength = s.BitLength
-		bs.Bytes = append(bs.Bytes, make([]byte, (s.BitLength+7)/8-len(bs.Bytes))...)
-	}
+	extendBitLength(&bs, s.BitLength)
 	return bs
 }
 
@@ -507,11 +504,26 @@ func convertExtSupportedFeaturesToBitString(e *ExtSupportedFeatures) runtime.Bit
 		bits[i] = e.UnknownBits[i/8]&(0x80>>uint(i%8)) != 0
 	}
 	bs := packBits(bits, 1)
-	if e.BitLength > bs.BitLength {
-		bs.BitLength = e.BitLength
-		bs.Bytes = append(bs.Bytes, make([]byte, (e.BitLength+7)/8-len(bs.Bytes))...)
-	}
+	extendBitLength(&bs, e.BitLength)
 	return bs
+}
+
+// maxFeatureBits is the upper SIZE bound of SupportedFeatures and
+// Ext-SupportedFeatures, SIZE (26..40) and SIZE (1..40) (3GPP TS 29.002
+// V19.1.0 §17.7.1).
+const maxFeatureBits = 40
+
+// extendBitLength lengthens bs to bits with trailing zero bits. A length
+// beyond maxFeatureBits is set without octets, so the codec rejects it as
+// a SIZE violation instead of the encoder allocating for it.
+func extendBitLength(bs *runtime.BitString, bits int) {
+	if bits <= bs.BitLength {
+		return
+	}
+	bs.BitLength = bits
+	if bits <= maxFeatureBits {
+		bs.Bytes = append(bs.Bytes, make([]byte, (bits+7)/8-len(bs.Bytes))...)
+	}
 }
 
 func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedFeatures {

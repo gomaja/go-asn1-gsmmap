@@ -335,10 +335,11 @@ func TestProvideSubscriberLocationArgIMEIDecodedEmptyRejected(t *testing.T) {
 	wantConstraintError(t, strictDecodeWire(w), "imei", "SIZE (8)")
 }
 
-// Decode-side size / range validation: every encode-path size/range
-// check has a symmetric guard in convertWireToProvideSubscriberLocationArg.
-// These tests construct wire args with out-of-range values directly and
-// assert the matching sentinel via errors.Is.
+// Decode-side size and range validation. Each case builds a wire argument
+// with one out-of-range value. Bounds the codec checks fail strict decoding
+// with a *ber.ConstraintError for the field (matchesConstraint); semantic
+// rules fail convertWireToProvideSubscriberLocationArg with their sentinel
+// (errors.Is).
 func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {
 	mlc := gsm_map.ISDNAddressString{0x91, 0x13, 0x16, 0x32, 0x54, 0x76, 0x98}
 	mkBase := func() *gsm_map.ProvideSubscriberLocationArg {
