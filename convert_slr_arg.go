@@ -17,11 +17,18 @@ import (
 )
 
 // LcsEvent value bounds per TS 29.002 MAP-LCS-DataTypes.asn:681
-// (ENUMERATED 0..5, extensible). Encoder strict, decoder lenient.
+// (ENUMERATED 0..5, extensible). The encoder sends only these values and
+// the decoder rejects any other (3GPP TS 29.002 V19.1.0 §17.7.13).
 const (
 	slrLcsEventMin int64 = 0
 	slrLcsEventMax int64 = 5
 )
+
+// isRecognizedLCSEvent reports whether v is one of the LCS-Event values
+// 3GPP TS 29.002 V19.1.0 §17.7.13 lists.
+func isRecognizedLCSEvent(v LCSEvent) bool {
+	return int64(v) >= slrLcsEventMin && int64(v) <= slrLcsEventMax
+}
 
 // convertSubscriberLocationReportArgToWire builds the wire-form
 // gsm_map.SubscriberLocationReportArg from the public type. Semantic
@@ -37,7 +44,7 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 
 	// Mandatory: LcsEvent (extensible enum; encoder strict 0..5).
-	if int64(a.LcsEvent) < slrLcsEventMin || int64(a.LcsEvent) > slrLcsEventMax {
+	if !isRecognizedLCSEvent(a.LcsEvent) {
 		return nil, fmt.Errorf("SubscriberLocationReportArg.LcsEvent=%d: %w", int64(a.LcsEvent), ErrLCSEventInvalid)
 	}
 
@@ -244,7 +251,10 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 //   - Round-trip safety: present-but-empty MSISDN/NaESRD/NaESRK
 //     decoded values are rejected (cannot round-trip through the
 //     string-based public API).
-//   - Extensible enums (LcsEvent, AccuracyFulfilmentIndicator, and those
+//   - An unrecognized LcsEvent or LCSClientType rejects the argument
+//     (3GPP TS 29.002 V19.1.0 §17.7.13); the caller answers with
+//     unexpected data value.
+//   - Other extensible enums (AccuracyFulfilmentIndicator, and those
 //     inside LcsClientID/LcsLocationInfo leaves): unknown values
 //     preserved per Postel; encoder-side strictness lives here and in the
 //     leaf converters.
@@ -253,6 +263,17 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationReportArg) (*SubscriberLocationReportArg, error) {
 	if w == nil {
 		return nil, ErrSLRArgNil
+	}
+
+	// 3GPP TS 29.002 V19.1.0 §17.7.13: "a SubscriberLocationReport-Arg
+	// containing an unrecognized LCS-Event shall be rejected by a receiver
+	// with a return error cause of unexpected data value". The argument has
+	// no privacy override, so an unrecognized LCSClientType is rejected too.
+	if !isRecognizedLCSEvent(w.LcsEvent) {
+		return nil, fmt.Errorf("SubscriberLocationReportArg.LcsEvent=%d: %w", int64(w.LcsEvent), ErrLCSEventUnrecognized)
+	}
+	if err := checkLCSClientType(&w.LcsClientID, false); err != nil {
+		return nil, fmt.Errorf("SubscriberLocationReportArg.LcsClientID: %w", err)
 	}
 
 	clientID, err := convertWireToLCSClientID(&w.LcsClientID)

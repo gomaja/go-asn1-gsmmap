@@ -146,15 +146,14 @@ var strictEncodeErrors = []error{
 	ErrISTSupportIndicatorInvalid,
 	ErrUnavailabilityCauseInvalid,
 	ErrLCSClientInternalIDInvalid,
-	ErrLocationEstimateTypeInvalid,
-	ErrLCSClientTypeInvalid,
 	ErrLCSFormatIndicatorInvalid,
-	ErrPrivacyCheckRelatedActionInvalid,
 	ErrAccuracyFulfilmentIndicatorInvalid,
 	ErrAreaTypeInvalid,
 	ErrOccurrenceInfoInvalid,
 	ErrRANTechnologyInvalid,
-	ErrLCSEventInvalid,
+	// An unrecognized LCSClientType is kept only in a
+	// ProvideSubscriberLocation-Arg with privacyOverride (§17.7.13).
+	ErrLCSClientTypeInvalid,
 }
 
 // isStrictEncodeError reports whether err is one of strictEncodeErrors.

@@ -1303,9 +1303,14 @@ type SriResp struct {
 	RoutingInfo2                    *RoutingInfo
 	SsList2                         []SsCode
 	AllowedServices                 *AllowedServicesFlags
-	UnavailabilityCause             *UnavailabilityCause
-	ReleaseResourcesSupported       bool
-	GsmBearerCapability             *ExternalSignalInfo
+	// UnavailabilityCause is kept as received, listed or not; Marshal sends
+	// only 1..6 (ErrUnavailabilityCauseInvalid). 3GPP TS 29.002 V19.1.0
+	// §17.7.3: "Reception of other values than the ones listed shall result
+	// in the service being unavailable for that call." Applying that is the
+	// caller's.
+	UnavailabilityCause       *UnavailabilityCause
+	ReleaseResourcesSupported bool
+	GsmBearerCapability       *ExternalSignalInfo
 }
 
 // MwStatusFlags is the MW-Status BIT STRING (6 bits defined).
@@ -2318,8 +2323,11 @@ type LCSInformation struct {
 // SubscriberLocationReport (opCode 86).
 
 // LocationEstimateType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:153.
-// Extensible enum; decoders preserve unknown values per Postel's law.
-// Aliased from go-asn1.
+// Extensible enum. Aliased from go-asn1. Marshal sends only the listed
+// values. 3GPP TS 29.002 V19.1.0 §17.7.13: "a ProvideSubscriberLocation-Arg
+// containing an unrecognized LocationEstimateType shall be rejected by the
+// receiver with a return error cause of unexpected data value", so Parse
+// rejects it with ErrLocationEstimateTypeUnrecognized.
 type LocationEstimateType = gsm_map.LocationEstimateType
 
 const (
@@ -2351,7 +2359,13 @@ type LocationType struct {
 }
 
 // LCSClientType (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:188.
-// Extensible enum. Aliased from go-asn1.
+// Extensible enum. Aliased from go-asn1. Marshal sends only the listed
+// values. 3GPP TS 29.002 V19.1.0 §17.7.13: "unrecognized values may be
+// ignored if the LCS client uses the privacy override otherwise, an
+// unrecognized value shall be treated as unexpected data by a receiver; a
+// return error shall then be returned if received in a MAP invoke". Parse
+// keeps an unrecognized value in a ProvideSubscriberLocation-Arg with
+// privacyOverride and otherwise rejects it with ErrLCSClientTypeUnrecognized.
 type LCSClientType = gsm_map.LCSClientType
 
 const (
@@ -2449,9 +2463,11 @@ type LCSQoS struct {
 
 // PrivacyCheckRelatedAction (ENUMERATED) per TS 29.002
 // MAP-LCS-DataTypes.asn:307. Aliased from go-asn1. Extensible: the encoder
-// accepts only the listed values, and the decoder preserves any other value
-// so the application can reject the ProvideSubscriberLocation-Arg with
-// unexpected data value (3GPP TS 29.002 V19.1.0 §17.7.13).
+// accepts only the listed values. 3GPP TS 29.002 V19.1.0 §17.7.13: "a
+// ProvideSubscriberLocation-Arg containing an unrecognized
+// PrivacyCheckRelatedAction shall be rejected by the receiver with a return
+// error cause of unexpected data value", so Parse rejects it with
+// ErrPrivacyCheckRelatedActionUnrecognized.
 type PrivacyCheckRelatedAction = gsm_map.PrivacyCheckRelatedAction
 
 const (
@@ -3095,8 +3111,11 @@ type UnexpectedDataParam struct {
 // positioning/area/PLMN types are those of ProvideSubscriberLocation.
 
 // LCSEvent (ENUMERATED) per TS 29.002 MAP-LCS-DataTypes.asn:681.
-// Extensible enum; decoders preserve unknown values per Postel's law.
-// Aliased from go-asn1.
+// Extensible enum. Aliased from go-asn1. Marshal sends only the listed
+// values. 3GPP TS 29.002 V19.1.0 §17.7.13: "a SubscriberLocationReport-Arg
+// containing an unrecognized LCS-Event shall be rejected by a receiver with
+// a return error cause of unexpected data value", so Parse rejects it with
+// ErrLCSEventUnrecognized.
 type LCSEvent = gsm_map.LCSEvent
 
 const (
@@ -3774,12 +3793,33 @@ var (
 	ErrMMCodeInvalidSize = errors.New("mgCSI: each MobilityTriggers entry (MM-Code) must be exactly 1 octet per TS 29.002 MAP-MS-DataTypes.asn:2544")
 
 	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
-	ErrLocationEstimateTypeInvalid = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (extensible enum: unknown values preserved on decode)")
+	ErrLocationEstimateTypeInvalid = errors.New("locationType: LocationEstimateType must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:153 (a receiver rejects unknown values: ErrLocationEstimateTypeUnrecognized)")
+	// ErrLocationEstimateTypeUnrecognized is returned by Parse for a
+	// ProvideSubscriberLocation-Arg whose LocationEstimateType is not a
+	// listed value. 3GPP TS 29.002 V19.1.0 §17.7.13: such an argument "shall
+	// be rejected by the receiver with a return error cause of unexpected
+	// data value".
+	ErrLocationEstimateTypeUnrecognized = errors.New("locationType: unrecognized LocationEstimateType; the ProvideSubscriberLocation-Arg is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 gives conditional receiver handling of unknown values.
-	ErrLCSClientTypeInvalid = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (extensible enum: unknown values preserved on decode)")
+	ErrLCSClientTypeInvalid = errors.New("lcsClientID: LcsClientType must be 0..3 per TS 29.002 MAP-LCS-DataTypes.asn:188 (a receiver keeps an unknown value only under privacyOverride: ErrLCSClientTypeUnrecognized)")
+	// ErrLCSClientTypeUnrecognized is returned by Parse for an LCS-ClientID
+	// whose LCSClientType is not a listed value, unless the
+	// ProvideSubscriberLocation-Arg carrying it has privacyOverride. 3GPP TS
+	// 29.002 V19.1.0 §17.7.13: "unrecognized values may be ignored if the LCS
+	// client uses the privacy override otherwise, an unrecognized value shall
+	// be treated as unexpected data by a receiver; a return error shall then
+	// be returned if received in a MAP invoke".
+	ErrLCSClientTypeUnrecognized = errors.New("lcsClientID: unrecognized LcsClientType without privacy override; the invoke is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
-	ErrLCSFormatIndicatorInvalid        = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
-	ErrPrivacyCheckRelatedActionInvalid = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.13 (extensible enum: unknown values preserved on decode)")
+	ErrLCSFormatIndicatorInvalid = errors.New("lcsClientName/lcsRequestorID: LCSFormatIndicator must be 0..4 per TS 29.002 MAP-LCS-DataTypes.asn:224 (extensible enum: unknown values preserved on decode)")
+	// Sender accepts only defined values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
+	ErrPrivacyCheckRelatedActionInvalid = errors.New("lcsPrivacyCheck: PrivacyCheckRelatedAction must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.13 (a receiver rejects unknown values: ErrPrivacyCheckRelatedActionUnrecognized)")
+	// ErrPrivacyCheckRelatedActionUnrecognized is returned by Parse for a
+	// ProvideSubscriberLocation-Arg whose LCS-PrivacyCheck holds a
+	// PrivacyCheckRelatedAction that is not a listed value. 3GPP TS 29.002
+	// V19.1.0 §17.7.13: such an argument "shall be rejected by the receiver
+	// with a return error cause of unexpected data value".
+	ErrPrivacyCheckRelatedActionUnrecognized = errors.New("lcsPrivacyCheck: unrecognized PrivacyCheckRelatedAction; the ProvideSubscriberLocation-Arg is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrAccuracyFulfilmentIndicatorInvalid = errors.New("psl: AccuracyFulfilmentIndicator must be 0..1 per TS 29.002 MAP-LCS-DataTypes.asn:457 (extensible enum: unknown values preserved on decode)")
 	// Sender accepts only defined values; receivers map unknown values to delaytolerant (3GPP TS 29.002 V19.1.0 §17.7.13).
@@ -3811,7 +3851,12 @@ var (
 	ErrPSLResCellIdOrSaiInvalidChoice = errors.New("provideSubscriberLocationRes: CellIdOrSai CHOICE has unknown or empty selected alternative on the wire; cannot decode")
 
 	// Encoder accepts only defined LCS-Event values; 3GPP TS 29.002 V19.1.0 §17.7.13 specifies receiver rejection of unknown values.
-	ErrLCSEventInvalid                        = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (extensible enum: unknown values preserved on decode)")
+	ErrLCSEventInvalid = errors.New("subscriberLocationReport: LcsEvent must be 0..5 per TS 29.002 MAP-LCS-DataTypes.asn:681 (a receiver rejects unknown values: ErrLCSEventUnrecognized)")
+	// ErrLCSEventUnrecognized is returned by Parse for a
+	// SubscriberLocationReport-Arg whose LCS-Event is not a listed value.
+	// 3GPP TS 29.002 V19.1.0 §17.7.13: such an argument "shall be rejected
+	// by a receiver with a return error cause of unexpected data value".
+	ErrLCSEventUnrecognized                   = errors.New("subscriberLocationReport: unrecognized LcsEvent; the SubscriberLocationReport-Arg is rejected with unexpected data value per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrLCSLocationInfoNetworkNodeEmpty        = errors.New("lcsLocationInfo: NetworkNodeNumber digits are mandatory; empty value is not permitted on encode")
 	ErrLCSLocationInfoNetworkNodeDecodedEmpty = errors.New("lcsLocationInfo: present wire NetworkNodeNumber decoded to empty digits; presence cannot round-trip through string-based API")
 

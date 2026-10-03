@@ -119,6 +119,13 @@ func convertBitStringToSupportedGADShapes(bs runtime.BitString) *SupportedGADSha
 // LocationType — TS 29.002 MAP-LCS-DataTypes.asn:148
 // ============================================================================
 
+// isRecognizedLocationEstimateType reports whether v is one of the
+// LocationEstimateType values 3GPP TS 29.002 V19.1.0 §17.7.13 lists,
+// currentLocation(0) to notificationVerificationOnly(5).
+func isRecognizedLocationEstimateType(v LocationEstimateType) bool {
+	return v >= LocationEstimateCurrentLocation && v <= LocationEstimateNotificationVerificationOnly
+}
+
 func convertLocationTypeToWire(l *LocationType) (*gsm_map.LocationType, error) {
 	if l == nil {
 		return nil, nil
@@ -126,7 +133,7 @@ func convertLocationTypeToWire(l *LocationType) (*gsm_map.LocationType, error) {
 	out := &gsm_map.LocationType{
 		LocationEstimateType: l.LocationEstimateType,
 	}
-	if int64(l.LocationEstimateType) < 0 || int64(l.LocationEstimateType) > 5 {
+	if !isRecognizedLocationEstimateType(l.LocationEstimateType) {
 		return nil, fmt.Errorf("LocationType.LocationEstimateType=%d: %w", l.LocationEstimateType, ErrLocationEstimateTypeInvalid)
 	}
 	if l.DeferredLocationEventType != nil {
@@ -180,11 +187,18 @@ func convertWireToLCSCodeword(w *gsm_map.LCSCodeword) *LCSCodeword {
 // LCSPrivacyCheck — TS 29.002 MAP-LCS-DataTypes.asn:302
 // ============================================================================
 
+// isRecognizedPrivacyCheckRelatedAction reports whether v is one of the
+// PrivacyCheckRelatedAction values 3GPP TS 29.002 V19.1.0 §17.7.13 lists,
+// allowedWithoutNotification(0) to notAllowed(4).
+func isRecognizedPrivacyCheckRelatedAction(v PrivacyCheckRelatedAction) bool {
+	return v >= PrivacyCheckAllowedWithoutNotification && v <= PrivacyCheckNotAllowed
+}
+
 func convertLCSPrivacyCheckToWire(p *LCSPrivacyCheck) (*gsm_map.LCSPrivacyCheck, error) {
 	if p == nil {
 		return nil, nil
 	}
-	if int64(p.CallSessionUnrelated) < 0 || int64(p.CallSessionUnrelated) > 4 {
+	if !isRecognizedPrivacyCheckRelatedAction(p.CallSessionUnrelated) {
 		return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionUnrelated=%d: %w", p.CallSessionUnrelated, ErrPrivacyCheckRelatedActionInvalid)
 	}
 	out := &gsm_map.LCSPrivacyCheck{
@@ -192,7 +206,7 @@ func convertLCSPrivacyCheckToWire(p *LCSPrivacyCheck) (*gsm_map.LCSPrivacyCheck,
 	}
 	if p.CallSessionRelated != nil {
 		v := *p.CallSessionRelated
-		if int64(v) < 0 || int64(v) > 4 {
+		if !isRecognizedPrivacyCheckRelatedAction(v) {
 			return nil, fmt.Errorf("LCSPrivacyCheck.CallSessionRelated=%d: %w", v, ErrPrivacyCheckRelatedActionInvalid)
 		}
 		out.CallSessionRelated = &v
@@ -200,14 +214,9 @@ func convertLCSPrivacyCheckToWire(p *LCSPrivacyCheck) (*gsm_map.LCSPrivacyCheck,
 	return out, nil
 }
 
-// convertWireToLCSPrivacyCheck preserves every PrivacyCheckRelatedAction.
-// The type is extensible, and 3GPP TS 29.002 V19.1.0 §17.7.13 makes an
-// unrecognized value an application-level error: "a
-// ProvideSubscriberLocation-Arg containing an unrecognized
-// PrivacyCheckRelatedAction shall be rejected by the receiver with a return
-// error cause of unexpected data value". Only the application can send that
-// return error, so the decoder hands it the value, like the other LCS enums
-// whose unrecognized values call for that error.
+// convertWireToLCSPrivacyCheck copies both PrivacyCheckRelatedActions. The
+// ProvideSubscriberLocation-Arg decoder rejects an unrecognized one
+// (ErrPrivacyCheckRelatedActionUnrecognized).
 func convertWireToLCSPrivacyCheck(w *gsm_map.LCSPrivacyCheck) *LCSPrivacyCheck {
 	if w == nil {
 		return nil
