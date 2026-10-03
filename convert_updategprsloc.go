@@ -10,9 +10,6 @@ import (
 // --- UpdateGprsLocation ---
 
 func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsLocationArg, error) {
-	if u.IMSI == "" {
-		return nil, fmt.Errorf("UpdateGprsLocation: IMSI is mandatory and must be non-empty")
-	}
 	if u.SgsnNumber == "" {
 		return nil, ErrUpdateGprsLocationMissingSGSNNumber
 	}
