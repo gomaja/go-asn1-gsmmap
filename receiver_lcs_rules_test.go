@@ -683,24 +683,21 @@ func FuzzReceiverGeographicalInformation(f *testing.F) {
 // locationEstimate is mandatory. When Parse leaves it empty, beside
 // deferredmt-lrResponseIndicator or after discarding a one-octet value
 // beside add-LocationEstimate (3GPP TS 29.002 V19.1.0 §17.7.13), Marshal
-// sends one octet and the result parses back to the same value.
+// sends one octet, the additional estimate's type of shape (§7.6.11.11) or
+// 0, and the result parses back to the same value.
 func TestProvideSubscriberLocationResEmptyLocationEstimateMarshals(t *testing.T) {
-	point := ExtGeographicalInformation{0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc}
-	add := AddGeographicalInformation{0x10, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0x05} // point with uncertainty circle
+	point := gsm_map.ExtGeographicalInformation{0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc}
+	polygon := lcsRulePolygon()
 	for _, tc := range []struct {
 		name string
-		in   ProvideSubscriberLocationRes
+		in   *gsm_map.ProvideSubscriberLocationRes
 		ext  byte
 	}{
-		{"deferred response", ProvideSubscriberLocationRes{LocationEstimate: point, DeferredmtLrResponseIndicator: true}, 0x00},
-		{"additional estimate", ProvideSubscriberLocationRes{LocationEstimate: ExtGeographicalInformation{0x50}, AddLocationEstimate: add}, 0x10},
+		{"deferred response", &gsm_map.ProvideSubscriberLocationRes{LocationEstimate: point, DeferredmtLrResponseIndicator: boolToNullPtr(true)}, 0x00},
+		{"additional estimate", &gsm_map.ProvideSubscriberLocationRes{LocationEstimate: gsm_map.ExtGeographicalInformation{0x00}, AddLocationEstimate: &polygon}, 0x50},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			data, err := tc.in.Marshal()
-			if err != nil {
-				t.Fatalf("Marshal: %v", err)
-			}
-			got, err := ParseProvideSubscriberLocationRes(data)
+			got, err := ParseProvideSubscriberLocationRes(strictBER(t, tc.in))
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
 			}
@@ -731,7 +728,8 @@ func TestProvideSubscriberLocationResEmptyLocationEstimateMarshals(t *testing.T)
 // A sender includes a one-octet LocationEstimate only beside
 // AddLocationEstimate, or as the placeholder of a deferred PSL result: a
 // receiver treats one without an additional estimate as invalid data
-// (3GPP TS 29.002 V19.1.0 §17.7.13).
+// (3GPP TS 29.002 V19.1.0 §17.7.13). Beside AddLocationEstimate the octet is
+// the type of shape whose encoding AddLocationEstimate carries (§7.6.11.11).
 func TestLocationEstimateOneOctetMarshal(t *testing.T) {
 	add := AddGeographicalInformation{0x10, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0x05}
 	one := ExtGeographicalInformation{0x10}
@@ -740,10 +738,20 @@ func TestLocationEstimateOneOctetMarshal(t *testing.T) {
 	}
 	for _, r := range []ProvideSubscriberLocationRes{
 		{LocationEstimate: one, AddLocationEstimate: add},
+		{LocationEstimate: ExtGeographicalInformation{0x1f}, AddLocationEstimate: add},
 		{LocationEstimate: one, DeferredmtLrResponseIndicator: true},
+		{LocationEstimate: ExtGeographicalInformation{0x50}, DeferredmtLrResponseIndicator: true},
 	} {
 		if _, err := r.Marshal(); err != nil {
 			t.Errorf("PSL result %+v: %v", r, err)
+		}
+	}
+	for _, r := range []ProvideSubscriberLocationRes{
+		{LocationEstimate: ExtGeographicalInformation{0x00}, AddLocationEstimate: add},
+		{LocationEstimate: ExtGeographicalInformation{0x50}, AddLocationEstimate: add, DeferredmtLrResponseIndicator: true},
+	} {
+		if _, err := r.Marshal(); !errors.Is(err, ErrLocationEstimateShapeMismatch) {
+			t.Errorf("PSL result %+v: %v, want ErrLocationEstimateShapeMismatch", r, err)
 		}
 	}
 	a := minimalSLRArg()
@@ -755,4 +763,57 @@ func TestLocationEstimateOneOctetMarshal(t *testing.T) {
 	if _, err := a.Marshal(); err != nil {
 		t.Errorf("SLR argument, one octet beside Add: %v", err)
 	}
+	a.LocationEstimate = ExtGeographicalInformation{0x50}
+	if _, err := a.Marshal(); !errors.Is(err, ErrLocationEstimateShapeMismatch) {
+		t.Errorf("SLR argument, other shape beside Add: %v", err)
+	}
+}
+
+// An SLR argument whose estimate is in add-LocationEstimate carries a
+// one-octet locationEstimate, since its absence means no estimate was
+// obtained (3GPP TS 29.002 V19.1.0 §13A.3.3). Marshal supplies the octet
+// when LocationEstimate is empty, and Parse discards it again (§17.7.13).
+func TestSubscriberLocationReportArgAddLocationEstimateMarshals(t *testing.T) {
+	a := minimalSLRArg()
+	a.AddLocationEstimate = AddGeographicalInformation(lcsRulePolygon())
+	data, err := a.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	var w gsm_map.SubscriberLocationReportArg
+	if err := w.UnmarshalBER(data); err != nil {
+		t.Fatal(err)
+	}
+	if w.LocationEstimate == nil {
+		t.Fatal("locationEstimate absent beside add-LocationEstimate")
+	}
+	wantEqual(t, "locationEstimate", gsm_map.ExtGeographicalInformation{0x50}, *w.LocationEstimate)
+	got, err := ParseSubscriberLocationReport(data)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	wantEqual(t, "result", a, got)
+
+	b := minimalSLRArg()
+	data, err = b.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal without an estimate: %v", err)
+	}
+	w = gsm_map.SubscriberLocationReportArg{}
+	if err := w.UnmarshalBER(data); err != nil {
+		t.Fatal(err)
+	}
+	if w.LocationEstimate != nil {
+		t.Errorf("locationEstimate = %x without an estimate, want absent", *w.LocationEstimate)
+	}
+}
+
+// lcsRulePolygon is a TS 23.032 V19.0.0 §7.3.4 polygon of three points, whose
+// first octet carries the number of points beside the type of shape.
+func lcsRulePolygon() []byte {
+	p := []byte{0x53}
+	for range 3 {
+		p = append(p, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc)
+	}
+	return p
 }

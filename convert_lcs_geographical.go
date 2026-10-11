@@ -102,6 +102,22 @@ func validateSendGeographicalInformation(ext, add []byte, ignoreExt bool) error 
 	return nil
 }
 
+// locationEstimateBesideAdd returns the locationEstimate sent beside a
+// non-empty add. 3GPP TS 29.002 V19.1.0 §7.6.11.11 composes a location
+// estimate of its type of shape and that shape's encoding, and puts the
+// encoding of a shape locationEstimate does not carry in add-LocationEstimate;
+// locationEstimate is then one octet (§§13A.2.3, 13A.3.3), which the
+// receiver discards (§17.7.13). An empty ext is sent as add's type of shape.
+func locationEstimateBesideAdd(ext, add []byte) ([]byte, error) {
+	switch {
+	case len(ext) == 0:
+		return []byte{add[0] & 0xF0}, nil
+	case len(ext) == 1 && ext[0]>>4 != add[0]>>4:
+		return nil, ErrLocationEstimateShapeMismatch
+	}
+	return ext, nil
+}
+
 // velocityEstimateLength holds the length of velocity types 0 to 3: 3GPP TS
 // 29.002 V19.1.0 §17.7.13 VelocityEstimate has octets 2 to 4, 2 to 5, 2 to 5
 // and 2 to 7 after the type octet.

@@ -2975,7 +2975,8 @@ type ProvideSubscriberLocationArg struct {
 // Marshal sends an empty LocationEstimate beside AddLocationEstimate or
 // DeferredmtLrResponseIndicator as one octet, which the receiver ignores or
 // discards, and rejects a one-octet one without them
-// (ErrLocationEstimateOneOctetWithoutAdd).
+// (ErrLocationEstimateOneOctetWithoutAdd). Beside AddLocationEstimate the
+// octet is its type of shape (§7.6.11.11; ErrLocationEstimateShapeMismatch).
 // Optional fields follow the package-wide conventions:
 //   - Pointer fields: nil = absent.
 //   - HexBytes / string fields: nil/empty = absent.
@@ -3355,9 +3356,12 @@ type DeferredmtLrData struct {
 // Parse applies §17.7.13: a valid LocationEstimate discards
 // AddLocationEstimate, valid or not; a one-octet LocationEstimate is
 // discarded beside AddLocationEstimate and is invalid data without it.
-// Invalid data returns the matching Err*InvalidData sentinel. Marshal rejects
-// a one-octet LocationEstimate without AddLocationEstimate
-// (ErrLocationEstimateOneOctetWithoutAdd).
+// Invalid data returns the matching Err*InvalidData sentinel. Marshal sends an
+// empty LocationEstimate beside AddLocationEstimate as one octet holding its
+// type of shape (§§7.6.11.11, 13A.3.3), and rejects a one-octet
+// LocationEstimate without AddLocationEstimate
+// (ErrLocationEstimateOneOctetWithoutAdd) or of another type of shape
+// (ErrLocationEstimateShapeMismatch).
 type SubscriberLocationReportArg struct {
 	// Mandatory.
 	LcsEvent        LCSEvent
@@ -3765,6 +3769,7 @@ var (
 	ErrVelocityEstimateInvalidData              = errors.New("lcs: received VelocityEstimate has an invalid velocity type per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8.6")
 	ErrSLRResRoutingIdentifiersReturnError      = errors.New("subscriberLocationReportRes: receipt of both NaESRK and NaESRD is treated as a return error per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrLocationEstimateOneOctetWithoutAdd       = errors.New("lcs: a one-octet LocationEstimate is sent only beside AddLocationEstimate, or in a deferred PSL result, per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrLocationEstimateShapeMismatch            = errors.New("lcs: a one-octet LocationEstimate beside AddLocationEstimate holds its type of shape per 3GPP TS 29.002 V19.1.0 §7.6.11.11")
 	ErrCallBarredParamUnknownAlternative        = errors.New("callBarredParam: unknown CHOICE alternative")
 	ErrGeoAltitudeOutOfRange                    = errors.New("geographical altitude is out of range")
 	ErrGeoAngleOutOfRange                       = errors.New("geographical angle is out of range")

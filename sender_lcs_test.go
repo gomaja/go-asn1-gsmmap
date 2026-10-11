@@ -291,7 +291,7 @@ func TestSenderSLRResponseRoutingIdentifiers(t *testing.T) {
 
 func senderLCSGeography(t *testing.T, value HexBytes, add bool, want error) {
 	t.Helper()
-	r := &ProvideSubscriberLocationRes{LocationEstimate: HexBytes{0}}
+	r := &ProvideSubscriberLocationRes{}
 	s := minimalSLRArg()
 	if add {
 		r.AddLocationEstimate = value
