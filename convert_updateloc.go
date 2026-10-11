@@ -122,9 +122,10 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	if len(u.PagingArea) > 0 {
 		pa := gsm_map.PagingArea{Values: make([]gsm_map.LocationArea, len(u.PagingArea))}
 		for i, raw := range u.PagingArea {
-			// Each raw HexBytes is BER-encoded LocationArea CHOICE.
-			var la gsm_map.LocationArea
-			if err := la.UnmarshalBER(raw); err != nil {
+			// Each entry is a LocationArea CHOICE in any BER; Marshal
+			// sends it in DER.
+			la, err := unmarshalAsDER[gsm_map.LocationArea](raw)
+			if err != nil {
 				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
 			}
 			pa.Values[i] = la

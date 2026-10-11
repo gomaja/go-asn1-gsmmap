@@ -352,8 +352,7 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 }
 
 // encodePDPContextInfoList serializes each gsm_map.PDPContextInfo entry to
-// its BER-encoded bytes, keeping them opaque from the caller's perspective.
-// Each entry is checked by the strict BER codec when it is marshalled.
+// its DER encoding, which the caller sees as opaque bytes.
 func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, error) {
 	if list == nil {
 		list = &gsm_map.PDPContextInfoList{}
@@ -362,7 +361,7 @@ func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, err
 	out := make([]HexBytes, len(list.Values))
 	for i := range list.Values {
 		ctx := list.Values[i]
-		enc, err := ctx.MarshalBER()
+		enc, err := ctx.MarshalDER()
 		if err != nil {
 			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
 		}
@@ -371,14 +370,14 @@ func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, err
 	return out, nil
 }
 
-// decodePDPContextInfoList deserializes each opaque PDPContextInfo entry
-// back into its gsm_map.PDPContextInfo struct. The list size is checked
+// decodePDPContextInfoList decodes each opaque PDPContextInfo entry, given
+// in any BER, so that Marshal sends it in DER. The list size is checked
 // when its containing value is marshalled.
 func decodePDPContextInfoList(list []HexBytes) (*gsm_map.PDPContextInfoList, error) {
 	out := gsm_map.PDPContextInfoList{Values: make([]gsm_map.PDPContextInfo, len(list))}
 	for i, b := range list {
-		var ctx gsm_map.PDPContextInfo
-		if err := ctx.UnmarshalBER(b); err != nil {
+		ctx, err := unmarshalAsDER[gsm_map.PDPContextInfo](b)
+		if err != nil {
 			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
 		}
 		out.Values[i] = ctx

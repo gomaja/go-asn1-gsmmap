@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/gomaja/go-asn1/runtime/ber"
+
 	"github.com/gomaja/go-asn1-gsmmap/address"
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
@@ -205,4 +207,32 @@ func checkIdentityDigits(id identity, digits string) error {
 		return fmt.Errorf("%w (got %d digits)", id.err, len(digits))
 	}
 	return nil
+}
+
+// derCodec is a generated go-asn1 type with BER decoding and DER encoding.
+type derCodec[T any] interface {
+	*T
+	UnmarshalBER([]byte, ...ber.DecodeOption) error
+	MarshalDER() ([]byte, error)
+}
+
+// unmarshalAsDER decodes the BER in raw, then decodes the value again from
+// its DER encoding. MarshalBER sends a decoded value that has not changed in
+// the form it was received in (https://github.com/gomaja/go-asn1/issues/132),
+// which may have long-form or indefinite lengths or constructed strings; a
+// value decoded from DER is sent in DER, which meets the transfer syntax of
+// 3GPP TS 29.002 V19.1.0 §17.1.1. The types it is used for contain no named
+// BIT STRING, whose trailing 0 bits DER would remove.
+func unmarshalAsDER[T any, P derCodec[T]](raw []byte) (T, error) {
+	var v T
+	if err := P(&v).UnmarshalBER(raw); err != nil {
+		return v, err
+	}
+	der, err := P(&v).MarshalDER()
+	if err != nil {
+		return v, err
+	}
+	var out T
+	err = P(&out).UnmarshalBER(der)
+	return out, err
 }
