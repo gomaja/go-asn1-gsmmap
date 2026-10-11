@@ -2972,11 +2972,13 @@ type ProvideSubscriberLocationArg struct {
 // beside AddLocationEstimate and is invalid data without it. Invalid data
 // returns ErrExtGeographicalInformationInvalidData,
 // ErrAddGeographicalInformationInvalidData or ErrVelocityEstimateInvalidData.
-// Marshal sends an empty LocationEstimate beside AddLocationEstimate or
-// DeferredmtLrResponseIndicator as one octet, which the receiver ignores or
-// discards, and rejects a one-octet one without them
-// (ErrLocationEstimateOneOctetWithoutAdd). Beside AddLocationEstimate the
-// octet is its type of shape (§7.6.11.11; ErrLocationEstimateShapeMismatch).
+// Beside DeferredmtLrResponseIndicator, Marshal sends LocationEstimate as
+// given, or as one zero octet when empty, since the receiver ignores it.
+// Otherwise it sends an empty LocationEstimate beside AddLocationEstimate as
+// one octet holding AddLocationEstimate's type of shape (§7.6.11.11), which
+// the receiver discards, and rejects a one-octet one without
+// AddLocationEstimate (ErrLocationEstimateOneOctetWithoutAdd) or of another
+// type of shape (ErrLocationEstimateShapeMismatch).
 // Optional fields follow the package-wide conventions:
 //   - Pointer fields: nil = absent.
 //   - HexBytes / string fields: nil/empty = absent.

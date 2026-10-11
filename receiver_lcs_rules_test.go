@@ -683,8 +683,9 @@ func FuzzReceiverGeographicalInformation(f *testing.F) {
 // locationEstimate is mandatory. When Parse leaves it empty, beside
 // deferredmt-lrResponseIndicator or after discarding a one-octet value
 // beside add-LocationEstimate (3GPP TS 29.002 V19.1.0 §17.7.13), Marshal
-// sends one octet, the additional estimate's type of shape (§7.6.11.11) or
-// 0, and the result parses back to the same value.
+// sends one octet: 0 in a deferred result, whose locationEstimate the
+// receiver ignores, otherwise the additional estimate's type of shape
+// (§7.6.11.11). The result parses back to the same value.
 func TestProvideSubscriberLocationResEmptyLocationEstimateMarshals(t *testing.T) {
 	point := gsm_map.ExtGeographicalInformation{0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc}
 	polygon := lcsRulePolygon()
@@ -695,6 +696,7 @@ func TestProvideSubscriberLocationResEmptyLocationEstimateMarshals(t *testing.T)
 	}{
 		{"deferred response", &gsm_map.ProvideSubscriberLocationRes{LocationEstimate: point, DeferredmtLrResponseIndicator: boolToNullPtr(true)}, 0x00},
 		{"additional estimate", &gsm_map.ProvideSubscriberLocationRes{LocationEstimate: gsm_map.ExtGeographicalInformation{0x00}, AddLocationEstimate: &polygon}, 0x50},
+		{"deferred response with additional estimate", &gsm_map.ProvideSubscriberLocationRes{LocationEstimate: gsm_map.ExtGeographicalInformation{0x50}, AddLocationEstimate: &polygon, DeferredmtLrResponseIndicator: boolToNullPtr(true)}, 0x00},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := ParseProvideSubscriberLocationRes(strictBER(t, tc.in))
@@ -729,7 +731,9 @@ func TestProvideSubscriberLocationResEmptyLocationEstimateMarshals(t *testing.T)
 // AddLocationEstimate, or as the placeholder of a deferred PSL result: a
 // receiver treats one without an additional estimate as invalid data
 // (3GPP TS 29.002 V19.1.0 §17.7.13). Beside AddLocationEstimate the octet is
-// the type of shape whose encoding AddLocationEstimate carries (§7.6.11.11).
+// the type of shape whose encoding AddLocationEstimate carries (§7.6.11.11),
+// except in a deferred PSL result, whose locationEstimate the receiver
+// ignores. An AddLocationEstimate beyond SIZE (1..91) is the codec's error.
 func TestLocationEstimateOneOctetMarshal(t *testing.T) {
 	add := AddGeographicalInformation{0x10, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0x05}
 	one := ExtGeographicalInformation{0x10}
@@ -741,19 +745,19 @@ func TestLocationEstimateOneOctetMarshal(t *testing.T) {
 		{LocationEstimate: ExtGeographicalInformation{0x1f}, AddLocationEstimate: add},
 		{LocationEstimate: one, DeferredmtLrResponseIndicator: true},
 		{LocationEstimate: ExtGeographicalInformation{0x50}, DeferredmtLrResponseIndicator: true},
+		{LocationEstimate: ExtGeographicalInformation{0x50}, AddLocationEstimate: add, DeferredmtLrResponseIndicator: true},
 	} {
 		if _, err := r.Marshal(); err != nil {
 			t.Errorf("PSL result %+v: %v", r, err)
 		}
 	}
-	for _, r := range []ProvideSubscriberLocationRes{
-		{LocationEstimate: ExtGeographicalInformation{0x00}, AddLocationEstimate: add},
-		{LocationEstimate: ExtGeographicalInformation{0x50}, AddLocationEstimate: add, DeferredmtLrResponseIndicator: true},
-	} {
-		if _, err := r.Marshal(); !errors.Is(err, ErrLocationEstimateShapeMismatch) {
-			t.Errorf("PSL result %+v: %v, want ErrLocationEstimateShapeMismatch", r, err)
-		}
+	if _, err := (&ProvideSubscriberLocationRes{LocationEstimate: ExtGeographicalInformation{0x00}, AddLocationEstimate: add}).Marshal(); !errors.Is(err, ErrLocationEstimateShapeMismatch) {
+		t.Errorf("PSL result, other shape beside Add: %v, want ErrLocationEstimateShapeMismatch", err)
 	}
+	oversized := make(AddGeographicalInformation, 92)
+	oversized[0] = 0x53
+	_, err := (&ProvideSubscriberLocationRes{LocationEstimate: ExtGeographicalInformation{0x00}, AddLocationEstimate: oversized}).Marshal()
+	wantConstraintError(t, err, "add-LocationEstimate", "SIZE (1..91)")
 	a := minimalSLRArg()
 	a.LocationEstimate = one
 	if _, err := a.Marshal(); !errors.Is(err, ErrLocationEstimateOneOctetWithoutAdd) {
@@ -767,6 +771,9 @@ func TestLocationEstimateOneOctetMarshal(t *testing.T) {
 	if _, err := a.Marshal(); !errors.Is(err, ErrLocationEstimateShapeMismatch) {
 		t.Errorf("SLR argument, other shape beside Add: %v", err)
 	}
+	a.AddLocationEstimate = oversized
+	_, err = a.Marshal()
+	wantConstraintError(t, err, "add-LocationEstimate", "SIZE (1..91)")
 }
 
 // An SLR argument whose estimate is in add-LocationEstimate carries a

@@ -93,10 +93,10 @@ func receiveVelocityEstimate(v *gsm_map.VelocityEstimate) (VelocityEstimate, err
 // TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §7.3 define sender geography.
 func validateSendGeographicalInformation(ext, add []byte, ignoreExt bool) error {
 	// Values outside ASN.1 SIZE bounds are left to the BER codec.
-	if !ignoreExt && len(ext) > 1 && len(ext) <= 20 && !validGeographicalInformation(ext, false) {
+	if !ignoreExt && len(ext) > 1 && len(ext) <= int(gsm_map.MaxExtGeographicalInformation) && !validGeographicalInformation(ext, false) {
 		return fmt.Errorf("LocationEstimate: %w", ErrExtGeographicalInformationInvalid)
 	}
-	if len(add) > 0 && len(add) <= 91 && !validGeographicalInformation(add, true) {
+	if len(add) > 0 && len(add) <= int(gsm_map.MaxAddGeographicalInformation) && !validGeographicalInformation(add, true) {
 		return fmt.Errorf("AddLocationEstimate: %w", ErrAddGeographicalInformationInvalid)
 	}
 	return nil
@@ -108,11 +108,12 @@ func validateSendGeographicalInformation(ext, add []byte, ignoreExt bool) error 
 // encoding of a shape locationEstimate does not carry in add-LocationEstimate;
 // locationEstimate is then one octet (§§13A.2.3, 13A.3.3), which the
 // receiver discards (§17.7.13). An empty ext is sent as add's type of shape.
+// An add outside its SIZE is left to the BER codec.
 func locationEstimateBesideAdd(ext, add []byte) ([]byte, error) {
 	switch {
 	case len(ext) == 0:
 		return []byte{add[0] & 0xF0}, nil
-	case len(ext) == 1 && ext[0]>>4 != add[0]>>4:
+	case len(ext) == 1 && len(add) <= int(gsm_map.MaxAddGeographicalInformation) && ext[0]>>4 != add[0]>>4:
 		return nil, ErrLocationEstimateShapeMismatch
 	}
 	return ext, nil

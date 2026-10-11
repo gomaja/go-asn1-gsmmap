@@ -185,23 +185,25 @@ func convertProvideSubscriberLocationResToWire(r *ProvideSubscriberLocationRes) 
 	out := &gsm_map.ProvideSubscriberLocationRes{
 		LocationEstimate: gsm_map.ExtGeographicalInformation(r.LocationEstimate),
 	}
-	// locationEstimate is mandatory, but a receiver ignores it beside
-	// deferredmt-lrResponseIndicator and discards a one-octet value beside
-	// add-LocationEstimate (3GPP TS 29.002 V19.1.0 §17.7.13); Parse then
-	// leaves LocationEstimate empty. Such a value is sent as one octet: the
-	// type of shape of the additional estimate (§7.6.11.11), or 0 without
-	// one.
-	if len(r.LocationEstimate) == 1 && len(r.AddLocationEstimate) == 0 && !r.DeferredmtLrResponseIndicator {
-		return nil, fmt.Errorf("ProvideSubscriberLocationRes.LocationEstimate: %w", ErrLocationEstimateOneOctetWithoutAdd)
-	}
-	if len(r.AddLocationEstimate) > 0 {
+	// locationEstimate is mandatory. A receiver ignores it beside
+	// deferredmt-lrResponseIndicator, so it is sent as given, or as one zero
+	// octet when empty. Otherwise a one-octet value beside add-LocationEstimate
+	// holds that estimate's type of shape (§7.6.11.11) and is discarded, and
+	// one without add-LocationEstimate is invalid data (3GPP TS 29.002 V19.1.0
+	// §17.7.13). Parse leaves LocationEstimate empty in each of these cases.
+	switch {
+	case r.DeferredmtLrResponseIndicator:
+		if len(r.LocationEstimate) == 0 {
+			out.LocationEstimate = gsm_map.ExtGeographicalInformation{0}
+		}
+	case len(r.AddLocationEstimate) > 0:
 		ext, err := locationEstimateBesideAdd(r.LocationEstimate, r.AddLocationEstimate)
 		if err != nil {
 			return nil, fmt.Errorf("ProvideSubscriberLocationRes.LocationEstimate: %w", err)
 		}
 		out.LocationEstimate = ext
-	} else if len(r.LocationEstimate) == 0 && r.DeferredmtLrResponseIndicator {
-		out.LocationEstimate = gsm_map.ExtGeographicalInformation{0}
+	case len(r.LocationEstimate) == 1:
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes.LocationEstimate: %w", ErrLocationEstimateOneOctetWithoutAdd)
 	}
 
 	if r.AgeOfLocationEstimate != nil {
