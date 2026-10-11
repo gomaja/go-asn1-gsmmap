@@ -8,7 +8,7 @@ import (
 )
 
 // PS-SubscriberState and UserCSGInformation: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationSubscriberAlternatives(t *testing.T) {
+func TestSubscriberAlternatives(t *testing.T) {
 	ctx := gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: gsm_map.PDPType{0x01, 0x21}}
 	contextBER := HexBytes(strictBER(t, &ctx))
 	reason := NotReachableReason(1)
@@ -48,7 +48,7 @@ func TestMutationSubscriberAlternatives(t *testing.T) {
 }
 
 // GPRSMSClass and UserCSGInformation optional octets: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationSubscriberOptionalOctets(t *testing.T) {
+func TestSubscriberOptionalOctets(t *testing.T) {
 	csg := &UserCSGInformation{CsgID: HexBytes{0x12, 0x34, 0x56, 0x60}, CsgIDBits: 27, AccessMode: HexBytes{1}, CMI: HexBytes{1}}
 	in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{
 		GprsMSClass:             &GprsMSClass{MSNetworkCapability: HexBytes{1}, MSRadioAccessCapability: HexBytes{2, 3}},
@@ -67,7 +67,7 @@ func TestMutationSubscriberOptionalOctets(t *testing.T) {
 }
 
 // IMSI SIZE (3..8) is checked before MNP conversion: TS 29.002 V19.1.0 §17.7.8.
-func TestMutationSubscriberEmptyMNPIMSI(t *testing.T) {
+func TestSubscriberEmptyMNPIMSI(t *testing.T) {
 	empty := gsm_map.IMSI{}
 	w := &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{MnpInfoRes: &gsm_map.MNPInfoRes{Imsi: &empty}}}
 	_, err := ParseAnyTimeInterrogationRes(tolerantBER(t, w))

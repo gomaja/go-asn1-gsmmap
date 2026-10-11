@@ -3,7 +3,7 @@ package gsmmap
 import "testing"
 
 // TS 29.002 V19.1.0 §17.7.1: PDN-GW identity can contain IPv4, IPv6, or a name.
-func TestMutationUpdateGprsPDNIdentity(t *testing.T) {
+func TestUpdateGprsPDNIdentity(t *testing.T) {
 	contextID := 1
 	for _, tc := range []struct {
 		name string

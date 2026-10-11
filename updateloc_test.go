@@ -7,7 +7,7 @@ import (
 )
 
 // TS 29.002 V19.1.0 §17.7.1: LocationArea chooses LAI or LAC; basicISTSupported(0) is defined.
-func TestMutationUpdateLocationPaging(t *testing.T) {
+func TestUpdateLocationPaging(t *testing.T) {
 	v := ISTSupportIndicatorBasicISTSupported
 	for _, la := range []gsm_map.LocationArea{gsm_map.NewLocationAreaLac(gsm_map.LAC{1, 2}), gsm_map.NewLocationAreaLaiFixedLength(gsm_map.LAIFixedLength{1, 2, 3, 4, 5})} {
 		raw := strictBER(t, &la)

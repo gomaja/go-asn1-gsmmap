@@ -8,7 +8,7 @@ import (
 )
 
 // TS 29.002 V19.1.0 §17.7.13: ServingNodeAddress is a CHOICE; accuracy value 1 is defined.
-func TestMutationPSLResponseChoices(t *testing.T) {
+func TestPSLResponseChoices(t *testing.T) {
 	v := AccuracyFulfilmentIndicator(1)
 	for _, node := range []*ServingNodeAddress{{MscNumber: "12345"}, {SgsnNumber: "67890"}, {MmeNumber: HexBytes("mme.example")}} {
 		in := &ProvideSubscriberLocationRes{LocationEstimate: HexBytes{0, 0, 0, 0, 0, 0, 0}, TargetServingNodeForHandover: node, AccuracyFulfilmentIndicator: &v}
@@ -29,7 +29,7 @@ func TestMutationPSLResponseChoices(t *testing.T) {
 }
 
 // TS 29.002 V19.1.0 §17.7.13: LCSFormatIndicator has defined values 0..4.
-func TestMutationPSLFormats(t *testing.T) {
+func TestPSLFormats(t *testing.T) {
 	for _, v := range []LCSFormatIndicator{0, 4} {
 		in := &ProvideSubscriberLocationArg{MlcNumber: "12345", IMSI: "001010123456789", LcsClientID: &LCSClientID{LcsClientName: &LCSClientName{DataCodingScheme: 0x0f, NameString: HexBytes{1}, LcsFormatIndicator: &v}, LcsRequestorID: &LCSRequestorID{DataCodingScheme: 0x0f, RequestorIDString: HexBytes{2}, LcsFormatIndicator: &v}}}
 		data, err := in.Marshal()
@@ -46,7 +46,7 @@ func TestMutationPSLFormats(t *testing.T) {
 }
 
 // TS 29.002 V19.1.0 §17.7.13: beingInsideArea is named bit 3.
-func TestMutationPSLInsideArea(t *testing.T) {
+func TestPSLInsideArea(t *testing.T) {
 	w := &gsm_map.ProvideSubscriberLocationArg{MlcNumber: gsm_map.ISDNAddressString{0x80, 0x21}, LocationType: gsm_map.LocationType{LocationEstimateType: LocationEstimateActivateDeferredLocation}}
 	in := &ProvideSubscriberLocationArg{MlcNumber: "12", IMSI: "001010123456789", LcsReferenceNumber: LCSReferenceNumber{1}, LocationType: LocationType{LocationEstimateType: LocationEstimateActivateDeferredLocation, DeferredLocationEventType: &DeferredLocationEventType{BeingInsideArea: true}}}
 	data, err := in.Marshal()

@@ -6,7 +6,7 @@ import (
 )
 
 // DefaultGPRS-Handling lists 0 and 1: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationGPRSReleaseTransaction(t *testing.T) {
+func TestGPRSReleaseTransaction(t *testing.T) {
 	in := camelISD()
 	in.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList[0].DefaultSessionHandling = DefaultGPRSReleaseTransaction
 	data, err := in.Marshal()
@@ -21,11 +21,11 @@ func TestMutationGPRSReleaseTransaction(t *testing.T) {
 }
 
 // DefaultGPRS-Handling receiver exceptions: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationGPRSDefaultMapping(t *testing.T) {
+func TestGPRSDefaultMapping(t *testing.T) {
 	cases := []struct{ wire, want DefaultGPRSHandling }{{0, 0}, {1, 1}, {2, 0}, {31, 0}, {32, 1}}
 	for _, tc := range cases {
 		t.Run(fmt.Sprint(tc.wire), func(t *testing.T) {
-			w := mutationISDWire(t, camelISD())
+			w := marshalledISDWire(t, camelISD())
 			w.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList.Values[0].DefaultSessionHandling = tc.wire
 			out := parseISD(t, w)
 			wantEqual(t, "default GPRS handling", tc.want, out.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList[0].DefaultSessionHandling)

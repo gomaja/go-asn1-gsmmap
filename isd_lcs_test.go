@@ -3,7 +3,7 @@ package gsmmap
 import "testing"
 
 // Extension external clients and PLMN clients: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationLCSExtExternalClients(t *testing.T) {
+func TestLCSExtExternalClients(t *testing.T) {
 	for _, clients := range []ExtExternalClientList{nil, {makeExternalClient()}} {
 		privacy := LCSPrivacyClass{SsCode: 0x21, SsStatus: HexBytes{1}, ExtExternalClientList: clients,
 			PlmnClientList: PLMNClientList{LCSClientTargetMSsubscribedService}}

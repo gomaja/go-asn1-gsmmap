@@ -9,7 +9,7 @@ import (
 )
 
 // TS 29.002 V19.1.0 §17.7.1: Ext-SupportedFeatures SIZE (1..40).
-func TestMutationBitStringsEmptyNamedFeatures(t *testing.T) {
+func TestBitStringsEmptyNamedFeatures(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
 		features ExtSupportedFeatures
@@ -42,7 +42,7 @@ func TestMutationBitStringsEmptyNamedFeatures(t *testing.T) {
 }
 
 // X.690 (02/2021) §8.6.2.2: three bits require one content octet.
-func TestMutationBitStringsMissingOctets(t *testing.T) {
+func TestBitStringsMissingOctets(t *testing.T) {
 	in := &UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "1234", SGSNAddress: "192.0.2.1",
 		EpsInfo: &EpsInfo{IsrInformationBits: 3}}
 	data, err := in.Marshal()

@@ -7,7 +7,7 @@ import (
 )
 
 // TS 29.002 V19.1.0 §17.7.13: the sender reportingAmount × reportingInterval may not exceed 8639999.
-func TestMutationPeriodicProductErrors(t *testing.T) {
+func TestPeriodicProductErrors(t *testing.T) {
 	p := &PeriodicLDRInfo{ReportingAmount: 100, ReportingInterval: 86400}
 	want := "ProvideSubscriberLocationArg.PeriodicLDRInfo: PeriodicLDRInfo: ReportingAmount(100) × ReportingInterval(86400) = 8640000: " + ErrPeriodicLDRProductExceeded.Error()
 	in := &ProvideSubscriberLocationArg{MlcNumber: "12345", IMSI: "001010123456789", PeriodicLDRInfo: p}

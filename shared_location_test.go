@@ -4,7 +4,7 @@ import "testing"
 
 // GeographicalInformation carries an uncertainty circle: TS 29.002 V19.1.0 §17.7.1.
 // The eight-octet representation is TS 23.032 V19.0.0 §7.3.2.
-func TestMutationLocationGeographicalInformation(t *testing.T) {
+func TestLocationGeographicalInformation(t *testing.T) {
 	uncertainty := uint8(1)
 	geo := &GeographicalInfo{ShapeType: ShapeEllipsoidPointUncertainty, Latitude: 0, Longitude: 0, UncertaintyCode: &uncertainty}
 	in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{

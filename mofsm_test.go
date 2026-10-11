@@ -8,7 +8,7 @@ import (
 )
 
 // TS 29.002 V19.1.0 §17.7.6: each SM-RP address selects one CHOICE alternative.
-func TestMutationMoFsmChoices(t *testing.T) {
+func TestMoFsmChoices(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		da   SmRpDa

@@ -9,7 +9,7 @@ import (
 )
 
 // CAMEL phase 1 and CauseValue 0..127 are valid: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationCAMELSenderBoundaries(t *testing.T) {
+func TestCAMELSenderBoundaries(t *testing.T) {
 	phase := 1
 	in := camelISD()
 	in.VlrCamelSubscriptionInfo.OCSI.CamelCapabilityHandling = &phase
@@ -27,7 +27,7 @@ func TestMutationCAMELSenderBoundaries(t *testing.T) {
 }
 
 // Present empty lists fail their SIZE before conversion: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationCAMELStrictEmptyLists(t *testing.T) {
+func TestCAMELStrictEmptyLists(t *testing.T) {
 	cases := []struct {
 		name, path, constraint string
 		change                 func(*gsm_map.InsertSubscriberDataArg)
@@ -50,7 +50,7 @@ func TestMutationCAMELStrictEmptyLists(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			w := mutationISDWire(t, camelISD())
+			w := marshalledISDWire(t, camelISD())
 			tc.change(w)
 			_, err := ParseInsertSubscriberData(tolerantBER(t, w))
 			wantConstraintError(t, err, tc.path, tc.constraint)
@@ -59,7 +59,7 @@ func TestMutationCAMELStrictEmptyLists(t *testing.T) {
 }
 
 // DestinationNumberLengthList alone supplies criteria: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationCAMELDestinationLengthOnly(t *testing.T) {
+func TestCAMELDestinationLengthOnly(t *testing.T) {
 	in := camelISD()
 	in.VlrCamelSubscriptionInfo.OBcsmCamelTDPCriteriaList[0].DestinationNumberCriteria = &DestinationNumberCriteria{MatchType: MatchTypeEnabling, DestinationNumberLengthList: []int{1, 15}}
 	data, err := in.Marshal()
@@ -74,11 +74,11 @@ func TestMutationCAMELDestinationLengthOnly(t *testing.T) {
 }
 
 // DefaultCallHandling receiver exceptions: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationCAMELDefaultCallMapping(t *testing.T) {
+func TestCAMELDefaultCallMapping(t *testing.T) {
 	cases := []struct{ wire, want DefaultCallHandling }{{0, 0}, {1, 1}, {2, 0}, {31, 0}, {32, 1}}
 	for _, tc := range cases {
 		t.Run(fmt.Sprint(tc.wire), func(t *testing.T) {
-			w := mutationISDWire(t, camelISD())
+			w := marshalledISDWire(t, camelISD())
 			for _, p := range wireDefaultCallHandlingFields(w.VlrCamelSubscriptionInfo) {
 				*p = tc.wire
 			}
@@ -91,7 +91,7 @@ func TestMutationCAMELDefaultCallMapping(t *testing.T) {
 }
 
 // SS-CSI sent to the VLR omits CCBS: TS 29.002 V19.1.0 §17.7.1 SS-EventList.
-func TestMutationCAMELVLRSSCSI(t *testing.T) {
+func TestCAMELVLRSSCSI(t *testing.T) {
 	in := &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{SsCSI: &SSCSI{SsEventList: []SsCode{SsCodeECT}, GsmSCFAddress: testGsmSCF, GsmSCFAddressNature: 0x10, GsmSCFAddressPlan: 1}}}
 	data, err := in.Marshal()
 	if err != nil {
@@ -110,11 +110,11 @@ func TestMutationCAMELVLRSSCSI(t *testing.T) {
 }
 
 // DefaultSMS-Handling receiver exceptions: TS 29.002 V19.1.0 §17.7.1.
-func TestMutationCAMELDefaultSMSMapping(t *testing.T) {
+func TestCAMELDefaultSMSMapping(t *testing.T) {
 	cases := []struct{ wire, want DefaultSMSHandling }{{0, 0}, {1, 1}, {2, 0}, {31, 0}, {32, 1}}
 	for _, tc := range cases {
 		t.Run(fmt.Sprint(tc.wire), func(t *testing.T) {
-			w := mutationISDWire(t, camelISD())
+			w := marshalledISDWire(t, camelISD())
 			w.VlrCamelSubscriptionInfo.MoSmsCSI.SmsCAMELTDPDataList.Values[0].DefaultSMSHandling = tc.wire
 			out := parseISD(t, w)
 			wantEqual(t, "default SMS handling", tc.want, out.VlrCamelSubscriptionInfo.MoSmsCSI.SmsCAMELTDPDataList[0].DefaultSMSHandling)

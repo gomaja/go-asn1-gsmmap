@@ -3,7 +3,7 @@ package gsmmap
 import "testing"
 
 // TS 29.002 V19.1.0 §17.7.13: periodicLDRInfo is optional and accuracy value 1 is defined.
-func TestMutationSLROptionals(t *testing.T) {
+func TestSLROptionals(t *testing.T) {
 	for _, p := range []*PeriodicLDRInfo{nil, {ReportingAmount: 2, ReportingInterval: 30}} {
 		v := AccuracyFulfilmentIndicator(1)
 		in := minimalSLRArg()

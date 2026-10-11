@@ -8,7 +8,7 @@ import (
 )
 
 // HexBytes follows encoding/json.Marshaler and Unmarshaler contracts.
-func TestMutationHexBytesJSON(t *testing.T) {
+func TestHexBytesJSON(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		value HexBytes

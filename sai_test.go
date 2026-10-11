@@ -7,7 +7,7 @@ import (
 )
 
 // TS 29.002 V19.1.0 §17.7.1: RequestingNodeType maps 6..15 to VLR and >17 to SGSN.
-func TestMutationSAINodeBoundaries(t *testing.T) {
+func TestSAINodeBoundaries(t *testing.T) {
 	for _, tc := range []struct{ raw, want RequestingNodeType }{{5, 5}, {6, 0}, {15, 0}, {16, 16}, {17, 17}, {18, 1}} {
 		v := tc.raw
 		w := &gsm_map.SendAuthenticationInfoArg{Imsi: gsm_map.IMSI{0, 0x11, 0x10, 0x32, 0x54, 0x76, 0x98, 0xF0}, NumberOfRequestedVectors: 1, RequestingNodeType: &v}
