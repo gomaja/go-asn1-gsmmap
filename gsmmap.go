@@ -3469,10 +3469,9 @@ const (
 	GPRSTDPPdpContextChangeOfPosition             = gsm_map.GPRSTriggerDetectionPointPdpContextChangeOfPosition
 )
 
-// DefaultGPRSHandling (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-// Per spec exception clause, decoders MUST treat values >1 as
-// releaseTransaction. Aliased from go-asn1; the lenient remap happens
-// in the decoder.
+// DefaultGPRSHandling (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1. Its
+// exception handling maps received values 2..31 to continueTransaction and
+// values above 31 to releaseTransaction; Parse applies it.
 type DefaultGPRSHandling = gsm_map.DefaultGPRSHandling
 
 const (
@@ -3729,8 +3728,10 @@ var (
 	ErrSriMissingGmscOrGsmSCFAddress = errors.New("sri: GmscOrGsmSCFAddress is empty")
 	ErrSriInvalidSupportedCCBSPhase  = errors.New("sri: SupportedCCBSPhase must be 1; 3GPP TS 29.002 V19.1.0 §17.7.3 reserves 2..127, which a receiver maps to 1")
 	// ErrISTSupportIndicatorInvalid and ErrUnavailabilityCauseInvalid: the
-	// encoder sends only the listed values; the decoder keeps any other
-	// (both types are extensible, 3GPP TS 29.002 V19.1.0 §17.1.4).
+	// encoder sends only the listed values. Both types are extensible: the
+	// decoder maps an IST-SupportIndicator above 1 to istCommandSupported
+	// (3GPP TS 29.002 V19.1.0 §17.7.1) and keeps any other unlisted value
+	// (§17.1.4).
 	ErrISTSupportIndicatorInvalid = errors.New("istSupportIndicator: must be basicISTSupported(0) or istCommandSupported(1); a receiver maps values above 1 to istCommandSupported per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrUnavailabilityCauseInvalid = errors.New("unavailabilityCause: must be 1..6 per 3GPP TS 29.002 V19.1.0 §17.7.3 (extensible enum: unknown values preserved on decode)")
 

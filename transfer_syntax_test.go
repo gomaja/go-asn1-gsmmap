@@ -6,8 +6,9 @@ import (
 	"testing"
 )
 
-// checkDefiniteLengths walks the BER of b and reports a length the MAP
-// transfer syntax does not allow. 3GPP TS 29.002 V19.1.0 §17.1.1: "When the
+// checkDefiniteLengths walks the BER of b and reports an indefinite length,
+// which Marshal does not send, or a definite length the MAP transfer syntax
+// does not allow. 3GPP TS 29.002 V19.1.0 §17.1.1: "When the
 // definite form is used for length encoding, a data value of length less
 // than 128 octets must have the length encoded in the short form. When the
 // long form is employed to code a length, the minimum number of octets shall
@@ -56,8 +57,8 @@ func checkDefiniteLengths(b []byte) error {
 	return nil
 }
 
-// Every value Parse accepts from the seed corpus marshals with the definite
-// lengths 3GPP TS 29.002 V19.1.0 §17.1.1 requires.
+// Every value Parse accepts from the seed corpus marshals in the definite
+// form, with lengths coded as 3GPP TS 29.002 V19.1.0 §17.1.1 requires.
 func TestMarshalUsesMinimalDefiniteLengths(t *testing.T) {
 	checked := 0
 	for _, seed := range berSeeds(t) {
