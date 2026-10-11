@@ -109,6 +109,12 @@ type SriSmResp struct {
 }
 
 // LocationInfoWithLMSI contains location information with LMSI.
+// The caller sends Smsf3gppNumber, Smsf3gppDiameterAddress,
+// SmsfNon3gppNumber, SmsfNon3gppDiameterAddress and both SMSF address
+// indicators only if the request included SmsfSupportIndicator. Without it,
+// NetworkNodeNumber and NetworkNodeDiameterAddress may carry the 3GPP SMSF
+// address, and AdditionalNumber and AdditionalNetworkNodeDiameterAddress the
+// non-3GPP SMSF address (3GPP TS 29.002 V19.1.0 §17.7.6).
 type LocationInfoWithLMSI struct {
 	NetworkNodeNumber                    string
 	NetworkNodeNumberNature              uint8                       // address nature indicator
@@ -474,6 +480,8 @@ type SubscriberIdentity struct {
 }
 
 // RequestedInfo represents the requested information flags for ATI.
+// The caller omits TAdsData in messages sent to a VLR
+// (3GPP TS 29.002 V19.1.0 §17.7.1).
 type RequestedInfo struct {
 	LocationInformation             bool
 	SubscriberState                 bool
@@ -519,6 +527,12 @@ type ProvideSubscriberInfoRes struct {
 }
 
 // SubscriberInfo contains subscriber information returned by ATI (opCode 71).
+// An HLR caller discards LocationInformation, SubscriberState and
+// MsClassmark2 received from an SGSN or MME (via an IWF), and
+// LocationInformationGPRS, PsSubscriberState, GprsMSClass and
+// LocationInformationEPS (not the one in LocationInformation) received from a
+// VLR. It also discards parameters it did not request (3GPP TS 29.002 V19.1.0
+// §17.7.1).
 type SubscriberInfo struct {
 	LocationInformation              *CSLocationInformation            // [0]
 	SubscriberState                  *SubscriberStateInfo              // [1]
@@ -597,6 +611,8 @@ type UserCSGInformation struct {
 }
 
 // LocationInformation5GS is the LocationInformation5GS SEQUENCE (opCode 71).
+// The caller sets CurrentLocationRetrieved when location information was
+// retrieved after successful paging (3GPP TS 29.002 V19.1.0 §17.7.1).
 type LocationInformation5GS struct {
 	NrCellGlobalIdentity     HexBytes          // [0]
 	EUtranCellGlobalIdentity HexBytes          // [1]
@@ -655,6 +671,8 @@ type CSLocationInformation struct {
 	LocationNumber           HexBytes            // raw octets; nil if absent
 	SelectedLSAId            HexBytes            // [5] LSAIdentity; nil if absent
 	UserCSGInformation       *UserCSGInformation // [11]
+	// The caller sets CurrentLocationRetrieved when location information was
+	// retrieved after successful paging (3GPP TS 29.002 V19.1.0 §17.7.1).
 	CurrentLocationRetrieved bool
 	SAIPresent               bool
 }
@@ -666,6 +684,8 @@ type EPSLocationInformation struct {
 	TrackingAreaIdentity     HexBytes          // raw 5 octets; nil if absent
 	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
 	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
+	// The caller sets CurrentLocationRetrieved when location information was
+	// retrieved after successful paging (3GPP TS 29.002 V19.1.0 §17.7.1).
 	CurrentLocationRetrieved bool
 	MmeName                  HexBytes // raw DiameterIdentity FQDN (RFC 6733 §4.3.1); nil if absent
 }
@@ -683,6 +703,8 @@ type GPRSLocationInformation struct {
 	SgsnNumberPlan           uint8
 	SelectedLSAIdentity      HexBytes            // [4] LSAIdentity; nil if absent
 	UserCSGInformation       *UserCSGInformation // [10]
+	// The caller sets CurrentLocationRetrieved when location information was
+	// retrieved after successful paging (3GPP TS 29.002 V19.1.0 §17.7.1).
 	CurrentLocationRetrieved bool
 	SAIPresent               bool
 }
@@ -815,6 +837,9 @@ type RoutingInfo struct {
 
 // ForwardingData SEQUENCE.
 type ForwardingData struct {
+	// A GMSC supporting CAMEL Phase 2 does not check the format of the number
+	// from an HLR that supports it too (3GPP TS 29.002 V19.1.0 §17.7.3), but
+	// Parse rejects a number with no digits or a filler before its last digit.
 	ForwardedToNumber           string
 	ForwardedToNumberNature     uint8
 	ForwardedToNumberPlan       uint8
@@ -1291,6 +1316,10 @@ type ExtCallBarInfo struct {
 // NoReplyConditionTime is 5..30 on encode
 // (ErrNoReplyConditionTimeOutOfRange); the decoder maps the reserved
 // 1..4 → 5 and 31..100 → 30 (3GPP TS 29.002 V19.1.0 §17.7.1).
+// A VLR supporting CAMEL Phase 2 does not check the format of
+// ForwardedToNumber from an HLR that supports it too (3GPP TS 29.002 V19.1.0
+// §17.7.1), but Parse rejects a number with no digits or a filler before its
+// last digit.
 type ExtForwFeature struct {
 	BasicService                *ExtBasicServiceCode // optional
 	SsStatus                    HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status; Parse keeps octet 1 (§17.7.8)
@@ -1415,9 +1444,9 @@ type Sri struct {
 
 // SriResp represents a SendRoutingInfo response.
 //
-// IMSI is OPTIONAL in the ASN.1 and "must be present if SendRoutingInfoRes
-// is not segmented" (3GPP TS 29.002 V19.1.0 §17.7.3); a segment may lack it,
-// so Marshal and Parse treat "" as absent and the rule is the caller's.
+// The caller includes IMSI in an unsegmented result, and in one segment of a
+// result segmented with TC-Result-NL (3GPP TS 29.002 V19.1.0 §17.7.3);
+// Marshal and Parse treat "" as absent.
 type SriResp struct {
 	IMSI                            string
 	ExtendedRoutingInfo             *ExtendedRoutingInfo
@@ -1671,6 +1700,9 @@ type AuthenticationSetList struct {
 // SendAuthenticationInfo represents a SendAuthenticationInfo request
 // (opCode 56) per 3GPP TS 29.002. Sent by the VLR/SGSN/MME to the HLR/HSS
 // to retrieve authentication vectors for subscriber authentication.
+// The caller omits the argument in subsequent invokes within a dialogue
+// and discards any argument received in those invokes before decoding
+// (3GPP TS 29.002 V19.1.0 §17.6.1).
 type SendAuthenticationInfo struct {
 	IMSI                     string // mandatory (TBCD)
 	NumberOfRequestedVectors int    // mandatory 1..5
@@ -1681,6 +1713,8 @@ type SendAuthenticationInfo struct {
 	ReSynchronisationInfo      *ReSynchronisationInfo // SEQUENCE
 
 	// Optional fields (post-extension marker).
+	// The caller excludes RequestingNodeType values 2..5 on the MAP-D and Gr
+	// interfaces (3GPP TS 29.002 V19.1.0 §17.7.1).
 	RequestingNodeType                 *RequestingNodeType // [3]
 	RequestingPLMNId                   HexBytes            // [4] 3 octets
 	NumberOfRequestedAdditionalVectors *int                // [5] 1..5
@@ -1838,9 +1872,10 @@ type ODBHPLMNData struct {
 	PLMNSpecificBarringType4 bool // bit 3
 }
 
-// AccessRestrictionData (BIT STRING SIZE 2..8) per 3GPP TS 29.002 V19.1.0 §17.7.1. Access-type restrictions applied to the
-// subscriber. Per spec, nodes shall ignore restrictions for access types
-// they do not support.
+// AccessRestrictionData (BIT STRING SIZE 2..8) per 3GPP TS 29.002 V19.1.0
+// §17.7.1. A VLR caller ignores the restrictions of access types it does not
+// support; §17.7.1 refers the SGSN handling to TS 23.060, TS 29.060 and
+// TS 29.274.
 type AccessRestrictionData struct {
 	UtranNotAllowed             bool // bit 0
 	GeranNotAllowed             bool // bit 1
@@ -1944,6 +1979,8 @@ type AdditionalSubscriptions struct {
 }
 
 // VoiceBroadcastData per 3GPP TS 29.002 V19.1.0 §17.7.1.
+// The caller sends LongGroupId only to a VLR that indicated long Group ID
+// support in UpdateLocation or RestoreData (3GPP TS 29.002 V19.1.0 §17.7.1).
 // GroupId and LongGroupId are TBCD digit strings (alphabet
 // "0123456789*#abc") of at most 6 and 8 characters; shorter values are
 // padded with the TBCD filler on the wire (GroupId ::= TBCD-STRING
@@ -1958,6 +1995,8 @@ type VoiceBroadcastData struct {
 }
 
 // VoiceGroupCallData per 3GPP TS 29.002 V19.1.0 §17.7.1.
+// The caller sends LongGroupId only to a VLR that indicated long Group ID
+// support in UpdateLocation or RestoreData (3GPP TS 29.002 V19.1.0 §17.7.1).
 // GroupId and LongGroupId are TBCD digit strings (alphabet
 // "0123456789*#abc") of at most 6 and 8 characters; shorter values are
 // padded with the TBCD filler on the wire (GroupId ::= TBCD-STRING
@@ -2050,8 +2089,9 @@ type EDRXCycleLength struct {
 // EDRXCycleLengthList (SEQUENCE SIZE 1..8 OF EDRX-Cycle-Length) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type EDRXCycleLengthList []EDRXCycleLength
 
-// ResetIdList (SEQUENCE SIZE 1..50 OF Reset-Id) per 3GPP TS 29.002 V19.1.0 §17.7.1. Each Reset-Id is an OCTET STRING (SIZE 1..4)
-// unique within the HPLMN.
+// ResetIdList (SEQUENCE SIZE 1..50 OF Reset-Id) per 3GPP TS 29.002 V19.1.0
+// §17.7.1. Each Reset-Id is an OCTET STRING (SIZE 1..4); the caller keeps
+// Reset-Ids unique within the HPLMN.
 type ResetIdList []HexBytes
 
 // AMBR (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1. The two
@@ -2145,6 +2185,8 @@ type GPRSDataList []PDPContext
 
 // GPRSSubscriptionData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type GPRSSubscriptionData struct {
+	// The caller includes CompleteDataListIncluded only in the first segment
+	// of GPRSSubscriptionData when segmented (3GPP TS 29.002 V19.1.0 §17.7.1).
 	CompleteDataListIncluded bool         // optional NULL — true when present
 	GprsDataList             GPRSDataList // [1] mandatory, 1..50 entries
 	ApnOiReplacement         HexBytes     // [3] optional, OCTET STRING SIZE 9..100
@@ -2171,6 +2213,8 @@ type LSADataList []LSAData
 
 // LSAInformation (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type LSAInformation struct {
+	// The caller includes CompleteDataListIncluded only in the first segment
+	// of LSAInformation when segmented (3GPP TS 29.002 V19.1.0 §17.7.1).
 	CompleteDataListIncluded bool                    // optional NULL — true when present
 	LsaOnlyAccessIndicator   *LSAOnlyAccessIndicator // [1] optional
 	LsaDataList              LSADataList             // [2] optional, 1..20 entries when present
@@ -2284,6 +2328,8 @@ type APNConfiguration struct {
 type EPSDataList []APNConfiguration
 
 // APNConfigurationProfile (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
+// The caller includes CompleteDataListIncluded only in the first segment
+// of APNConfigurationProfile when segmented (3GPP TS 29.002 V19.1.0 §17.7.1).
 type APNConfigurationProfile struct {
 	DefaultContext           int         // mandatory, ContextId 1..50
 	CompleteDataListIncluded bool        // optional NULL — true when present
@@ -2344,6 +2390,8 @@ const (
 // LCSClientInternalID (ENUMERATED) per TS 29.002
 // §17.7.8 (gsm_map.LCSClientInternalID).
 // Aliased from go-asn1.
+// For a CAMEL phase 3 PLMN operator client the caller uses
+// LCSClientTargetMSsubscribedService (3GPP TS 29.002 V19.1.0 §17.7.8).
 type LCSClientInternalID = gsm_map.LCSClientInternalID
 
 const (
@@ -2384,6 +2432,8 @@ type ExtExternalClientList []ExternalClient
 
 // PLMNClientList (SEQUENCE SIZE 1..5 OF LCSClientInternalID) per
 // 3GPP TS 29.002 V19.1.0 §17.7.1.
+// For a CAMEL phase 3 PLMN operator client the caller uses
+// LCSClientTargetMSsubscribedService (3GPP TS 29.002 V19.1.0 §17.7.8).
 type PLMNClientList []LCSClientInternalID
 
 // ServiceType (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2429,6 +2479,8 @@ type MOLRList []MOLRClass
 // V19.1.0 §17.7.1. Each entry is an ISDN-AddressString of 1..9 octets, at
 // most 16 digits; Marshal and Parse reject a longer one with the codec's
 // *ber.ConstraintError and one without digits with ErrGMLCListEntryEmpty.
+// The caller sends the complete GMLCList in one segment when segmentation
+// is used (3GPP TS 29.002 V19.1.0 §17.7.1).
 type GMLCList []ISDNNumber
 
 // LCSInformation (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2964,6 +3016,11 @@ type ProvideSubscriberLocationArg struct {
 
 // ProvideSubscriberLocationRes represents a ProvideSubscriberLocation
 // response (opCode 83) per 3GPP TS 29.002 V19.1.0 §17.7.13.
+// The caller sends AddLocationEstimate only if the request included
+// SupportedGADShapes. If it did and an estimate's shape is not marked there
+// as supported, the caller returns MapErrorFacilityNotSupported with
+// ShapeOfLocationEstimateNotSupported instead of a result (3GPP TS 29.002
+// V19.1.0 §17.7.13).
 //
 // LocationEstimate (Ext-GeographicalInformation, 1..20 octets) is mandatory.
 // Parse applies §17.7.13: a valid LocationEstimate discards
@@ -3202,7 +3259,9 @@ type ExtensibleSystemFailureParam struct {
 // AdditionalRoamingNotAllowedCause is present: "if the
 // additionalRoamingNotallowedCause is received by the MSC/VLR or SGSN then
 // the roamingNotAllowedCause shall be discarded" (3GPP TS 29.002 V19.1.0
-// §17.7.7).
+// §17.7.7). Only UpdateLocation and UpdateGprsLocation return
+// roamingNotAllowed (§17.6.1); they are sent by the VLR and SGSN, or by an
+// IWF in their place (§8.1.2.1, §8.1.7.1).
 type RoamingNotAllowedParam struct {
 	RoamingNotAllowedCause           *gsm_map.RoamingNotAllowedCause           // untagged; nil when discarded
 	AdditionalRoamingNotAllowedCause *gsm_map.AdditionalRoamingNotAllowedCause // [0]
@@ -3238,6 +3297,9 @@ type DataMissingParam struct{}
 // GSM CS side. Distinct from AbsentSubscriberSMParam (errorCode 6),
 // which is the SMS-side variant. The optional AbsentSubscriberReason
 // distinguishes imsiDetach / pageReceiveFailure / etc.
+// A caller forwarding a ProvideRoamingNumber response into a SendRoutingInfo
+// response maps purgedMS (3) to imsiDetach (0)
+// (3GPP TS 29.002 V19.1.0 §17.7.7).
 type AbsentSubscriberParam struct {
 	AbsentSubscriberReason *gsm_map.AbsentSubscriberReason // [0]
 }
@@ -3338,6 +3400,12 @@ type DeferredmtLrData struct {
 // SubscriberLocationReportArg represents a SubscriberLocationReport
 // request (opCode 86) per 3GPP TS 29.002 V19.1.0 §17.7.13. Sent
 // from the MSC/SGSN/MME (or GMLC) to report a computed location.
+// For deferredmt-lrResponse, if the saved ProvideSubscriberLocation request
+// included SupportedGADShapes and an estimate's shape was not supported,
+// the caller omits LocationEstimate and AddLocationEstimate and sets
+// DeferredmtLrData.TerminationCause to
+// TerminationShapeOfLocationEstimateNotSupported
+// (3GPP TS 29.002 V19.1.0 §17.7.13).
 //
 // Mandatory fields: LcsEvent, LcsClientID, LcsLocationInfo, and at least one
 // of MSISDN or IMSI. Marshal requires DeferredmtLrData and LcsReferenceNumber
@@ -3600,6 +3668,8 @@ type SGSNCAMELSubscriptionInfo struct {
 // InsertSubscriberDataArg (SEQUENCE) per TS 29.002. All fields are
 // OPTIONAL per spec. Sub-types use their public Go equivalents; opaque scalar
 // fields are surfaced as `HexBytes` or typed integers.
+// The caller sends NetworkAccessMode only in the first sequence when
+// segmentation is used (3GPP TS 29.002 V19.1.0 §17.7.1).
 type InsertSubscriberDataArg struct {
 	// Identification (typically present together)
 	IMSI         string // [0] optional, IMSI digits ("" = absent)
