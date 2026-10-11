@@ -120,6 +120,8 @@ What that means for a consumer:
 
 ### Parse BER-encoded MAP data
 
+Each `Parse` function decodes the BER of one argument or result parameter. TS 29.002 marks several results optional, for example those of CancelLocation, InsertSubscriberData, PurgeMS, SendAuthenticationInfo, ReportSM-DeliveryStatus and unstructuredSS-Request. Such a return result may carry no parameter, and then there is nothing to parse.
+
 ```go
 import gsmmap "github.com/gomaja/go-asn1-gsmmap"
 
@@ -611,6 +613,7 @@ This library provides a **layered API**:
 - **Internally**, these are converted to/from [go-asn1](https://github.com/gomaja/go-asn1)'s generated `gsm_map.*` structs for BER encoding.
 - **OpCode constants** can be imported directly from `github.com/gomaja/go-asn1/telecom/ss7/gsm_map` if needed for TCAP integration.
 - **Validation** of ASN.1 constraints (sizes, including SEQUENCE OF elements, integer ranges, and non-extensible ENUMERATED values) and BIT STRING length consistency is done by go-asn1's strict BER codec on encode and decode. This package also checks TS 23.003 identity digit counts and TS 29.002 semantics (presence rules, sender rules, receiver mappings, and the TBCD alphabet).
+- **Encoding.** `Parse` accepts any BER of ITU-T X.690, including constructed strings and indefinite or long-form lengths. `Marshal` sends the form TS 29.002 §17.1.1 requires: primitive strings and minimal definite lengths. go-asn1 rejects a named BIT STRING padded with 0 bits beyond its SIZE upper bound, although X.680 §22.7 lets a decoder remove them ([go-asn1#129](https://github.com/gomaja/go-asn1/issues/129)).
 
 ### Address handling
 

@@ -185,6 +185,8 @@ func ParsePurgeMS(data []byte) (*PurgeMS, error) {
 }
 
 // ParsePurgeMSRes decodes BER-encoded bytes into a PurgeMSRes (opCode 67).
+// The result of purgeMS is optional (its "-- optional" comment, 3GPP TS 29.002
+// V19.1.0 §17.6.1), so a return result may carry no parameter to parse.
 func ParsePurgeMSRes(data []byte) (*PurgeMSRes, error) {
 	var res gsm_map.PurgeMSRes
 	if err := res.UnmarshalBER(data); err != nil {
@@ -204,7 +206,9 @@ func ParseSendAuthenticationInfo(data []byte) (*SendAuthenticationInfo, error) {
 }
 
 // ParseSendAuthenticationInfoRes decodes BER-encoded bytes into a
-// SendAuthenticationInfoRes (opCode 56).
+// SendAuthenticationInfoRes (opCode 56). The result of sendAuthenticationInfo
+// is optional (its "-- optional" comment, 3GPP TS 29.002 V19.1.0 §17.6.1), so
+// a return result may carry no parameter to parse.
 func ParseSendAuthenticationInfoRes(data []byte) (*SendAuthenticationInfoRes, error) {
 	var res gsm_map.SendAuthenticationInfoRes
 	if err := res.UnmarshalBER(data); err != nil {
@@ -224,8 +228,9 @@ func ParseCancelLocation(data []byte) (*CancelLocation, error) {
 }
 
 // ParseCancelLocationRes decodes BER-encoded bytes into a CancelLocationRes
-// (opCode 3). The response body is effectively empty in practice; only an
-// optional ExtensionContainer is defined in 3GPP TS 29.002.
+// (opCode 3). The result of cancelLocation is optional (its "-- optional"
+// comment, 3GPP TS 29.002 V19.1.0 §17.6.1), so a return result may carry no
+// parameter to parse. CancelLocationRes defines only an extension container.
 func ParseCancelLocationRes(data []byte) (*CancelLocationRes, error) {
 	var res gsm_map.CancelLocationRes
 	if err := res.UnmarshalBER(data); err != nil {
@@ -245,7 +250,9 @@ func ParseInsertSubscriberData(data []byte) (*InsertSubscriberDataArg, error) {
 }
 
 // ParseInsertSubscriberDataRes decodes BER-encoded bytes into an
-// InsertSubscriberDataRes (opCode 7).
+// InsertSubscriberDataRes (opCode 7). The result of insertSubscriberData is
+// optional (its "-- optional" comment, 3GPP TS 29.002 V19.1.0 §17.6.1), so a
+// return result may carry no parameter to parse.
 func ParseInsertSubscriberDataRes(data []byte) (*InsertSubscriberDataRes, error) {
 	var res gsm_map.InsertSubscriberDataRes
 	if err := res.UnmarshalBER(data); err != nil {
@@ -325,7 +332,10 @@ func ParseReportSMDeliveryStatus(data []byte) (*ReportSMDeliveryStatus, error) {
 }
 
 // ParseReportSMDeliveryStatusRes decodes BER-encoded bytes into a
-// ReportSMDeliveryStatus-Res (opCode 47).
+// ReportSMDeliveryStatus-Res (opCode 47). The result of
+// reportSM-DeliveryStatus is optional (its "-- optional" comment, 3GPP TS
+// 29.002 V19.1.0 §17.6.5), so a return result may carry no parameter to
+// parse.
 func ParseReportSMDeliveryStatusRes(data []byte) (*ReportSMDeliveryStatusRes, error) {
 	var res gsm_map.ReportSMDeliveryStatusRes
 	if err := res.UnmarshalBER(data); err != nil {
