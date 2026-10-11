@@ -27,8 +27,15 @@ func TestMCSSInfo_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("fromWire: %v", err)
 	}
-	if !reflect.DeepEqual(in, out) {
-		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, out)
+	// Unsupported status octets 2..5 are discarded on reception
+	// (3GPP TS 29.002 V19.1.0 §17.7.8), while the sender keeps them.
+	if len(w.SsStatus) != 2 {
+		t.Fatal("sender discarded extended status")
+	}
+	want := *in
+	want.SsStatus = HexBytes{0x01}
+	if !reflect.DeepEqual(&want, out) {
+		t.Fatalf("mismatch:\nwant=%+v\nout=%+v", &want, out)
 	}
 }
 

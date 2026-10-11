@@ -10,8 +10,8 @@
 // and the same for T-BcsmCamelTDPDataList (t-BcsmTriggerDetectionPoint),
 // SMS-CAMEL-TDP-DataList (sms-TriggerDetectionPoint) and
 // GPRS-CamelTDPDataList (gprs-TriggerDetectionPoint). Marshal rejects a
-// repeated TDP; Parse rejects one among the entries the receiver keeps, so
-// an entry it ignores for an unlisted TDP does not count.
+// repeated TDP; Parse preserves repeated known entries and ignores entries
+// for an unlisted TDP.
 package gsmmap
 
 import (
@@ -333,19 +333,21 @@ func TestMarshalDistinctTriggerDetectionPoints(t *testing.T) {
 	}
 }
 
-func TestParseRejectsDuplicateTriggerDetectionPoint(t *testing.T) {
+func TestParsePreservesDuplicateTriggerDetectionPoint(t *testing.T) {
 	for _, c := range tdpListCases() {
 		t.Run(c.name, func(t *testing.T) {
-			_, err := c.parse(t, slices.Concat(c.keep, c.keep[:1]))
-			wantDuplicateTDP(t, err, c.field, len(c.keep))
-			for _, tdp := range c.keep {
-				_, err := c.parse(t, []int64{tdp, tdp})
-				wantDuplicateTDP(t, err, c.field, 1)
+			for _, tdps := range [][]int64{slices.Concat(c.keep, c.keep[:1]), {c.keep[0], c.keep[0]}} {
+				got, err := c.parse(t, tdps)
+				if err != nil {
+					t.Fatal(err)
+				}
+				wantEqual(t, c.field, tdps, got)
 			}
-			// An ignored entry before the pair: the error names the wire
-			// index of the repeated entry.
-			_, err = c.parse(t, []int64{c.ignored, c.keep[0], c.keep[0]})
-			wantDuplicateTDP(t, err, c.field, 2)
+			got, err := c.parse(t, []int64{c.ignored, c.keep[0], c.keep[0]})
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantEqual(t, c.field, []int64{c.keep[0], c.keep[0]}, got)
 		})
 	}
 }

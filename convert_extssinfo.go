@@ -138,7 +138,7 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 }
 
 func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, error) {
-	out := ExtForwFeature{SsStatus: HexBytes(w.SsStatus)}
+	out := ExtForwFeature{SsStatus: extSSStatusFromWire(w.SsStatus)}
 	if w.BasicService != nil {
 		bs, err := convertWireToExtBasicServiceCode(w.BasicService)
 		if err != nil {
@@ -159,7 +159,7 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		out.ForwardedToSubaddress = HexBytes(*w.ForwardedToSubaddress)
 	}
 	if w.ForwardingOptions != nil {
-		out.ForwardingOptions = HexBytes(*w.ForwardingOptions)
+		out.ForwardingOptions = extForwOptionsFromWire(*w.ForwardingOptions)
 	}
 	if w.NoReplyConditionTime != nil {
 		// 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime: "If received:
@@ -235,7 +235,7 @@ func convertExtCallBarringFeatureToWire(f *ExtCallBarringFeature) (gsm_map.ExtCa
 }
 
 func convertWireToExtCallBarringFeature(w *gsm_map.ExtCallBarringFeature) (ExtCallBarringFeature, error) {
-	out := ExtCallBarringFeature{SsStatus: HexBytes(w.SsStatus)}
+	out := ExtCallBarringFeature{SsStatus: extSSStatusFromWire(w.SsStatus)}
 	if w.BasicService != nil {
 		bs, err := convertWireToExtBasicServiceCode(w.BasicService)
 		if err != nil {
@@ -331,7 +331,9 @@ func convertCUGFeatureToWire(f *CUGFeature) (gsm_map.CUGFeature, error) {
 }
 
 func convertWireToCUGFeature(w *gsm_map.CUGFeature) (CUGFeature, error) {
-	out := CUGFeature{InterCUGRestrictions: w.InterCUGRestrictions[0]}
+	// Ignore unsupported bits 8..3 (3GPP TS 29.002 V19.1.0 §17.7.1
+	// InterCUG-Restrictions). The codec enforces the one-octet size.
+	out := CUGFeature{InterCUGRestrictions: w.InterCUGRestrictions[0] & 0x03}
 	if w.BasicService != nil {
 		bs, err := convertWireToExtBasicServiceCode(w.BasicService)
 		if err != nil {
@@ -426,7 +428,7 @@ func convertExtSSDataToWire(d *ExtSSData) (*gsm_map.ExtSSData, error) {
 func convertWireToExtSSData(w *gsm_map.ExtSSData) (*ExtSSData, error) {
 	out := &ExtSSData{
 		SsCode:   SsCode(w.SsCode[0]),
-		SsStatus: HexBytes(w.SsStatus),
+		SsStatus: extSSStatusFromWire(w.SsStatus),
 	}
 	if w.SsSubscriptionOption != nil {
 		d, err := convertWireToSSSubscriptionOption(w.SsSubscriptionOption)
@@ -472,15 +474,8 @@ func convertEMLPPInfoToWire(e *EMLPPInfo) (*gsm_map.EMLPPInfo, error) {
 }
 
 func convertWireToEMLPPInfo(w *gsm_map.EMLPPInfo) (*EMLPPInfo, error) {
-	// Spare values 7..15 map to priority 4 (3GPP TS 29.002 V19.1.0 §17.7.8).
-	mapPriority := func(v int64) int {
-		if v >= 7 && v <= 15 {
-			return 4
-		}
-		return int(v)
-	}
-	maxP := mapPriority(w.MaximumentitledPriority)
-	defP := mapPriority(w.DefaultPriority)
+	maxP := emlppPriorityFromWire(w.MaximumentitledPriority)
+	defP := emlppPriorityFromWire(w.DefaultPriority)
 	return &EMLPPInfo{MaximumEntitledPriority: maxP, DefaultPriority: defP}, nil
 }
 

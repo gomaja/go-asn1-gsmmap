@@ -295,6 +295,10 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 	out.LcsPrivacyCheck = convertWireToLCSPrivacyCheck(w.LcsPrivacyCheck)
 	if w.AreaEventInfo != nil {
 		out.AreaEventInfo = convertWireToAreaEventInfo(w.AreaEventInfo)
+		// TS 29.002 V19.1.0 §17.7.13: beingInsideArea always means oneTimeEvent.
+		if out.LocationType.DeferredLocationEventType != nil && out.LocationType.DeferredLocationEventType.BeingInsideArea {
+			out.AreaEventInfo.OccurrenceInfo = new(OccurrenceOneTimeEvent)
+		}
 	}
 	if w.HGmlcAddress != nil {
 		addr, err := gsn.Parse(*w.HGmlcAddress)

@@ -82,6 +82,10 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 	if w == nil {
 		return nil, ErrSLRResNil
 	}
+	// TS 29.002 V19.1.0 §17.7.13: both identifiers make the response unsuccessful.
+	if w.NaESRK != nil && w.NaESRD != nil {
+		return nil, ErrSLRResRoutingIdentifiersReturnError
+	}
 
 	out := &SubscriberLocationReportRes{}
 

@@ -12,6 +12,33 @@ import (
 
 const errEncodingIMSI = "encoding IMSI: %w"
 
+// extSSStatusFromWire discards unsupported octets 2..5 of Ext-SS-Status
+// (3GPP TS 29.002 V19.1.0 §17.7.8), retaining all bits of the first octet.
+func extSSStatusFromWire(v []byte) HexBytes {
+	if len(v) == 0 {
+		return nil
+	}
+	return HexBytes{v[0]}
+}
+
+// extForwOptionsFromWire discards unsupported octets 2..5 of Ext-ForwOptions
+// (3GPP TS 29.002 V19.1.0 §17.7.1), retaining all bits of the first octet.
+func extForwOptionsFromWire(v []byte) HexBytes {
+	if len(v) == 0 {
+		return nil
+	}
+	return HexBytes{v[0]}
+}
+
+// emlppPriorityFromWire maps spare EMLPP-Priority values to priority 4
+// (3GPP TS 29.002 V19.1.0 §17.7.8). ASN.1 range checks belong to the codec.
+func emlppPriorityFromWire(v int64) int {
+	if v >= 7 && v <= 15 {
+		return 4
+	}
+	return int(v)
+}
+
 // encodeAddressField encodes digits into an AddressString (3GPP TS 29.002
 // V19.1.0 §17.7.8) with the given nature of address (address.Nature*,
 // bits 7..5) and numbering plan (address.Plan*, bits 4..1). Zero is

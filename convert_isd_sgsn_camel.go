@@ -121,8 +121,7 @@ func convertWireToGPRSCamelTDPDataList(w *gsm_map.GPRSCamelTDPDataList) (GPRSCam
 	if w == nil {
 		return nil, nil
 	}
-	return convertTDPDataWireList("GPRSCamelTDPDataList", w.Values, convertWireToGPRSCamelTDPData,
-		func(d *GPRSCamelTDPData) GPRSTriggerDetectionPoint { return d.GprsTriggerDetectionPoint })
+	return convertIgnorableWireList("GPRSCamelTDPDataList", w.Values, convertWireToGPRSCamelTDPData)
 }
 
 // ============================================================================

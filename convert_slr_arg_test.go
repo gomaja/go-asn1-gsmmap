@@ -149,7 +149,7 @@ func TestSLRArgRoundTrip(t *testing.T) {
 // through real BER encoding.
 func TestSLRArgBERRoundTrip(t *testing.T) {
 	in := minimalSLRArg()
-	in.LocationEstimate = HexBytes{0x04, 0x10, 0x20, 0x30}
+	in.LocationEstimate = HexBytes{0x04, 0x10, 0x20, 0x30, 0, 0, 0}
 	in.MSISDN = "31612345678"
 	in.MSISDNNature = 0x10
 	in.MSISDNPlan = 0x01

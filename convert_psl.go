@@ -332,16 +332,10 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 	}
 	out := &LCSQoS{}
 	if w.HorizontalAccuracy != nil {
-		if (*w.HorizontalAccuracy)[0]&0x80 != 0 {
-			return nil, fmt.Errorf("LCSQoS.HorizontalAccuracy=0x%02x: %w", (*w.HorizontalAccuracy)[0], ErrHorizontalAccuracyReservedBit)
-		}
 		out.HorizontalAccuracy = HexBytes(*w.HorizontalAccuracy)
 	}
 	out.VerticalCoordinateRequest = nullPtrToBool(w.VerticalCoordinateRequest)
 	if w.VerticalAccuracy != nil {
-		if (*w.VerticalAccuracy)[0]&0x80 != 0 {
-			return nil, fmt.Errorf("LCSQoS.VerticalAccuracy=0x%02x: %w", (*w.VerticalAccuracy)[0], ErrVerticalAccuracyReservedBit)
-		}
 		out.VerticalAccuracy = HexBytes(*w.VerticalAccuracy)
 	}
 	if w.ResponseTime != nil {

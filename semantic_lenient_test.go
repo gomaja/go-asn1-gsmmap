@@ -74,6 +74,16 @@ func semLenientCases() []semLenientCase {
 		}
 	}
 	unknownUpdate := gsm_map.TypeOfUpdate(2)
+	knownUpdate := gsm_map.TypeOfUpdateMmeChange
+	pdp := func(t *testing.T) *gsm_map.InsertSubscriberDataArg {
+		w := semMust(convertPDPContextToWire(&PDPContext{
+			PdpContextId: 1, PdpType: HexBytes{0xf1, 0x21},
+			QosSubscribed: HexBytes{0x09, 0x01, 0x02}, Apn: HexBytes{1, 'a'},
+		}))
+		return &gsm_map.InsertSubscriberDataArg{GprsSubscriptionData: &gsm_map.GPRSSubscriptionData{
+			GprsDataList: &gsm_map.GPRSDataList{Values: []gsm_map.PDPContext{*w}},
+		}}
+	}
 	return []semLenientCase{
 		{ErrAlertingPatternReserved, asParser(ParseUSSDArg), func(t *testing.T) semWire {
 			w := semMust(convertUSSDArgToWire(&USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: HexBytes{0x41}}))
@@ -113,6 +123,51 @@ func semLenientCases() []semLenientCase {
 		}},
 		{ErrCancelLocInvalidCancellationType, asParser(ParseCancelLocation), cancel(3, nil)},
 		{ErrCancelLocInvalidTypeOfUpdate, asParser(ParseCancelLocation), cancel(0, &unknownUpdate)},
+		{ErrCancelLocTypeOfUpdateNotApplicable, asParser(ParseCancelLocation), cancel(1, &knownUpdate)},
+		{ErrCancelLocMtrfBothSet, asParser(ParseCancelLocation), func(t *testing.T) semWire {
+			return &gsm_map.CancelLocationArg{
+				Identity:                   gsm_map.NewIdentityImsi(semAddrIMSI),
+				MtrfSupportedAndAuthorized: &struct{}{}, MtrfSupportedAndNotAuthorized: &struct{}{},
+			}
+		}},
+		{ErrExtQoSHierarchyViolated, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+			w := pdp(t)
+			w.GprsSubscriptionData.GprsDataList.Values[0].Ext2QoSSubscribed = new(gsm_map.Ext2QoSSubscribed{0x01})
+			return w
+		}},
+		{ErrExtPDPAddressWithoutPDPAddress, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+			w := pdp(t)
+			w.GprsSubscriptionData.GprsDataList.Values[0].ExtPdpAddress = new(gsm_map.PDPAddress{192, 0, 2, 1})
+			return w
+		}},
+		{ErrCamelDuplicateTriggerDetectionPoint, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+			w := camel(t)
+			l := w.VlrCamelSubscriptionInfo.OCSI.OBcsmCamelTDPDataList
+			l.Values = append(l.Values, l.Values[0])
+			return w
+		}},
+		{ErrCamelDCSICapabilityHandlingWithoutList, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+			w := camel(t)
+			w.VlrCamelSubscriptionInfo.DCSI = &gsm_map.DCSI{CamelCapabilityHandling: new(gsm_map.CamelCapabilityHandling(cch))}
+			return w
+		}},
+		{ErrCamelMissingDestinationNumberCriteria, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+			w := camel(t)
+			w.VlrCamelSubscriptionInfo.OBcsmCamelTDPCriteriaList = &gsm_map.OBcsmCamelTDPCriteriaList{
+				Values: []gsm_map.OBcsmCamelTDPCriteria{{
+					OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+					DestinationNumberCriteria:  &gsm_map.DestinationNumberCriteria{MatchType: MatchTypeInhibiting},
+				}},
+			}
+			return w
+		}},
+		{ErrGroupIdFillerRequired, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+			return &gsm_map.InsertSubscriberDataArg{VgcsSubscriptionData: &gsm_map.VGCSDataList{
+				Values: []gsm_map.VoiceGroupCallData{{
+					GroupId: gsm_map.GroupId{0x21, 0x43, 0x65}, LongGroupId: new(gsm_map.LongGroupId{0x21, 0x43, 0x65, 0x87}),
+				}},
+			}}
+		}},
 		{ErrCamelInvalidTTriggerPoint, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
 			w := camel(t)
 			w.VlrCamelSubscriptionInfo.TBCSMCAMELTDPCriteriaList.Values[0].TBCSMTriggerDetectionPoint = 15
@@ -163,6 +218,21 @@ func semLenientCases() []semLenientCase {
 			w.LcsClientID.LcsClientInternalID = &id
 			return w
 		}},
+		{ErrHorizontalAccuracyReservedBit, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+			w := pslWithClient(t)
+			w.LcsQoS = &gsm_map.LCSQoS{HorizontalAccuracy: new(gsm_map.HorizontalAccuracy{0x80})}
+			return w
+		}},
+		{ErrVerticalAccuracyReservedBit, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+			w := pslWithClient(t)
+			w.LcsQoS = &gsm_map.LCSQoS{VerticalAccuracy: new(gsm_map.VerticalAccuracy{0x80})}
+			return w
+		}},
+		{ErrPeriodicLDRProductExceeded, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+			w := pslWithClient(t)
+			w.PeriodicLDRInfo = &gsm_map.PeriodicLDRInfo{ReportingAmount: 100, ReportingInterval: 86400}
+			return w
+		}},
 		{ErrLCSClientTypeInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			w.LcsClientID.LcsClientType = 4
@@ -193,7 +263,7 @@ func semLenientCases() []semLenientCase {
 			return w
 		}},
 		{ErrAccuracyFulfilmentIndicatorInvalid, asParser(ParseProvideSubscriberLocationRes), func(t *testing.T) semWire {
-			w := semMust(convertProvideSubscriberLocationResToWire(&ProvideSubscriberLocationRes{LocationEstimate: ExtGeographicalInformation{0x10, 0, 0, 0, 0, 0, 0}}))
+			w := semMust(convertProvideSubscriberLocationResToWire(&ProvideSubscriberLocationRes{LocationEstimate: ExtGeographicalInformation{0, 0, 0, 0, 0, 0, 0}}))
 			a := gsm_map.AccuracyFulfilmentIndicator(2)
 			w.AccuracyFulfilmentIndicator = &a
 			return w

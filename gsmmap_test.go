@@ -4223,25 +4223,28 @@ func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 	})
 }
 
-// TestCamelDecodeEnforcesDestinationNumberCriteriaListRule ensures the decoder
-// rejects a DestinationNumberCriteria with neither list populated, mirroring
-// the encoder's at-least-one-list requirement.
-func TestCamelDecodeEnforcesDestinationNumberCriteriaListRule(t *testing.T) {
-	dnc := &gsm_map.DestinationNumberCriteria{
-		MatchType: gsm_map.MatchTypeInhibiting,
-		// No DestinationNumberList nor DestinationNumberLengthList
-	}
+// TestCamelDecodePreservesDestinationNumberCriteriaListAbsence distinguishes
+// receiver preservation from the sender at-least-one-list requirement of
+// TS 29.002 V19.1.0 §17.7.1 DestinationNumberCriteria.
+func TestCamelDecodePreservesDestinationNumberCriteriaListAbsence(t *testing.T) {
+	dnc := &gsm_map.DestinationNumberCriteria{MatchType: gsm_map.MatchTypeInhibiting}
 	wire := gsm_map.GmscCamelSubscriptionInfo{
-		OBcsmCamelTDPCriteriaList: &gsm_map.OBcsmCamelTDPCriteriaList{Values: []gsm_map.OBcsmCamelTDPCriteria{
-			{
-				OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
-				DestinationNumberCriteria:  dnc,
-			},
-		}},
+		OBcsmCamelTDPCriteriaList: &gsm_map.OBcsmCamelTDPCriteriaList{Values: []gsm_map.OBcsmCamelTDPCriteria{{
+			OBcsmTriggerDetectionPoint: gsm_map.OBcsmTriggerDetectionPointCollectedInfo,
+			DestinationNumberCriteria:  dnc,
+		}}},
 	}
-	_, err := convertWireToGmscCamelSubInfo(&wire)
-	if !errors.Is(err, ErrCamelMissingDestinationNumberCriteria) {
-		t.Errorf("want ErrCamelMissingDestinationNumberCriteria, got %v", err)
+	parent := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &gsm_map.ExtendedRoutingInfo{Choice: gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo, CamelRoutingInfo: &gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: wire}}}
+	got, err := ParseSriResp(strictBER(t, parent))
+	if err != nil {
+		t.Fatal(err)
+	}
+	criteria := got.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.OBcsmCamelTDPCriteriaList[0].DestinationNumberCriteria
+	if criteria == nil || criteria.MatchType != MatchTypeInhibiting || criteria.DestinationNumberList != nil || criteria.DestinationNumberLengthList != nil {
+		t.Fatalf("criteria = %+v", criteria)
+	}
+	if _, err := got.Marshal(); !errors.Is(err, ErrCamelMissingDestinationNumberCriteria) {
+		t.Fatalf("Marshal: %v", err)
 	}
 }
 

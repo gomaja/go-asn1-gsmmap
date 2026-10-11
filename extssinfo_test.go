@@ -418,7 +418,15 @@ func TestExtCallBarInfoRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if diff := cmp.Diff(in, got); diff != "" {
+	// Unsupported status octets 2..5 are discarded on reception
+	// (3GPP TS 29.002 V19.1.0 §17.7.8), while the sender keeps them.
+	if len(wire.CallBarringFeatureList.Values[1].SsStatus) != 2 {
+		t.Fatal("sender discarded extended status")
+	}
+	want := *in
+	want.CallBarringFeatureList = append([]ExtCallBarringFeature(nil), in.CallBarringFeatureList...)
+	want.CallBarringFeatureList[1].SsStatus = HexBytes{0x01}
+	if diff := cmp.Diff(&want, got); diff != "" {
 		t.Errorf("round-trip (-want +got):\n%s", diff)
 	}
 }

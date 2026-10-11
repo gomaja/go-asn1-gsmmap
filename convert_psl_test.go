@@ -432,7 +432,7 @@ func TestLCSQoSVerticalAccuracyMustBeOneOctet(t *testing.T) {
 
 // Spec mandates bit 8 = 0 on the Horizontal-Accuracy / Vertical-Accuracy
 // uncertainty code octet (3GPP TS 29.002 V19.1.0 §17.7.13).
-// MSB-set values must be rejected on both encode and decode.
+// Marshal rejects MSB-set values; Parse preserves the received octet.
 func TestLCSQoSHorizontalAccuracyReservedBitRejected(t *testing.T) {
 	_, err := convertLCSQoSToWire(&LCSQoS{HorizontalAccuracy: HexBytes{0x80}})
 	if !errors.Is(err, ErrHorizontalAccuracyReservedBit) {
@@ -443,9 +443,9 @@ func TestLCSQoSHorizontalAccuracyReservedBitRejected(t *testing.T) {
 		t.Errorf("want ErrHorizontalAccuracyReservedBit on encode (0xff), got %v", err)
 	}
 	w := &gsm_map.LCSQoS{HorizontalAccuracy: &gsm_map.HorizontalAccuracy{0x80}}
-	_, err = convertWireToLCSQoS(w)
-	if !errors.Is(err, ErrHorizontalAccuracyReservedBit) {
-		t.Errorf("want ErrHorizontalAccuracyReservedBit on decode, got %v", err)
+	got, err := convertWireToLCSQoS(w)
+	if err != nil || !reflect.DeepEqual(got.HorizontalAccuracy, HexBytes{0x80}) {
+		t.Errorf("want received HorizontalAccuracy preserved, got %+v, %v", got, err)
 	}
 }
 
@@ -455,9 +455,9 @@ func TestLCSQoSVerticalAccuracyReservedBitRejected(t *testing.T) {
 		t.Errorf("want ErrVerticalAccuracyReservedBit on encode, got %v", err)
 	}
 	w := &gsm_map.LCSQoS{VerticalAccuracy: &gsm_map.VerticalAccuracy{0xc0}}
-	_, err = convertWireToLCSQoS(w)
-	if !errors.Is(err, ErrVerticalAccuracyReservedBit) {
-		t.Errorf("want ErrVerticalAccuracyReservedBit on decode, got %v", err)
+	got, err := convertWireToLCSQoS(w)
+	if err != nil || !reflect.DeepEqual(got.VerticalAccuracy, HexBytes{0xc0}) {
+		t.Errorf("want received VerticalAccuracy preserved, got %+v, %v", got, err)
 	}
 }
 

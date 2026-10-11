@@ -19,12 +19,12 @@ func TestParseGroupIdWithLongGroupId(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		groupID gsm_map.GroupId
-		want    error
+		want    string
 	}{
-		{"six fillers", gsm_map.GroupId{0xFF, 0xFF, 0xFF}, nil},
-		{"two digits", gsm_map.GroupId{0x21, 0xFF, 0xFF}, ErrGroupIdFillerRequired},
-		{"one digit", gsm_map.GroupId{0xF1, 0xFF, 0xFF}, ErrGroupIdFillerRequired},
-		{"six digits", gsm_map.GroupId{0x21, 0x43, 0x65}, ErrGroupIdFillerRequired},
+		{"six fillers", gsm_map.GroupId{0xFF, 0xFF, 0xFF}, ""},
+		{"two digits", gsm_map.GroupId{0x21, 0xFF, 0xFF}, "12"},
+		{"one digit", gsm_map.GroupId{0xF1, 0xFF, 0xFF}, "1"},
+		{"six digits", gsm_map.GroupId{0x21, 0x43, 0x65}, "123456"},
 	} {
 		lg := long
 		vbs := gsm_map.VBSDataList{Values: []gsm_map.VoiceBroadcastData{{Groupid: tc.groupID, LongGroupId: &lg}}}
@@ -39,16 +39,27 @@ func TestParseGroupIdWithLongGroupId(t *testing.T) {
 					t.Fatalf("MarshalBER: %v", err)
 				}
 				got, err := ParseInsertSubscriberData(data)
-				if !errors.Is(err, tc.want) {
-					t.Fatalf("ParseInsertSubscriberData: err = %v, want %v", err, tc.want)
-				}
 				if err != nil {
+					t.Fatal(err)
+				}
+				var shortID, longID string
+				if where == "VBS" {
+					shortID, longID = got.VbsSubscriptionData[0].GroupId, got.VbsSubscriptionData[0].LongGroupId
+				} else {
+					shortID, longID = got.VgcsSubscriptionData[0].GroupId, got.VgcsSubscriptionData[0].LongGroupId
+				}
+				if shortID != tc.want || longID != "12345678" {
+					t.Fatalf("IDs = %q, %q", shortID, longID)
+				}
+				out, err := got.Marshal()
+				if tc.want != "" {
+					if !errors.Is(err, ErrGroupIdFillerRequired) {
+						t.Fatalf("Marshal: %v", err)
+					}
 					return
 				}
-				// The parsed value marshals back to the same octets.
-				out, err := got.Marshal()
 				if err != nil {
-					t.Fatalf("Marshal: %v", err)
+					t.Fatal(err)
 				}
 				if string(out) != string(data) {
 					t.Errorf("Marshal = %x, want %x", out, data)

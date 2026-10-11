@@ -348,7 +348,9 @@ const (
 // EpsInfo is the EPS-Info CHOICE (opCode 23).
 // Set exactly one alternative: either PdnGwUpdate (non-nil) or
 // IsrInformation, whose IsrInformationBits bits fill exactly
-// (IsrInformationBits+7)/8 octets.
+// (IsrInformationBits+7)/8 octets. Parse ignores a PdnGwUpdate without
+// PdnGwIdentity and clears unknown ISR bits 3..7, retaining its bit length
+// (3GPP TS 29.002 V19.1.0 §17.7.1).
 type EpsInfo struct {
 	PdnGwUpdate        *PdnGwUpdate
 	IsrInformation     HexBytes // BIT STRING content
@@ -505,7 +507,7 @@ type ProvideSubscriberInfo struct {
 	IMSI          string        // mandatory (TBCD)
 	LMSI          HexBytes      // [1] 4 octets; nil if absent
 	RequestedInfo RequestedInfo // mandatory (reuses ATI RequestedInfo)
-	CallPriority  *int          // [4] EMLPP-Priority 0..15; nil if absent
+	CallPriority  *int          // [4] EMLPP-Priority; Parse maps 7..15 to 4 (§17.7.8); nil if absent
 }
 
 // ProvideSubscriberInfoRes represents a ProvideSubscriberInfo response (opCode 70).
@@ -535,7 +537,9 @@ type SubscriberInfo struct {
 
 // PsSubscriberState is the PS-SubscriberState CHOICE (opCode 71).
 // Set exactly one alternative. The PDP-ContextInfoList alternatives carry
-// opaque BER-encoded gsm_map.PDPContextInfo bytes.
+// opaque gsm_map.PDPContextInfo bytes, in DER from Parse, with every extension
+// kept: 3GPP TS 29.002 V19.1.0 §17.7.11 has the receiver discard the private
+// extensions it does not support, and only the caller knows which it supports.
 type PsSubscriberState struct {
 	NotProvidedFromSGSNorMME         bool                // [0] NULL
 	PsDetached                       bool                // [1] NULL
@@ -877,7 +881,8 @@ const (
 
 // DestinationNumberCriteria per 3GPP TS 29.002.
 // At least one of DestinationNumberList or DestinationNumberLengthList must
-// be present when this criteria SEQUENCE is set. Each DestinationNumberList
+// be present when sending this criteria SEQUENCE. Parse preserves list absence
+// (3GPP TS 29.002 V19.1.0 §17.7.1). Each DestinationNumberList
 // entry is an ISDN-AddressString of 1..9 octets, at most 16 digits; Marshal
 // and Parse reject a longer one with the codec's *ber.ConstraintError.
 type DestinationNumberCriteria struct {
@@ -991,9 +996,8 @@ type DPAnalysedInfoCriterium struct {
 // CamelCapabilityHandling are absent on the wire and back, and the presence
 // rules of the reassembled D-CSI are the caller's to check. Only an
 // unsegmented D-CSI or its first segment carries CamelCapabilityHandling, and
-// both carry the list, so Marshal and Parse reject a D-CSI with
-// CamelCapabilityHandling and no list
-// (ErrCamelDCSICapabilityHandlingWithoutList).
+// both carry the list, so Marshal rejects capability without a list
+// (ErrCamelDCSICapabilityHandlingWithoutList). Parse preserves list absence.
 //
 // 3GPP TS 29.002 V19.1.0 §17.7.1: "notificationToCSE and csi-Active shall
 // not be present when D-CSI is sent to VLR/GMSC.
@@ -1253,7 +1257,7 @@ type CUGSubscription struct {
 type CUGFeature struct {
 	BasicService         *ExtBasicServiceCode // optional
 	PreferentialCUGIndex *int                 // optional 0..32767
-	InterCUGRestrictions uint8                // mandatory; 1 octet bit-encoded per spec
+	InterCUGRestrictions uint8                // mandatory; Parse retains bits 2..1 (§17.7.1)
 }
 
 // CUGInfo per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -1265,7 +1269,7 @@ type CUGInfo struct {
 // ExtCallBarringFeature per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ExtCallBarringFeature struct {
 	BasicService *ExtBasicServiceCode // optional
-	SsStatus     HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status
+	SsStatus     HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status; Parse keeps octet 1 (§17.7.8)
 }
 
 // ExtCallBarInfo per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -1278,13 +1282,14 @@ type ExtCallBarInfo struct {
 //
 // ForwardedToNumber + ForwardingOptions + NoReplyConditionTime are all
 // optional on the wire; the encoder writes whatever subset the caller
-// populated. ForwardingOptions is 1..5 octets per spec.
+// populated. ForwardingOptions is 1..5 octets per spec; Parse retains
+// only its first octet (§17.7.1).
 // NoReplyConditionTime is 5..30 on encode
 // (ErrNoReplyConditionTimeOutOfRange); the decoder maps the reserved
 // 1..4 → 5 and 31..100 → 30 (3GPP TS 29.002 V19.1.0 §17.7.1).
 type ExtForwFeature struct {
 	BasicService                *ExtBasicServiceCode // optional
-	SsStatus                    HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status
+	SsStatus                    HexBytes             // [4] mandatory, 1..5 octets per Ext-SS-Status; Parse keeps octet 1 (§17.7.8)
 	ForwardedToNumber           string               // [5] optional ISDN-AddressString
 	ForwardedToNumberNature     uint8
 	ForwardedToNumberPlan       uint8
@@ -1305,7 +1310,7 @@ type ExtForwInfo struct {
 // ExtSSData per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ExtSSData struct {
 	SsCode                SsCode                // mandatory
-	SsStatus              HexBytes              // [4] mandatory, 1..5 octets per Ext-SS-Status
+	SsStatus              HexBytes              // [4] mandatory, 1..5 octets per Ext-SS-Status; Parse keeps octet 1 (§17.7.8)
 	SsSubscriptionOption  *SSSubscriptionOption // optional CHOICE
 	BasicServiceGroupList []ExtBasicServiceCode // optional, 1..32 entries when present
 }
@@ -1401,7 +1406,7 @@ type Sri struct {
 	GsmSCFInitiatedCall             bool
 	SuppressMTSS                    *SuppressMTSSFlags
 	MtRoamingRetrySupported         bool
-	CallPriority                    *int
+	CallPriority                    *int // Parse maps 7..15 to 4 (3GPP TS 29.002 V19.1.0 §17.7.8)
 }
 
 // SriResp represents a SendRoutingInfo response.
@@ -1697,10 +1702,9 @@ const (
 	CancellationTypeInitialAttachProcedure = gsm_map.CancellationTypeInitialAttachProcedure
 )
 
-// TypeOfUpdate per 3GPP TS 29.002 (opCode 3). This field is only valid
-// when CancellationType is updateProcedure or initialAttachProcedure.
-// The constraint is enforced on both the encode and decode paths and
-// returns ErrCancelLocTypeOfUpdateNotApplicable when violated.
+// TypeOfUpdate per 3GPP TS 29.002 V19.1.0 §17.7.1 (opCode 3). Marshal
+// requires CancellationType updateProcedure or initialAttachProcedure
+// (ErrCancelLocTypeOfUpdateNotApplicable); Parse preserves the received value.
 type TypeOfUpdate = gsm_map.TypeOfUpdate
 
 const (
@@ -1726,6 +1730,8 @@ type CancelLocationIMSIWithLMSI struct {
 // 3GPP TS 29.002. It is sent by the HLR to the VLR/SGSN to remove the
 // subscriber's location record — e.g. after a successful location update
 // in another VLR, on subscription withdrawal, or on initial EPS attach.
+// Marshal forbids both MTRF flags together; Parse preserves both received
+// flags (3GPP TS 29.002 V19.1.0 §17.7.1).
 type CancelLocation struct {
 	Identity         CancelLocationIdentity // mandatory CHOICE
 	CancellationType *CancellationType      // optional ENUMERATED
@@ -1733,7 +1739,7 @@ type CancelLocation struct {
 	// Optional fields (post-extension marker).
 	TypeOfUpdate                  *TypeOfUpdate // [0] ENUMERATED
 	MtrfSupportedAndAuthorized    bool          // [1] NULL
-	MtrfSupportedAndNotAuthorized bool          // [2] NULL (mutually exclusive with the above)
+	MtrfSupportedAndNotAuthorized bool          // [2] NULL (Marshal: mutually exclusive with the above)
 	NewMSCNumber                  string        // [3] ISDN-AddressString
 	NewMSCNumberNature            uint8         // address nature indicator
 	NewMSCNumberPlan              uint8         // numbering plan indicator
@@ -1843,10 +1849,13 @@ type AccessRestrictionData struct {
 }
 
 // ExtAccessRestrictionData (BIT STRING SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1. Additional access-type restrictions that
-// don't fit in the 8-bit AccessRestrictionData.
+// don't fit in the 8-bit AccessRestrictionData. BitLength and UnknownBits
+// preserve unnamed bits and trailing zero bits on Parse/Marshal (§17.7.1).
 type ExtAccessRestrictionData struct {
-	NrAsSecondaryRATNotAllowed                 bool // bit 0
-	UnlicensedSpectrumAsSecondaryRATNotAllowed bool // bit 1
+	NrAsSecondaryRATNotAllowed                 bool     // bit 0
+	UnlicensedSpectrumAsSecondaryRATNotAllowed bool     // bit 1
+	BitLength                                  int      // 0 selects the shortest valid length
+	UnknownBits                                HexBytes // positions 2..31, MSB first, without trailing zero octets; bits 0..1 are ignored
 }
 
 // SupportedFeatures (BIT STRING SIZE 26..40) per 3GPP TS 29.002 V19.1.0
@@ -1936,10 +1945,10 @@ type AdditionalSubscriptions struct {
 // padded with the TBCD filler on the wire (GroupId ::= TBCD-STRING
 // (SIZE (3)), Long-GroupId ::= TBCD-STRING (SIZE (4))). When LongGroupId
 // is present GroupId must be empty and is sent as six TBCD fillers, per
-// the groupId comment of TS 29.002. The encoder rejects inputs that violate
-// these invariants.
+// TS 29.002 V19.1.0 §17.7.1. Marshal enforces this filler rule; Parse
+// preserves both received IDs when both contain valid TBCD digits.
 type VoiceBroadcastData struct {
-	GroupId                  string // mandatory TBCD digits, at most 6 (empty only with LongGroupId)
+	GroupId                  string // mandatory TBCD digits, at most 6; Marshal permits empty only with LongGroupId
 	BroadcastInitEntitlement bool   // NULL marker
 	LongGroupId              string // optional TBCD digits, at most 8
 }
@@ -1950,14 +1959,14 @@ type VoiceBroadcastData struct {
 // padded with the TBCD filler on the wire (GroupId ::= TBCD-STRING
 // (SIZE (3)), Long-GroupId ::= TBCD-STRING (SIZE (4))). When LongGroupId
 // is present GroupId must be empty and is sent as six TBCD fillers, per
-// the groupId comment of TS 29.002. The encoder rejects inputs that violate
-// these invariants.
+// TS 29.002 V19.1.0 §17.7.1. Marshal enforces this filler rule; Parse
+// preserves both received IDs when both contain valid TBCD digits.
 //
 // AdditionalInfo is a BIT STRING (SIZE (1..136)) (3GPP TS 29.002 V19.1.0
 // §17.7.1) of AdditionalInfoBits bits in (AdditionalInfoBits+7)/8 octets,
 // like CsgID and IsrInformation.
 type VoiceGroupCallData struct {
-	GroupId                 string                   // mandatory TBCD digits, at most 6 (empty only with LongGroupId)
+	GroupId                 string                   // mandatory TBCD digits, at most 6; Marshal permits empty only with LongGroupId
 	AdditionalSubscriptions *AdditionalSubscriptions // optional
 	AdditionalInfo          HexBytes                 // optional BIT STRING content
 	AdditionalInfoBits      int                      // its bit length, 1..136
@@ -1979,7 +1988,7 @@ type CancelLocationRes struct{}
 // Carries multicall supplementary-service status and bearer counts.
 type MCSSInfo struct {
 	SsCode   SsCode   // [0] mandatory
-	SsStatus HexBytes // [1] mandatory: Ext-SS-Status (1..5 octets)
+	SsStatus HexBytes // [1] mandatory: Ext-SS-Status (1..5 octets); Parse keeps octet 1 (§17.7.8)
 	NbrSB    int      // [2] mandatory: MaxMC-Bearers (2..7)
 	NbrUser  int      // [3] mandatory: MC-Bearers (1..7)
 }
@@ -2099,8 +2108,9 @@ const (
 // (mandatory base fields first, then extensions [0]..[14]).
 //
 // The Ext-QoS-Subscribed extension chain is hierarchical per
-// 3GPP TS 29.002 V19.1.0 §17.7.1: Ext2 requires Ext, Ext3 requires
-// Ext2, Ext4 requires Ext3.
+// 3GPP TS 29.002 V19.1.0 §17.7.1: Marshal requires Ext2 after Ext,
+// Ext3 after Ext2, Ext4 after Ext3, and ExtPdpAddress with PdpAddress.
+// Parse preserves each received extension independently.
 type PDPContext struct {
 	PdpContextId        int      // mandatory, ContextId 1..50
 	PdpType             HexBytes // [16] mandatory, OCTET STRING SIZE 2
@@ -2111,9 +2121,9 @@ type PDPContext struct {
 
 	ExtQoSSubscribed            HexBytes                     // [0] optional, SIZE 1..9
 	PdpChargingCharacteristics  HexBytes                     // [1] optional, SIZE 2
-	Ext2QoSSubscribed           HexBytes                     // [2] optional, SIZE 1..3 (requires ExtQoSSubscribed)
-	Ext3QoSSubscribed           HexBytes                     // [3] optional, SIZE 1..2 (requires Ext2QoSSubscribed)
-	Ext4QoSSubscribed           HexBytes                     // [4] optional, SIZE 1 (requires Ext3QoSSubscribed)
+	Ext2QoSSubscribed           HexBytes                     // [2] optional, SIZE 1..3 (Marshal requires ExtQoSSubscribed)
+	Ext3QoSSubscribed           HexBytes                     // [3] optional, SIZE 1..2 (Marshal requires Ext2QoSSubscribed)
+	Ext4QoSSubscribed           HexBytes                     // [4] optional, SIZE 1 (Marshal requires Ext3QoSSubscribed)
 	ApnOiReplacement            HexBytes                     // [5] optional, SIZE 9..100
 	ExtPdpType                  HexBytes                     // [6] optional, SIZE 2
 	ExtPdpAddress               HexBytes                     // [7] optional, SIZE 1..16
@@ -2387,7 +2397,7 @@ type ServiceTypeList []ServiceType
 // OCTET STRING (SIZE 1..5) shared with Ext-SS-Info.
 type LCSPrivacyClass struct {
 	SsCode                SsCode                // mandatory
-	SsStatus              HexBytes              // mandatory, Ext-SS-Status 1..5 octets
+	SsStatus              HexBytes              // mandatory, Ext-SS-Status 1..5 octets; Parse keeps octet 1 (§17.7.8)
 	NotificationToMSUser  *NotificationToMSUser // [0] optional
 	ExternalClientList    ExternalClientList    // [1] optional, 0..5 entries
 	PlmnClientList        PLMNClientList        // [2] optional, 1..5 entries when present
@@ -2402,7 +2412,7 @@ type LCSPrivacyExceptionList []LCSPrivacyClass
 // MOLRClass (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type MOLRClass struct {
 	SsCode   SsCode   // mandatory
-	SsStatus HexBytes // mandatory, Ext-SS-Status 1..5 octets
+	SsStatus HexBytes // mandatory, Ext-SS-Status 1..5 octets; Parse keeps octet 1 (§17.7.8)
 }
 
 // MOLRList (SEQUENCE SIZE 1..3 OF MOLR-Class) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2576,8 +2586,9 @@ const (
 )
 
 // LCSQoS (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
-// All fields optional. Horizontal/Vertical-Accuracy are 1-octet uncertainty
-// codes per 3GPP TS 23.032; surfaced as raw single-octet HexBytes.
+// All fields optional. Horizontal/Vertical-Accuracy are raw single-octet
+// HexBytes. Marshal requires bit 8 zero; Parse preserves the complete octet
+// (3GPP TS 29.002 V19.1.0 §17.7.13).
 //
 // LcsQosClass carries lcs-qos-class. 3GPP TS 29.002 V19.1.0 §13A.2.3 says
 // the LCS QoS of a ProvideSubscriberLocation "indicates the required quality
@@ -2775,6 +2786,8 @@ const (
 type IntervalTime = gsm_map.IntervalTime
 
 // AreaEventInfo (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
+// ParseProvideSubscriberLocation sets OccurrenceInfo to oneTimeEvent
+// when DeferredLocationEventType.BeingInsideArea is set.
 type AreaEventInfo struct {
 	AreaDefinition AreaDefinition  // [0] mandatory
 	OccurrenceInfo *OccurrenceInfo // [1] optional
@@ -2793,7 +2806,7 @@ type ReportingInterval = gsm_map.ReportingInterval
 //
 // Per spec: ReportingInterval × ReportingAmount must not exceed
 // 8639999 (99 days, 23 hours, 59 minutes, 59 seconds) for compatibility
-// with OMA MLP and RLP. The MAP conversion checks this product before encoding and after decoding.
+// with OMA MLP and RLP. Marshal checks this product; Parse preserves both operands.
 //
 // Note: the ASN.1 definition includes an optional
 // reportingOptionMilliseconds at tag [0] past the extensibility marker;
@@ -2942,7 +2955,15 @@ type ProvideSubscriberLocationArg struct {
 // ProvideSubscriberLocationRes represents a ProvideSubscriberLocation
 // response (opCode 83) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
-// Mandatory: LocationEstimate (Ext-GeographicalInformation, 1..20 octets).
+// LocationEstimate (Ext-GeographicalInformation, 1..20 octets) is mandatory.
+// Parse ignores it when DeferredmtLrResponseIndicator is set, and discards
+// a one-octet value when AddLocationEstimate is present, leaving it empty; a
+// valid Ext estimate discards AddLocationEstimate without semantic validation
+// (§17.7.13). Marshal sends an empty LocationEstimate beside either of those
+// fields as one octet, which the receiver ignores or discards; without them
+// it rejects an empty one. Invalid effective geography or velocity returns
+// ErrExtGeographicalInformationInvalidData, ErrAddGeographicalInformationInvalidData
+// or ErrVelocityEstimateInvalidData; the caller handles invalid data.
 // Optional fields follow the package-wide conventions:
 //   - Pointer fields: nil = absent.
 //   - HexBytes / string fields: nil/empty = absent.
@@ -3318,6 +3339,10 @@ type DeferredmtLrData struct {
 // both empty omits the field), matching the PSL-Res pattern.
 // SlrArgExtensionContainer (tag [7]) is opaque metadata not surfaced;
 // dropped on decode, emitted as absent on encode.
+// Parse discards a one-octet LocationEstimate when AddLocationEstimate is
+// present, and discards AddLocationEstimate when LocationEstimate is valid
+// (§17.7.13). Invalid effective geography or velocity returns the matching
+// Err*InvalidData sentinel for caller handling.
 type SubscriberLocationReportArg struct {
 	// Mandatory.
 	LcsEvent        LCSEvent
@@ -3381,8 +3406,10 @@ type SubscriberLocationReportArg struct {
 // for emergency calls, return the routing identifiers it assigned.
 //
 // Every field is optional; an empty response (all fields absent) is a
-// valid acknowledgement. NaESRK and NaESRD are independent optional
-// fields (not a CHOICE) and may both be present.
+// valid acknowledgement. NaESRK and NaESRD are mutually exclusive, and
+// "receipt of both na-ESRK and na-ESRD shall be treated the same as a return
+// error" (§17.7.13): Parse returns ErrSLRResRoutingIdentifiersReturnError,
+// and the caller handles the response as it would a return error.
 //
 // Fields follow the package-wide conventions:
 //   - String fields (NaESRK, NaESRD, HGmlcAddress): "" = absent.
@@ -3659,6 +3686,11 @@ type InsertSubscriberDataRes struct {
 
 // MAP operation sentinel errors.
 var (
+	ErrRoamingNotAllowedParameterMissing        = errors.New("roamingNotAllowed: mandatory parameter missing per 3GPP TS 29.002 V19.1.0 §17.1.2 and §17.6.6")
+	ErrExtGeographicalInformationInvalidData    = errors.New("lcs: received ExtGeographicalInformation is invalid data per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrAddGeographicalInformationInvalidData    = errors.New("lcs: received AddGeographicalInformation is invalid data without a valid ExtGeographicalInformation per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrVelocityEstimateInvalidData              = errors.New("lcs: received VelocityEstimate has an invalid velocity type per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8.6")
+	ErrSLRResRoutingIdentifiersReturnError      = errors.New("subscriberLocationReportRes: receipt of both NaESRK and NaESRD is treated as a return error per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrCallBarredParamUnknownAlternative        = errors.New("callBarredParam: unknown CHOICE alternative")
 	ErrGeoAltitudeOutOfRange                    = errors.New("geographical altitude is out of range")
 	ErrGeoAngleOutOfRange                       = errors.New("geographical angle is out of range")
@@ -3893,9 +3925,10 @@ var (
 	// ErrCamelDuplicateTriggerDetectionPoint is returned when an
 	// O-BcsmCamelTDPDataList, T-BcsmCamelTDPDataList, SMS-CAMEL-TDP-DataList
 	// or GPRS-CamelTDPDataList holds two entries with the same trigger
-	// detection point. On decode only the entries the receiver keeps count.
+	// detection point during Marshal (3GPP TS 29.002 V19.1.0 §17.7.1).
+	// Parse retains repeated entries after explicit ignore rules.
 	ErrCamelDuplicateTriggerDetectionPoint = errors.New("camel: a CAMEL TDP data list shall not contain more than one instance with the same trigger detection point per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	// ErrCamelDCSICapabilityHandlingWithoutList is returned when a D-CSI
+	// ErrCamelDCSICapabilityHandlingWithoutList is returned by Marshal when a D-CSI
 	// carries camelCapabilityHandling without dp-AnalysedInfoCriteriaList.
 	// Only an unsegmented D-CSI or its first segment carries
 	// camelCapabilityHandling, and both carry the list (3GPP TS 29.002

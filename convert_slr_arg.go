@@ -337,14 +337,16 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.NaESRKNature = nature
 		out.NaESRKPlan = plan
 	}
+	var ext []byte
 	if w.LocationEstimate != nil {
-		out.LocationEstimate = ExtGeographicalInformation(*w.LocationEstimate)
+		ext = *w.LocationEstimate
+	}
+	out.LocationEstimate, out.AddLocationEstimate, err = receiveGeographicalInformation(ext, w.AddLocationEstimate, false)
+	if err != nil {
+		return nil, fmt.Errorf("SubscriberLocationReportArg.LocationEstimate: %w", err)
 	}
 	if w.AgeOfLocationEstimate != nil {
 		out.AgeOfLocationEstimate = int64PtrTo(w.AgeOfLocationEstimate)
-	}
-	if w.AddLocationEstimate != nil {
-		out.AddLocationEstimate = AddGeographicalInformation(*w.AddLocationEstimate)
 	}
 	if w.DeferredmtLrData != nil {
 		v, err := convertWireToDeferredmtLrData(w.DeferredmtLrData)
@@ -387,8 +389,9 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		v := *w.AccuracyFulfilmentIndicator
 		out.AccuracyFulfilmentIndicator = &v
 	}
-	if w.VelocityEstimate != nil {
-		out.VelocityEstimate = VelocityEstimate(*w.VelocityEstimate)
+	out.VelocityEstimate, err = receiveVelocityEstimate(w.VelocityEstimate)
+	if err != nil {
+		return nil, fmt.Errorf("SubscriberLocationReportArg.VelocityEstimate: %w", err)
 	}
 	if w.SequenceNumber != nil {
 		v := *w.SequenceNumber

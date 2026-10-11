@@ -184,7 +184,7 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 		{
 			name: "ExtAccessRestrictionData/bothSet",
 			encode: func() (runtime.BitString, any) {
-				in := &ExtAccessRestrictionData{true, true}
+				in := &ExtAccessRestrictionData{NrAsSecondaryRATNotAllowed: true, UnlicensedSpectrumAsSecondaryRATNotAllowed: true}
 				return convertExtAccessRestrictionDataToBitString(in), in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToExtAccessRestrictionData(bs) },

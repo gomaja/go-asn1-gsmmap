@@ -78,7 +78,9 @@ func defaultCallHandlingFromWire(w DefaultCallHandling) DefaultCallHandling {
 // convertIgnorableWireList converts each wire entry with conv, keeping the
 // entries conv returns and dropping those the receiver ignores (conv returns
 // nil). It returns nil when every entry is ignored. Errors carry field and
-// the wire index.
+// the wire index. TS 29.002 V19.1.0 §17.7.1 sender restrictions on
+// repeated O/T/SMS/GPRS trigger points do not prescribe receiver rejection;
+// surviving entries retain their order and repetitions.
 func convertIgnorableWireList[W, T any](field string, ws []W, conv func(*W) (*T, error)) ([]T, error) {
 	var out []T
 	for i := range ws {
@@ -105,23 +107,6 @@ func checkTDPOnce[K ~int64](seen map[K]bool, tdp K) error {
 	}
 	seen[tdp] = true
 	return nil
-}
-
-// convertTDPDataWireList is convertIgnorableWireList for a CAMEL TDP data
-// list: no two kept entries may share a trigger detection point (tdp, see
-// checkTDPOnce). Entries the receiver ignores do not count.
-func convertTDPDataWireList[W, T any, K ~int64](field string, ws []W, conv func(*W) (*T, error), tdp func(*T) K) ([]T, error) {
-	seen := map[K]bool{}
-	return convertIgnorableWireList(field, ws, func(w *W) (*T, error) {
-		v, err := conv(w)
-		if err != nil || v == nil {
-			return v, err
-		}
-		if err := checkTDPOnce(seen, tdp(v)); err != nil {
-			return nil, err
-		}
-		return v, nil
-	})
 }
 
 // convertOBcsmTDPDataToWire encodes a single O-BCSM TDP entry.
@@ -264,14 +249,10 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 }
 
 // convertWireToDestinationNumberCriteria decodes the criteria SEQUENCE.
-// Mirrors the encoder's "at least one list" rule so malformed peer input
-// can't produce a criteria SEQUENCE with neither list populated.
+// TS 29.002 V19.1.0 §17.7.1 DestinationNumberCriteria requires a list
+// when sending, but specifies no rejection of received list absence.
 func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria) (*DestinationNumberCriteria, error) {
 	mt := w.MatchType
-	if (w.DestinationNumberList == nil || len(w.DestinationNumberList.Values) == 0) &&
-		(w.DestinationNumberLengthList == nil || len(w.DestinationNumberLengthList.Values) == 0) {
-		return nil, ErrCamelMissingDestinationNumberCriteria
-	}
 	out := &DestinationNumberCriteria{MatchType: mt}
 	if w.DestinationNumberList != nil && len(w.DestinationNumberList.Values) > 0 {
 		list := make([]ISDNNumber, len(w.DestinationNumberList.Values))
@@ -491,8 +472,7 @@ func convertOCSIToWire(o *OCSI) (*gsm_map.OCSI, error) {
 // arms its TDPs only through O-BcsmCamelTDPDataList, SIZE (1..10), so with
 // none left the receiver holds no O-CSI.
 func convertWireToOCSI(w *gsm_map.OCSI) (*OCSI, error) {
-	list, err := convertTDPDataWireList("OBcsmCamelTDPDataList", w.OBcsmCamelTDPDataList.Values, convertWireToOBcsmTDPData,
-		func(d *OBcsmCamelTDPData) OBcsmTriggerDetectionPoint { return d.OBcsmTriggerDetectionPoint })
+	list, err := convertIgnorableWireList("OBcsmCamelTDPDataList", w.OBcsmCamelTDPDataList.Values, convertWireToOBcsmTDPData)
 	if err != nil {
 		return nil, err
 	}
@@ -536,8 +516,7 @@ func convertTCSIToWire(t *TCSI) (*gsm_map.TCSI, error) {
 // T-CSI arms its TDPs only through T-BcsmCamelTDPDataList, SIZE (1..10), so
 // with none left the receiver holds no T-CSI.
 func convertWireToTCSI(w *gsm_map.TCSI) (*TCSI, error) {
-	list, err := convertTDPDataWireList("TBcsmCamelTDPDataList", w.TBcsmCamelTDPDataList.Values, convertWireToTBcsmTDPData,
-		func(d *TBcsmCamelTDPData) TBcsmTriggerDetectionPoint { return d.TBcsmTriggerDetectionPoint })
+	list, err := convertIgnorableWireList("TBcsmCamelTDPDataList", w.TBcsmCamelTDPDataList.Values, convertWireToTBcsmTDPData)
 	if err != nil {
 		return nil, err
 	}
@@ -631,9 +610,11 @@ func convertWireToDPAnalysedInfoCriterium(w *gsm_map.DPAnalysedInfoCriterium) (D
 // the reassembled CSI and are the caller's to check. O-CSI and T-CSI "shall
 // not be segmented" and keep their rules.
 //
-// One D-CSI rule holds in every message: a D-CSI with
+// One D-CSI sender rule holds in every message: a D-CSI with
 // camelCapabilityHandling is unsegmented or the first segment, so it carries
 // dp-AnalysedInfoCriteriaList too (ErrCamelDCSICapabilityHandlingWithoutList).
+// Parse preserves a capability-only received D-CSI, without applying this
+// sender completeness requirement.
 // SMS-CSI and GPRS-CSI do not keep camelCapabilityHandling out of subsequent
 // segments, so the same does not follow for them.
 
@@ -666,9 +647,8 @@ func convertDCSIToWire(d *DCSI) (*gsm_map.DCSI, error) {
 
 // convertWireToDCSI decodes a D-CSI.
 func convertWireToDCSI(w *gsm_map.DCSI) (*DCSI, error) {
-	if w.CamelCapabilityHandling != nil && (w.DpAnalysedInfoCriteriaList == nil || len(w.DpAnalysedInfoCriteriaList.Values) == 0) {
-		return nil, ErrCamelDCSICapabilityHandlingWithoutList
-	}
+	// TS 29.002 V19.1.0 §17.7.1 D-CSI specifies sender completeness
+	// and segmentation rules, without receiver rejection for list absence.
 	out := &DCSI{}
 	if w.DpAnalysedInfoCriteriaList != nil && len(w.DpAnalysedInfoCriteriaList.Values) > 0 {
 		out.DPAnalysedInfoCriteriaList = make([]DPAnalysedInfoCriterium, len(w.DpAnalysedInfoCriteriaList.Values))
@@ -1101,8 +1081,7 @@ func convertWireToSMSCSI(w *gsm_map.SMSCSI, tdp SMSTriggerDetectionPoint) (*SMSC
 		decode := func(d *gsm_map.SMSCAMELTDPData) (*SMSCAMELTDPData, error) {
 			return convertWireToSMSCAMELTDPData(d, tdp)
 		}
-		list, err := convertTDPDataWireList("SmsCAMELTDPDataList", w.SmsCAMELTDPDataList.Values, decode,
-			func(d *SMSCAMELTDPData) SMSTriggerDetectionPoint { return d.SmsTriggerDetectionPoint })
+		list, err := convertIgnorableWireList("SmsCAMELTDPDataList", w.SmsCAMELTDPDataList.Values, decode)
 		if err != nil {
 			return nil, err
 		}

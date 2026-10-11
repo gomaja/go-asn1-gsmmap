@@ -202,14 +202,8 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 	}
 	id := int(w.PdpContextId)
 
-	if err := validateExtQoSHierarchy(
-		w.ExtQoSSubscribed != nil,
-		w.Ext2QoSSubscribed != nil,
-		w.Ext3QoSSubscribed != nil,
-		w.Ext4QoSSubscribed != nil,
-	); err != nil {
-		return nil, err
-	}
+	// TS 29.002 V19.1.0 §17.7.1 PDP-Context restricts sender QoS
+	// hierarchy and address co-occurrence, without receiver rejection.
 	out := &PDPContext{
 		PdpContextId:        id,
 		PdpType:             HexBytes(w.PdpType),
@@ -242,10 +236,6 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 		out.ExtPdpType = HexBytes(*w.ExtPdpType)
 	}
 	if w.ExtPdpAddress != nil {
-		if w.PdpAddress == nil {
-			return nil, ErrExtPDPAddressWithoutPDPAddress
-		}
-
 		out.ExtPdpAddress = HexBytes(*w.ExtPdpAddress)
 	}
 	if w.Ambr != nil {

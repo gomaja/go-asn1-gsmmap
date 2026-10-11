@@ -247,7 +247,7 @@ func TestPeriodicLDRInfoOutOfRangeRejected(t *testing.T) {
 	}
 }
 
-// Spec-mandated cap: ReportingAmount × ReportingInterval ≤ 8639999
+// Sender cap: ReportingAmount × ReportingInterval ≤ 8639999
 // (3GPP TS 29.002 V19.1.0 §17.7.13).
 func TestPeriodicLDRInfoProductCapRejected(t *testing.T) {
 	in := &PeriodicLDRInfo{ReportingAmount: 1000, ReportingInterval: 10000} // 10,000,000 > cap
@@ -257,9 +257,9 @@ func TestPeriodicLDRInfoProductCapRejected(t *testing.T) {
 	}
 
 	w := &gsm_map.PeriodicLDRInfo{ReportingAmount: 1000, ReportingInterval: 10000}
-	_, err = convertWireToPeriodicLDRInfo(w)
-	if !errors.Is(err, ErrPeriodicLDRProductExceeded) {
-		t.Errorf("decode: want ErrPeriodicLDRProductExceeded, got %v", err)
+	got, err := convertWireToPeriodicLDRInfo(w)
+	if err != nil || !reflect.DeepEqual(got, in) {
+		t.Errorf("decode: want operands preserved, got %+v, %v", got, err)
 	}
 }
 

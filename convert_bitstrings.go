@@ -401,15 +401,37 @@ func convertBitStringToAccessRestrictionData(bs runtime.BitString) *AccessRestri
 
 // ExtAccessRestrictionData: 2 named bits (SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertExtAccessRestrictionDataToBitString(e *ExtAccessRestrictionData) runtime.BitString {
-	bits := []bool{e.NrAsSecondaryRATNotAllowed, e.UnlicensedSpectrumAsSecondaryRATNotAllowed}
-	return packBits(bits, 1)
+	bits := make([]bool, max(2, len(e.UnknownBits)*8))
+	bits[0], bits[1] = e.NrAsSecondaryRATNotAllowed, e.UnlicensedSpectrumAsSecondaryRATNotAllowed
+	for i := 2; i < len(bits); i++ {
+		bits[i] = e.UnknownBits[i/8]&(0x80>>uint(i%8)) != 0
+	}
+	bs := packBits(bits, 1)
+	extendBitLength(&bs, e.BitLength)
+	return bs
 }
 
 func convertBitStringToExtAccessRestrictionData(bs runtime.BitString) *ExtAccessRestrictionData {
-	return &ExtAccessRestrictionData{
+	out := &ExtAccessRestrictionData{
 		NrAsSecondaryRATNotAllowed:                 bs.Has(0),
 		UnlicensedSpectrumAsSecondaryRATNotAllowed: bs.Has(1),
 	}
+	// TS 29.002 V19.1.0 §17.7.1 Ext-AccessRestrictionData allows
+	// unnamed bits within SIZE (1..32), with no receiver discard rule.
+	if len(bs.Bytes) > 0 {
+		out.UnknownBits = bitStringFromWire(bs)
+		out.UnknownBits[0] &^= 0xC0
+		for len(out.UnknownBits) > 0 && out.UnknownBits[len(out.UnknownBits)-1] == 0 {
+			out.UnknownBits = out.UnknownBits[:len(out.UnknownBits)-1]
+		}
+		if len(out.UnknownBits) == 0 {
+			out.UnknownBits = nil
+		}
+	}
+	if bs.BitLength > convertExtAccessRestrictionDataToBitString(out).BitLength {
+		out.BitLength = bs.BitLength
+	}
+	return out
 }
 
 // SupportedFeatures: 40 named bits (SIZE 26..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
