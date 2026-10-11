@@ -30,7 +30,6 @@ func TestSLRResRoundTrip(t *testing.T) {
 			NaESRDNature: 0x10,
 			NaESRDPlan:   0x01,
 		}},
-
 		{"h-gmlc + NULL flag + lcs-ref", &SubscriberLocationReportRes{
 			HGmlcAddress:              "192.0.2.10",
 			MoLrShortCircuitIndicator: true,

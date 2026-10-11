@@ -2786,8 +2786,11 @@ const (
 type IntervalTime = gsm_map.IntervalTime
 
 // AreaEventInfo (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
-// ParseProvideSubscriberLocation sets OccurrenceInfo to oneTimeEvent
-// when DeferredLocationEventType.BeingInsideArea is set.
+// beingInsideArea "is always treated as oneTimeEvent regardless of the
+// possible value of occurrenceInfo" (3GPP TS 29.002 V19.1.0 §17.7.13):
+// ParseProvideSubscriberLocation sets OccurrenceInfo to oneTimeEvent when
+// beingInsideArea is the only area event; with enteringIntoArea or
+// leavingFromArea, OccurrenceInfo is kept for those events.
 type AreaEventInfo struct {
 	AreaDefinition AreaDefinition  // [0] mandatory
 	OccurrenceInfo *OccurrenceInfo // [1] optional
@@ -2956,14 +2959,16 @@ type ProvideSubscriberLocationArg struct {
 // response (opCode 83) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
 // LocationEstimate (Ext-GeographicalInformation, 1..20 octets) is mandatory.
-// Parse ignores it when DeferredmtLrResponseIndicator is set, and discards
-// a one-octet value when AddLocationEstimate is present, leaving it empty; a
-// valid Ext estimate discards AddLocationEstimate without semantic validation
-// (§17.7.13). Marshal sends an empty LocationEstimate beside either of those
-// fields as one octet, which the receiver ignores or discards; without them
-// it rejects an empty one. Invalid effective geography or velocity returns
-// ErrExtGeographicalInformationInvalidData, ErrAddGeographicalInformationInvalidData
-// or ErrVelocityEstimateInvalidData; the caller handles invalid data.
+// Parse applies §17.7.13: a valid LocationEstimate discards
+// AddLocationEstimate, valid or not; with DeferredmtLrResponseIndicator the
+// LocationEstimate is ignored and left empty; a one-octet one is discarded
+// beside AddLocationEstimate and is invalid data without it. Invalid data
+// returns ErrExtGeographicalInformationInvalidData,
+// ErrAddGeographicalInformationInvalidData or ErrVelocityEstimateInvalidData.
+// Marshal sends an empty LocationEstimate beside AddLocationEstimate or
+// DeferredmtLrResponseIndicator as one octet, which the receiver ignores or
+// discards, and rejects a one-octet one without them
+// (ErrLocationEstimateOneOctetWithoutAdd).
 // Optional fields follow the package-wide conventions:
 //   - Pointer fields: nil = absent.
 //   - HexBytes / string fields: nil/empty = absent.
@@ -3339,10 +3344,12 @@ type DeferredmtLrData struct {
 // both empty omits the field), matching the PSL-Res pattern.
 // SlrArgExtensionContainer (tag [7]) is opaque metadata not surfaced;
 // dropped on decode, emitted as absent on encode.
-// Parse discards a one-octet LocationEstimate when AddLocationEstimate is
-// present, and discards AddLocationEstimate when LocationEstimate is valid
-// (§17.7.13). Invalid effective geography or velocity returns the matching
-// Err*InvalidData sentinel for caller handling.
+// Parse applies §17.7.13: a valid LocationEstimate discards
+// AddLocationEstimate, valid or not; a one-octet LocationEstimate is
+// discarded beside AddLocationEstimate and is invalid data without it.
+// Invalid data returns the matching Err*InvalidData sentinel. Marshal rejects
+// a one-octet LocationEstimate without AddLocationEstimate
+// (ErrLocationEstimateOneOctetWithoutAdd).
 type SubscriberLocationReportArg struct {
 	// Mandatory.
 	LcsEvent        LCSEvent
@@ -3691,6 +3698,7 @@ var (
 	ErrAddGeographicalInformationInvalidData    = errors.New("lcs: received AddGeographicalInformation is invalid data without a valid ExtGeographicalInformation per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrVelocityEstimateInvalidData              = errors.New("lcs: received VelocityEstimate has an invalid velocity type per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8.6")
 	ErrSLRResRoutingIdentifiersReturnError      = errors.New("subscriberLocationReportRes: receipt of both NaESRK and NaESRD is treated as a return error per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrLocationEstimateOneOctetWithoutAdd       = errors.New("lcs: a one-octet LocationEstimate is sent only beside AddLocationEstimate, or in a deferred PSL result, per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrCallBarredParamUnknownAlternative        = errors.New("callBarredParam: unknown CHOICE alternative")
 	ErrGeoAltitudeOutOfRange                    = errors.New("geographical altitude is out of range")
 	ErrGeoAngleOutOfRange                       = errors.New("geographical angle is out of range")

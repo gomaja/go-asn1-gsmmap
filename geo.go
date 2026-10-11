@@ -9,11 +9,11 @@ import (
 type ShapeType int
 
 const (
-	ShapeEllipsoidPoint                   ShapeType = 0
-	ShapeEllipsoidPointUncertainty        ShapeType = 1
-	ShapeEllipsoidPointUncertaintyEllipse ShapeType = 3
-	ShapeEllipsoidPointAltitude           ShapeType = 9
-	ShapeEllipsoidArc                     ShapeType = 10
+	ShapeEllipsoidPoint                             ShapeType = 0
+	ShapeEllipsoidPointUncertainty                  ShapeType = 1
+	ShapeEllipsoidPointUncertaintyEllipse           ShapeType = 3
+	ShapeEllipsoidPointAltitudeUncertaintyEllipsoid ShapeType = 9
+	ShapeEllipsoidArc                               ShapeType = 10
 )
 
 // GeographicalInfo represents decoded geographical information per 3GPP TS 23.032.
@@ -25,8 +25,9 @@ const (
 //   - AngleMajorAxis carries the orientation of the semi-major axis in
 //     degrees, integer 0..179 (1° steps).
 //   - OffsetAngle and IncludedAngle for the Ellipsoid Arc shape carry
-//     the octet value directly: stored N represents N × 2 degrees, so
-//     the valid octet range is 0..179 (representing 0..358° in 2° steps).
+//     the octet value N, 0..179, in 2° steps (TS 23.032 V19.0.0 §6.7):
+//     an offset angle a with 2N <= a < 2(N+1), an included angle a with
+//     2N < a <= 2(N+1), so N = 179 includes the full 360°.
 type GeographicalInfo struct {
 	ShapeType            ShapeType `json:"ShapeType"`
 	Latitude             float64   `json:"Latitude"`
@@ -119,7 +120,7 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 		gi.AngleMajorAxis = &angle
 		gi.Confidence = &confidence
 
-	case ShapeEllipsoidPointAltitude:
+	case ShapeEllipsoidPointAltitudeUncertaintyEllipsoid:
 		if len(data) < 14 {
 			return nil, fmt.Errorf("%w: ellipsoid point with altitude requires 14 octets, got %d", ErrGeoPointAltitudeInvalidLength, len(data))
 		}
@@ -253,7 +254,7 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 		data[10] = *gi.Confidence
 		return data, nil
 
-	case ShapeEllipsoidPointAltitude:
+	case ShapeEllipsoidPointAltitudeUncertaintyEllipsoid:
 		if gi.Altitude == nil || gi.UncertaintySemiMajor == nil ||
 			gi.UncertaintySemiMinor == nil || gi.AngleMajorAxis == nil ||
 			gi.UncertaintyAltitude == nil || gi.Confidence == nil {
@@ -364,8 +365,10 @@ func decodeLatLon(data []byte) (lat, lon float64) {
 // Clamp the extended polar bin and any floating-point upper-bound rounding
 // to the highest encodable bin, after Encode has validated the input range.
 func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte) {
+	// math.Signbit keeps the sign of -0, which decodeLatLon returns for
+	// the southern bin 0.
 	var sign byte
-	if lat < 0 {
+	if math.Signbit(lat) {
 		sign = 1
 		lat = -lat
 	}

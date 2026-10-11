@@ -138,7 +138,7 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 }
 
 func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, error) {
-	out := ExtForwFeature{SsStatus: extSSStatusFromWire(w.SsStatus)}
+	out := ExtForwFeature{SsStatus: keepFirstOctet(w.SsStatus)}
 	if w.BasicService != nil {
 		bs, err := convertWireToExtBasicServiceCode(w.BasicService)
 		if err != nil {
@@ -159,7 +159,7 @@ func convertWireToExtForwFeature(w *gsm_map.ExtForwFeature) (ExtForwFeature, err
 		out.ForwardedToSubaddress = HexBytes(*w.ForwardedToSubaddress)
 	}
 	if w.ForwardingOptions != nil {
-		out.ForwardingOptions = extForwOptionsFromWire(*w.ForwardingOptions)
+		out.ForwardingOptions = keepFirstOctet(*w.ForwardingOptions)
 	}
 	if w.NoReplyConditionTime != nil {
 		// 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime: "If received:
@@ -235,7 +235,7 @@ func convertExtCallBarringFeatureToWire(f *ExtCallBarringFeature) (gsm_map.ExtCa
 }
 
 func convertWireToExtCallBarringFeature(w *gsm_map.ExtCallBarringFeature) (ExtCallBarringFeature, error) {
-	out := ExtCallBarringFeature{SsStatus: extSSStatusFromWire(w.SsStatus)}
+	out := ExtCallBarringFeature{SsStatus: keepFirstOctet(w.SsStatus)}
 	if w.BasicService != nil {
 		bs, err := convertWireToExtBasicServiceCode(w.BasicService)
 		if err != nil {
@@ -428,7 +428,7 @@ func convertExtSSDataToWire(d *ExtSSData) (*gsm_map.ExtSSData, error) {
 func convertWireToExtSSData(w *gsm_map.ExtSSData) (*ExtSSData, error) {
 	out := &ExtSSData{
 		SsCode:   SsCode(w.SsCode[0]),
-		SsStatus: extSSStatusFromWire(w.SsStatus),
+		SsStatus: keepFirstOctet(w.SsStatus),
 	}
 	if w.SsSubscriptionOption != nil {
 		d, err := convertWireToSSSubscriptionOption(w.SsSubscriptionOption)

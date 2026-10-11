@@ -23,7 +23,7 @@ func lcsRulePSLArg(t *testing.T) *gsm_map.ProvideSubscriberLocationArg {
 }
 
 // TS 29.002 V19.1.0 §17.7.13: beingInsideArea always means oneTimeEvent.
-func TestReceiverT081BeingInsideArea(t *testing.T) {
+func TestReceiverBeingInsideAreaIsOneTimeEvent(t *testing.T) {
 	for _, inside := range []bool{false, true} {
 		for _, occurrence := range []*gsm_map.OccurrenceInfo{nil, new(gsm_map.OccurrenceInfoOneTimeEvent), new(gsm_map.OccurrenceInfoMultipleTimeEvent), new(gsm_map.OccurrenceInfo(99))} {
 			w := lcsRulePSLArg(t)
@@ -62,10 +62,30 @@ func TestReceiverT081BeingInsideArea(t *testing.T) {
 			t.Fatalf("absent area: got=%+v err=%v", got, err)
 		}
 	}
+	// With enteringIntoArea or leavingFromArea, OccurrenceInfo also applies
+	// to those events and is kept.
+	for _, events := range []DeferredLocationEventType{
+		{EnteringIntoArea: true, BeingInsideArea: true},
+		{LeavingFromArea: true, BeingInsideArea: true},
+	} {
+		w := lcsRulePSLArg(t)
+		w.LocationType.DeferredLocationEventType = new(convertDeferredLocationEventTypeToBitString(&events))
+		w.AreaEventInfo = &gsm_map.AreaEventInfo{
+			AreaDefinition: gsm_map.AreaDefinition{AreaList: &gsm_map.AreaList{Values: []gsm_map.Area{{AreaType: gsm_map.AreaTypeCountryCode, AreaIdentification: gsm_map.AreaIdentification{0x21, 0xf3}}}}},
+			OccurrenceInfo: new(gsm_map.OccurrenceInfoMultipleTimeEvent),
+		}
+		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if o := got.AreaEventInfo.OccurrenceInfo; o == nil || *o != OccurrenceMultipleTimeEvent {
+			t.Errorf("%+v: OccurrenceInfo = %v, want multipleTimeEvent", events, o)
+		}
+	}
 }
 
 // TS 29.002 V19.1.0 §17.7.13: accuracy bit 8 and the periodic product cap constrain senders.
-func TestReceiverT084AccuracyPreserved(t *testing.T) {
+func TestReceiverLCSQoSAccuracyKept(t *testing.T) {
 	for _, v := range []byte{0, 0x7f, 0x80, 0xff} {
 		for _, vertical := range []bool{false, true} {
 			w := lcsRulePSLArg(t)
@@ -100,7 +120,7 @@ func TestReceiverT084AccuracyPreserved(t *testing.T) {
 	}
 }
 
-func TestReceiverT085PeriodicProductPreserved(t *testing.T) {
+func TestReceiverPeriodicLDRProductKept(t *testing.T) {
 	for _, amount := range []int64{1, 4000, PeriodicLDRProductMax} {
 		interval := int64(1)
 		if amount == 4000 {
@@ -190,8 +210,9 @@ func lcsRuleParseGeography(t *testing.T, slr bool, ext, add, velocity []byte, de
 	return got.LocationEstimate, got.AddLocationEstimate, nil
 }
 
-// TS 29.002 V19.1.0 §17.7.13 Ext/Add exception handling, after deferred-result ignore.
-func TestReceiverT086T090T094GeographyPrecedence(t *testing.T) {
+// TS 29.002 V19.1.0 §17.7.13 Ext/Add exception handling. An Add beside a
+// valid Ext is discarded also in a deferred PSL result, whose Ext is ignored.
+func TestReceiverGeographyPrecedence(t *testing.T) {
 	valid := []byte{0, 0, 0, 0, 0, 0, 0}
 	bad := []byte{0xf0, 0}
 	for _, slr := range []bool{false, true} {
@@ -227,21 +248,44 @@ func TestReceiverT086T090T094GeographyPrecedence(t *testing.T) {
 			t.Errorf("invalid Ext with valid Add: %v", err)
 		}
 	}
-	for _, ext := range [][]byte{valid, bad, {0xff}} {
-		gotExt, gotAdd, err := lcsRuleParseGeography(t, false, ext, valid, nil, true)
-		if err != nil || gotExt != nil || !bytes.Equal(gotAdd, valid) {
-			t.Fatalf("deferred ignore: ext=%x add=%x err=%v", gotExt, gotAdd, err)
+	for _, tc := range []struct {
+		name    string
+		ext     []byte
+		wantAdd []byte
+	}{
+		{"valid", valid, nil},
+		{"invalid", bad, valid},
+		{"one octet", []byte{0xff}, valid},
+	} {
+		gotExt, gotAdd, err := lcsRuleParseGeography(t, false, tc.ext, valid, nil, true)
+		if err != nil || gotExt != nil || !bytes.Equal(gotAdd, tc.wantAdd) {
+			t.Fatalf("deferred, %s Ext with Add: ext=%x add=%x err=%v", tc.name, gotExt, gotAdd, err)
 		}
-		gotExt, _, err = lcsRuleParseGeography(t, false, ext, nil, nil, true)
-		if err != nil || gotExt != nil {
-			t.Fatalf("deferred without Add: ext=%x err=%v", gotExt, err)
+		gotExt, gotAdd, err = lcsRuleParseGeography(t, false, tc.ext, nil, nil, true)
+		if err != nil || gotExt != nil || gotAdd != nil {
+			t.Fatalf("deferred, %s Ext without Add: ext=%x add=%x err=%v", tc.name, gotExt, gotAdd, err)
 		}
 	}
-	_, _, err := lcsRuleParseGeography(t, false, valid, bad, nil, true)
+	ext, add, err := lcsRuleParseGeography(t, false, valid, bad, nil, true)
+	if err != nil || ext != nil || add != nil {
+		t.Errorf("deferred, valid Ext with invalid Add: ext=%x add=%x err=%v", ext, add, err)
+	}
+	_, _, err = lcsRuleParseGeography(t, false, bad, bad, nil, true)
 	if !errors.Is(err, ErrAddGeographicalInformationInvalidData) {
-		t.Errorf("ignored Ext must not suppress invalid Add: %v", err)
+		t.Errorf("deferred, invalid Ext with invalid Add: %v", err)
 	}
-	ext, add, err := lcsRuleParseGeography(t, true, nil, valid, nil, false)
+	// "An Ext-GeographicalInformation parameter comprising one octet shall be
+	// treated as invalid data by the receiver if an Add-GeographicalInformation
+	// parameter is not received in the same message."
+	for _, slr := range []bool{false, true} {
+		for _, octet := range []byte{0x00, 0x10, 0x50, 0xf0} {
+			_, _, err := lcsRuleParseGeography(t, slr, []byte{octet}, nil, nil, false)
+			if !errors.Is(err, ErrExtGeographicalInformationInvalidData) {
+				t.Errorf("one-octet Ext %02x without Add, slr=%v: %v", octet, slr, err)
+			}
+		}
+	}
+	ext, add, err = lcsRuleParseGeography(t, true, nil, valid, nil, false)
 	if err != nil || ext != nil || !bytes.Equal(add, valid) {
 		t.Fatalf("absent SLR Ext: %v", err)
 	}
@@ -256,9 +300,9 @@ func TestReceiverGeographyDiscardRules(t *testing.T) {
 		deferred         bool
 		wantExt, wantAdd []byte
 	}{
-		{"T086", []byte{0xf0, 0}, nil, true, nil, nil},
-		{"T090", []byte{0xff}, valid, false, nil, valid},
-		{"T094", valid, []byte{0xff}, false, valid, nil},
+		{"deferred result ignores the estimate", []byte{0xf0, 0}, nil, true, nil, nil},
+		{"one-octet estimate beside Add is discarded", []byte{0xff}, valid, false, nil, valid},
+		{"valid estimate discards Add", valid, []byte{0xff}, false, valid, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ext, add, err := lcsRuleParseGeography(t, false, tc.ext, tc.add, nil, tc.deferred)
@@ -270,7 +314,7 @@ func TestReceiverGeographyDiscardRules(t *testing.T) {
 }
 
 // TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §§6.3a,6.5,6.7,7.2,7.3 and figures 5..10.
-func TestReceiverT088T095GeographicalCoding(t *testing.T) {
+func TestReceiverGeographicalShapes(t *testing.T) {
 	lengths := map[byte]int{0: 7, 1: 8, 3: 11, 5: 19, 8: 9, 9: 14, 10: 13, 11: 13, 12: 18, 13: 13, 14: 18}
 	for _, slr := range []bool{false, true} {
 		for shape := byte(0); shape < 16; shape++ {
@@ -472,12 +516,15 @@ func TestReceiverT088T095GeographicalCoding(t *testing.T) {
 }
 
 // TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §§8.5,8.6: type is the high nibble.
-func TestReceiverT092VelocityType(t *testing.T) {
+func TestReceiverVelocityType(t *testing.T) {
 	for _, slr := range []bool{false, true} {
 		for typ := byte(0); typ < 16; typ++ {
-			length := 4
-			if typ < 4 {
-				length += int(typ)
+			// 3GPP TS 29.002 V19.1.0 §17.7.13 VelocityEstimate: types 0 to
+			// 3 take 4, 5, 5 and 7 octets; an unknown type gets the
+			// 4-octet minimum.
+			length := map[byte]int{0: 4, 1: 5, 2: 5, 3: 7}[typ]
+			if length == 0 {
+				length = 4
 			}
 			v := make([]byte, length)
 			v[0] = typ<<4 | 1
@@ -497,7 +544,7 @@ func TestReceiverT092VelocityType(t *testing.T) {
 }
 
 // TS 29.002 V19.1.0 §17.7.13: both routing identifiers make the response unsuccessful.
-func TestReceiverT100RoutingIdentifiers(t *testing.T) {
+func TestReceiverSLRResRoutingIdentifiers(t *testing.T) {
 	for _, rk := range []bool{false, true} {
 		for _, rd := range []bool{false, true} {
 			w := &gsm_map.SubscriberLocationReportRes{}
@@ -577,7 +624,9 @@ func TestReceiverLCSCodecConstraints(t *testing.T) {
 	}
 }
 
-// TS 29.002 V19.1.0 §17.7.13: effective geography is preserved or discarded.
+// TS 29.002 V19.1.0 §17.7.13: Parse keeps, discards or rejects the location
+// estimate and the additional one as the exception handling says. Bit 0 of
+// flags selects an SLR argument, bit 1 a deferred PSL result, bit 2 no Add.
 func FuzzReceiverGeographicalInformation(f *testing.F) {
 	for _, shape := range []byte{0, 1, 3, 5, 8, 9, 10, 11, 12, 13, 14, 15} {
 		lengths := map[byte]int{0: 7, 1: 8, 3: 11, 5: 19, 8: 9, 9: 14, 10: 13, 11: 13, 12: 18, 13: 13, 14: 18, 15: 7}
@@ -589,30 +638,43 @@ func FuzzReceiverGeographicalInformation(f *testing.F) {
 		f.Add([]byte{0}, v, uint8(0))
 		f.Add([]byte{0, 0, 0, 0, 0, 0, 0}, v, uint8(1))
 		f.Add(v[:min(len(v), 20)], []byte{0xff}, uint8(2))
+		f.Add(v[:min(len(v), 20)], []byte{0xff}, uint8(4))
+		f.Add([]byte{shape << 4}, []byte{0xff}, uint8(5))
 	}
 	f.Fuzz(func(t *testing.T, ext, add []byte, flags uint8) {
 		if len(ext) < 1 || len(ext) > 20 || len(add) < 1 || len(add) > 91 {
 			return
 		}
-		slr, deferred := flags&1 != 0, flags&2 != 0
+		slr := flags&1 != 0
+		deferred := flags&2 != 0 && !slr
+		if flags&4 != 0 {
+			add = nil
+		}
 		gotExt, gotAdd, err := lcsRuleParseGeography(t, slr, ext, add, nil, deferred)
-		if err != nil {
-			if !errors.Is(err, ErrExtGeographicalInformationInvalidData) && !errors.Is(err, ErrAddGeographicalInformationInvalidData) {
-				t.Fatalf("unexpected error: %v", err)
+		extValid := len(ext) > 1 && validGeographicalInformation(ext, false)
+		addValid := add != nil && validGeographicalInformation(add, true)
+		switch {
+		case errors.Is(err, ErrExtGeographicalInformationInvalidData):
+			if extValid || deferred || len(ext) == 1 && add != nil {
+				t.Fatalf("Ext rejected: ext=%x add=%x deferred=%v", ext, add, deferred)
 			}
-			return
-		}
-		if !slr && deferred && gotExt != nil {
-			t.Fatalf("deferred Ext retained: %x", gotExt)
-		}
-		if len(ext) == 1 && gotExt != nil {
-			t.Fatalf("dummy Ext retained: %x", gotExt)
-		}
-		if gotExt != nil && (!bytes.Equal(gotExt, ext) || gotAdd != nil) {
-			t.Fatal("effective Ext changed or Add retained")
-		}
-		if gotExt == nil && !bytes.Equal(gotAdd, add) {
-			t.Fatal("effective Add changed")
+		case errors.Is(err, ErrAddGeographicalInformationInvalidData):
+			if add == nil || addValid || extValid {
+				t.Fatalf("Add rejected: ext=%x add=%x", ext, add)
+			}
+		case err != nil:
+			t.Fatalf("unexpected error: %v", err)
+		case extValid:
+			if gotAdd != nil {
+				t.Fatalf("Add kept beside a valid Ext: %x", gotAdd)
+			}
+			if deferred && gotExt != nil || !deferred && !bytes.Equal(gotExt, ext) {
+				t.Fatalf("Ext = %x, want %x (deferred %v)", gotExt, ext, deferred)
+			}
+		default:
+			if gotExt != nil || !bytes.Equal(gotAdd, add) {
+				t.Fatalf("ext=%x add=%x, want no Ext and Add %x", gotExt, gotAdd, add)
+			}
 		}
 	})
 }
@@ -662,5 +724,34 @@ func TestProvideSubscriberLocationResEmptyLocationEstimateMarshals(t *testing.T)
 	}
 	if _, err := (&ProvideSubscriberLocationRes{}).Marshal(); err == nil {
 		t.Error("Marshal with no LocationEstimate: want an error")
+	}
+}
+
+// A sender includes a one-octet LocationEstimate only beside
+// AddLocationEstimate, or as the placeholder of a deferred PSL result: a
+// receiver treats one without an additional estimate as invalid data
+// (3GPP TS 29.002 V19.1.0 §17.7.13).
+func TestLocationEstimateOneOctetMarshal(t *testing.T) {
+	add := AddGeographicalInformation{0x10, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0x05}
+	one := ExtGeographicalInformation{0x10}
+	if _, err := (&ProvideSubscriberLocationRes{LocationEstimate: one}).Marshal(); !errors.Is(err, ErrLocationEstimateOneOctetWithoutAdd) {
+		t.Errorf("PSL result, one octet alone: %v", err)
+	}
+	for _, r := range []ProvideSubscriberLocationRes{
+		{LocationEstimate: one, AddLocationEstimate: add},
+		{LocationEstimate: one, DeferredmtLrResponseIndicator: true},
+	} {
+		if _, err := r.Marshal(); err != nil {
+			t.Errorf("PSL result %+v: %v", r, err)
+		}
+	}
+	a := minimalSLRArg()
+	a.LocationEstimate = one
+	if _, err := a.Marshal(); !errors.Is(err, ErrLocationEstimateOneOctetWithoutAdd) {
+		t.Errorf("SLR argument, one octet alone: %v", err)
+	}
+	a.AddLocationEstimate = add
+	if _, err := a.Marshal(); err != nil {
+		t.Errorf("SLR argument, one octet beside Add: %v", err)
 	}
 }

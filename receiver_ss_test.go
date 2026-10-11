@@ -351,8 +351,8 @@ func TestOpaquePDPContextKeepsExtensions(t *testing.T) {
 
 func TestReceiverOctetHelpersReturnIndependentCopies(t *testing.T) {
 	for name, normalize := range map[string]func([]byte) HexBytes{
-		"Ext-SS-Status":   extSSStatusFromWire,
-		"Ext-ForwOptions": extForwOptionsFromWire,
+		"Ext-SS-Status":   keepFirstOctet,
+		"Ext-ForwOptions": keepFirstOctet,
 	} {
 		t.Run(name, func(t *testing.T) {
 			for _, empty := range [][]byte{nil, {}} {

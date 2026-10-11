@@ -115,7 +115,7 @@ func TestGeoEncode_AltitudeRangeCheck(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			alt := tc.alt
 			gi := &GeographicalInfo{
-				ShapeType: ShapeEllipsoidPointAltitude,
+				ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 				Latitude:  0, Longitude: 0,
 				Altitude:             &alt,
 				UncertaintySemiMajor: u8(1),
@@ -141,7 +141,7 @@ func TestGeoEncode_AltitudeBoundaryRoundTrip(t *testing.T) {
 	for _, alt := range []int16{32767, -32767, 0, 1, -1, 100, -100} {
 		a := alt
 		gi := &GeographicalInfo{
-			ShapeType: ShapeEllipsoidPointAltitude,
+			ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 			Latitude:  0, Longitude: 0,
 			Altitude:             &a,
 			UncertaintySemiMajor: u8(1),
@@ -187,7 +187,7 @@ func TestGeoEncode_RejectsMissingRequiredFields(t *testing.T) {
 		{
 			"EllipsoidPointAltitude missing Altitude",
 			&GeographicalInfo{
-				ShapeType: ShapeEllipsoidPointAltitude,
+				ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 				Latitude:  0, Longitude: 0,
 				UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
 				AngleMajorAxis: u8(0), UncertaintyAltitude: u8(1), Confidence: u8(50),
@@ -310,7 +310,7 @@ func TestGeoEncode_Rejects7BitFieldsOverflow(t *testing.T) {
 			func() *GeographicalInfo {
 				alt := int16(100)
 				return &GeographicalInfo{
-					ShapeType: ShapeEllipsoidPointAltitude,
+					ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 					Altitude:  &alt, UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
 					AngleMajorAxis: u8(0), UncertaintyAltitude: u8(200), Confidence: u8(50),
 				}
@@ -366,7 +366,7 @@ func TestGeoEncode_RejectsAngularFieldsOutOfRange(t *testing.T) {
 		{
 			"Altitude: AngleMajorAxis=200",
 			&GeographicalInfo{
-				ShapeType: ShapeEllipsoidPointAltitude,
+				ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 				Altitude:  &alt, UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
 				AngleMajorAxis: u8(200), UncertaintyAltitude: u8(1), Confidence: u8(50),
 			},
@@ -424,7 +424,7 @@ func TestGeoEncode_AcceptsAngularFieldsAtBoundary(t *testing.T) {
 		{
 			"Altitude: AngleMajorAxis=179",
 			&GeographicalInfo{
-				ShapeType: ShapeEllipsoidPointAltitude,
+				ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 				Altitude:  &alt, UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
 				AngleMajorAxis: u8(179), UncertaintyAltitude: u8(1), Confidence: u8(50),
 			},
@@ -584,7 +584,7 @@ func TestGeoCoordinates(t *testing.T) {
 func TestGeoZeroAltitude(t *testing.T) {
 	alt := int16(0)
 	zero := uint8(0)
-	in := &GeographicalInfo{ShapeType: ShapeEllipsoidPointAltitude, Altitude: &alt,
+	in := &GeographicalInfo{ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid, Altitude: &alt,
 		UncertaintySemiMajor: &zero, UncertaintySemiMinor: &zero, AngleMajorAxis: &zero,
 		UncertaintyAltitude: &zero, Confidence: &zero}
 	got, err := in.Encode()

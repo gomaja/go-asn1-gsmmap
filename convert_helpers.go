@@ -12,18 +12,10 @@ import (
 
 const errEncodingIMSI = "encoding IMSI: %w"
 
-// extSSStatusFromWire discards unsupported octets 2..5 of Ext-SS-Status
-// (3GPP TS 29.002 V19.1.0 §17.7.8), retaining all bits of the first octet.
-func extSSStatusFromWire(v []byte) HexBytes {
-	if len(v) == 0 {
-		return nil
-	}
-	return HexBytes{v[0]}
-}
-
-// extForwOptionsFromWire discards unsupported octets 2..5 of Ext-ForwOptions
-// (3GPP TS 29.002 V19.1.0 §17.7.1), retaining all bits of the first octet.
-func extForwOptionsFromWire(v []byte) HexBytes {
+// keepFirstOctet returns a copy of the first octet of a received
+// Ext-SS-Status (3GPP TS 29.002 V19.1.0 §17.7.8) or Ext-ForwOptions
+// (§17.7.1), whose octets 2..5 a receiver discards.
+func keepFirstOctet(v []byte) HexBytes {
 	if len(v) == 0 {
 		return nil
 	}

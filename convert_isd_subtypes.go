@@ -33,7 +33,7 @@ func convertWireToMCSSInfo(w *gsm_map.MCSSInfo) (*MCSSInfo, error) {
 
 	return &MCSSInfo{
 		SsCode:   SsCode(w.SsCode[0]),
-		SsStatus: extSSStatusFromWire(w.SsStatus),
+		SsStatus: keepFirstOctet(w.SsStatus),
 		NbrSB:    nbrSB,
 		NbrUser:  nbrUser,
 	}, nil

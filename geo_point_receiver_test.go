@@ -20,7 +20,8 @@ func TestGeoPointCoordinateBins(t *testing.T) {
 		want     []byte
 	}{
 		{"origin", 0, 0, []byte{0, 0, 0, 0, 0, 0, 0}},
-		{"negative zero", math.Copysign(0, -1), math.Copysign(0, -1), []byte{0, 0, 0, 0, 0, 0, 0}},
+		// -0 is the southern bin 0, which decoding 00800000 returns.
+		{"negative zero", math.Copysign(0, -1), math.Copysign(0, -1), []byte{0, 0x80, 0, 0, 0, 0, 0}},
 		{"smallest positive longitude", 0, math.SmallestNonzeroFloat64, []byte{0, 0, 0, 0, 0, 0, 0}},
 		{"smallest negative longitude", 0, -math.SmallestNonzeroFloat64, []byte{0, 0, 0, 0, 0xff, 0xff, 0xff}},
 		{"latitude inside first bin", 0.75 * latStep, 0, []byte{0, 0, 0, 0, 0, 0, 0}},
@@ -124,7 +125,7 @@ func TestGeoPointBinsAcrossShapes(t *testing.T) {
 	zero, radius, altitude := uint8(0), uint16(0), int16(0)
 	for _, shape := range []gsmmap.ShapeType{
 		gsmmap.ShapeEllipsoidPoint, gsmmap.ShapeEllipsoidPointUncertainty,
-		gsmmap.ShapeEllipsoidPointUncertaintyEllipse, gsmmap.ShapeEllipsoidPointAltitude,
+		gsmmap.ShapeEllipsoidPointUncertaintyEllipse, gsmmap.ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 		gsmmap.ShapeEllipsoidArc,
 	} {
 		in := &gsmmap.GeographicalInfo{
@@ -184,4 +185,27 @@ func FuzzGeoPointCoordinateBins(f *testing.F) {
 			t.Fatalf("longitude %v outside decoded bin [%v, %v)", lon, point.Longitude, upperLongitude)
 		}
 	})
+}
+
+// Every latitude bin, north and south, decodes to a value that encodes to
+// the same octets; the southern bin 0 decodes to -0 (TS 23.032 V19.0.0 §6.1).
+func TestGeoPointSignRoundTrip(t *testing.T) {
+	for _, wire := range [][]byte{
+		{0, 0x00, 0, 0, 0, 0, 0},
+		{0, 0x80, 0, 0, 0, 0, 0},
+		{0, 0x80, 0, 1, 0, 0, 0},
+		{0, 0xff, 0xff, 0xff, 0, 0, 0},
+	} {
+		gi, err := gsmmap.DecodeGeographicalInfo(wire)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, err := gi.Encode()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(got, wire) {
+			t.Errorf("%x decodes to %v and encodes to %x", wire, gi.Latitude, got)
+		}
+	}
 }

@@ -284,8 +284,7 @@ func decodeGroupID(raw []byte, hasLong bool) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	switch {
-	case !hasLong && s == "":
+	if !hasLong && s == "" {
 		return "", ErrGroupIdMissingWithoutLong
 	}
 	return s, nil

@@ -20,7 +20,7 @@ func TestCUGInfoEmptySubscriptionList(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseInsertSubscriberData: %v", err)
 			}
-			semWantEqual(t, "ProvisionedSS", []ExtSSInfo{{CugInfo: &CUGInfo{}}}, got.ProvisionedSS)
+			wantEqual(t, "ProvisionedSS", []ExtSSInfo{{CugInfo: &CUGInfo{}}}, got.ProvisionedSS)
 		})
 	}
 }

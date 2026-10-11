@@ -119,7 +119,7 @@ func TestSegmentedCSIRoundTrip(t *testing.T) {
 				if err != nil {
 					t.Fatalf("ParseInsertSubscriberData: %v", err)
 				}
-				semWantEqual(t, "ISD", in, got)
+				wantEqual(t, "ISD", in, got)
 				again, err := got.Marshal()
 				if err != nil {
 					t.Fatalf("Marshal of the parsed value: %v", err)
@@ -156,7 +156,7 @@ func TestSegmentedGmscDCSIRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseSriResp: %v", err)
 			}
-			semWantEqual(t, "D-CSI", d, got.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCSI)
+			wantEqual(t, "D-CSI", d, got.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCSI)
 		})
 	}
 }
@@ -202,7 +202,7 @@ func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		semWantEqual(t, "VLR D-CSI", cchOnly(), got.VlrCamelSubscriptionInfo.DCSI)
+		wantEqual(t, "VLR D-CSI", cchOnly(), got.VlrCamelSubscriptionInfo.DCSI)
 		if _, err := got.Marshal(); !errors.Is(err, ErrCamelDCSICapabilityHandlingWithoutList) {
 			t.Fatalf("Marshal: %v", err)
 		}
@@ -223,7 +223,7 @@ func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		semWantEqual(t, "GMSC D-CSI", cchOnly(), got.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCSI)
+		wantEqual(t, "GMSC D-CSI", cchOnly(), got.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCSI)
 		if _, err := got.Marshal(); !errors.Is(err, ErrCamelDCSICapabilityHandlingWithoutList) {
 			t.Fatalf("Marshal: %v", err)
 		}
@@ -248,7 +248,7 @@ func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ParseInsertSubscriberData: %v", err)
 			}
-			semWantEqual(t, "ISD", in, got)
+			wantEqual(t, "ISD", in, got)
 		})
 	}
 }

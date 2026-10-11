@@ -361,7 +361,7 @@ func TestSriRespWithoutIMSI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseSriResp: %v", err)
 	}
-	semWantEqual(t, "SriResp", in, got)
+	wantEqual(t, "SriResp", in, got)
 
 	// The FuzzParse seed that found it: a SendRoutingInfoRes holding no
 	// field the package reads.

@@ -212,9 +212,11 @@ func TestProvideSubscriberLocationResFullPopulationRoundTrip(t *testing.T) {
 		UtranBaroPressureMeas:          &baro,
 		UtranCivicAddress:              UtranCivicAddress("123 Main St"),
 	}
-	// TS 29.002 V19.1.0 §17.7.13: deferred results ignore LocationEstimate.
+	// TS 29.002 V19.1.0 §17.7.13: a deferred result ignores LocationEstimate,
+	// and an Add beside a valid Ext is discarded.
 	want := *in
 	want.LocationEstimate = nil
+	want.AddLocationEstimate = nil
 	wire, err := convertProvideSubscriberLocationResToWire(in)
 	if err != nil {
 		t.Fatalf("encode: %v", err)

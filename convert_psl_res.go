@@ -175,6 +175,9 @@ func convertProvideSubscriberLocationResToWire(r *ProvideSubscriberLocationRes) 
 	// add-LocationEstimate (3GPP TS 29.002 V19.1.0 §17.7.13); Parse then
 	// leaves LocationEstimate empty. Such a value is sent as one octet: the
 	// type of shape of the additional estimate, or 0 without one.
+	if len(r.LocationEstimate) == 1 && len(r.AddLocationEstimate) == 0 && !r.DeferredmtLrResponseIndicator {
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes.LocationEstimate: %w", ErrLocationEstimateOneOctetWithoutAdd)
+	}
 	if len(r.LocationEstimate) == 0 && (r.DeferredmtLrResponseIndicator || len(r.AddLocationEstimate) > 0) {
 		shape := byte(0)
 		if len(r.AddLocationEstimate) > 0 {

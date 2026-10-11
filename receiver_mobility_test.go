@@ -38,7 +38,7 @@ func TestReceiverCancelLocationMTRFFlags(t *testing.T) {
 
 // TS 29.002 V19.1.0 §17.7.1 TypeOfUpdate specifies sender applicability.
 func TestReceiverCancelLocationTypeOfUpdate(t *testing.T) {
-	for _, ct := range []*CancellationType{nil, mobilityPtr(CancellationTypeSubscriptionWithdraw), mobilityPtr(CancellationType(99)), mobilityPtr(CancellationTypeUpdateProcedure), mobilityPtr(CancellationTypeInitialAttachProcedure)} {
+	for _, ct := range []*CancellationType{nil, new(CancellationTypeSubscriptionWithdraw), new(CancellationType(99)), new(CancellationTypeUpdateProcedure), new(CancellationTypeInitialAttachProcedure)} {
 		t.Run(fmt.Sprint(ct), func(t *testing.T) {
 			tou := TypeOfUpdateMmeChange
 			w := &gsm_map.CancelLocationArg{Identity: gsm_map.NewIdentityImsi(semAddrIMSI), CancellationType: ct, TypeOfUpdate: &tou}
@@ -46,8 +46,8 @@ func TestReceiverCancelLocationTypeOfUpdate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			semWantEqual(t, "CancellationType", ct, got.CancellationType)
-			semWantEqual(t, "TypeOfUpdate", &tou, got.TypeOfUpdate)
+			wantEqual(t, "CancellationType", ct, got.CancellationType)
+			wantEqual(t, "TypeOfUpdate", &tou, got.TypeOfUpdate)
 			_, err = got.Marshal()
 			switch {
 			case ct != nil && *ct == 99:
@@ -85,9 +85,9 @@ func TestReceiverEPSInfoMissingPDNIdentity(t *testing.T) {
 		keep   bool
 	}{
 		{"empty", gsm_map.PDNGWUpdate{}, false},
-		{"apn only", gsm_map.PDNGWUpdate{Apn: mobilityPtr([]byte{1, 'a'})}, false},
-		{"context only", gsm_map.PDNGWUpdate{ContextId: mobilityPtr(int64(1))}, false},
-		{"identity without apn or context", gsm_map.PDNGWUpdate{PdnGwIdentity: &gsm_map.PDNGWIdentity{PdnGwIpv4Address: mobilityPtr(gsm_map.PDPAddress{192, 0, 2, 1})}}, true},
+		{"apn only", gsm_map.PDNGWUpdate{Apn: new([]byte{1, 'a'})}, false},
+		{"context only", gsm_map.PDNGWUpdate{ContextId: new(int64(1))}, false},
+		{"identity without apn or context", gsm_map.PDNGWUpdate{PdnGwIdentity: &gsm_map.PDNGWIdentity{PdnGwIpv4Address: new(gsm_map.PDPAddress{192, 0, 2, 1})}}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := mobilityGprsWire(t)
@@ -168,7 +168,7 @@ func TestReceiverExtAccessRestrictionUnknownBits(t *testing.T) {
 			if err = w.UnmarshalBER(data); err != nil {
 				t.Fatal(err)
 			}
-			semWantEqual(t, "wire restrictions", &bs, w.ExtAccessRestrictionData)
+			wantEqual(t, "wire restrictions", &bs, w.ExtAccessRestrictionData)
 		})
 	}
 }
@@ -215,15 +215,15 @@ func TestReceiverPDPContextSenderDependencies(t *testing.T) {
 				}
 				return HexBytes(*v)
 			}
-			semWantEqual(t, "ExtQoS", want(w.ExtQoSSubscribed), r.ExtQoSSubscribed)
-			semWantEqual(t, "Ext2QoS", want(w.Ext2QoSSubscribed), r.Ext2QoSSubscribed)
-			semWantEqual(t, "Ext3QoS", want(w.Ext3QoSSubscribed), r.Ext3QoSSubscribed)
-			semWantEqual(t, "Ext4QoS", want(w.Ext4QoSSubscribed), r.Ext4QoSSubscribed)
+			wantEqual(t, "ExtQoS", want(w.ExtQoSSubscribed), r.ExtQoSSubscribed)
+			wantEqual(t, "Ext2QoS", want(w.Ext2QoSSubscribed), r.Ext2QoSSubscribed)
+			wantEqual(t, "Ext3QoS", want(w.Ext3QoSSubscribed), r.Ext3QoSSubscribed)
+			wantEqual(t, "Ext4QoS", want(w.Ext4QoSSubscribed), r.Ext4QoSSubscribed)
 			if w.PdpAddress == nil && r.PdpAddress != nil {
 				t.Fatal("base address invented")
 			}
 			if w.ExtPdpAddress != nil {
-				semWantEqual(t, "extended address", HexBytes(*w.ExtPdpAddress), r.ExtPdpAddress)
+				wantEqual(t, "extended address", HexBytes(*w.ExtPdpAddress), r.ExtPdpAddress)
 			}
 			_, err = got.Marshal()
 			if !errors.Is(err, tc.want) {
@@ -258,7 +258,7 @@ func TestReceiverDestinationNumberCriteriaListAbsence(t *testing.T) {
 					r = got.VlrCamelSubscriptionInfo.OBcsmCamelTDPCriteriaList[0].DestinationNumberCriteria
 					_, senderErr = got.Marshal()
 				} else {
-					w := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: mobilityPtr(gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: criteria}}))}
+					w := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: new(gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: criteria}}))}
 					got, err := ParseSriResp(strictBER(t, w))
 					if err != nil {
 						t.Fatal(err)
@@ -280,8 +280,6 @@ func TestReceiverDestinationNumberCriteriaListAbsence(t *testing.T) {
 		}
 	}
 }
-
-func mobilityPtr[T any](v T) *T { return &v }
 
 // Repeated triggers identify separate received descriptors; each descriptor's
 // service key and position remain available after Parse (TS 29.002 §17.7.1).
@@ -326,7 +324,7 @@ func TestReceiverRepeatedTDPDescriptors(t *testing.T) {
 					keys = append(keys, e.ServiceKey)
 				}
 			}
-			semWantEqual(t, "descriptor service keys in received order", []int64{1, 2}, keys)
+			wantEqual(t, "descriptor service keys in received order", []int64{1, 2}, keys)
 			if _, err := got.Marshal(); !errors.Is(err, ErrCamelDuplicateTriggerDetectionPoint) {
 				t.Fatalf("Marshal: %v", err)
 			}
@@ -351,7 +349,7 @@ func TestReceiverDestinationNumberCriteriaEmptyPresentLists(t *testing.T) {
 				if where == "ISD" {
 					_, err = ParseInsertSubscriberData(tolerantBER(t, &gsm_map.InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &gsm_map.VlrCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: l}}))
 				} else {
-					_, err = ParseSriResp(tolerantBER(t, &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: mobilityPtr(gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: l}}))}))
+					_, err = ParseSriResp(tolerantBER(t, &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: new(gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: l}}))}))
 				}
 				var constraint *ber.ConstraintError
 				if !errors.As(err, &constraint) {

@@ -112,6 +112,11 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 		out.NaESRK = &v
 	}
 	// [5] locationEstimate
+	// 3GPP TS 29.002 V19.1.0 §17.7.13: a receiver treats a one-octet
+	// locationEstimate without add-LocationEstimate as invalid data.
+	if len(a.LocationEstimate) == 1 && len(a.AddLocationEstimate) == 0 {
+		return nil, fmt.Errorf("SubscriberLocationReportArg.LocationEstimate: %w", ErrLocationEstimateOneOctetWithoutAdd)
+	}
 	if len(a.LocationEstimate) > 0 {
 		v := gsm_map.ExtGeographicalInformation(a.LocationEstimate)
 		out.LocationEstimate = &v

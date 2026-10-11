@@ -2,24 +2,33 @@ package gsmmap
 
 import "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 
-// TS 29.002 V19.1.0 §17.7.13: ignore deferred Ext before applying Ext/Add precedence.
+// receiveGeographicalInformation applies the exception handling of 3GPP TS
+// 29.002 V19.1.0 §17.7.13 to a received location estimate (ext) and
+// additional location estimate (add):
+//   - an Add received together with a valid Ext is discarded, valid or not;
+//   - a one-octet Ext is discarded beside an Add, and is invalid data
+//     without one;
+//   - any other invalid Ext, and an invalid Add without a valid Ext, are
+//     invalid data.
+//
+// With ignoreExt, set by deferredmt-lrResponseIndicator in a PSL result,
+// "locationEstimate is ignored": it is dropped and never invalid data.
 func receiveGeographicalInformation(ext []byte, add *gsm_map.AddGeographicalInformation, ignoreExt bool) (ExtGeographicalInformation, AddGeographicalInformation, error) {
-	if ignoreExt || len(ext) == 1 && add != nil {
+	if len(ext) > 1 && validGeographicalInformation(ext, false) {
+		add = nil
+	} else if !ignoreExt && (len(ext) > 1 || len(ext) == 1 && add == nil) {
+		return nil, nil, ErrExtGeographicalInformationInvalidData
+	}
+	if ignoreExt || len(ext) == 1 {
 		ext = nil
 	}
-	if len(ext) > 1 {
-		if !validGeographicalInformation(ext, false) {
-			return nil, nil, ErrExtGeographicalInformationInvalidData
-		}
+	if add == nil {
 		return ExtGeographicalInformation(ext), nil, nil
 	}
-	if add != nil {
-		if !validGeographicalInformation(*add, true) {
-			return nil, nil, ErrAddGeographicalInformationInvalidData
-		}
-		return ExtGeographicalInformation(ext), AddGeographicalInformation(*add), nil
+	if !validGeographicalInformation(*add, true) {
+		return nil, nil, ErrAddGeographicalInformationInvalidData
 	}
-	return ExtGeographicalInformation(ext), nil, nil
+	return ExtGeographicalInformation(ext), AddGeographicalInformation(*add), nil
 }
 
 // TS 23.032 V19.0.0 §7.3 figures define lengths and explicitly zero coding bits.
