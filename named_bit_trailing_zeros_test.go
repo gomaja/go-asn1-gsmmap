@@ -50,3 +50,35 @@ func TestGoASN1Issue129NamedBitStringZeroPadding(t *testing.T) {
 		wantConstraintError(t, err, "vlr-Capability.supportedCamelPhases", "SIZE (1..16)")
 	})
 }
+
+// ITU-T X.680 (02/2021) §22.7 lets encoding rules add trailing 0 bits to a
+// BIT STRING with named bits. go-asn1 pads a received value shorter than the
+// SIZE lower bound, so Parse accepts it and Marshal sends it at that bound.
+func TestNamedBitStringPaddedToSizeLowerBound(t *testing.T) {
+	// odb-all-apn (bit 0) set in 18 bits; supportedFeatures has SIZE (26..40)
+	// (3GPP TS 29.002 V19.1.0 §17.7.1).
+	w := &gsm_map.UpdateGprsLocationArg{
+		Imsi:           gsm_map.IMSI{0x00, 0x01, 0x01, 0x21, 0x43, 0x65, 0x87, 0xf9},
+		SgsnNumber:     gsm_map.ISDNAddressString{0x91, 0x21, 0x43},
+		SgsnAddress:    gsm_map.GSNAddress{0x04, 192, 0, 2, 1},
+		SgsnCapability: &gsm_map.SGSNCapability{SupportedFeatures: &runtime.BitString{Bytes: []byte{0x80, 0, 0}, BitLength: 18}},
+	}
+	got, err := ParseUpdateGprsLocation(tolerantBER(t, w))
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	if f := got.SGSNCapability.SupportedFeatures; f == nil || !f.OdbAllApn {
+		t.Fatalf("SupportedFeatures = %+v, want odb-all-apn", f)
+	}
+	data, err := got.Marshal()
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	var sent gsm_map.UpdateGprsLocationArg
+	if err := sent.UnmarshalBER(data); err != nil {
+		t.Fatalf("decoding the marshalled value: %v", err)
+	}
+	if bits := sent.SgsnCapability.SupportedFeatures.BitLength; bits != 26 {
+		t.Errorf("Marshal sends %d bits, want 26", bits)
+	}
+}

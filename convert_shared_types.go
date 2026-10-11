@@ -457,8 +457,9 @@ func convertExternalSignalInfoToWire(e *ExternalSignalInfo) (*gsm_map.ExternalSi
 	}, nil
 }
 
-// convertWireToExternalSignalInfo preserves the listed gsm-BSSMAP (3);
-// 3GPP TS 29.002 V19.1.0 §17.7.8 reserves it for sending.
+// convertWireToExternalSignalInfo keeps a received gsm-BSSMAP (3), a listed
+// value; 3GPP TS 29.002 V19.1.0 §17.7.8: "Value 3 is reserved and must not
+// be used", so Marshal does not send it.
 func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) *ExternalSignalInfo {
 	return &ExternalSignalInfo{
 		ProtocolID: w.ProtocolId,
