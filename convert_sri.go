@@ -207,14 +207,11 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 		return nil, fmt.Errorf("decoding GmscOrGsmSCFAddress: %w", err)
 	}
 
-	// InterrogationType — 0 (basicCall) or 1 (forwarding), 3GPP TS 29.002 V19.1.0 §17.7.3.
-	it := int(arg.InterrogationType)
-
 	s := &Sri{
 		MSISDN:                    msisdn,
 		MSISDNNature:              msisdnNature,
 		MSISDNPlan:                msisdnPlan,
-		InterrogationType:         InterrogationType(it),
+		InterrogationType:         arg.InterrogationType,
 		GmscOrGsmSCFAddress:       gmsc,
 		GmscOrGsmSCFAddressNature: gmscNature,
 		GmscOrGsmSCFAddressPlan:   gmscPlan,
@@ -247,8 +244,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// ForwardingReason — 0..2 (3GPP TS 29.002 V19.1.0 §17.7.3).
 	if arg.ForwardingReason != nil {
-		v := int(*arg.ForwardingReason)
-		fr := ForwardingReason(v)
+		fr := *arg.ForwardingReason
 		s.ForwardingReason = &fr
 	}
 

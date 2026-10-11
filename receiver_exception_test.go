@@ -400,15 +400,39 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 		{OBcsmTriggerDetectionPoint: OBcsmTriggerRouteSelectFailure},
 	}
 	// 3GPP TS 29.002 V19.1.0 §17.7.1 ignores sequences with unlisted TDPs.
-	// Their other fields satisfy the ASN.1 constraints.
+	// Their other fields satisfy the ASN.1 constraints but fail the
+	// package's checks of a kept sequence: a negative DefaultCallHandling and
+	// a cause value above maxCauseValue.
 	ignoredData := func(w []gsm_map.OBcsmCamelTDPData, tdp OBcsmTriggerDetectionPoint) []gsm_map.OBcsmCamelTDPData {
 		e := w[0]
 		e.OBcsmTriggerDetectionPoint, e.ServiceKey, e.DefaultCallHandling = tdp, 11, -1
 		return slices.Insert(w, 1, e)
 	}
 	ignoredCriteria := func(w []gsm_map.OBcsmCamelTDPCriteria, tdp OBcsmTriggerDetectionPoint) []gsm_map.OBcsmCamelTDPCriteria {
-		return slices.Insert(w, 1, gsm_map.OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: tdp, CallTypeCriteria: &forwarded})
+		causes := gsm_map.OCauseValueCriteria{Values: []gsm_map.CauseValue{{0x80}}}
+		return slices.Insert(w, 1, gsm_map.OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: tdp, CallTypeCriteria: &forwarded, OCauseValueCriteria: &causes})
 	}
+	// With a listed TDP the same criteria entry is kept and fails.
+	t.Run("VLR, listed TDP", func(t *testing.T) {
+		in := camelISD()
+		in.VlrCamelSubscriptionInfo.OBcsmCamelTDPCriteriaList = keptCriteria
+		w := isdWire(t, in)
+		vlr := w.VlrCamelSubscriptionInfo
+		vlr.OBcsmCamelTDPCriteriaList.Values = ignoredCriteria(vlr.OBcsmCamelTDPCriteriaList.Values, OBcsmTriggerRouteSelectFailure)
+		if _, err := parseISDBytes(t, w); !errors.Is(err, ErrCamelInvalidCauseValue) {
+			t.Errorf("err = %v, want ErrCamelInvalidCauseValue", err)
+		}
+	})
+	t.Run("GMSC, listed TDP", func(t *testing.T) {
+		g := gmscCamel()
+		g.OBcsmCamelTDPCriteriaList = keptCriteria
+		w := sriRespWire(t, g)
+		wg := &w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo
+		wg.OBcsmCamelTDPCriteriaList.Values = ignoredCriteria(wg.OBcsmCamelTDPCriteriaList.Values, OBcsmTriggerRouteSelectFailure)
+		if _, err := ParseSriResp(strictBER(t, w)); !errors.Is(err, ErrCamelInvalidCauseValue) {
+			t.Errorf("err = %v, want ErrCamelInvalidCauseValue", err)
+		}
+	})
 	for _, tdp := range []OBcsmTriggerDetectionPoint{1, 3, 5, -1, math.MaxInt64} {
 		t.Run(fmt.Sprintf("VLR, wire %d", tdp), func(t *testing.T) {
 			in := camelISD()

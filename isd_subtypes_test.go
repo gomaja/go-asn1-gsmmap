@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -122,9 +121,7 @@ func TestCSGSubscriptionData_BadCsgID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := (&InsertSubscriberDataArg{CsgSubscriptionDataList: CSGSubscriptionDataList{tc.in}}).Marshal()
 			if tc.name == "wrong octets" {
-				if !errors.Is(err, ber.ErrInvalidValue) {
-					t.Fatalf("want octet mismatch, got %v", err)
-				}
+				wantBitStringLengthError(t, err, "csg-Id", 27, 2)
 			} else {
 				wantConstraintError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", "SIZE (27)")
 			}

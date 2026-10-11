@@ -207,7 +207,7 @@ type MoFsm struct {
 	// Optional fields (post-extension marker).
 	IMSI              string              // optional IMSI
 	CorrelationID     *SriSmCorrelationID // [0] reuse SRI-SM type
-	SmDeliveryOutcome *SmDeliveryOutcome  // [1] 0..2 (ErrMoFsmSmDeliveryOutcomeInvalid)
+	SmDeliveryOutcome *SmDeliveryOutcome  // [1] 0..2, not extensible (codec *ber.ConstraintError)
 }
 
 // MoFsmResp represents a Mobile Originated Forward Short Message response.
@@ -681,7 +681,9 @@ type GPRSLocationInformation struct {
 
 // --- SendRoutingInfo (opCode 22) supporting types ---
 
-// InterrogationType per 3GPP TS 29.002 clause 17.6.2.
+// InterrogationType per 3GPP TS 29.002 V19.1.0 §17.7.3. It is not
+// extensible: Marshal and Parse reject any other value with the codec's
+// *ber.ConstraintError.
 type InterrogationType = gsm_map.InterrogationType
 
 const (
@@ -689,7 +691,9 @@ const (
 	InterrogationForwarding = gsm_map.InterrogationTypeForwarding
 )
 
-// ForwardingReason per 3GPP TS 29.002.
+// ForwardingReason per 3GPP TS 29.002 V19.1.0 §17.7.3. It is not
+// extensible: Marshal and Parse reject any other value with the codec's
+// *ber.ConstraintError.
 type ForwardingReason = gsm_map.ForwardingReason
 
 const (
@@ -747,7 +751,8 @@ type ExtBasicServiceCode struct {
 }
 
 // ExternalSignalInfo per ASN.1 SEQUENCE. ProtocolId is not extensible:
-// Marshal and Parse reject a ProtocolID outside 1..4 with a codec constraint error.
+// Marshal and Parse reject a ProtocolID outside 1..4 with the codec's
+// *ber.ConstraintError.
 // 3GPP TS 29.002 V19.1.0 §17.7.8: "Value 3 is reserved and must not be
 // used", so Marshal also rejects gsm-BSSMAP (ErrProtocolIDReserved), while
 // Parse keeps a received 3, a listed value.
@@ -874,7 +879,7 @@ const (
 // At least one of DestinationNumberList or DestinationNumberLengthList must
 // be present when this criteria SEQUENCE is set. Each DestinationNumberList
 // entry is an ISDN-AddressString of 1..9 octets, at most 16 digits; Marshal
-// and Parse reject a longer one (ErrDestinationNumberInvalidSize).
+// and Parse reject a longer one with the codec's *ber.ConstraintError.
 type DestinationNumberCriteria struct {
 	MatchType                   MatchType    // mandatory
 	DestinationNumberList       []ISDNNumber // [1] list of destination numbers
@@ -1743,8 +1748,8 @@ type CancelLocation struct {
 
 // SubscriberStatus per 3GPP TS 29.002 (3GPP TS 29.002 V19.1.0 §17.7.1).
 // ENUMERATED { serviceGranted(0), operatorDeterminedBarring(1) }, not
-// extensible: Marshal and Parse reject any other value
-// (ErrSubscriberStatusInvalid).
+// extensible: Marshal and Parse reject any other value with the codec's
+// *ber.ConstraintError.
 type SubscriberStatus = gsm_map.SubscriberStatus
 
 const (
@@ -1765,8 +1770,8 @@ const (
 // RegionalSubscriptionResponse per 3GPP TS 29.002 (3GPP TS 29.002 V19.1.0 §17.7.1).
 // ENUMERATED { networkNode-AreaRestricted(0), tooManyZoneCodes(1),
 // zoneCodesConflict(2), regionalSubscNotSupported(3) }, not extensible:
-// Marshal and Parse reject any other value
-// (ErrRegionalSubscriptionResponseInvalid).
+// Marshal and Parse reject any other value with the codec's
+// *ber.ConstraintError.
 type RegionalSubscriptionResponse = gsm_map.RegionalSubscriptionResponse
 
 const (
@@ -2405,8 +2410,8 @@ type MOLRList []MOLRClass
 
 // GMLCList (SEQUENCE SIZE 1..5 OF ISDN-AddressString) per 3GPP TS 29.002
 // V19.1.0 §17.7.1. Each entry is an ISDN-AddressString of 1..9 octets, at
-// most 16 digits; Marshal and Parse reject a longer one
-// (ErrGMLCListEntryInvalidSize) and one without digits (ErrGMLCListEntryEmpty).
+// most 16 digits; Marshal and Parse reject a longer one with the codec's
+// *ber.ConstraintError and one without digits with ErrGMLCListEntryEmpty.
 type GMLCList []ISDNNumber
 
 // LCSInformation (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -3001,25 +3006,28 @@ type MapErrorCode int64
 // unexpectedDataValue, absentSubscriber, illegalSubscriber, illegalEquipment,
 // callBarred, unknownAlphabet and ussd-Busy.
 const (
-	MapErrorUnknownSubscriber             MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUnknownSubscriber)
-	MapErrorAbsentSubscriberSM            MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeAbsentSubscriberSM)
-	MapErrorRoamingNotAllowed             MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeRoamingNotAllowed)
-	MapErrorIllegalSubscriber             MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeIllegalSubscriber)
-	MapErrorTeleserviceNotProvisioned     MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeTeleserviceNotProvisioned)
-	MapErrorIllegalEquipment              MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeIllegalEquipment)
-	MapErrorCallBarred                    MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeCallBarred)
-	MapErrorFacilityNotSupported          MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeFacilityNotSupported)
-	MapErrorAbsentSubscriber              MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeAbsentSubscriber)
-	MapErrorSystemFailure                 MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeSystemFailure)
-	MapErrorDataMissing                   MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeDataMissing)
-	MapErrorUnexpectedDataValue           MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUnexpectedDataValue)
-	MapErrorUnauthorizedRequestingNetwork MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUnauthorizedRequestingNetwork)
-	MapErrorUnknownAlphabet               MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUnknownAlphabet)
-	MapErrorUSSDBusy                      MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUssdBusy)
+	MapErrorUnknownSubscriber             MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber
+	MapErrorAbsentSubscriberSM            MapErrorCode = gsm_map.GSMMAPLocalErrorcodeAbsentSubscriberSM
+	MapErrorRoamingNotAllowed             MapErrorCode = gsm_map.GSMMAPLocalErrorcodeRoamingNotAllowed
+	MapErrorIllegalSubscriber             MapErrorCode = gsm_map.GSMMAPLocalErrorcodeIllegalSubscriber
+	MapErrorTeleserviceNotProvisioned     MapErrorCode = gsm_map.GSMMAPLocalErrorcodeTeleserviceNotProvisioned
+	MapErrorIllegalEquipment              MapErrorCode = gsm_map.GSMMAPLocalErrorcodeIllegalEquipment
+	MapErrorCallBarred                    MapErrorCode = gsm_map.GSMMAPLocalErrorcodeCallBarred
+	MapErrorFacilityNotSupported          MapErrorCode = gsm_map.GSMMAPLocalErrorcodeFacilityNotSupported
+	MapErrorAbsentSubscriber              MapErrorCode = gsm_map.GSMMAPLocalErrorcodeAbsentSubscriber
+	MapErrorSystemFailure                 MapErrorCode = gsm_map.GSMMAPLocalErrorcodeSystemFailure
+	MapErrorDataMissing                   MapErrorCode = gsm_map.GSMMAPLocalErrorcodeDataMissing
+	MapErrorUnexpectedDataValue           MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUnexpectedDataValue
+	MapErrorUnauthorizedRequestingNetwork MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUnauthorizedRequestingNetwork
+	MapErrorUnknownAlphabet               MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUnknownAlphabet
+	MapErrorUSSDBusy                      MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUssdBusy
 )
 
 // String returns the ASN.1 name of the error (e.g. "absentSubscriberSM"),
-// or the decimal code when TS 29.002 defines no error with that code.
+// or the decimal code for a code without a name. The names come from
+// go-asn1's error code list, which also names code 4 secureTransportError,
+// although 3GPP TS 29.002 V19.1.0 §17.6.6 defines no error with code 4
+// (https://github.com/gomaja/go-asn1/issues/135).
 func (c MapErrorCode) String() string {
 	return gsm_map.NewGSMMAPLocalErrorcodeInt64(int64(c)).String()
 }
@@ -3135,9 +3143,9 @@ type ExtensibleCallBarredParam struct {
 // Returned with errorCode 34 (systemFailure). Identifies which network
 // node broke — critical for incident triage. The CHOICE is between a
 // bare NetworkResource and the extensible variant. Decode populates
-// exactly one of NetworkResource or ExtensibleSystemFailureParam. NetworkResource is not extensible: Parse rejects
-// a value other than plmn(0) to rss(7) in either alternative
-// (ErrNetworkResourceInvalid).
+// exactly one of NetworkResource or ExtensibleSystemFailureParam.
+// NetworkResource is not extensible: Parse rejects a value other than plmn(0)
+// to rss(7) in either alternative with the codec's *ber.ConstraintError.
 type SystemFailureParam struct {
 	NetworkResource              *gsm_map.NetworkResource      // bare alternative
 	ExtensibleSystemFailureParam *ExtensibleSystemFailureParam // extensible alternative

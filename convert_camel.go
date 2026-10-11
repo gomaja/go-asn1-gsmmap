@@ -297,6 +297,14 @@ func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria
 	return out, nil
 }
 
+// maxCauseValue is the largest CauseValue. 3GPP TS 29.002 V19.1.0 §17.7.1
+// defines CauseValue as OCTET STRING (SIZE(1)) "extracted from Cause
+// parameter in ITU-T Recommendation Q.763". The cause criteria are checked
+// against the "cause value" field of that parameter (3GPP TS 23.078 V19.0.0
+// §4.2.1.2.3 and §4.2.1.2.5), which ITU-T Q.850 (10/2018) §6.1 codes in bits
+// 7 to 1.
+const maxCauseValue = 127
+
 // convertOBcsmTDPCriteriaToWire encodes an O-BCSM TDP criteria entry.
 func convertOBcsmTDPCriteriaToWire(c *OBcsmCamelTDPCriteria) (gsm_map.OBcsmCamelTDPCriteria, error) {
 	if !isValidOBcsmTDP(c.OBcsmTriggerDetectionPoint) {
@@ -330,7 +338,7 @@ func convertOBcsmTDPCriteriaToWire(c *OBcsmCamelTDPCriteria) (gsm_map.OBcsmCamel
 	if len(c.OCauseValueCriteria) > 0 {
 		list := gsm_map.OCauseValueCriteria{Values: make([]gsm_map.CauseValue, len(c.OCauseValueCriteria))}
 		for i, v := range c.OCauseValueCriteria {
-			if v < 0 || v > 127 {
+			if v < 0 || v > maxCauseValue {
 				return gsm_map.OBcsmCamelTDPCriteria{}, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list.Values[i] = gsm_map.CauseValue{byte(v)}
@@ -376,9 +384,8 @@ func convertWireToOBcsmTDPCriteria(w *gsm_map.OBcsmCamelTDPCriteria) (*OBcsmCame
 	if w.OCauseValueCriteria != nil {
 		list := make([]int, len(w.OCauseValueCriteria.Values))
 		for i, b := range w.OCauseValueCriteria.Values {
-			// 3GPP TS 29.002 V19.1.0 §17.7.1 restricts CauseValue to 0..127.
 			v := int(b[0])
-			if v > 127 {
+			if v > maxCauseValue {
 				return nil, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list[i] = v
@@ -410,7 +417,7 @@ func convertTBcsmTDPCriteriaToWire(c *TBcsmCamelTDPCriteria) (gsm_map.TBCSMCAMEL
 	if len(c.TCauseValueCriteria) > 0 {
 		list := gsm_map.TCauseValueCriteria{Values: make([]gsm_map.CauseValue, len(c.TCauseValueCriteria))}
 		for i, v := range c.TCauseValueCriteria {
-			if v < 0 || v > 127 {
+			if v < 0 || v > maxCauseValue {
 				return gsm_map.TBCSMCAMELTDPCriteria{}, fmt.Errorf("TCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list.Values[i] = gsm_map.CauseValue{byte(v)}
@@ -444,7 +451,7 @@ func convertWireToTBcsmTDPCriteria(w *gsm_map.TBCSMCAMELTDPCriteria) (TBcsmCamel
 		list := make([]int, len(w.TCauseValueCriteria.Values))
 		for i, b := range w.TCauseValueCriteria.Values {
 			v := int(b[0])
-			if v > 127 {
+			if v > maxCauseValue {
 				return TBcsmCamelTDPCriteria{}, fmt.Errorf("TCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list[i] = v

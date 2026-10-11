@@ -192,8 +192,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 
 	// ImsVoiceOverPSSessionsIndication — 0..2 per TS 29.002.
 	if si.ImsVoiceOverPSSessionsIndication != nil {
-		v := int(*si.ImsVoiceOverPSSessionsIndication)
-		iv := ImsVoiceOverPSSessionsIndication(v)
+		iv := *si.ImsVoiceOverPSSessionsIndication
 		out.ImsVoiceOverPSSessionsIndication = &iv
 	}
 

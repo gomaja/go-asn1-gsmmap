@@ -6,10 +6,24 @@ package gsmmap
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/gomaja/go-asn1/runtime/ber"
 )
+
+// wantBitStringLengthError checks that err is the codec's error for a BIT
+// STRING field whose octet count disagrees with its bit length. That error
+// carries no component path (https://github.com/gomaja/go-asn1/issues/136),
+// so the field and the counts are matched in its text.
+func wantBitStringLengthError(t *testing.T, err error, field string, bits, octets int) {
+	t.Helper()
+	want := fmt.Sprintf("encoding %s: %v: BIT STRING length %d disagrees with %d content octets", field, ber.ErrInvalidValue, bits, octets)
+	if !errors.Is(err, ber.ErrInvalidValue) || !strings.Contains(err.Error(), want) {
+		t.Fatalf("err = %v, want ber.ErrInvalidValue as %q", err, want)
+	}
+}
 
 // ITU-T X.690 (02/2021) §8.6.2 requires octets consistent with the bit length.
 func TestMarshalBitStringOctetsMatchBitLength(t *testing.T) {
@@ -28,33 +42,40 @@ func TestMarshalBitStringOctetsMatchBitLength(t *testing.T) {
 		}}
 	}
 	type marshaler interface{ Marshal() ([]byte, error) }
+	type bitLength struct {
+		field        string
+		bits, octets int
+	}
 	for _, tc := range []struct {
 		name             string
 		msg              marshaler
-		want             error
-		path, constraint string
+		length           *bitLength // the length error Marshal returns
+		path, constraint string     // the *ber.ConstraintError Marshal returns
 	}{
 		{"isr-Information 3 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}, IsrInformationBits: 3}, nil), nil, "", ""},
 		{"isr-Information 8 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF}, IsrInformationBits: 8}, nil), nil, "", ""},
-		{"isr-Information 3 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0, 0x00}, IsrInformationBits: 3}, nil), ber.ErrInvalidValue, "", ""},
-		{"isr-Information 8 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF, 0x00}, IsrInformationBits: 8}, nil), ber.ErrInvalidValue, "", ""},
-		{"isr-Information octets without bits", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}}, nil), ber.ErrInvalidValue, "", ""},
+		{"isr-Information 3 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0, 0x00}, IsrInformationBits: 3}, nil), &bitLength{"isr-Information", 3, 2}, "", ""},
+		{"isr-Information 8 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF, 0x00}, IsrInformationBits: 8}, nil), &bitLength{"isr-Information", 8, 2}, "", ""},
+		{"isr-Information octets without bits", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}}, nil), &bitLength{"isr-Information", 0, 1}, "", ""},
 		{"supportedFeatures named bit 0", gprs(nil, &SGSNCapability{SupportedFeatures: &SupportedFeatures{OdbAllApn: true}}), nil, "", ""},
 		{"supportedFeatures named bit 39", gprs(nil, &SGSNCapability{SupportedFeatures: &SupportedFeatures{NrAsSecondaryRAT: true}}), nil, "", ""},
 		{"ext-SupportedFeatures named bit", gprs(nil, &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true}}), nil, "", ""},
 		{"ext-SupportedFeatures unnamed bit 39", gprs(nil, &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnknownBits: HexBytes{0, 0, 0, 0, 1}}}), nil, "", ""},
 		{"csg-Id 27 bits in 4 octets", csg(HexBytes{0x11, 0x22, 0x33, 0x40}, 27), nil, "", ""},
-		{"csg-Id 27 bits in 10 octets", csg(make(HexBytes, 10), 27), ber.ErrInvalidValue, "", ""},
-		{"csg-Id 27 bits in 3 octets", csg(HexBytes{0x11, 0x22, 0x33}, 27), ber.ErrInvalidValue, "", ""},
+		{"csg-Id 27 bits in 10 octets", csg(make(HexBytes, 10), 27), &bitLength{"csg-Id", 27, 10}, "", ""},
+		{"csg-Id 27 bits in 3 octets", csg(HexBytes{0x11, 0x22, 0x33}, 27), &bitLength{"csg-Id", 27, 3}, "", ""},
 		{"csg-Id octets without bits", csg(HexBytes{0x11, 0x22, 0x33, 0x40}, 0), nil, "subscriberInfo.locationInformation.userCSGInformation.csg-Id", "SIZE (27)"},
 		{"csg-Id negative bits", csg(HexBytes{0}, -1), nil, "subscriberInfo.locationInformation.userCSGInformation.csg-Id", "SIZE (27)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			data, err := tc.msg.Marshal()
-			if tc.path != "" {
+			switch {
+			case tc.path != "":
 				wantConstraintError(t, err, tc.path, tc.constraint)
-			} else if !errors.Is(err, tc.want) {
-				t.Fatalf("Marshal: err = %v, want %v", err, tc.want)
+			case tc.length != nil:
+				wantBitStringLengthError(t, err, tc.length.field, tc.length.bits, tc.length.octets)
+			case err != nil:
+				t.Fatalf("Marshal: %v", err)
 			}
 			if err != nil {
 				return
