@@ -73,12 +73,14 @@ What that means for a consumer:
 
 **Dependencies and errors**
 
-- The main branch requires the current `go-asn1` and `go-sms` modules. Codec-enforced ASN.1 sizes and integer ranges return `*ber.ConstraintError` (`errors.As`), while package semantic checks return named `Err*` sentinels (`errors.Is`).
-- Removed constraint and bounds sentinels include `ErrSaiInvalidPLMNId`, `ErrIntervalTimeOutOfRange`, `ErrGPRSDataListSize`, and `ErrUtranBaroPressureMeasOutOfRange`. Element-size, bit-length, and sender-rule checks retain dedicated sentinels where the codec does not check them.
+- The main branch requires the current `go-asn1` and `go-sms` modules. Codec-enforced ASN.1 sizes (including SEQUENCE OF elements), integer ranges and non-extensible ENUMERATED sets return `*ber.ConstraintError` (`errors.As`). A BIT STRING whose octet count disagrees with its bit length returns an error wrapping `ber.ErrInvalidValue` (`errors.Is`); when the bit length also breaks the SIZE, the error can be that SIZE's `*ber.ConstraintError` instead ([go-asn1#137](https://github.com/gomaja/go-asn1/issues/137)). Package semantic checks return named `Err*` sentinels (`errors.Is`).
+- Removed constraint and bounds sentinels include `ErrSaiInvalidPLMNId`, `ErrIntervalTimeOutOfRange`, `ErrGPRSDataListSize`, and `ErrUtranBaroPressureMeasOutOfRange`. Sender rules retain dedicated sentinels for restrictions narrower than the ASN.1 constraints.
+- Element-size sentinels from v1.0.2 replaced by `*ber.ConstraintError`: `ErrCamelInvalidCauseValueOctetLength`, `ErrZoneCodeInvalidSize`, `ErrAPNInvalidSize`, `ErrResetIdInvalidSize`, `ErrIsdBearerServiceCodeSize`, `ErrIsdTeleserviceCodeSize`, `ErrIsdResSsListSize`, `ErrMMCodeInvalidSize`.
+- Non-extensible ENUMERATED sentinels from v1.0.2 replaced by `*ber.ConstraintError`: `ErrSriInvalidInterrogationType`, `ErrAscInvalidSmsGmscAlertEvent`, `ErrCamelInvalidCallTypeCriteria`, `ErrCamelInvalidMatchType`, `ErrIntraCUGOptionsInvalidValue`, `ErrCliRestrictionOptionInvalidValue`, `ErrOverrideCategoryInvalidValue`, `ErrSIPTOPermissionInvalid`, `ErrSIPTOLocalNetworkPermissionInvalid`, `ErrLIPAPermissionInvalid`, `ErrNIDDMechanismInvalid`, `ErrLSAOnlyAccessIndicatorInvalid`, `ErrPDNGWAllocationTypeInvalid`, `ErrPDNConnectionContinuityInvalid`, `ErrWLANOffloadabilityIndicationInvalid`, `ErrReportSMDeliveryStatusOutcomeInvalid`.
 - `ErrCamelInvalidCamelCapabilityHandling` is `ErrCamelCapabilityHandlingOutOfRange`. Other removed `Err*` names for duplicated presence, identity, size, receiver, and digitless-address checks are replaced by the applicable current semantic sentinel or codec error; update `errors.Is` checks by condition.
 - `ErrReportSMDeliveryStatusResStoredMSISDNEmpty` → `ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty`; `ErrLCSClientIDDialedByMSEmpty` splits into `ErrLCSClientIDDialedByMSDecodedEmpty` on decode and `ErrLCSClientIDDialedByMSNaturePlanWithoutDigits` on encode.
 - Error names follow current Go fields: `ErrUpdateLocationMissingMSCNumber` → `ErrUpdateLocationMissingMscNumber` and `ErrUpdateLocationMissingVLRNumber` → `ErrUpdateLocationMissingVlrNumber`.
-- A digitless mandatory value returns the sentinel `Marshal` returns for the missing field: `ErrPSLArgMlcNumberDecodedEmpty` → `ErrPSLArgMlcNumberEmpty`, `ErrSriLcsMlcNumberDecodedEmpty` → `ErrSriLcsMlcNumberEmpty`, `ErrLCSLocationInfoNetworkNodeDecodedEmpty` → `ErrLCSLocationInfoNetworkNodeNumberEmpty`, `ErrReportSMDeliveryStatusMSISDNDecodedEmpty` → `ErrReportSMDeliveryStatusMSISDNEmpty` and `ErrReportSMDeliveryStatusSCADecodedEmpty` → `ErrReportSMDeliveryStatusServiceCentreAddressEmpty`. `ErrCSGIdInvalidSize` is replaced by the codec's `*ber.ConstraintError` and `ErrBitStringOctetsMismatch`.
+- A digitless mandatory value returns the sentinel `Marshal` returns for the missing field: `ErrPSLArgMlcNumberDecodedEmpty` → `ErrPSLArgMlcNumberEmpty`, `ErrSriLcsMlcNumberDecodedEmpty` → `ErrSriLcsMlcNumberEmpty`, `ErrLCSLocationInfoNetworkNodeDecodedEmpty` → `ErrLCSLocationInfoNetworkNodeNumberEmpty`, `ErrReportSMDeliveryStatusMSISDNDecodedEmpty` → `ErrReportSMDeliveryStatusMSISDNEmpty` and `ErrReportSMDeliveryStatusSCADecodedEmpty` → `ErrReportSMDeliveryStatusServiceCentreAddressEmpty`. `ErrCSGIdInvalidSize` is replaced by the codec's `*ber.ConstraintError` for SIZE (27), or an error wrapping `ber.ErrInvalidValue` for inconsistent bit length and octet count.
 - `ErrSriMissingGmsc` → `ErrSriMissingGmscOrGsmSCFAddress`; SM-RP-DA/OA service-centre address sentinels add `DA`/`OA` to match their fields. `ErrLCSLocationInfoNetworkNodeEmpty` → `ErrLCSLocationInfoNetworkNodeNumberEmpty`, and `ErrReportSMDeliveryStatusSCAEmpty` → `ErrReportSMDeliveryStatusServiceCentreAddressEmpty`.
 - CHOICE errors are named after their CHOICE type: `Err<Type>NoAlternative` and `Err<Type>MultipleAlternatives` from `Marshal`, `Err<Type>UnknownAlternative` from `Parse`. `ErrSriChoice*` becomes `ErrRoutingInfo*`, `ErrExtendedRoutingInfo*`, `ErrAdditionalNumber*`, `ErrExtBasicServiceCode*` or `ErrEpsInfo*` by type; `ErrMoFsmSmRp{Da,Oa}*` and `ErrMtFsmSmRp{Da,Oa}*` become `ErrSmRp{Da,Oa}*`; `ErrAtiPsSubscriberState*` becomes `ErrPsSubscriberState*`; `ErrCancelLocIdentityChoice{NoAlternative,Multiple}` becomes `ErrCancelLocationIdentity{NoAlternative,MultipleAlternatives}`; `ErrExtSSInfoChoice*`, `ErrSSSubscriptionOptionChoice*` and `ErrSaiAuthSetListChoice*` become `ErrExtSSInfo*`, `ErrSSSubscriptionOption*` and `ErrAuthenticationSetList*`; `ErrServingNodeAddress{NoAlt,MultipleAlts}` and `ErrSubscriberIdentity{NoAlt,MultipleAlts,UnknownChoice}` take the full suffixes; `ErrPSLResCellIdOrSaiInvalidChoice` becomes `ErrCellGlobalIdOrServiceAreaIdOrLAIUnknownAlternative`, and `ErrPSLResCellGlobalIdAndLAIMutex` and `ErrSLRArgCellGlobalIdAndLAIMutex` become `ErrCellGlobalIdOrServiceAreaIdOrLAIMultipleAlternatives`, which CS and GPRS location information now also return.
 - `ErrExtNoRepCondTimeOutOfRange` becomes `ErrNoReplyConditionTimeOutOfRange` for the sender range 5 to 30, and `ErrGMLCAddressEmpty` becomes `ErrGMLCListEntryEmpty`.
@@ -86,22 +88,29 @@ What that means for a consumer:
 **Identities and addresses**
 
 - `InsertSubscriberDataArg.IMSI` and `SriSmCorrelationID.HlrID` change from `HexBytes` to decimal digit strings. IMSI, IMEI, IMEISV, and HLR-Id follow TS 23.003 digit counts; `GroupId` and `LongGroupId` use TBCD digit strings. Parse accepts any 15th IMEI digit, while Marshal requires the spare digit 0.
-- Identity failures use `ErrIMSIInvalidLength`, `ErrIMEIInvalidLength`, `ErrIMEISVInvalidLength`, `ErrIdentityEmpty`, or `ErrIdentityNotDigits`. The per-message identity sentinels (`ErrIsdIMSIInvalidSize`, `ErrPSLArgIMSI*`, `ErrPSLArgIMEI*`, `ErrSLRArgIMSI*`, `ErrSLRArgIMEI*`, `ErrReportSMDeliveryStatusIMSI*`, `ErrSmRpDaIMSIDecodedEmpty`, `ErrSubscriberIdentityIMSIDecodedEmpty`) are replaced by these. A missing or digitless IMSI returns `ErrIdentityEmpty` on both `Marshal` and `Parse`; `ErrSaiMissingIMSI`, `ErrPurgeMSMissingIMSI`, `ErrUpdateLocationMissingIMSI`, `ErrPsiMissingIMSI`, and `ErrCancelLocIdentityMissingIMSI` are gone.
+- Identity failures use `ErrIMSIInvalidLength`, `ErrIMEIInvalidLength`, `ErrIMEISVInvalidLength`, `ErrIdentityEmpty`, or `ErrIdentityNotDigits`. The per-message identity sentinels (`ErrIsdIMSIInvalidSize`, `ErrPSLArgIMSI*`, `ErrPSLArgIMEI*`, `ErrSLRArgIMSI*`, `ErrSLRArgIMEI*`, `ErrReportSMDeliveryStatusIMSI*`, `ErrSubscriberIdentityIMSIDecodedEmpty`) are replaced by these. A missing or digitless IMSI returns `ErrIdentityEmpty` on both `Marshal` and `Parse`; `ErrSaiMissingIMSI`, `ErrPurgeMSMissingIMSI`, `ErrUpdateLocationMissingIMSI`, `ErrPsiMissingIMSI`, and `ErrCancelLocIdentityMissingIMSI` are gone.
 - `ForwardingData.LongForwardedToNumber` changes from `HexBytes` to digits plus `LongForwardedToNumberNature/Plan`; `ExtForwFeature.ForwardedToNature/Plan` become `ForwardedToNumberNature/Plan`, and its long FTN has separate nature/plan fields.
 - Address nature and plan zero mean unknown. Set them explicitly for outgoing messages; parsing can normalize a trailing all-filler octet away and set the address extension bit to 1 when remarshal occurs.
 - A present optional wire address that decodes to no digits fails with an `Err*DecodedEmpty` sentinel. Mandatory digitless addresses return the corresponding missing-field or identity sentinel.
 
 **Receiver and sender rules**
 
-- Decoders apply TS 29.002 receiver mappings and ignore rules; encoders accept only sender values. For example, CAMEL capability handling above 4 decodes as 4, while NoReplyConditionTime encodes only 5 through 30.
+- Decoders apply TS 29.002 receiver mappings and ignore rules after strict BER validation; malformed values fail before an enclosing ignore or discard rule runs; encoders accept only sender values. For example, CAMEL capability handling above 4 decodes as 4, while NoReplyConditionTime encodes only 5 through 30.
 - `MTSMSTPDUTypeSmsSUBMITREPORT` is removed: CAMEL phase 4 permits only `sms-DELIVER` and `sms-STATUS-REPORT` in MT-SMS TPDU criteria; the sender rejects that value and the receiver ignores the entire TPDU-TypeCriterion containing it.
-- `MtFsm` and `MoFsm` expose SM-RP-DA and SM-RP-OA through `SmRpDa` and `SmRpOa` CHOICE fields. Their former shorthand identity and service-centre fields, including nature/plan fields, are removed.
+- `MtFsm` and `MoFsm` expose SM-RP-DA and SM-RP-OA through `SmRpDa` and `SmRpOa` CHOICE fields. Their former shorthand identity and service-centre fields, including nature/plan fields, are removed. `ErrMtFsmMissingIMSI` is gone: an `SmRpDa` with no alternative set returns `ErrSmRpDaNoAlternative`.
 - CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`, `GPRSCSI`, `MGCSI`) omit `NotificationToCSE` and `CsiActive`; Parse drops those wire fields. Segmented CSI and SRI presence rules that depend on other segments remain the caller's responsibility, so `ErrCamelSMSCSIMissingTDPData`, `ErrCamelSMSCSIMissingCapabilityHandling` and `ErrGPRSCSIRequiresTDPListAndPhase` are removed.
-- `RoamingNotAllowedParam.RoamingNotAllowedCause` is a pointer, nil when the additional cause is present. `LCSQoS.LcsQosClass` decodes unrecognized values as `LCSQoSClassBestEffort`.
+- `RoamingNotAllowedParam.RoamingNotAllowedCause` is a pointer, nil when the additional cause is present after successful strict decoding. `LCSQoS.LcsQosClass` decodes unrecognized values as `LCSQoSClassBestEffort`.
 - `ParseReturnErrorParameter(MapErrorCode, []byte)` replaces the per-error `Parse*Param` functions, and `MapErrorCode(code).String()` replaces `GetErrorString(code)`.
 
 **Renamed or retyped fields**
 
+- `SubscriberStateInfo.NotReachableReason` changes from `*int` to `*NotReachableReason`, an alias of `gsm_map.NotReachableReason`.
+- `PsSubscriberState.NetDetNotReachable` changes from `*int` to `*NotReachableReason`; this also applies when used as `SubscriberInfo.EpsSubscriberState`.
+- `SubscriberInfo.DaylightSavingTime` changes from `*int` to `*DaylightSavingTime`, an alias of `gsm_map.DaylightSavingTime`, with `DaylightSavingTimeNoAdjustment`, `DaylightSavingTimePlusOneHourAdjustment`, and `DaylightSavingTimePlusTwoHoursAdjustment` constants.
+- `VlrCapability.IstSupportIndicator` changes from `*int` to `*ISTSupportIndicator`, an alias of `gsm_map.ISTSupportIndicator`, with `ISTSupportIndicatorBasicISTSupported` and `ISTSupportIndicatorIstCommandSupported` constants.
+- `Sri.IstSupportIndicator` changes from `*int` to `*ISTSupportIndicator`.
+- `ExternalSignalInfo.ProtocolID` changes from `int` to `ProtocolID`, an alias of `gsm_map.ProtocolId`, with `ProtocolIDGsm0408`, `ProtocolIDGsm0806`, `ProtocolIDGsmBSSMAP`, and `ProtocolIDEts3001021` constants. The reserved `gsm-BSSMAP` sender rule still applies.
+- `ExtExternalSignalInfo.ExtProtocolID` changes from `int` to `ExtProtocolID`, an alias of `gsm_map.ExtProtocolId`, with the `ExtProtocolIDEts300356` constant.
 - `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`; set `CsgIDBits` to 27, the CSG-Id SIZE (27), since zero is rejected. `VoiceGroupCallData.AdditionalInfo` gains `AdditionalInfoBits` and keeps values that are not byte-aligned. `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` become pointers to named feature structs; `ExtSupportedFeatures` gains `UnknownBits`, making it non-comparable, and both feature structs preserve bit lengths. `SupportedFeaturesBits` and `ExtSupportedFeaturesBits` are removed.
 - `ProvideSubscriberLocationRes.AgeOfLocationEstimate` and `SubscriberLocationReportArg.AgeOfLocationEstimate` change from `*int64` to `*int`; so does `InsertSubscriberDataArg.IstAlertTimer`. `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` become `[]MMCode`.
 - `GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan` in ATI and CAMEL structs. `SCANature/Plan` → `ServiceCentreAddressNature/Plan` in SRI-SM, AlertServiceCentre, and ReportSMDeliveryStatus; `SCADANature/Plan` and `SCAOANature/Plan` follow their full ServiceCentreAddress field names.
@@ -111,12 +120,18 @@ What that means for a consumer:
 
 **Removed identifiers**
 
+- `ReasonMsPurged` → `NotReachableReasonMsPurged`, a typed go-asn1 constant.
+- `ReasonImsiDetached` → `NotReachableReasonImsiDetached`, a typed go-asn1 constant.
+- `ReasonRestrictedArea` → `NotReachableReasonRestrictedArea`, a typed go-asn1 constant.
+- `ReasonNotRegistered` → `NotReachableReasonNotRegistered`, a typed go-asn1 constant.
 - 53 exported min/max and bound constants are removed; examples include `AreaListMaxEntries`, `MaxNumOfResetId`, `ReportingIntervalMax`, and `VelocityEstimateMinLen`. Use the codec constraints and current semantic errors rather than these constants.
-- `ErrCamelInvalidMobilityTriggerOctet`, `CSGIdBitLength`, and `MaxResetIdOctets` are removed. `GMLCAddress` is removed: `GMLCList` is a `[]ISDNNumber`, like the CAMEL `DestinationNumberList`. Use `ErrMMCodeInvalidSize` for wrong-size MM-Code values.
+- `ErrCamelInvalidMobilityTriggerOctet`, `CSGIdBitLength`, and `MaxResetIdOctets` are removed. `GMLCAddress` is removed: `GMLCList` is a `[]ISDNNumber`, like the CAMEL `DestinationNumberList`. Wrong-size MM-Code values return the codec's `*ber.ConstraintError`.
 
 ## Usage
 
 ### Parse BER-encoded MAP data
+
+Each `Parse` function decodes the BER of one argument or result parameter. TS 29.002 marks several results optional, for example those of CancelLocation, InsertSubscriberData, PurgeMS, SendAuthenticationInfo, ReportSM-DeliveryStatus and unstructuredSS-Request. Such a return result may carry no parameter, and then there is nothing to parse.
 
 ```go
 import gsmmap "github.com/gomaja/go-asn1-gsmmap"
@@ -608,7 +623,8 @@ This library provides a **layered API**:
 - **Public types** (`SriSm`, `MtFsm`, etc.) use plain Go types — strings for phone numbers, bools for flags, `tpdu.TPDU` for SMS data.
 - **Internally**, these are converted to/from [go-asn1](https://github.com/gomaja/go-asn1)'s generated `gsm_map.*` structs for BER encoding.
 - **OpCode constants** can be imported directly from `github.com/gomaja/go-asn1/telecom/ss7/gsm_map` if needed for TCAP integration.
-- **Validation** of ASN.1 constraints (sizes and integer ranges) is done by go-asn1's strict BER codec on encode and decode. This package also checks TS 23.003 identity digit counts and TS 29.002 semantics (presence rules, receiver mappings, the TBCD alphabet), and, until go-asn1 covers them, the SIZE of SEQUENCE OF elements ([go-asn1#79](https://github.com/gomaja/go-asn1/issues/79)), BIT STRING length consistency ([go-asn1#80](https://github.com/gomaja/go-asn1/issues/80)) and non-extensible ENUMERATED values ([go-asn1#81](https://github.com/gomaja/go-asn1/issues/81)). go-asn1 does not yet reassemble an implicitly tagged OCTET STRING received in BER constructed form ([go-asn1#82](https://github.com/gomaja/go-asn1/issues/82)); such a value decodes with its segment headers.
+- **Validation** of ASN.1 constraints (sizes, including SEQUENCE OF elements, integer ranges, and non-extensible ENUMERATED values) and BIT STRING length consistency is done by go-asn1's strict BER codec on encode and decode. This package also checks TS 23.003 identity digit counts and TS 29.002 semantics (presence rules, sender rules, receiver mappings, and the TBCD alphabet).
+- **Encoding.** `Parse` accepts any BER of ITU-T X.690, including constructed strings and indefinite or long-form lengths. `Marshal` follows TS 29.002 §17.1.1: OCTET and BIT STRINGs in the primitive form, and lengths in the definite form, short below 128 octets and otherwise in the fewest octets. The opaque PDP-ContextInfo and PagingArea entries are returned by `Parse` and sent by `Marshal` in DER, whatever BER they arrive in. X.680 §22.7 lets encoding rules add or remove trailing 0 bits of a named BIT STRING: go-asn1 pads a received one shorter than its SIZE lower bound with 0 bits, so `Parse` accepts it and `Marshal` sends it at that bound, but it rejects one padded with 0 bits beyond its SIZE upper bound ([go-asn1#129](https://github.com/gomaja/go-asn1/issues/129)).
 
 ### Address handling
 
@@ -624,7 +640,7 @@ Phone numbers are stored as digit strings in the TBCD alphabet of TS 29.002 §17
 
 ## Requirements
 
-- Go 1.25.4 or later (the `go` directive in `go.mod`)
+- Go 1.26.9 or later (the `go` directive in `go.mod`)
 - The main branches of [gomaja/go-asn1](https://github.com/gomaja/go-asn1) and [gomaja/go-sms](https://github.com/gomaja/go-sms), which `go.mod` pins by commit
 
 ## License

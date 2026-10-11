@@ -121,14 +121,8 @@ func TestWLANOffloadability_RoundTrip(t *testing.T) {
 		WlanOffloadabilityEUTRAN: &eutran,
 		WlanOffloadabilityUTRAN:  &utran,
 	}
-	w, err := convertWLANOffloadabilityToWire(in)
-	if err != nil {
-		t.Fatalf("toWire: %v", err)
-	}
-	out, err := convertWireToWLANOffloadability(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	w := convertWLANOffloadabilityToWire(in)
+	out := convertWireToWLANOffloadability(w)
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, out)
 	}
@@ -137,9 +131,9 @@ func TestWLANOffloadability_RoundTrip(t *testing.T) {
 func TestWLANOffloadability_OutOfRange(t *testing.T) {
 	v := WLANOffloadabilityIndication(99)
 	in := &WLANOffloadability{WlanOffloadabilityEUTRAN: &v}
-	_, err := convertWLANOffloadabilityToWire(in)
-	if !errors.Is(err, ErrWLANOffloadabilityIndicationInvalid) {
-		t.Fatalf("want ErrWLANOffloadabilityIndicationInvalid, got %v", err)
+	_, err := (&InsertSubscriberDataArg{EpsSubscriptionData: &EPSSubscriptionData{ApnConfigurationProfile: &APNConfigurationProfile{DefaultContext: 1, EpsDataList: EPSDataList{func() APNConfiguration { a := makeAPNConfiguration(); a.WlanOffloadability = in; return a }()}}}}).Marshal()
+	if !matchesConstraint(err, "eps-SubscriptionData.apn-ConfigurationProfile.epsDataList.element[0].wlan-offloadability.wlan-offloadability-EUTRAN", "ENUMERATED {0, 1}") {
+		t.Fatalf("want codec constraint, got %v", err)
 	}
 }
 
@@ -259,26 +253,26 @@ func TestAPNConfiguration_FieldSizeViolations(t *testing.T) {
 
 func TestAPNConfiguration_EnumOutOfRange(t *testing.T) {
 	cases := []struct {
-		name string
-		mut  func(*APNConfiguration)
-		want error
+		name             string
+		mut              func(*APNConfiguration)
+		path, constraint string
 	}{
 		{"PdnGwAllocationType", func(a *APNConfiguration) {
 			v := PDNGWAllocationType(99)
 			a.PdnGwAllocationType = &v
-		}, ErrPDNGWAllocationTypeInvalid},
+		}, "eps-SubscriptionData.apn-ConfigurationProfile.epsDataList.element[0].pdn-gw-AllocationType", "ENUMERATED {0, 1}"},
 		{"PdnConnectionContinuity", func(a *APNConfiguration) {
 			v := PDNConnectionContinuity(99)
 			a.PdnConnectionContinuity = &v
-		}, ErrPDNConnectionContinuityInvalid},
+		}, "eps-SubscriptionData.apn-ConfigurationProfile.epsDataList.element[0].pdn-ConnectionContinuity", "ENUMERATED {0, 1, 2}"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := makeAPNConfiguration()
 			tc.mut(&in)
-			_, err := convertAPNConfigurationToWire(&in)
-			if !errors.Is(err, tc.want) {
-				t.Fatalf("want %v, got %v", tc.want, err)
+			_, err := (&InsertSubscriberDataArg{EpsSubscriptionData: &EPSSubscriptionData{ApnConfigurationProfile: &APNConfigurationProfile{DefaultContext: 1, EpsDataList: EPSDataList{in}}}}).Marshal()
+			if !matchesConstraint(err, tc.path, tc.constraint) {
+				t.Fatalf("want %v, got %v", tc.path, err)
 			}
 		})
 	}

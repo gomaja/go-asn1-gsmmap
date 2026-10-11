@@ -23,15 +23,19 @@ func TestSriDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) {
 	cases := []struct {
 		name string
 		in   gsm_map.ISTSupportIndicator
-		want int
+		want ISTSupportIndicator
 	}{
 		{"basicISTSupported", 0, 0},
 		{"istCommandSupported", 1, 1},
 		{"future value 2 → 1", 2, 1},
 		{"future value 99 → 1", 99, 1},
-		// Spec mandate: any value > 1 maps to 1, even values that exceed
-		// platform int on 32-bit builds. Mapping must happen in int64 space.
+		// Spec mandate: any value > 1 maps to 1, including values beyond a
+		// 32-bit int. A negative value lies outside the rule and is kept,
+		// on every platform.
 		{"future value MaxInt32+1 → 1", math.MaxInt32 + 1, 1},
+		{"negative value kept", -1, -1},
+		{"negative value beyond 32 bits kept", -1 << 40, -1 << 40},
+		{"MinInt64 kept", math.MinInt64, math.MinInt64},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -57,14 +61,16 @@ func TestUpdateLocationDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) 
 	cases := []struct {
 		name string
 		in   gsm_map.ISTSupportIndicator
-		want int
+		want ISTSupportIndicator
 	}{
 		{"basicISTSupported", 0, 0},
 		{"istCommandSupported", 1, 1},
 		{"future value 5 → 1", 5, 1},
-		// Spec mandate: any value > 1 maps to 1, even values that exceed
-		// platform int on 32-bit builds. Mapping must happen in int64 space.
+		// Spec mandate: any value > 1 maps to 1, including values beyond a
+		// 32-bit int. A negative value lies outside the rule and is kept,
+		// on every platform.
 		{"future value MaxInt32+1 → 1", math.MaxInt32 + 1, 1},
+		{"negative value beyond 32 bits kept", -1 << 40, -1 << 40},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

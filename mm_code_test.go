@@ -65,12 +65,12 @@ func TestMMCodeMarshal(t *testing.T) {
 
 // mmCodeWire is a camelISD wire whose M-CSI and MG-CSI carry the given
 // MobilityTriggers entries.
-func mmCodeWire(t *testing.T, m, mg [][]byte) []byte {
+func mmCodeWire(t *testing.T, m, mg [][]byte) *gsm_map.InsertSubscriberDataArg {
 	t.Helper()
 	w := isdWire(t, mmCodeISD(csMMCodes, psMMCodes))
 	w.VlrCamelSubscriptionInfo.MCSI.MobilityTriggers = &gsm_map.MobilityTriggers{Values: m}
 	w.SgsnCAMELSubscriptionInfo.MgCsi.MobilityTriggers = &gsm_map.MobilityTriggers{Values: mg}
-	return strictBER(t, w)
+	return w
 }
 
 func TestMMCodeParseIgnoresOtherDomain(t *testing.T) {
@@ -91,7 +91,7 @@ func TestMMCodeParseIgnoresOtherDomain(t *testing.T) {
 		{"none left", octets(0x80, 0x05), octets(0x00, 0x87), nil, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			data := mmCodeWire(t, tc.m, tc.mg)
+			data := strictBER(t, mmCodeWire(t, tc.m, tc.mg))
 			got, err := ParseInsertSubscriberData(data)
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
@@ -118,20 +118,20 @@ func TestMMCodeParseIgnoresOtherDomain(t *testing.T) {
 	}
 }
 
-// MM-Code is OCTET STRING (SIZE (1)); go-asn1 does not enforce SEQUENCE OF
-// element SIZE (https://github.com/gomaja/go-asn1/issues/79).
+// MM-Code is OCTET STRING (SIZE (1)), 3GPP TS 29.002 V19.1.0 §17.7.1.
 func TestMMCodeParseRejectsWrongSize(t *testing.T) {
 	for _, bad := range [][]byte{{}, {0x00, 0x00}} {
 		for _, tc := range []struct {
 			name  string
+			path  string
 			m, mg [][]byte
 		}{
-			{"M-CSI", [][]byte{{0x00}, bad}, [][]byte{{0x80}}},
-			{"MG-CSI", [][]byte{{0x00}}, [][]byte{{0x80}, bad}},
+			{"M-CSI", "vlrCamelSubscriptionInfo.m-CSI.mobilityTriggers.element[1]", [][]byte{{0x00}, bad}, [][]byte{{0x80}}},
+			{"MG-CSI", "sgsn-CAMEL-SubscriptionInfo.mg-csi.mobilityTriggers.element[1]", [][]byte{{0x00}}, [][]byte{{0x80}, bad}},
 		} {
 			t.Run(fmt.Sprintf("%s %d octets", tc.name, len(bad)), func(t *testing.T) {
-				if got, err := ParseInsertSubscriberData(mmCodeWire(t, tc.m, tc.mg)); !errors.Is(err, ErrMMCodeInvalidSize) || got != nil {
-					t.Errorf("got %v, %v; want ErrMMCodeInvalidSize", got, err)
+				if got, err := ParseInsertSubscriberData(tolerantBER(t, mmCodeWire(t, tc.m, tc.mg))); !matchesConstraint(err, tc.path, "SIZE (1)") || got != nil {
+					t.Errorf("got %v, %v; want MM-Code SIZE (1)", got, err)
 				}
 			})
 		}

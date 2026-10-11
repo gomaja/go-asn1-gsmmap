@@ -2,8 +2,9 @@ package gsmmap
 
 import (
 	"fmt"
-	"math"
 	"math/big"
+
+	"github.com/gomaja/go-asn1/runtime/ber"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
 	"github.com/gomaja/go-asn1-gsmmap/tbcd"
@@ -33,8 +34,8 @@ func encodeAddressField(digits string, nature, plan uint8) ([]byte, error) {
 
 // decodeAddressField decodes an AddressString byte slice into a phone number string and address components.
 // Every AddressString it receives has at least the nature/plan octet: the
-// codec checks SIZE (1..n) of a field, and the callers check the element of
-// a SEQUENCE OF (isISDNAddressStringSize).
+// codec checks SIZE (1..n) for fields and SEQUENCE OF elements
+// (3GPP TS 29.002 V19.1.0 §17.7.8).
 func decodeAddressField(encoded []byte) (digits string, nature, plan uint8, err error) {
 	_, nat, pl, rawDigits := address.Decode(encoded)
 	digits, err = tbcd.Decode(rawDigits)
@@ -64,19 +65,6 @@ func decodeAddressWithDigits(encoded []byte, empty error) (digits string, nature
 	return digits, nature, plan, nil
 }
 
-// maxISDNAddressLength is maxISDN-AddressLength, the upper bound of
-// ISDN-AddressString SIZE (1..maxISDN-AddressLength) (3GPP TS 29.002 V19.1.0
-// §17.7.8).
-const maxISDNAddressLength = 9
-
-// isISDNAddressStringSize reports whether an ISDN-AddressString of n octets
-// fits SIZE (1..9). The codec checks it for a field, but not for the element
-// of a SEQUENCE OF.
-// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-func isISDNAddressStringSize(n int) bool {
-	return n >= 1 && n <= maxISDNAddressLength
-}
-
 // boolToNullPtr converts a Go bool into the ASN.1 NULL pointer convention
 // used by go-asn1: nil means "absent", non-nil means "present".
 func boolToNullPtr(b bool) *struct{} {
@@ -99,41 +87,16 @@ func intPtrTo64(p *int) *int64 {
 	return &v
 }
 
-// int64PtrTo narrows a *int64 wire-type field to the *int public-type form.
-// Rejects values outside [math.MinInt, math.MaxInt] (which collapses to
-// [math.MinInt32, math.MaxInt32] on 32-bit platforms and is a no-op on
-// 64-bit) rather than silently truncating.
-func int64PtrTo(p *int64) (*int, error) {
+// int64PtrTo converts an optional INTEGER wire field to the *int public
+// form. Its callers pass types whose range the codec enforces and a 32-bit
+// int holds: AgeOfLocationInformation (0..32767, 3GPP TS 29.002 V19.1.0
+// §17.7.8) and IST-AlertTimerValue (15..255, §17.7.1).
+func int64PtrTo(p *int64) *int {
 	if p == nil {
-		return nil, nil
+		return nil
 	}
-	v, err := narrowInt64(*p)
-	if err != nil {
-		return nil, err
-	}
-	return &v, nil
-}
-
-// narrowInt64 narrows an int64 to Go's platform int, rejecting values that
-// would truncate on 32-bit builds. On 64-bit platforms the bounds are a
-// no-op because int == int64.
-func narrowInt64(v int64) (int, error) {
-	if v < math.MinInt || v > math.MaxInt {
-		return 0, fmt.Errorf("%w: value %d does not fit in Go int on this platform", ErrGoIntOverflow, v)
-	}
-	return int(v), nil
-}
-
-// narrowInt64Range is like narrowInt64 but additionally enforces an
-// application-defined inclusive range [lo, hi]. Callers pass a field
-// name for inclusion in the error message. Delegates to narrowInt64
-// after the range check so callers passing a [lo, hi] that exceeds the
-// platform int bounds get the overflow safeguard.
-func narrowInt64Range(v int64, lo, hi int64, field string) (int, error) {
-	if v < lo || v > hi {
-		return 0, fmt.Errorf("%w: %s out of range %d..%d: %d", ErrIntegerOutOfRange, field, lo, hi, v)
-	}
-	return narrowInt64(v)
+	v := int(*p)
+	return &v
 }
 
 func bigIntFromInt64(v int64) *big.Int {
@@ -148,16 +111,6 @@ func int64FromBigInt(v *big.Int, field string) (int64, error) {
 		return 0, fmt.Errorf("%w: %s overflows int64: %s", ErrInt64Overflow, field, v.String())
 	}
 	return v.Int64(), nil
-}
-
-// validateAPN checks the APN element of a LIPAAllowedAPNList. The codec does
-// not yet enforce SEQUENCE OF element SIZE constraints:
-// https://github.com/gomaja/go-asn1/issues/79 (TS 29.002 §17.7.1).
-func validateAPN(b HexBytes, field string) error {
-	if len(b) < 2 || len(b) > 63 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrAPNInvalidSize, len(b))
-	}
-	return nil
 }
 
 // identity is an identity of 3GPP TS 23.003 carried as a TBCD-STRING (3GPP
@@ -254,4 +207,32 @@ func checkIdentityDigits(id identity, digits string) error {
 		return fmt.Errorf("%w (got %d digits)", id.err, len(digits))
 	}
 	return nil
+}
+
+// derCodec is a generated go-asn1 type with BER decoding and DER encoding.
+type derCodec[T any] interface {
+	*T
+	UnmarshalBER([]byte, ...ber.DecodeOption) error
+	MarshalDER() ([]byte, error)
+}
+
+// unmarshalAsDER decodes the BER in raw, then decodes the value again from
+// its DER encoding. MarshalBER sends a decoded value that has not changed in
+// the form it was received in (https://github.com/gomaja/go-asn1/issues/132),
+// which may have long-form or indefinite lengths or constructed strings; a
+// value decoded from DER is sent in DER, which meets the transfer syntax of
+// 3GPP TS 29.002 V19.1.0 §17.1.1. The types it is used for contain no named
+// BIT STRING, whose trailing 0 bits DER would remove.
+func unmarshalAsDER[T any, P derCodec[T]](raw []byte) (T, error) {
+	var v T
+	if err := P(&v).UnmarshalBER(raw); err != nil {
+		return v, err
+	}
+	der, err := P(&v).MarshalDER()
+	if err != nil {
+		return v, err
+	}
+	var out T
+	err = P(&out).UnmarshalBER(der)
+	return out, err
 }

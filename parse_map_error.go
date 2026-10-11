@@ -129,7 +129,7 @@ func parseRoamingNotAllowedParam(data []byte) (*RoamingNotAllowedParam, error) {
 	if err := w.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding RoamingNotAllowedParam: %w", err)
 	}
-	return convertWireToRoamingNotAllowedParam(&w)
+	return convertWireToRoamingNotAllowedParam(&w), nil
 }
 
 // parseUnauthorizedRequestingNetworkParam decodes BER-encoded bytes

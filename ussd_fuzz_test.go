@@ -35,7 +35,7 @@ var ussdFuzzSeedArgs = []string{
 	"3006020101040131",
 	// indefinite length
 	"308004010f04013100" + "00",
-	// zero-octet and 161-octet USSD-String (SIZE is not enforced by go-asn1)
+	// zero-octet and 161-octet USSD-String, outside SIZE (1..160)
 	"300504010f0400",
 	"30" + "81a7" + "04010f" + "0481a1" + strings.Repeat("41", 161),
 	// wrong-length DCS and AlertingPattern

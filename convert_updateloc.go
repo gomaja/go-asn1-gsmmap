@@ -58,10 +58,10 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 
 		if u.VlrCapability.IstSupportIndicator != nil {
 			// Sender accepts defined values; receivers map values above 1 to istCommandSupported (3GPP TS 29.002 V19.1.0 §17.7.1).
-			if *u.VlrCapability.IstSupportIndicator < 0 || *u.VlrCapability.IstSupportIndicator > 1 {
+			if *u.VlrCapability.IstSupportIndicator < ISTSupportIndicatorBasicISTSupported || *u.VlrCapability.IstSupportIndicator > ISTSupportIndicatorIstCommandSupported {
 				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *u.VlrCapability.IstSupportIndicator)
 			}
-			v := gsm_map.ISTSupportIndicator(int64(*u.VlrCapability.IstSupportIndicator))
+			v := *u.VlrCapability.IstSupportIndicator
 			vlrCap.IstSupportIndicator = &v
 		}
 
@@ -122,9 +122,10 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	if len(u.PagingArea) > 0 {
 		pa := gsm_map.PagingArea{Values: make([]gsm_map.LocationArea, len(u.PagingArea))}
 		for i, raw := range u.PagingArea {
-			// Each raw HexBytes is BER-encoded LocationArea CHOICE.
-			var la gsm_map.LocationArea
-			if err := la.UnmarshalBER(raw); err != nil {
+			// Each entry is a LocationArea CHOICE in any BER; Marshal
+			// sends it in DER.
+			la, err := unmarshalAsDER[gsm_map.LocationArea](raw)
+			if err != nil {
 				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
 			}
 			pa.Values[i] = la
@@ -138,10 +139,6 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	if u.EplmnList != nil {
 		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
-			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
 		arg.EplmnList = &list
@@ -193,16 +190,8 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 		vlrCap.SolsaSupportIndicator = nullPtrToBool(arg.VlrCapability.SolsaSupportIndicator)
 
-		// IstSupportIndicator — ENUMERATED { basicISTSupported(0),
-		// istCommandSupported(1), ... } per TS 29.002. Spec exception:
-		// "reception of values > 1 shall be mapped to ' istCommandSupported '".
-		// Apply the mapping in int64 space first so wire values that exceed
-		// platform int satisfy the spec mandate on 32-bit builds.
 		if arg.VlrCapability.IstSupportIndicator != nil {
-			v, err := istSupportIndicatorFromWire(*arg.VlrCapability.IstSupportIndicator)
-			if err != nil {
-				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w", err)
-			}
+			v := istSupportIndicatorFromWire(*arg.VlrCapability.IstSupportIndicator)
 			vlrCap.IstSupportIndicator = &v
 		}
 
@@ -274,10 +263,6 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 	if arg.EplmnList != nil && len(arg.EplmnList.Values) > 0 {
 		list := make([]HexBytes, len(arg.EplmnList.Values))
 		for i, plmn := range arg.EplmnList.Values {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
-			}
 			list[i] = HexBytes(plmn)
 		}
 		u.EplmnList = list

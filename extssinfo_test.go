@@ -59,16 +59,16 @@ func TestSSSubscriptionOptionValidation(t *testing.T) {
 	})
 	t.Run("invalidCliRestriction", func(t *testing.T) {
 		bad := CliRestrictionOption(99)
-		_, err := convertSSSubscriptionOptionToWire(&SSSubscriptionOption{CliRestriction: &bad})
-		if !errors.Is(err, ErrCliRestrictionOptionInvalidValue) {
-			t.Errorf("want ErrCliRestrictionOptionInvalidValue, got %v", err)
+		_, err := (&InsertSubscriberDataArg{ProvisionedSS: []ExtSSInfo{{SsData: &ExtSSData{SsCode: 0x11, SsStatus: HexBytes{1}, SsSubscriptionOption: &SSSubscriptionOption{CliRestriction: &bad}}}}}).Marshal()
+		if !matchesConstraint(err, "provisionedSS.element[0].ss-Data.ss-SubscriptionOption.cliRestrictionOption", "ENUMERATED {0, 1, 2}") {
+			t.Errorf("want codec constraint, got %v", err)
 		}
 	})
 	t.Run("invalidOverrideCategory", func(t *testing.T) {
 		bad := OverrideCategory(99)
-		_, err := convertSSSubscriptionOptionToWire(&SSSubscriptionOption{Override: &bad})
-		if !errors.Is(err, ErrOverrideCategoryInvalidValue) {
-			t.Errorf("want ErrOverrideCategoryInvalidValue, got %v", err)
+		_, err := (&InsertSubscriberDataArg{ProvisionedSS: []ExtSSInfo{{SsData: &ExtSSData{SsCode: 0x11, SsStatus: HexBytes{1}, SsSubscriptionOption: &SSSubscriptionOption{Override: &bad}}}}}).Marshal()
+		if !matchesConstraint(err, "provisionedSS.element[0].ss-Data.ss-SubscriptionOption.overrideCategory", "ENUMERATED {0, 1}") {
+			t.Errorf("want codec constraint, got %v", err)
 		}
 	})
 }
@@ -148,7 +148,7 @@ func TestExtForwInfoValidation(t *testing.T) {
 			SsCode:                0x21,
 			ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{}}},
 		}))
-		if !matchesConstraint(err, "ss-Status", "SIZE (1..5)") {
+		if !matchesConstraint(err, "forwardingFeatureList.element[0].ss-Status", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -157,7 +157,7 @@ func TestExtForwInfoValidation(t *testing.T) {
 			SsCode:                0x21,
 			ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{1, 2, 3, 4, 5, 6}}},
 		}))
-		if !matchesConstraint(err, "ss-Status", "SIZE (1..5)") {
+		if !matchesConstraint(err, "forwardingFeatureList.element[0].ss-Status", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -169,7 +169,7 @@ func TestExtForwInfoValidation(t *testing.T) {
 				ForwardingOptions: HexBytes{1, 2, 3, 4, 5, 6}, // 6 octets, max is 5
 			}},
 		}))
-		if !matchesConstraint(err, "forwardingOptions", "SIZE (1..5)") {
+		if !matchesConstraint(err, "forwardingFeatureList.element[0].forwardingOptions", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -224,7 +224,7 @@ func TestExtForwFeatureNilVsEmptyDiscipline(t *testing.T) {
 				ForwardedToSubaddress: HexBytes{}, // non-nil, empty
 			}},
 		}))
-		if !matchesConstraint(err, "forwardedToSubaddress", "SIZE (1..21)") {
+		if !matchesConstraint(err, "forwardingFeatureList.element[0].forwardedToSubaddress", "SIZE (1..21)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -236,7 +236,7 @@ func TestExtForwFeatureNilVsEmptyDiscipline(t *testing.T) {
 				ForwardedToSubaddress: make(HexBytes, 22), // 22 octets, max is 21
 			}},
 		}))
-		if !matchesConstraint(err, "forwardedToSubaddress", "SIZE (1..21)") {
+		if !matchesConstraint(err, "forwardingFeatureList.element[0].forwardedToSubaddress", "SIZE (1..21)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -248,7 +248,7 @@ func TestExtForwFeatureNilVsEmptyDiscipline(t *testing.T) {
 				ForwardingOptions: HexBytes{}, // non-nil, empty
 			}},
 		}))
-		if !matchesConstraint(err, "forwardingOptions", "SIZE (1..5)") {
+		if !matchesConstraint(err, "forwardingFeatureList.element[0].forwardingOptions", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -519,7 +519,7 @@ func TestCUGInfoValidation(t *testing.T) {
 				IntraCUGOptions: IntraCUGNoRestrictions,
 			}},
 		}))
-		if !matchesConstraint(err, "cug-Index", "(0..32767)") {
+		if !matchesConstraint(err, "cug-SubscriptionList.element[0].cug-Index", "(0..32767)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -530,19 +530,19 @@ func TestCUGInfoValidation(t *testing.T) {
 				IntraCUGOptions: IntraCUGNoRestrictions,
 			}},
 		}))
-		if !matchesConstraint(err, "cug-Interlock", "SIZE (4)") {
+		if !matchesConstraint(err, "cug-SubscriptionList.element[0].cug-Interlock", "SIZE (4)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("invalidIntraOpts", func(t *testing.T) {
-		_, err := strictWire(convertCUGInfoToWire(&CUGInfo{
+		_, err := (&InsertSubscriberDataArg{ProvisionedSS: []ExtSSInfo{{CugInfo: &CUGInfo{
 			CugSubscriptionList: []CUGSubscription{{
 				CugInterlock:    HexBytes{0, 0, 0, 0},
 				IntraCUGOptions: IntraCUGOptions(99),
 			}},
-		}))
-		if !errors.Is(err, ErrIntraCUGOptionsInvalidValue) {
-			t.Errorf("want ErrIntraCUGOptionsInvalidValue, got %v", err)
+		}}}}).Marshal()
+		if !matchesConstraint(err, "provisionedSS.element[0].cug-Info.cug-SubscriptionList.element[0].intraCUG-Options", "ENUMERATED {0, 1, 2}") {
+			t.Errorf("want codec constraint, got %v", err)
 		}
 	})
 	t.Run("featureListEmpty", func(t *testing.T) {

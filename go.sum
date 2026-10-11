@@ -1,7 +1,7 @@
-github.com/gomaja/go-asn1 v0.0.0-20261002200527-7e24ee33010e h1:cHz12z0QJ1ZNxK+YC1zBZEeHGjBvZB+4EEOBdCjH0UQ=
-github.com/gomaja/go-asn1 v0.0.0-20261002200527-7e24ee33010e/go.mod h1:N8d4E0zr4ijiO6aSV9kMMeRn0IjkNnEck1YZv+jk5SY=
-github.com/gomaja/go-sms v0.0.0-20261002213211-02959b2bed2e h1:XaFM62+EwuX3dvt5OmskSWevQEWBNRP8wpZgl5WVuVM=
-github.com/gomaja/go-sms v0.0.0-20261002213211-02959b2bed2e/go.mod h1:nmWk00DAPX0Jkg+l8TvEEPg5DqDgoheohi1ZasxN+N8=
+github.com/gomaja/go-asn1 v0.0.0-20261011084734-d77484b8fa99 h1:5hD2w+yWFrBpRB3Zm/VCBGHGlSU5xhg7buBqV8dEMDU=
+github.com/gomaja/go-asn1 v0.0.0-20261011084734-d77484b8fa99/go.mod h1:KRznJ08GIF3SHIZS8QWEUJ7QDhCCuLrN94EbeQc0grQ=
+github.com/gomaja/go-sms v0.0.0-20261011125057-35a9a0e55b2a h1:a6iFcUd3JMiKJYeFTc3kppc15jNWj8JpJdRwThycw5M=
+github.com/gomaja/go-sms v0.0.0-20261011125057-35a9a0e55b2a/go.mod h1:nmWk00DAPX0Jkg+l8TvEEPg5DqDgoheohi1ZasxN+N8=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=

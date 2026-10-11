@@ -73,10 +73,9 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 	}
 
 	sk := w.ServiceKey
-	// DefaultGPRSHandling: spec exception clause (TS 29.002
-	// 3GPP TS 29.002 V19.1.0 §17.7.1) says decoders MUST treat
-	//   - values 2..31  as continueTransaction (0)
-	//   - values >  31  as releaseTransaction (1)
+	// DefaultGPRS-Handling exception handling (3GPP TS 29.002 V19.1.0
+	// §17.7.1): received values 2..31 are treated as continueTransaction (0)
+	// and values above 31 as releaseTransaction (1).
 	// A negative value lies outside both ranges; the type is extensible,
 	// so it is kept (3GPP TS 29.002 V19.1.0 §17.1.4) and Marshal rejects it.
 	dgh := w.DefaultSessionHandling
@@ -215,10 +214,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 	if w == nil {
 		return nil, nil
 	}
-	mt, err := mmCodesFromWire("MGCSI.MobilityTriggers", w.MobilityTriggers, isPSMMCode)
-	if err != nil {
-		return nil, err
-	}
+	mt := mmCodesFromWire(w.MobilityTriggers, isPSMMCode)
 	if mt == nil {
 		return nil, nil
 	}

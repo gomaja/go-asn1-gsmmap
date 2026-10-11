@@ -193,17 +193,14 @@ func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
 
 // istSupportIndicatorFromWire decodes an IST-SupportIndicator (SendRoutingInfo
 // and UpdateLocation VLR-Capability). 3GPP TS 29.002 V19.1.0 §17.7.1:
-// "reception of values > 1 shall be mapped to ' istCommandSupported '". The
-// mapping runs on the int64 wire value so a value beyond a 32-bit int
-// maps. A negative value lies outside the rule; the type is extensible, so
-// it is kept (§17.1.4). Only a value the platform int cannot hold is an
-// error.
-func istSupportIndicatorFromWire(w gsm_map.ISTSupportIndicator) (int, error) {
-	v := int64(w)
-	if v > 1 {
-		v = 1
+// "reception of values > 1 shall be mapped to ' istCommandSupported '". A
+// negative value lies outside the rule; the type is extensible, so it is
+// kept (§17.1.4).
+func istSupportIndicatorFromWire(w gsm_map.ISTSupportIndicator) ISTSupportIndicator {
+	if w > gsm_map.ISTSupportIndicatorIstCommandSupported {
+		return gsm_map.ISTSupportIndicatorIstCommandSupported
 	}
-	return narrowInt64(v)
+	return w
 }
 
 // --- SRI nested SEQUENCE helpers ---
@@ -446,22 +443,11 @@ func convertWireToCamelRoutingInfo(w *gsm_map.CamelRoutingInfo) (*CamelRoutingIn
 
 // --- SRI remaining helpers ---
 
-// isListedProtocolID reports whether v is one of the ProtocolId values of
-// 3GPP TS 29.002 V19.1.0 §17.7.8, gsm-0408 (1) to ets-300102-1 (4). The type
-// is not extensible.
-// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-func isListedProtocolID(v gsm_map.ProtocolId) bool {
-	return v >= gsm_map.ProtocolIdGsm0408 && v <= gsm_map.ProtocolIdEts3001021
-}
-
-// convertExternalSignalInfoToWire encodes an ExternalSignalInfo. Besides an
-// unlisted ProtocolID it rejects gsm-BSSMAP (3): 3GPP TS 29.002 V19.1.0
-// §17.7.8 ProtocolId, "Value 3 is reserved and must not be used".
+// convertExternalSignalInfoToWire rejects gsm-BSSMAP (3), a sender restriction
+// of 3GPP TS 29.002 V19.1.0 §17.7.8 ProtocolId: "Value 3 is reserved
+// and must not be used".
 func convertExternalSignalInfoToWire(e *ExternalSignalInfo) (*gsm_map.ExternalSignalInfo, error) {
-	id := gsm_map.ProtocolId(int64(e.ProtocolID))
-	if !isListedProtocolID(id) {
-		return nil, fmt.Errorf("ProtocolID=%d: %w", e.ProtocolID, ErrProtocolIDInvalid)
-	}
+	id := e.ProtocolID
 	if id == gsm_map.ProtocolIdGsmBSSMAP {
 		return nil, fmt.Errorf("ProtocolID=%d: %w", e.ProtocolID, ErrProtocolIDReserved)
 	}
@@ -471,21 +457,18 @@ func convertExternalSignalInfoToWire(e *ExternalSignalInfo) (*gsm_map.ExternalSi
 	}, nil
 }
 
-// convertWireToExternalSignalInfo decodes an ExternalSignalInfo. It rejects
-// an unlisted ProtocolId and keeps the listed gsm-BSSMAP (3), whose "must
-// not be used" binds the sender.
-func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) (*ExternalSignalInfo, error) {
-	if !isListedProtocolID(w.ProtocolId) {
-		return nil, fmt.Errorf("ProtocolId=%d: %w", w.ProtocolId, ErrProtocolIDInvalid)
-	}
+// convertWireToExternalSignalInfo keeps a received gsm-BSSMAP (3), a listed
+// value; 3GPP TS 29.002 V19.1.0 §17.7.8: "Value 3 is reserved and must not
+// be used", so Marshal does not send it.
+func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) *ExternalSignalInfo {
 	return &ExternalSignalInfo{
-		ProtocolID: int(w.ProtocolId),
+		ProtocolID: w.ProtocolId,
 		SignalInfo: HexBytes(w.SignalInfo),
-	}, nil
+	}
 }
 
 func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) (*gsm_map.ExtExternalSignalInfo, error) {
-	if gsm_map.ExtProtocolId(e.ExtProtocolID) != gsm_map.ExtProtocolIdEts300356 {
+	if e.ExtProtocolID != gsm_map.ExtProtocolIdEts300356 {
 		return nil, fmt.Errorf("%w (got %d)", ErrExtProtocolIDInvalid, e.ExtProtocolID)
 	}
 	return &gsm_map.ExtExternalSignalInfo{
@@ -504,7 +487,7 @@ func convertWireToExtExternalSignalInfo(w *gsm_map.ExtExternalSignalInfo) *ExtEx
 		return nil
 	}
 	return &ExtExternalSignalInfo{
-		ExtProtocolID: int(w.ExtProtocolId),
+		ExtProtocolID: w.ExtProtocolId,
 		SignalInfo:    HexBytes(w.SignalInfo),
 	}
 }

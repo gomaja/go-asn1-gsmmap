@@ -412,8 +412,8 @@ func TestInsertSubscriberDataArg_BadFieldSizes(t *testing.T) {
 		{"ChargingChars wrong size", func(a *InsertSubscriberDataArg) { a.ChargingCharacteristics = HexBytes{0x01} }, nil, "chargingCharacteristics", "SIZE (2)"},
 		{"CsAllocationRetentionPriority wrong", func(a *InsertSubscriberDataArg) { a.CsAllocationRetentionPriority = HexBytes{0x01, 0x02} }, nil, "cs-AllocationRetentionPriority", "SIZE (1)"},
 		{"AgeIndicator over-max", func(a *InsertSubscriberDataArg) { a.SuperChargerSupportedInHLR = make(HexBytes, 7) }, nil, "superChargerSupportedInHLR", "SIZE (1..6)"},
-		{"BearerServiceList entry too long", func(a *InsertSubscriberDataArg) { a.BearerServiceList = []HexBytes{make(HexBytes, 6)} }, ErrIsdBearerServiceCodeSize, "", ""},
-		{"TeleserviceList entry empty", func(a *InsertSubscriberDataArg) { a.TeleserviceList = []HexBytes{{}} }, ErrIsdTeleserviceCodeSize, "", ""},
+		{"BearerServiceList entry too long", func(a *InsertSubscriberDataArg) { a.BearerServiceList = []HexBytes{make(HexBytes, 6)} }, nil, "bearerServiceList.element[0]", "SIZE (1..5)"},
+		{"TeleserviceList entry empty", func(a *InsertSubscriberDataArg) { a.TeleserviceList = []HexBytes{{}} }, nil, "teleserviceList.element[0]", "SIZE (1..5)"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

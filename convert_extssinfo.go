@@ -30,15 +30,9 @@ func convertSSSubscriptionOptionToWire(o *SSSubscriptionOption) (*gsm_map.SSSubs
 	case hasCli && hasOver:
 		return nil, ErrSSSubscriptionOptionMultipleAlternatives
 	case hasCli:
-		if !isValidCliRestrictionOption(*o.CliRestriction) {
-			return nil, ErrCliRestrictionOptionInvalidValue
-		}
 		v := gsm_map.NewSSSubscriptionOptionCliRestrictionOption(*o.CliRestriction)
 		return &v, nil
 	case hasOver:
-		if !isValidOverrideCategory(*o.Override) {
-			return nil, ErrOverrideCategoryInvalidValue
-		}
 		v := gsm_map.NewSSSubscriptionOptionOverrideCategory(*o.Override)
 		return &v, nil
 	default:
@@ -49,42 +43,14 @@ func convertSSSubscriptionOptionToWire(o *SSSubscriptionOption) (*gsm_map.SSSubs
 func convertWireToSSSubscriptionOption(w *gsm_map.SSSubscriptionOption) (*SSSubscriptionOption, error) {
 	switch w.Choice {
 	case gsm_map.SSSubscriptionOptionChoiceCliRestrictionOption:
-		raw, err := narrowInt64(int64(*w.CliRestrictionOption))
-		if err != nil {
-			return nil, fmt.Errorf("CliRestrictionOption: %w", err)
-		}
-		v := CliRestrictionOption(raw)
-		if !isValidCliRestrictionOption(v) {
-			return nil, ErrCliRestrictionOptionInvalidValue
-		}
+		v := *w.CliRestrictionOption
 		return &SSSubscriptionOption{CliRestriction: &v}, nil
 	case gsm_map.SSSubscriptionOptionChoiceOverrideCategory:
-		raw, err := narrowInt64(int64(*w.OverrideCategory))
-		if err != nil {
-			return nil, fmt.Errorf("OverrideCategory: %w", err)
-		}
-		v := OverrideCategory(raw)
-		if !isValidOverrideCategory(v) {
-			return nil, ErrOverrideCategoryInvalidValue
-		}
+		v := *w.OverrideCategory
 		return &SSSubscriptionOption{Override: &v}, nil
 	default:
 		return nil, ErrSSSubscriptionOptionUnknownAlternative
 	}
-}
-
-func isValidCliRestrictionOption(v CliRestrictionOption) bool {
-	switch v {
-	case CliRestrictionPermanent,
-		CliRestrictionTemporaryDefaultRestricted,
-		CliRestrictionTemporaryDefaultAllowed:
-		return true
-	}
-	return false
-}
-
-func isValidOverrideCategory(v OverrideCategory) bool {
-	return v == OverrideEnabled || v == OverrideDisabled
 }
 
 // --- Ext-BasicServiceGroupList (SIZE 1..32) ---
@@ -312,18 +278,7 @@ func convertWireToExtCallBarInfo(w *gsm_map.ExtCallBarInfo) (*ExtCallBarInfo, er
 
 // --- CUG-Subscription / CUG-Feature / CUG-Info ---
 
-func isValidIntraCUGOptions(v IntraCUGOptions) bool {
-	switch v {
-	case IntraCUGNoRestrictions, IntraCUGICCallBarred, IntraCUGOGCallBarred:
-		return true
-	}
-	return false
-}
-
 func convertCUGSubscriptionToWire(s *CUGSubscription) (gsm_map.CUGSubscription, error) {
-	if !isValidIntraCUGOptions(s.IntraCUGOptions) {
-		return gsm_map.CUGSubscription{}, ErrIntraCUGOptionsInvalidValue
-	}
 	out := gsm_map.CUGSubscription{
 		CugIndex:        int64(s.CugIndex),
 		CugInterlock:    gsm_map.CUGInterlock(s.CugInterlock),
@@ -340,14 +295,7 @@ func convertCUGSubscriptionToWire(s *CUGSubscription) (gsm_map.CUGSubscription, 
 }
 
 func convertWireToCUGSubscription(w *gsm_map.CUGSubscription) (CUGSubscription, error) {
-	optRaw, err := narrowInt64(int64(w.IntraCUGOptions))
-	if err != nil {
-		return CUGSubscription{}, fmt.Errorf("IntraCUGOptions: %w", err)
-	}
-	opt := IntraCUGOptions(optRaw)
-	if !isValidIntraCUGOptions(opt) {
-		return CUGSubscription{}, ErrIntraCUGOptionsInvalidValue
-	}
+	opt := w.IntraCUGOptions
 	out := CUGSubscription{
 		CugIndex:        int(w.CugIndex),
 		CugInterlock:    HexBytes(w.CugInterlock),

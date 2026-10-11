@@ -46,30 +46,24 @@ func convertWireToODBData(w *gsm_map.ODBData) *ODBData {
 
 // --- ZoneCode / ZoneCodeList (3GPP TS 29.002 V19.1.0 §17.7.1) ---
 
-func convertZoneCodeListToWire(z ZoneCodeList) (*gsm_map.ZoneCodeList, error) {
+func convertZoneCodeListToWire(z ZoneCodeList) *gsm_map.ZoneCodeList {
 	out := gsm_map.ZoneCodeList{Values: make([]gsm_map.ZoneCode, 0, len(z))}
-	for i, zc := range z {
-		if len(zc) != 2 {
-			return nil, fmt.Errorf("ZoneCodeList[%d]: %w", i, ErrZoneCodeInvalidSize)
-		}
+	for _, zc := range z {
 		out.Values = append(out.Values, gsm_map.ZoneCode(zc))
 	}
-	return &out, nil
+	return &out
 }
 
-func convertWireToZoneCodeList(w *gsm_map.ZoneCodeList) (ZoneCodeList, error) {
+func convertWireToZoneCodeList(w *gsm_map.ZoneCodeList) ZoneCodeList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := make(ZoneCodeList, 0, len(w.Values))
-	for i, zc := range w.Values {
-		if len(zc) != 2 {
-			return nil, fmt.Errorf("ZoneCodeList[%d]: %w", i, ErrZoneCodeInvalidSize)
-		}
+	for _, zc := range w.Values {
 		out = append(out, ZoneCode(zc))
 	}
-	return out, nil
+	return out
 }
 
 // --- VoiceBroadcastData / VBSDataList (3GPP TS 29.002 V19.1.0 §17.7.1) ---
@@ -153,10 +147,7 @@ func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroup
 		out.AdditionalSubscriptions = &bs
 	}
 	if len(v.AdditionalInfo) > 0 || v.AdditionalInfoBits != 0 {
-		bs, err := bitStringToWire("VoiceGroupCallData.AdditionalInfo", v.AdditionalInfo, v.AdditionalInfoBits)
-		if err != nil {
-			return nil, err
-		}
+		bs := bitStringToWire(v.AdditionalInfo, v.AdditionalInfoBits)
 		out.AdditionalInfo = &bs
 	}
 	if v.LongGroupId != "" {

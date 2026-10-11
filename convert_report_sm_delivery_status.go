@@ -17,44 +17,24 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// SmDeliveryOutcome is a non-extensible ENUMERATED 0..2; validated on
-// both encode and decode.
-const (
-	smDeliveryOutcomeMin = 0
-	smDeliveryOutcomeMax = 2
-)
-
-func validateSmDeliveryOutcome(o SmDeliveryOutcome) error {
-	if int64(o) < smDeliveryOutcomeMin || int64(o) > smDeliveryOutcomeMax {
-		return fmt.Errorf("value=%d: %w", int64(o), ErrReportSMDeliveryStatusOutcomeInvalid)
-	}
-	return nil
-}
-
 // optOutcomeToWire converts an optional SmDeliveryOutcome to the wire
-// pointer, range-checking when present.
-func optOutcomeToWire(o *SmDeliveryOutcome) (*gsm_map.SMDeliveryOutcome, error) {
+// pointer when present (3GPP TS 29.002 V19.1.0 §17.7.6).
+func optOutcomeToWire(o *SmDeliveryOutcome) *gsm_map.SMDeliveryOutcome {
 	if o == nil {
-		return nil, nil
-	}
-	if err := validateSmDeliveryOutcome(*o); err != nil {
-		return nil, err
+		return nil
 	}
 	v := *o
-	return &v, nil
+	return &v
 }
 
 // optOutcomeFromWire converts an optional wire SmDeliveryOutcome back to
-// the public pointer, range-checking when present.
-func optOutcomeFromWire(o *gsm_map.SMDeliveryOutcome) (*SmDeliveryOutcome, error) {
+// the public pointer when present (3GPP TS 29.002 V19.1.0 §17.7.6).
+func optOutcomeFromWire(o *gsm_map.SMDeliveryOutcome) *SmDeliveryOutcome {
 	if o == nil {
-		return nil, nil
-	}
-	if err := validateSmDeliveryOutcome(*o); err != nil {
-		return nil, err
+		return nil
 	}
 	v := *o
-	return &v, nil
+	return &v
 }
 
 func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.ReportSMDeliveryStatusArg, error) {
@@ -66,9 +46,6 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	}
 	if r.ServiceCentreAddress == "" {
 		return nil, ErrReportSMDeliveryStatusServiceCentreAddressEmpty
-	}
-	if err := validateSmDeliveryOutcome(r.SmDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.SmDeliveryOutcome: %w", err)
 	}
 
 	msisdn, err := encodeAddressField(r.MSISDN, r.MSISDNNature, r.MSISDNPlan)
@@ -94,18 +71,10 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	out.SmsfNon3gppAbsentSubscriberDiagSM = absentDiagToWire(r.SmsfNon3gppAbsentSubscriberDiagnosticSM)
 
 	// [4] / [7] / [13] / [16] additional outcomes.
-	if out.AdditionalSMDeliveryOutcome, err = optOutcomeToWire(r.AdditionalSMDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.AdditionalSMDeliveryOutcome: %w", err)
-	}
-	if out.IpSmGwSmDeliveryOutcome, err = optOutcomeToWire(r.IpSmGwSmDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.IpSmGwSmDeliveryOutcome: %w", err)
-	}
-	if out.Smsf3gppDeliveryOutcome, err = optOutcomeToWire(r.Smsf3gppDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.Smsf3gppDeliveryOutcome: %w", err)
-	}
-	if out.SmsfNon3gppDeliveryOutcome, err = optOutcomeToWire(r.SmsfNon3gppDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.SmsfNon3gppDeliveryOutcome: %w", err)
-	}
+	out.AdditionalSMDeliveryOutcome = optOutcomeToWire(r.AdditionalSMDeliveryOutcome)
+	out.IpSmGwSmDeliveryOutcome = optOutcomeToWire(r.IpSmGwSmDeliveryOutcome)
+	out.Smsf3gppDeliveryOutcome = optOutcomeToWire(r.Smsf3gppDeliveryOutcome)
+	out.SmsfNon3gppDeliveryOutcome = optOutcomeToWire(r.SmsfNon3gppDeliveryOutcome)
 
 	// NULL flags.
 	out.GprsSupportIndicator = boolToNullPtr(r.GprsSupportIndicator)
@@ -155,9 +124,6 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 	if sca == "" {
 		return nil, ErrReportSMDeliveryStatusServiceCentreAddressEmpty
 	}
-	if err := validateSmDeliveryOutcome(w.SmDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.SmDeliveryOutcome: %w", err)
-	}
 
 	out := &ReportSMDeliveryStatus{
 		MSISDN:                     msisdn,
@@ -175,18 +141,10 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 	out.Smsf3gppAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.Smsf3gppAbsentSubscriberDiagSM)
 	out.SmsfNon3gppAbsentSubscriberDiagnosticSM = absentDiagFromWire(w.SmsfNon3gppAbsentSubscriberDiagSM)
 
-	if out.AdditionalSMDeliveryOutcome, err = optOutcomeFromWire(w.AdditionalSMDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.AdditionalSMDeliveryOutcome: %w", err)
-	}
-	if out.IpSmGwSmDeliveryOutcome, err = optOutcomeFromWire(w.IpSmGwSmDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.IpSmGwSmDeliveryOutcome: %w", err)
-	}
-	if out.Smsf3gppDeliveryOutcome, err = optOutcomeFromWire(w.Smsf3gppDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.Smsf3gppDeliveryOutcome: %w", err)
-	}
-	if out.SmsfNon3gppDeliveryOutcome, err = optOutcomeFromWire(w.SmsfNon3gppDeliveryOutcome); err != nil {
-		return nil, fmt.Errorf("ReportSMDeliveryStatus.SmsfNon3gppDeliveryOutcome: %w", err)
-	}
+	out.AdditionalSMDeliveryOutcome = optOutcomeFromWire(w.AdditionalSMDeliveryOutcome)
+	out.IpSmGwSmDeliveryOutcome = optOutcomeFromWire(w.IpSmGwSmDeliveryOutcome)
+	out.Smsf3gppDeliveryOutcome = optOutcomeFromWire(w.Smsf3gppDeliveryOutcome)
+	out.SmsfNon3gppDeliveryOutcome = optOutcomeFromWire(w.SmsfNon3gppDeliveryOutcome)
 
 	out.GprsSupportIndicator = nullPtrToBool(w.GprsSupportIndicator)
 	out.DeliveryOutcomeIndicator = nullPtrToBool(w.DeliveryOutcomeIndicator)

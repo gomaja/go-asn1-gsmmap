@@ -255,11 +255,7 @@ func convertWireToProvideSubscriberLocationRes(w *gsm_map.ProvideSubscriberLocat
 	}
 
 	if w.AgeOfLocationEstimate != nil {
-		v, err := int64PtrTo(w.AgeOfLocationEstimate)
-		if err != nil {
-			return nil, fmt.Errorf("AgeOfLocationEstimate: %w", err)
-		}
-		out.AgeOfLocationEstimate = v
+		out.AgeOfLocationEstimate = int64PtrTo(w.AgeOfLocationEstimate)
 	}
 	if w.AddLocationEstimate != nil {
 		out.AddLocationEstimate = AddGeographicalInformation(*w.AddLocationEstimate)

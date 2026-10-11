@@ -67,7 +67,7 @@ func TestSSCSIRoundTrip(t *testing.T) {
 func TestSSCSIValidation(t *testing.T) {
 	t.Run("emptyEventList", func(t *testing.T) {
 		_, err := strictWire(convertSSCSIToWire(&SSCSI{GsmSCFAddress: "111"}))
-		if !matchesConstraint(err, "ss-EventList", "SIZE (1..10)") {
+		if !matchesConstraint(err, "ss-CamelData.ss-EventList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -77,7 +77,7 @@ func TestSSCSIValidation(t *testing.T) {
 			big[i] = SsCodeECT
 		}
 		_, err := strictWire(convertSSCSIToWire(&SSCSI{SsEventList: big, GsmSCFAddress: "1"}))
-		if !matchesConstraint(err, "ss-EventList", "SIZE (1..10)") {
+		if !matchesConstraint(err, "ss-CamelData.ss-EventList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})

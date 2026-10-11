@@ -70,14 +70,8 @@ func TestZoneCodeListRoundTrip(t *testing.T) {
 		ZoneCode{0x12, 0x34},
 		ZoneCode{0xab, 0xcd},
 	}
-	wire, err := convertZoneCodeListToWire(in)
-	if err != nil {
-		t.Fatalf("encode: %v", err)
-	}
-	got, err := convertWireToZoneCodeList(wire)
-	if err != nil {
-		t.Fatalf("decode: %v", err)
-	}
+	wire := convertZoneCodeListToWire(in)
+	got := convertWireToZoneCodeList(wire)
 	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip mismatch (-want +got):\n%s", diff)
 	}
@@ -87,20 +81,20 @@ func TestZoneCodeListRoundTrip(t *testing.T) {
 // spec's SIZE(1..N) constraint — encode and decode share the same bounds.
 func TestZoneCodeListDecoderEnforcesBounds(t *testing.T) {
 	t.Run("nilReturnsNil", func(t *testing.T) {
-		got, err := convertWireToZoneCodeList(nil)
-		if err != nil || got != nil {
-			t.Errorf("nil wire: got (%v, %v), want (nil, nil)", got, err)
+		got := convertWireToZoneCodeList(nil)
+		if got != nil {
+			t.Errorf("nil wire: got %v, want nil", got)
 		}
 	})
 	t.Run("emptyNonNil", func(t *testing.T) {
 		wire := &gsm_map.InsertSubscriberDataArg{RegionalSubscriptionData: gsmMapEmptyZoneCodeList()}
-		wantConstraintError(t, strictDecodeWire(wire), "regionalSubscriptionData.ZoneCodeList", "SIZE (1..10)")
+		wantConstraintError(t, strictDecodeWire(wire), "regionalSubscriptionData", "SIZE (1..10)")
 	})
 }
 
 func TestZoneCodeListValidation(t *testing.T) {
 	t.Run("emptyList", func(t *testing.T) {
-		if _, err := strictWire(convertZoneCodeListToWire(nil)); !matchesConstraint(err, "regionalSubscriptionData", "SIZE (1..10)") {
+		if _, err := strictWire(convertZoneCodeListToWire(nil), nil); !matchesConstraint(err, "regionalSubscriptionData", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -109,14 +103,14 @@ func TestZoneCodeListValidation(t *testing.T) {
 		for i := range big {
 			big[i] = ZoneCode{0, 0}
 		}
-		if _, err := strictWire(convertZoneCodeListToWire(big)); !matchesConstraint(err, "regionalSubscriptionData", "SIZE (1..10)") {
+		if _, err := strictWire(convertZoneCodeListToWire(big), nil); !matchesConstraint(err, "regionalSubscriptionData", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
 	t.Run("shortEntry", func(t *testing.T) {
 		bad := ZoneCodeList{ZoneCode{0x12}} // 1 octet, need 2
-		if _, err := strictWire(convertZoneCodeListToWire(bad)); !errors.Is(err, ErrZoneCodeInvalidSize) {
-			t.Errorf("want ErrZoneCodeInvalidSize, got %v", err)
+		if _, err := (&InsertSubscriberDataArg{RegionalSubscriptionData: bad}).Marshal(); !matchesConstraint(err, "regionalSubscriptionData.element[0]", "SIZE (2)") {
+			t.Errorf("want codec constraint, got %v", err)
 		}
 	})
 }

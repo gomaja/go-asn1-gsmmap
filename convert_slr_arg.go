@@ -20,14 +20,14 @@ import (
 // (ENUMERATED 0..5, extensible). The encoder sends only these values and
 // the decoder rejects any other (3GPP TS 29.002 V19.1.0 §17.7.13).
 const (
-	slrLcsEventMin int64 = 0
-	slrLcsEventMax int64 = 5
+	slrLcsEventMin = gsm_map.LCSEventEmergencyCallOrigination
+	slrLcsEventMax = gsm_map.LCSEventEmergencyCallHandover
 )
 
 // isRecognizedLCSEvent reports whether v is one of the LCS-Event values
 // 3GPP TS 29.002 V19.1.0 §17.7.13 lists.
 func isRecognizedLCSEvent(v LCSEvent) bool {
-	return int64(v) >= slrLcsEventMin && int64(v) <= slrLcsEventMax
+	return v >= slrLcsEventMin && v <= slrLcsEventMax
 }
 
 // convertSubscriberLocationReportArgToWire builds the wire-form
@@ -341,11 +341,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.LocationEstimate = ExtGeographicalInformation(*w.LocationEstimate)
 	}
 	if w.AgeOfLocationEstimate != nil {
-		v, err := int64PtrTo(w.AgeOfLocationEstimate)
-		if err != nil {
-			return nil, fmt.Errorf("AgeOfLocationEstimate: %w", err)
-		}
-		out.AgeOfLocationEstimate = v
+		out.AgeOfLocationEstimate = int64PtrTo(w.AgeOfLocationEstimate)
 	}
 	if w.AddLocationEstimate != nil {
 		out.AddLocationEstimate = AddGeographicalInformation(*w.AddLocationEstimate)

@@ -39,24 +39,6 @@ func isValidDefaultCallHandling(v DefaultCallHandling) bool {
 	return false
 }
 
-// isValidCallTypeCriteria reports whether v is a defined value.
-func isValidCallTypeCriteria(v CallTypeCriteria) bool {
-	switch v {
-	case CallTypeCriteriaForwarded, CallTypeCriteriaNotForwarded:
-		return true
-	}
-	return false
-}
-
-// isValidMatchType reports whether v is a defined value.
-func isValidMatchType(v MatchType) bool {
-	switch v {
-	case MatchTypeInhibiting, MatchTypeEnabling:
-		return true
-	}
-	return false
-}
-
 // validateCamelCapabilityHandling enforces the 1..4 phase range on encode:
 // a sender uses only the defined CAMEL phases 1 to 4.
 func validateCamelCapabilityHandling(p *int) error {
@@ -251,9 +233,6 @@ func convertWireToTBcsmTDPData(w *gsm_map.TBcsmCamelTDPData) (*TBcsmCamelTDPData
 // convertDestinationNumberCriteriaToWire encodes the DestinationNumberCriteria
 // SEQUENCE, enforcing that at least one of the two lists is present.
 func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_map.DestinationNumberCriteria, error) {
-	if !isValidMatchType(c.MatchType) {
-		return nil, ErrCamelInvalidMatchType
-	}
 	if len(c.DestinationNumberList) == 0 && len(c.DestinationNumberLengthList) == 0 {
 		return nil, ErrCamelMissingDestinationNumberCriteria
 	}
@@ -269,9 +248,6 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 			enc, err := encodeAddressField(n.Digits, n.Nature, n.Plan)
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
-			}
-			if !isISDNAddressStringSize(len(enc)) {
-				return nil, fmt.Errorf("DestinationNumberList[%d]: %d octets: %w", i, len(enc), ErrDestinationNumberInvalidSize)
 			}
 			list.Values[i] = enc
 		}
@@ -292,9 +268,6 @@ func convertDestinationNumberCriteriaToWire(c *DestinationNumberCriteria) (*gsm_
 // can't produce a criteria SEQUENCE with neither list populated.
 func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria) (*DestinationNumberCriteria, error) {
 	mt := w.MatchType
-	if !isValidMatchType(mt) {
-		return nil, ErrCamelInvalidMatchType
-	}
 	if (w.DestinationNumberList == nil || len(w.DestinationNumberList.Values) == 0) &&
 		(w.DestinationNumberLengthList == nil || len(w.DestinationNumberLengthList.Values) == 0) {
 		return nil, ErrCamelMissingDestinationNumberCriteria
@@ -303,11 +276,6 @@ func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria
 	if w.DestinationNumberList != nil && len(w.DestinationNumberList.Values) > 0 {
 		list := make([]ISDNNumber, len(w.DestinationNumberList.Values))
 		for i, n := range w.DestinationNumberList.Values {
-			// ISDN-AddressString SIZE (1..9) is in §17.7.8;
-			// DestinationNumberCriteria's receiver rule is in §17.7.1.
-			if !isISDNAddressStringSize(len(n)) {
-				return nil, fmt.Errorf("DestinationNumberList[%d]: %d octets: %w", i, len(n), ErrDestinationNumberInvalidSize)
-			}
 			digits, nature, plan, err := decodeAddressField(n)
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
@@ -328,6 +296,14 @@ func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria
 	}
 	return out, nil
 }
+
+// maxCauseValue is the largest CauseValue. 3GPP TS 29.002 V19.1.0 §17.7.1
+// defines CauseValue as OCTET STRING (SIZE(1)) "extracted from Cause
+// parameter in ITU-T Recommendation Q.763". The cause criteria are checked
+// against the "cause value" field of that parameter (3GPP TS 23.078 V19.0.0
+// §4.2.1.2.3 and §4.2.1.2.5), which ITU-T Q.850 (10/2018) §6.1 codes in bits
+// 7 to 1.
+const maxCauseValue = 127
 
 // convertOBcsmTDPCriteriaToWire encodes an O-BCSM TDP criteria entry.
 func convertOBcsmTDPCriteriaToWire(c *OBcsmCamelTDPCriteria) (gsm_map.OBcsmCamelTDPCriteria, error) {
@@ -356,16 +332,13 @@ func convertOBcsmTDPCriteriaToWire(c *OBcsmCamelTDPCriteria) (gsm_map.OBcsmCamel
 		out.BasicServiceCriteria = &bsc
 	}
 	if c.CallTypeCriteria != nil {
-		if !isValidCallTypeCriteria(*c.CallTypeCriteria) {
-			return gsm_map.OBcsmCamelTDPCriteria{}, ErrCamelInvalidCallTypeCriteria
-		}
 		ctc := *c.CallTypeCriteria
 		out.CallTypeCriteria = &ctc
 	}
 	if len(c.OCauseValueCriteria) > 0 {
 		list := gsm_map.OCauseValueCriteria{Values: make([]gsm_map.CauseValue, len(c.OCauseValueCriteria))}
 		for i, v := range c.OCauseValueCriteria {
-			if v < 0 || v > 127 {
+			if v < 0 || v > maxCauseValue {
 				return gsm_map.OBcsmCamelTDPCriteria{}, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list.Values[i] = gsm_map.CauseValue{byte(v)}
@@ -406,21 +379,13 @@ func convertWireToOBcsmTDPCriteria(w *gsm_map.OBcsmCamelTDPCriteria) (*OBcsmCame
 	}
 	if w.CallTypeCriteria != nil {
 		ctc := *w.CallTypeCriteria
-		if !isValidCallTypeCriteria(ctc) {
-			return nil, ErrCamelInvalidCallTypeCriteria
-		}
 		out.CallTypeCriteria = &ctc
 	}
 	if w.OCauseValueCriteria != nil {
 		list := make([]int, len(w.OCauseValueCriteria.Values))
 		for i, b := range w.OCauseValueCriteria.Values {
-			// CauseValue is OCTET STRING (SIZE(1)); reject any other length
-			// rather than silently normalising missing/extra octets.
-			if len(b) != 1 {
-				return nil, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValueOctetLength)
-			}
 			v := int(b[0])
-			if v > 127 {
+			if v > maxCauseValue {
 				return nil, fmt.Errorf("OCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list[i] = v
@@ -452,7 +417,7 @@ func convertTBcsmTDPCriteriaToWire(c *TBcsmCamelTDPCriteria) (gsm_map.TBCSMCAMEL
 	if len(c.TCauseValueCriteria) > 0 {
 		list := gsm_map.TCauseValueCriteria{Values: make([]gsm_map.CauseValue, len(c.TCauseValueCriteria))}
 		for i, v := range c.TCauseValueCriteria {
-			if v < 0 || v > 127 {
+			if v < 0 || v > maxCauseValue {
 				return gsm_map.TBCSMCAMELTDPCriteria{}, fmt.Errorf("TCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list.Values[i] = gsm_map.CauseValue{byte(v)}
@@ -485,11 +450,8 @@ func convertWireToTBcsmTDPCriteria(w *gsm_map.TBCSMCAMELTDPCriteria) (TBcsmCamel
 	if w.TCauseValueCriteria != nil {
 		list := make([]int, len(w.TCauseValueCriteria.Values))
 		for i, b := range w.TCauseValueCriteria.Values {
-			if len(b) != 1 {
-				return TBcsmCamelTDPCriteria{}, fmt.Errorf("TCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValueOctetLength)
-			}
 			v := int(b[0])
-			if v > 127 {
+			if v > maxCauseValue {
 				return TBcsmCamelTDPCriteria{}, fmt.Errorf("TCauseValueCriteria[%d]: %w", i, ErrCamelInvalidCauseValue)
 			}
 			list[i] = v
@@ -879,11 +841,7 @@ func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
 	var ssList []SsCode
-	for i, b := range events.Values {
-		// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-		if len(b) != 1 {
-			return nil, fmt.Errorf("SS-CSI.SsEventList[%d] length %d: %w", i, len(b), ErrSsCSIEventListSsCodeInvalidLength)
-		}
+	for _, b := range events.Values {
 		if c := SsCode(b[0]); isVLRSSEvent(c) {
 			ssList = append(ssList, c)
 		}
@@ -918,21 +876,17 @@ func isPSMMCode(c MMCode) bool {
 // MM-code. If the SGSN receives any other MM-code than the ones listed above
 // for the PS domain, then the SGSN shall ignore that MM-code." It returns
 // nil when none is left.
-func mmCodesFromWire(field string, w *gsm_map.MobilityTriggers, listed func(MMCode) bool) ([]MMCode, error) {
+func mmCodesFromWire(w *gsm_map.MobilityTriggers, listed func(MMCode) bool) []MMCode {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	var out []MMCode
-	for i, mm := range w.Values {
-		// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-		if len(mm) != 1 {
-			return nil, fmt.Errorf("%s[%d]: %w (got %d)", field, i, ErrMMCodeInvalidSize, len(mm))
-		}
+	for _, mm := range w.Values {
 		if c := MMCode(mm[0]); listed(c) {
 			out = append(out, c)
 		}
 	}
-	return out, nil
+	return out
 }
 
 func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
@@ -970,10 +924,7 @@ func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 	if digits == "" {
 		return nil, ErrCamelMissingGsmSCFAddress
 	}
-	triggers, err := mmCodesFromWire("M-CSI.MobilityTriggers", w.MobilityTriggers, isCSMMCode)
-	if err != nil {
-		return nil, err
-	}
+	triggers := mmCodesFromWire(w.MobilityTriggers, isCSMMCode)
 	if triggers == nil {
 		return nil, nil
 	}
@@ -1009,10 +960,10 @@ func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 // an entry the receiver would drop.
 const (
 	// moSMSTriggerDetectionPoint is the TDP of every mo-sms-CSI entry.
-	moSMSTriggerDetectionPoint = SMSTriggerDetectionPointSmsCollectedInfo
+	moSMSTriggerDetectionPoint = gsm_map.SMSTriggerDetectionPointSmsCollectedInfo
 	// mtSMSTriggerDetectionPoint is the TDP of every mt-sms-CSI entry and
 	// of every MT-smsCAMELTDP-Criteria.
-	mtSMSTriggerDetectionPoint = SMSTriggerDetectionPointSmsDeliveryRequest
+	mtSMSTriggerDetectionPoint = gsm_map.SMSTriggerDetectionPointSmsDeliveryRequest
 )
 
 func isValidDefaultSMSHandling(v DefaultSMSHandling) bool {
