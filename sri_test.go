@@ -410,7 +410,7 @@ func TestSriFullStressRoundTrip(t *testing.T) {
 	nof := 3
 	orCap := 2
 	ccbs := 1
-	istSup := 1
+	istSup := ISTSupportIndicatorIstCommandSupported
 	emlpp := 4
 	fr := ForwardingBusy
 

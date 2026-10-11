@@ -552,7 +552,7 @@ func TestATIResSubscriberStateRoundTrip(t *testing.T) {
 }
 
 func TestATIResNetDetNotReachableRoundTrip(t *testing.T) {
-	reason := ReasonImsiDetached
+	reason := NotReachableReasonImsiDetached
 	res := &AnyTimeInterrogationRes{
 		SubscriberInfo: SubscriberInfo{
 			SubscriberState: &SubscriberStateInfo{
@@ -582,8 +582,8 @@ func TestATIResNetDetNotReachableRoundTrip(t *testing.T) {
 	if ss.NotReachableReason == nil {
 		t.Fatal("NotReachableReason is nil")
 	}
-	if *ss.NotReachableReason != ReasonImsiDetached {
-		t.Errorf("NotReachableReason: got %d, want %d", *ss.NotReachableReason, ReasonImsiDetached)
+	if *ss.NotReachableReason != NotReachableReasonImsiDetached {
+		t.Errorf("NotReachableReason: got %d, want %d", *ss.NotReachableReason, NotReachableReasonImsiDetached)
 	}
 }
 
@@ -817,8 +817,8 @@ func TestATIResIMEIRoundTrip(t *testing.T) {
 
 func TestATIResFullRoundTrip(t *testing.T) {
 	age := 90
-	reason := ReasonRestrictedArea
-	dst := 1
+	reason := NotReachableReasonRestrictedArea
+	dst := DaylightSavingTimePlusOneHourAdjustment
 	res := &AnyTimeInterrogationRes{
 		SubscriberInfo: SubscriberInfo{
 			LocationInformation: &CSLocationInformation{
@@ -921,7 +921,7 @@ func TestParseATIResInvalidData(t *testing.T) {
 // --- ATI (opCode 71) expanded coverage tests ---
 
 func TestATIResPSSubscriberStateRoundTrip(t *testing.T) {
-	reason := ReasonRestrictedArea
+	reason := NotReachableReasonRestrictedArea
 	tests := []struct {
 		name string
 		in   *PsSubscriberState
@@ -1265,7 +1265,7 @@ func TestATIResFull5GSRoundTrip(t *testing.T) {
 }
 
 func TestPsSubscriberStateChoiceValidation(t *testing.T) {
-	reason := ReasonImsiDetached
+	reason := NotReachableReasonImsiDetached
 	cases := []struct {
 		name    string
 		in      *PsSubscriberState
@@ -2006,7 +2006,7 @@ func TestMoFsmRespRoundTrip(t *testing.T) {
 }
 
 func TestUpdateLocationFullStressRoundTrip(t *testing.T) {
-	istVal := 1 // istCommandSupported
+	istVal := ISTSupportIndicatorIstCommandSupported
 	in := &UpdateLocation{
 		IMSI:      "310260123456789",
 		MscNumber: "31612345678",

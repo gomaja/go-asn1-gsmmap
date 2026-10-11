@@ -416,11 +416,7 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.LcsInformation = v
 	}
 	if w.IstAlertTimer != nil {
-		v, err := int64PtrTo(w.IstAlertTimer)
-		if err != nil {
-			return nil, fmt.Errorf("IstAlertTimer: %w", err)
-		}
-		out.IstAlertTimer = v
+		out.IstAlertTimer = int64PtrTo(w.IstAlertTimer)
 	}
 	if w.SuperChargerSupportedInHLR != nil {
 		out.SuperChargerSupportedInHLR = HexBytes(*w.SuperChargerSupportedInHLR)

@@ -267,16 +267,16 @@ type VlrCapability struct {
 	SupportedCamelPhases       *SupportedCamelPhases       // [0]
 	SupportedLCSCapabilitySets *SupportedLCSCapabilitySets // [5]
 
-	SolsaSupportIndicator                       bool               // [2] NULL
-	IstSupportIndicator                         *int               // [1] 0=basicISTSupported, 1=istCommandSupported; Parse maps >1 to 1 and keeps negative values
-	SuperChargerSupportedInServingNetworkEntity *SuperChargerInfo  // [3] CHOICE
-	LongFTNSupported                            bool               // [4] NULL
-	OfferedCamel4CSIs                           *OfferedCamel4CSIs // [6]
-	SupportedRATTypesIndicator                  *SupportedRATTypes // [7]
-	LongGroupIDSupported                        bool               // [8] NULL
-	MtRoamingForwardingSupported                bool               // [9] NULL
-	MsisdnLessOperationSupported                bool               // [10] NULL
-	ResetIdsSupported                           bool               // [11] NULL
+	SolsaSupportIndicator                       bool                 // [2] NULL
+	IstSupportIndicator                         *ISTSupportIndicator // [1] TS 29.002 V19.1.0 §17.7.1; Parse maps >1 to 1 and keeps negative values
+	SuperChargerSupportedInServingNetworkEntity *SuperChargerInfo    // [3] CHOICE
+	LongFTNSupported                            bool                 // [4] NULL
+	OfferedCamel4CSIs                           *OfferedCamel4CSIs   // [6]
+	SupportedRATTypesIndicator                  *SupportedRATTypes   // [7]
+	LongGroupIDSupported                        bool                 // [8] NULL
+	MtRoamingForwardingSupported                bool                 // [9] NULL
+	MsisdnLessOperationSupported                bool                 // [10] NULL
+	ResetIdsSupported                           bool                 // [11] NULL
 }
 
 // SupportedCamelPhases indicates which CAMEL phases are supported.
@@ -295,6 +295,14 @@ type SupportedLCSCapabilitySets struct {
 	LcsCapabilitySet4 bool
 	LcsCapabilitySet5 bool
 }
+
+// ISTSupportIndicator is IST-SupportIndicator (TS 29.002 V19.1.0 §17.7.1).
+type ISTSupportIndicator = gsm_map.ISTSupportIndicator
+
+const (
+	ISTSupportIndicatorBasicISTSupported   = gsm_map.ISTSupportIndicatorBasicISTSupported
+	ISTSupportIndicatorIstCommandSupported = gsm_map.ISTSupportIndicatorIstCommandSupported
+)
 
 // UpdateLocationRes represents an UpdateLocation response (opCode 2).
 type UpdateLocationRes struct {
@@ -521,7 +529,7 @@ type SubscriberInfo struct {
 	EpsSubscriberState               *PsSubscriberState                // [12] CHOICE
 	LocationInformationEPS           *EPSLocationInformation           // [13]
 	TimeZone                         HexBytes                          // [14] raw octet; nil if absent
-	DaylightSavingTime               *int                              // [15] nil if absent; 0=noAdjustment, 1=+1h, 2=+2h
+	DaylightSavingTime               *DaylightSavingTime               // [15] TS 29.002 V19.1.0 §17.7.1; nil if absent
 	LocationInformation5GS           *LocationInformation5GS           // [16]
 }
 
@@ -529,13 +537,13 @@ type SubscriberInfo struct {
 // Set exactly one alternative. The PDP-ContextInfoList alternatives carry
 // opaque BER-encoded gsm_map.PDPContextInfo bytes.
 type PsSubscriberState struct {
-	NotProvidedFromSGSNorMME         bool       // [0] NULL
-	PsDetached                       bool       // [1] NULL
-	PsAttachedNotReachableForPaging  bool       // [2] NULL
-	PsAttachedReachableForPaging     bool       // [3] NULL
-	PsPDPActiveNotReachableForPaging []HexBytes // [4] opaque PDP-ContextInfoList
-	PsPDPActiveReachableForPaging    []HexBytes // [5] opaque PDP-ContextInfoList
-	NetDetNotReachable               *int       // untagged, NotReachableReason
+	NotProvidedFromSGSNorMME         bool                // [0] NULL
+	PsDetached                       bool                // [1] NULL
+	PsAttachedNotReachableForPaging  bool                // [2] NULL
+	PsAttachedReachableForPaging     bool                // [3] NULL
+	PsPDPActiveNotReachableForPaging []HexBytes          // [4] opaque PDP-ContextInfoList
+	PsPDPActiveReachableForPaging    []HexBytes          // [5] opaque PDP-ContextInfoList
+	NetDetNotReachable               *NotReachableReason // untagged, TS 29.002 V19.1.0 §17.7.1
 }
 
 // MnpInfoRes is the MNPInfoRes SEQUENCE (opCode 71, number portability result).
@@ -555,6 +563,15 @@ const (
 	IMSVoiceOverPSNotSupported = gsm_map.IMSVoiceOverPSSessionsIndImsVoiceOverPSSessionsNotSupported
 	IMSVoiceOverPSSupported    = gsm_map.IMSVoiceOverPSSessionsIndImsVoiceOverPSSessionsSupported
 	IMSVoiceOverPSUnknown      = gsm_map.IMSVoiceOverPSSessionsIndUnknown
+)
+
+// DaylightSavingTime is non-extensible (TS 29.002 V19.1.0 §17.7.1).
+type DaylightSavingTime = gsm_map.DaylightSavingTime
+
+const (
+	DaylightSavingTimeNoAdjustment           = gsm_map.DaylightSavingTimeNoAdjustment
+	DaylightSavingTimePlusOneHourAdjustment  = gsm_map.DaylightSavingTimePlusOneHourAdjustment
+	DaylightSavingTimePlusTwoHoursAdjustment = gsm_map.DaylightSavingTimePlusTwoHoursAdjustment
 )
 
 // GprsMSClass is the GPRSMSClass SEQUENCE (opCode 71).
@@ -590,10 +607,11 @@ type LocationInformation5GS struct {
 // SubscriberStateInfo represents the subscriber state CHOICE.
 type SubscriberStateInfo struct {
 	State              SubscriberState
-	NotReachableReason *int // set only when State == StateNetDetNotReachable
+	NotReachableReason *NotReachableReason // TS 29.002 V19.1.0 §17.7.1; set only for StateNetDetNotReachable
 }
 
-// SubscriberState enumerates subscriber state values.
+// SubscriberState selects a SubscriberState CHOICE alternative
+// (TS 29.002 V19.1.0 §17.7.1); its values are local selectors.
 type SubscriberState int
 
 const (
@@ -603,12 +621,14 @@ const (
 	StateNotProvidedFromVLR SubscriberState = 3
 )
 
-// NotReachableReason constants per 3GPP TS 29.002.
+// NotReachableReason is non-extensible (TS 29.002 V19.1.0 §17.7.1).
+type NotReachableReason = gsm_map.NotReachableReason
+
 const (
-	ReasonMsPurged       = 0
-	ReasonImsiDetached   = 1
-	ReasonRestrictedArea = 2
-	ReasonNotRegistered  = 3
+	NotReachableReasonMsPurged       = gsm_map.NotReachableReasonMsPurged
+	NotReachableReasonImsiDetached   = gsm_map.NotReachableReasonImsiDetached
+	NotReachableReasonRestrictedArea = gsm_map.NotReachableReasonRestrictedArea
+	NotReachableReasonNotRegistered  = gsm_map.NotReachableReasonNotRegistered
 )
 
 // CSLocationInformation contains CS domain location data (opCode 71).
@@ -727,20 +747,35 @@ type ExtBasicServiceCode struct {
 }
 
 // ExternalSignalInfo per ASN.1 SEQUENCE. ProtocolId is not extensible:
-// Marshal and Parse reject a ProtocolID outside 1..4 (ErrProtocolIDInvalid).
+// Marshal and Parse reject a ProtocolID outside 1..4 with a codec constraint error.
 // 3GPP TS 29.002 V19.1.0 §17.7.8: "Value 3 is reserved and must not be
 // used", so Marshal also rejects gsm-BSSMAP (ErrProtocolIDReserved), while
 // Parse keeps a received 3, a listed value.
 type ExternalSignalInfo struct {
-	ProtocolID int      // ProtocolId (ENUMERATED: 1=gsm-0408, 2=gsm-0806, 3=gsm-BSSMAP, 4=ets-300102-1)
-	SignalInfo HexBytes // octet string
+	ProtocolID ProtocolID // ProtocolId, TS 29.002 V19.1.0 §17.7.8
+	SignalInfo HexBytes   // octet string
 }
 
 // ExtExternalSignalInfo per ASN.1 SEQUENCE.
 type ExtExternalSignalInfo struct {
-	ExtProtocolID int // Ext-ProtocolId (1=ets-300356)
+	ExtProtocolID ExtProtocolID // Ext-ProtocolId, TS 29.002 V19.1.0 §17.7.8
 	SignalInfo    HexBytes
 }
+
+// ProtocolID is non-extensible (TS 29.002 V19.1.0 §17.7.8 ProtocolId).
+type ProtocolID = gsm_map.ProtocolId
+
+const (
+	ProtocolIDGsm0408    = gsm_map.ProtocolIdGsm0408
+	ProtocolIDGsm0806    = gsm_map.ProtocolIdGsm0806
+	ProtocolIDGsmBSSMAP  = gsm_map.ProtocolIdGsmBSSMAP
+	ProtocolIDEts3001021 = gsm_map.ProtocolIdEts3001021
+)
+
+// ExtProtocolID is Ext-ProtocolId (TS 29.002 V19.1.0 §17.7.8).
+type ExtProtocolID = gsm_map.ExtProtocolId
+
+const ExtProtocolIDEts300356 = gsm_map.ExtProtocolIdEts300356
 
 // SriCamelInfo mirrors the CamelInfo SEQUENCE used in SRI.
 type SriCamelInfo struct {
@@ -1019,7 +1054,7 @@ type SSCSI struct {
 // left with no MM-Code decodes as absent.
 type MMCode byte
 
-// CS domain MM-Codes, for an M-CSI.
+// CS domain MM-Codes, for an M-CSI (TS 29.002 V19.1.0 §17.7.1).
 const (
 	MMCodeLocationUpdateInSameVLR    MMCode = 0x00
 	MMCodeLocationUpdateToOtherVLR   MMCode = 0x01
@@ -1028,7 +1063,7 @@ const (
 	MMCodeNetworkInitiatedIMSIDetach MMCode = 0x04
 )
 
-// PS domain MM-Codes, for an MG-CSI.
+// PS domain MM-Codes, for an MG-CSI (TS 29.002 V19.1.0 §17.7.1).
 const (
 	MMCodeRouteingAreaUpdateInSameSGSN                      MMCode = 0x80
 	MMCodeRouteingAreaUpdateToOtherSGSNUpdateFromNewSGSN    MMCode = 0x81
@@ -1313,7 +1348,7 @@ type OfferedCamel4CSIs struct {
 	PsiEnhancements bool
 }
 
-// SsCode is an SS-Code (single octet).
+// SsCode is SS-Code, OCTET STRING (SIZE (1)) (TS 29.002 V19.1.0 §17.7.5).
 type SsCode uint8
 
 // SS-Codes with actions defined in CAMEL Phase 3 for the SS-EventList of an
@@ -1352,7 +1387,7 @@ type Sri struct {
 	CcbsCall                        bool
 	SupportedCCBSPhase              *int // only 1 is used; reserved 2..127 decode as 1
 	AdditionalSignalInfo            *ExtExternalSignalInfo
-	IstSupportIndicator             *int // 0 or 1; Parse maps >1 to 1 and keeps negative values
+	IstSupportIndicator             *ISTSupportIndicator // TS 29.002 V19.1.0 §17.7.1; Parse maps >1 to 1 and keeps negative values
 	PrePagingSupported              bool
 	CallDiversionTreatmentIndicator HexBytes
 	LongFTNSupported                bool
@@ -2837,7 +2872,7 @@ type ServingNodeAddress struct {
 const (
 	// PeriodicLDRInfo combined cap: ReportingInterval × ReportingAmount
 	// must not exceed this value (99 days, 23 hours, 59 minutes, 59
-	// seconds) for compatibility with OMA MLP and RLP.
+	// seconds) per TS 29.002 V19.1.0 §17.7.13 PeriodicLDRInfo.
 	PeriodicLDRProductMax int64 = 8639999
 )
 
@@ -2966,21 +3001,21 @@ type MapErrorCode int64
 // unexpectedDataValue, absentSubscriber, illegalSubscriber, illegalEquipment,
 // callBarred, unknownAlphabet and ussd-Busy.
 const (
-	MapErrorUnknownSubscriber             MapErrorCode = 1
-	MapErrorAbsentSubscriberSM            MapErrorCode = 6
-	MapErrorRoamingNotAllowed             MapErrorCode = 8
-	MapErrorIllegalSubscriber             MapErrorCode = 9
-	MapErrorTeleserviceNotProvisioned     MapErrorCode = 11
-	MapErrorIllegalEquipment              MapErrorCode = 12
-	MapErrorCallBarred                    MapErrorCode = 13
-	MapErrorFacilityNotSupported          MapErrorCode = 21
-	MapErrorAbsentSubscriber              MapErrorCode = 27
-	MapErrorSystemFailure                 MapErrorCode = 34
-	MapErrorDataMissing                   MapErrorCode = 35
-	MapErrorUnexpectedDataValue           MapErrorCode = 36
-	MapErrorUnauthorizedRequestingNetwork MapErrorCode = 52
-	MapErrorUnknownAlphabet               MapErrorCode = 71
-	MapErrorUSSDBusy                      MapErrorCode = 72
+	MapErrorUnknownSubscriber             MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUnknownSubscriber)
+	MapErrorAbsentSubscriberSM            MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeAbsentSubscriberSM)
+	MapErrorRoamingNotAllowed             MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeRoamingNotAllowed)
+	MapErrorIllegalSubscriber             MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeIllegalSubscriber)
+	MapErrorTeleserviceNotProvisioned     MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeTeleserviceNotProvisioned)
+	MapErrorIllegalEquipment              MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeIllegalEquipment)
+	MapErrorCallBarred                    MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeCallBarred)
+	MapErrorFacilityNotSupported          MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeFacilityNotSupported)
+	MapErrorAbsentSubscriber              MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeAbsentSubscriber)
+	MapErrorSystemFailure                 MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeSystemFailure)
+	MapErrorDataMissing                   MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeDataMissing)
+	MapErrorUnexpectedDataValue           MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUnexpectedDataValue)
+	MapErrorUnauthorizedRequestingNetwork MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUnauthorizedRequestingNetwork)
+	MapErrorUnknownAlphabet               MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUnknownAlphabet)
+	MapErrorUSSDBusy                      MapErrorCode = MapErrorCode(gsm_map.LocalErrorcodeUssdBusy)
 )
 
 // String returns the ASN.1 name of the error (e.g. "absentSubscriberSM"),
@@ -3639,7 +3674,6 @@ var (
 	ErrGeoPointUncertaintyFieldsMissing         = errors.New("ellipsoid point with uncertainty has missing fields")
 	ErrGeoPointUncertaintyInvalidLength         = errors.New("ellipsoid point with uncertainty has invalid length")
 	ErrGeoShapeTypeInvalid                      = errors.New("geographical shape type is unsupported")
-	ErrGoIntOverflow                            = errors.New("integer does not fit Go int")
 	ErrInt64Overflow                            = errors.New("integer does not fit int64")
 	ErrIntegerMissing                           = errors.New("integer value is missing")
 	ErrPdnGwIdentityAddressMissing              = errors.New("PdnGwIdentity has no address or name")

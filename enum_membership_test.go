@@ -120,7 +120,7 @@ func TestNetworkResourceMembership(t *testing.T) {
 // sriWithSignalInfo is a SendRoutingInfo-Arg carrying networkSignalInfo and
 // networkSignalInfo2, and sriRespWithBearer a SendRoutingInfo-Res carrying
 // gsmBearerCapability: the three ExternalSignalInfo fields.
-func sriWithSignalInfo(id, id2 int) *Sri {
+func sriWithSignalInfo(id, id2 ProtocolID) *Sri {
 	return &Sri{
 		MSISDN:              "31612345678",
 		InterrogationType:   InterrogationBasicCall,
@@ -130,7 +130,7 @@ func sriWithSignalInfo(id, id2 int) *Sri {
 	}
 }
 
-func sriRespWithBearer(id int) *SriResp {
+func sriRespWithBearer(id ProtocolID) *SriResp {
 	return &SriResp{
 		IMSI:                "204080012345678",
 		GsmBearerCapability: &ExternalSignalInfo{ProtocolID: id, SignalInfo: HexBytes{0xde, 0xad}},
@@ -138,7 +138,7 @@ func sriRespWithBearer(id int) *SriResp {
 }
 
 func TestProtocolIDMembership(t *testing.T) {
-	for _, id := range []int{1, 2, 4} {
+	for _, id := range []ProtocolID{ProtocolIDGsm0408, ProtocolIDGsm0806, ProtocolIDEts3001021} {
 		data, err := sriWithSignalInfo(id, id).Marshal()
 		if err != nil {
 			t.Fatalf("Sri ProtocolID %d: Marshal: %v", id, err)
@@ -160,10 +160,7 @@ func TestProtocolIDMembership(t *testing.T) {
 		wantEqual(t, "SriResp", sriRespWithBearer(id), resp)
 	}
 	for _, v := range append(unlistedEnums, 0, 5) {
-		id := int(v)
-		if v != int64(id) {
-			continue // 32-bit int
-		}
+		id := ProtocolID(v)
 		for name, s := range map[string]*Sri{"networkSignalInfo": sriWithSignalInfo(id, 1), "networkSignalInfo2": sriWithSignalInfo(1, id)} {
 			if _, err := s.Marshal(); !matchesConstraint(err, name+".protocolId", "ENUMERATED {1, 2, 3, 4}") {
 				t.Errorf("Marshal %s ProtocolID %d: err = %v, want codec constraint", name, v, err)

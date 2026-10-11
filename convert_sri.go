@@ -150,10 +150,10 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 	// IstSupportIndicator
 	if s.IstSupportIndicator != nil {
 		// Sender accepts defined values; receivers map values above 1 to istCommandSupported (3GPP TS 29.002 V19.1.0 §17.7.1).
-		if *s.IstSupportIndicator < 0 || *s.IstSupportIndicator > 1 {
+		if *s.IstSupportIndicator < ISTSupportIndicatorBasicISTSupported || *s.IstSupportIndicator > ISTSupportIndicatorIstCommandSupported {
 			return nil, fmt.Errorf("IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *s.IstSupportIndicator)
 		}
-		v := gsm_map.ISTSupportIndicator(int64(*s.IstSupportIndicator))
+		v := *s.IstSupportIndicator
 		arg.IstSupportIndicator = &v
 	}
 
@@ -311,16 +311,8 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 		s.AdditionalSignalInfo = convertWireToExtExternalSignalInfo(arg.AdditionalSignalInfo)
 	}
 
-	// IstSupportIndicator — ENUMERATED { basicISTSupported(0),
-	// istCommandSupported(1), ... } per TS 29.002. Spec exception:
-	// "reception of values > 1 shall be mapped to ' istCommandSupported '".
-	// Apply the mapping in int64 space first so wire values that exceed
-	// platform int satisfy the spec mandate on 32-bit builds.
 	if arg.IstSupportIndicator != nil {
-		v, err := istSupportIndicatorFromWire(*arg.IstSupportIndicator)
-		if err != nil {
-			return nil, fmt.Errorf("IstSupportIndicator: %w", err)
-		}
+		v := istSupportIndicatorFromWire(*arg.IstSupportIndicator)
 		s.IstSupportIndicator = &v
 	}
 
@@ -646,11 +638,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	}
 
 	// IstAlertTimer
-	istAlert, err := int64PtrTo(res.IstAlertTimer)
-	if err != nil {
-		return nil, fmt.Errorf("decoding IstAlertTimer: %w", err)
-	}
-	out.IstAlertTimer = istAlert
+	out.IstAlertTimer = int64PtrTo(res.IstAlertTimer)
 
 	// SupportedCamelPhasesInVMSC
 	if res.SupportedCamelPhasesInVMSC != nil {

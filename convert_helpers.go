@@ -2,7 +2,6 @@ package gsmmap
 
 import (
 	"fmt"
-	"math"
 	"math/big"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
@@ -86,29 +85,16 @@ func intPtrTo64(p *int) *int64 {
 	return &v
 }
 
-// int64PtrTo narrows a *int64 wire-type field to the *int public-type form.
-// Rejects values outside [math.MinInt, math.MaxInt] (which collapses to
-// [math.MinInt32, math.MaxInt32] on 32-bit platforms and is a no-op on
-// 64-bit) rather than silently truncating.
-func int64PtrTo(p *int64) (*int, error) {
+// int64PtrTo converts an optional INTEGER wire field to the *int public
+// form. Its callers pass types whose range the codec enforces and a 32-bit
+// int holds: AgeOfLocationInformation (0..32767, 3GPP TS 29.002 V19.1.0
+// §17.7.8) and IST-AlertTimerValue (15..255, §17.7.1).
+func int64PtrTo(p *int64) *int {
 	if p == nil {
-		return nil, nil
+		return nil
 	}
-	v, err := narrowInt64(*p)
-	if err != nil {
-		return nil, err
-	}
-	return &v, nil
-}
-
-// narrowInt64 narrows an int64 to Go's platform int, rejecting values that
-// would truncate on 32-bit builds. On 64-bit platforms the bounds are a
-// no-op because int == int64.
-func narrowInt64(v int64) (int, error) {
-	if v < math.MinInt || v > math.MaxInt {
-		return 0, fmt.Errorf("%w: value %d does not fit in Go int on this platform", ErrGoIntOverflow, v)
-	}
-	return int(v), nil
+	v := int(*p)
+	return &v
 }
 
 func bigIntFromInt64(v int64) *big.Int {

@@ -173,7 +173,7 @@ func convertSubscriberStateToAsn1(ss *SubscriberStateInfo) (*gsm_map.SubscriberS
 		if ss.NotReachableReason == nil {
 			return nil, fmt.Errorf("%w: SubscriberState: StateNetDetNotReachable requires a non-nil NotReachableReason", ErrSubscriberStateNotReachableReasonMissing)
 		}
-		s = gsm_map.NewSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(*ss.NotReachableReason))
+		s = gsm_map.NewSubscriberStateNetDetNotReachable(*ss.NotReachableReason)
 	case StateNotProvidedFromVLR:
 		s = gsm_map.NewSubscriberStateNotProvidedFromVLR(struct{}{})
 	default:
@@ -194,7 +194,7 @@ func convertAsn1ToSubscriberState(ss *gsm_map.SubscriberState) (*SubscriberState
 		info.State = StateCamelBusy
 	case gsm_map.SubscriberStateChoiceNetDetNotReachable:
 		info.State = StateNetDetNotReachable
-		reason := int(*ss.NetDetNotReachable)
+		reason := *ss.NetDetNotReachable
 		info.NotReachableReason = &reason
 	case gsm_map.SubscriberStateChoiceNotProvidedFromVLR:
 		info.State = StateNotProvidedFromVLR

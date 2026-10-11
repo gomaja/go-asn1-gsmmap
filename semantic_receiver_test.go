@@ -61,7 +61,7 @@ func TestExtExternalSignalInfoIgnoredForUnknownProtocol(t *testing.T) {
 
 	for _, v := range []int64{0, 2, -1, math.MaxInt64} {
 		bad := base()
-		bad.AdditionalSignalInfo = &ExtExternalSignalInfo{ExtProtocolID: int(v), SignalInfo: HexBytes{0x01}}
+		bad.AdditionalSignalInfo = &ExtExternalSignalInfo{ExtProtocolID: ExtProtocolID(v), SignalInfo: HexBytes{0x01}}
 		if _, err := bad.Marshal(); !errors.Is(err, ErrExtProtocolIDInvalid) {
 			t.Errorf("Marshal %d: err = %v, want ErrExtProtocolIDInvalid", v, err)
 		}

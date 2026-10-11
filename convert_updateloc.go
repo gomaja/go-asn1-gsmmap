@@ -58,10 +58,10 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 
 		if u.VlrCapability.IstSupportIndicator != nil {
 			// Sender accepts defined values; receivers map values above 1 to istCommandSupported (3GPP TS 29.002 V19.1.0 §17.7.1).
-			if *u.VlrCapability.IstSupportIndicator < 0 || *u.VlrCapability.IstSupportIndicator > 1 {
+			if *u.VlrCapability.IstSupportIndicator < ISTSupportIndicatorBasicISTSupported || *u.VlrCapability.IstSupportIndicator > ISTSupportIndicatorIstCommandSupported {
 				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w (got %d)", ErrISTSupportIndicatorInvalid, *u.VlrCapability.IstSupportIndicator)
 			}
-			v := gsm_map.ISTSupportIndicator(int64(*u.VlrCapability.IstSupportIndicator))
+			v := *u.VlrCapability.IstSupportIndicator
 			vlrCap.IstSupportIndicator = &v
 		}
 
@@ -189,16 +189,8 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 
 		vlrCap.SolsaSupportIndicator = nullPtrToBool(arg.VlrCapability.SolsaSupportIndicator)
 
-		// IstSupportIndicator — ENUMERATED { basicISTSupported(0),
-		// istCommandSupported(1), ... } per TS 29.002. Spec exception:
-		// "reception of values > 1 shall be mapped to ' istCommandSupported '".
-		// Apply the mapping in int64 space first so wire values that exceed
-		// platform int satisfy the spec mandate on 32-bit builds.
 		if arg.VlrCapability.IstSupportIndicator != nil {
-			v, err := istSupportIndicatorFromWire(*arg.VlrCapability.IstSupportIndicator)
-			if err != nil {
-				return nil, fmt.Errorf("VlrCapability.IstSupportIndicator: %w", err)
-			}
+			v := istSupportIndicatorFromWire(*arg.VlrCapability.IstSupportIndicator)
 			vlrCap.IstSupportIndicator = &v
 		}
 

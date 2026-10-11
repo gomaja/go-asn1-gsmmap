@@ -953,10 +953,10 @@ func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 // an entry the receiver would drop.
 const (
 	// moSMSTriggerDetectionPoint is the TDP of every mo-sms-CSI entry.
-	moSMSTriggerDetectionPoint = SMSTriggerDetectionPointSmsCollectedInfo
+	moSMSTriggerDetectionPoint = gsm_map.SMSTriggerDetectionPointSmsCollectedInfo
 	// mtSMSTriggerDetectionPoint is the TDP of every mt-sms-CSI entry and
 	// of every MT-smsCAMELTDP-Criteria.
-	mtSMSTriggerDetectionPoint = SMSTriggerDetectionPointSmsDeliveryRequest
+	mtSMSTriggerDetectionPoint = gsm_map.SMSTriggerDetectionPointSmsDeliveryRequest
 )
 
 func isValidDefaultSMSHandling(v DefaultSMSHandling) bool {

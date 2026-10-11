@@ -193,17 +193,14 @@ func convertWireToAddInfo(w *gsm_map.ADDInfo) (*AddInfo, error) {
 
 // istSupportIndicatorFromWire decodes an IST-SupportIndicator (SendRoutingInfo
 // and UpdateLocation VLR-Capability). 3GPP TS 29.002 V19.1.0 §17.7.1:
-// "reception of values > 1 shall be mapped to ' istCommandSupported '". The
-// mapping runs on the int64 wire value so a value beyond a 32-bit int
-// maps. A negative value lies outside the rule; the type is extensible, so
-// it is kept (§17.1.4). Only a value the platform int cannot hold is an
-// error.
-func istSupportIndicatorFromWire(w gsm_map.ISTSupportIndicator) (int, error) {
-	v := int64(w)
-	if v > 1 {
-		v = 1
+// "reception of values > 1 shall be mapped to ' istCommandSupported '". A
+// negative value lies outside the rule; the type is extensible, so it is
+// kept (§17.1.4).
+func istSupportIndicatorFromWire(w gsm_map.ISTSupportIndicator) ISTSupportIndicator {
+	if w > gsm_map.ISTSupportIndicatorIstCommandSupported {
+		return gsm_map.ISTSupportIndicatorIstCommandSupported
 	}
-	return narrowInt64(v)
+	return w
 }
 
 // --- SRI nested SEQUENCE helpers ---
@@ -450,7 +447,7 @@ func convertWireToCamelRoutingInfo(w *gsm_map.CamelRoutingInfo) (*CamelRoutingIn
 // of 3GPP TS 29.002 V19.1.0 §17.7.8 ProtocolId: "Value 3 is reserved
 // and must not be used".
 func convertExternalSignalInfoToWire(e *ExternalSignalInfo) (*gsm_map.ExternalSignalInfo, error) {
-	id := gsm_map.ProtocolId(int64(e.ProtocolID))
+	id := e.ProtocolID
 	if id == gsm_map.ProtocolIdGsmBSSMAP {
 		return nil, fmt.Errorf("ProtocolID=%d: %w", e.ProtocolID, ErrProtocolIDReserved)
 	}
@@ -464,13 +461,13 @@ func convertExternalSignalInfoToWire(e *ExternalSignalInfo) (*gsm_map.ExternalSi
 // 3GPP TS 29.002 V19.1.0 §17.7.8 reserves it for sending.
 func convertWireToExternalSignalInfo(w *gsm_map.ExternalSignalInfo) *ExternalSignalInfo {
 	return &ExternalSignalInfo{
-		ProtocolID: int(w.ProtocolId),
+		ProtocolID: w.ProtocolId,
 		SignalInfo: HexBytes(w.SignalInfo),
 	}
 }
 
 func convertExtExternalSignalInfoToWire(e *ExtExternalSignalInfo) (*gsm_map.ExtExternalSignalInfo, error) {
-	if gsm_map.ExtProtocolId(e.ExtProtocolID) != gsm_map.ExtProtocolIdEts300356 {
+	if e.ExtProtocolID != gsm_map.ExtProtocolIdEts300356 {
 		return nil, fmt.Errorf("%w (got %d)", ErrExtProtocolIDInvalid, e.ExtProtocolID)
 	}
 	return &gsm_map.ExtExternalSignalInfo{
@@ -489,7 +486,7 @@ func convertWireToExtExternalSignalInfo(w *gsm_map.ExtExternalSignalInfo) *ExtEx
 		return nil
 	}
 	return &ExtExternalSignalInfo{
-		ExtProtocolID: int(w.ExtProtocolId),
+		ExtProtocolID: w.ExtProtocolId,
 		SignalInfo:    HexBytes(w.SignalInfo),
 	}
 }

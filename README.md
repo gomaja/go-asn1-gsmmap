@@ -104,6 +104,13 @@ What that means for a consumer:
 
 **Renamed or retyped fields**
 
+- `SubscriberStateInfo.NotReachableReason` changes from `*int` to `*NotReachableReason`, an alias of `gsm_map.NotReachableReason`.
+- `PsSubscriberState.NetDetNotReachable` changes from `*int` to `*NotReachableReason`; this also applies when used as `SubscriberInfo.EpsSubscriberState`.
+- `SubscriberInfo.DaylightSavingTime` changes from `*int` to `*DaylightSavingTime`, an alias of `gsm_map.DaylightSavingTime`, with `DaylightSavingTimeNoAdjustment`, `DaylightSavingTimePlusOneHourAdjustment`, and `DaylightSavingTimePlusTwoHoursAdjustment` constants.
+- `VlrCapability.IstSupportIndicator` changes from `*int` to `*ISTSupportIndicator`, an alias of `gsm_map.ISTSupportIndicator`, with `ISTSupportIndicatorBasicISTSupported` and `ISTSupportIndicatorIstCommandSupported` constants.
+- `Sri.IstSupportIndicator` changes from `*int` to `*ISTSupportIndicator`.
+- `ExternalSignalInfo.ProtocolID` changes from `int` to `ProtocolID`, an alias of `gsm_map.ProtocolId`, with `ProtocolIDGsm0408`, `ProtocolIDGsm0806`, `ProtocolIDGsmBSSMAP`, and `ProtocolIDEts3001021` constants. The reserved `gsm-BSSMAP` sender rule still applies.
+- `ExtExternalSignalInfo.ExtProtocolID` changes from `int` to `ExtProtocolID`, an alias of `gsm_map.ExtProtocolId`, with the `ExtProtocolIDEts300356` constant.
 - `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`; set `CsgIDBits` to 27, the CSG-Id SIZE (27), since zero is rejected. `VoiceGroupCallData.AdditionalInfo` gains `AdditionalInfoBits` and keeps values that are not byte-aligned. `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` become pointers to named feature structs; `ExtSupportedFeatures` gains `UnknownBits`, making it non-comparable, and both feature structs preserve bit lengths. `SupportedFeaturesBits` and `ExtSupportedFeaturesBits` are removed.
 - `ProvideSubscriberLocationRes.AgeOfLocationEstimate` and `SubscriberLocationReportArg.AgeOfLocationEstimate` change from `*int64` to `*int`; so does `InsertSubscriberDataArg.IstAlertTimer`. `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` become `[]MMCode`.
 - `GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan` in ATI and CAMEL structs. `SCANature/Plan` → `ServiceCentreAddressNature/Plan` in SRI-SM, AlertServiceCentre, and ReportSMDeliveryStatus; `SCADANature/Plan` and `SCAOANature/Plan` follow their full ServiceCentreAddress field names.
@@ -113,6 +120,10 @@ What that means for a consumer:
 
 **Removed identifiers**
 
+- `ReasonMsPurged` → `NotReachableReasonMsPurged`, a typed go-asn1 constant.
+- `ReasonImsiDetached` → `NotReachableReasonImsiDetached`, a typed go-asn1 constant.
+- `ReasonRestrictedArea` → `NotReachableReasonRestrictedArea`, a typed go-asn1 constant.
+- `ReasonNotRegistered` → `NotReachableReasonNotRegistered`, a typed go-asn1 constant.
 - 53 exported min/max and bound constants are removed; examples include `AreaListMaxEntries`, `MaxNumOfResetId`, `ReportingIntervalMax`, and `VelocityEstimateMinLen`. Use the codec constraints and current semantic errors rather than these constants.
 - `ErrCamelInvalidMobilityTriggerOctet`, `CSGIdBitLength`, and `MaxResetIdOctets` are removed. `GMLCAddress` is removed: `GMLCList` is a `[]ISDNNumber`, like the CAMEL `DestinationNumberList`. Wrong-size MM-Code values return the codec's `*ber.ConstraintError`.
 

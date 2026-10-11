@@ -111,9 +111,9 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 		si.TimeZone = &tz
 	}
 
-	// DaylightSavingTime — 0..2 per TS 29.002.
+	// DaylightSavingTime — TS 29.002 V19.1.0 §17.7.1.
 	if s.DaylightSavingTime != nil {
-		dst := gsm_map.DaylightSavingTime(*s.DaylightSavingTime)
+		dst := *s.DaylightSavingTime
 		si.DaylightSavingTime = &dst
 	}
 
@@ -229,9 +229,9 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 		out.TimeZone = *si.TimeZone
 	}
 
-	// DaylightSavingTime — 0..2 per TS 29.002.
+	// DaylightSavingTime — TS 29.002 V19.1.0 §17.7.1.
 	if si.DaylightSavingTime != nil {
-		v := int(*si.DaylightSavingTime)
+		v := *si.DaylightSavingTime
 		out.DaylightSavingTime = &v
 	}
 
@@ -313,7 +313,7 @@ func convertPsSubscriberStateToWire(p *PsSubscriberState) (*gsm_map.PSSubscriber
 		return &v, nil
 	case p.NetDetNotReachable != nil:
 		// NotReachableReason — 0..3 (3GPP TS 29.002 V19.1.0 §17.7.1).
-		v := gsm_map.NewPSSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(int64(*p.NetDetNotReachable)))
+		v := gsm_map.NewPSSubscriberStateNetDetNotReachable(*p.NetDetNotReachable)
 		return &v, nil
 	}
 	return nil, ErrPsSubscriberStateNoAlternative
@@ -343,9 +343,8 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 		}
 		out.PsPDPActiveReachableForPaging = enc
 	case gsm_map.PSSubscriberStateChoiceNetDetNotReachable:
-		// NotReachableReason — 0..3 per TS 29.002 (msPurged / imsiDetached /
-		// restrictedArea / notRegistered).
-		v := int(*w.NetDetNotReachable)
+		// NotReachableReason — TS 29.002 V19.1.0 §17.7.1.
+		v := *w.NetDetNotReachable
 		out.NetDetNotReachable = &v
 	default:
 		return nil, fmt.Errorf("%w: PsSubscriberState: unknown CHOICE value %d", ErrPsSubscriberStateUnknownAlternative, w.Choice)
