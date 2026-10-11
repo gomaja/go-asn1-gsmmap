@@ -41,30 +41,24 @@ func validateSenderPDPContextInfo(c *gsm_map.PDPContextInfo) error {
 	if err := validateSenderPDPTypes(c.PdpType, ext); err != nil {
 		return err
 	}
+	if err := validateExtPDPAddressPresence(c.PdpAddress != nil, c.ExtPdpAddress != nil); err != nil {
+		return fmt.Errorf("PDPContextInfo.ExtPdpAddress: %w", err)
+	}
 	if c.ExtPdpAddress != nil {
-		if c.PdpAddress == nil {
-			return ErrPDPContextInfoExtPDPAddressWithoutPDPAddress
-		}
 		if err := validateSenderPDPAddressFamilies(*c.PdpAddress, *c.ExtPdpAddress); err != nil {
 			return err
 		}
 	}
-	for _, p := range []struct {
-		next, prev         bool
-		field, predecessor string
+	for _, qos := range []struct {
+		present [4]bool
+		fields  [4]string
 	}{
-		{c.Qos2Subscribed != nil, c.QosSubscribed != nil, "Qos2Subscribed", "QosSubscribed"},
-		{c.Qos2Requested != nil, c.QosRequested != nil, "Qos2Requested", "QosRequested"},
-		{c.Qos2Negotiated != nil, c.QosNegotiated != nil, "Qos2Negotiated", "QosNegotiated"},
-		{c.Qos3Subscribed != nil, c.Qos2Subscribed != nil, "Qos3Subscribed", "Qos2Subscribed"},
-		{c.Qos3Requested != nil, c.Qos2Requested != nil, "Qos3Requested", "Qos2Requested"},
-		{c.Qos3Negotiated != nil, c.Qos2Negotiated != nil, "Qos3Negotiated", "Qos2Negotiated"},
-		{c.Qos4Subscribed != nil, c.Qos3Subscribed != nil, "Qos4Subscribed", "Qos3Subscribed"},
-		{c.Qos4Requested != nil, c.Qos3Requested != nil, "Qos4Requested", "Qos3Requested"},
-		{c.Qos4Negotiated != nil, c.Qos3Negotiated != nil, "Qos4Negotiated", "Qos3Negotiated"},
+		{[4]bool{c.QosSubscribed != nil, c.Qos2Subscribed != nil, c.Qos3Subscribed != nil, c.Qos4Subscribed != nil}, [4]string{"PDPContextInfo.QosSubscribed", "PDPContextInfo.Qos2Subscribed", "PDPContextInfo.Qos3Subscribed", "PDPContextInfo.Qos4Subscribed"}},
+		{[4]bool{c.QosRequested != nil, c.Qos2Requested != nil, c.Qos3Requested != nil, c.Qos4Requested != nil}, [4]string{"PDPContextInfo.QosRequested", "PDPContextInfo.Qos2Requested", "PDPContextInfo.Qos3Requested", "PDPContextInfo.Qos4Requested"}},
+		{[4]bool{c.QosNegotiated != nil, c.Qos2Negotiated != nil, c.Qos3Negotiated != nil, c.Qos4Negotiated != nil}, [4]string{"PDPContextInfo.QosNegotiated", "PDPContextInfo.Qos2Negotiated", "PDPContextInfo.Qos3Negotiated", "PDPContextInfo.Qos4Negotiated"}},
 	} {
-		if p.next && !p.prev {
-			return fmt.Errorf("%s requires %s: %w", p.field, p.predecessor, ErrPDPContextInfoQoSWithoutPredecessor)
+		if err := validateExtQoSHierarchy(qos.present, qos.fields); err != nil {
+			return err
 		}
 	}
 	return nil

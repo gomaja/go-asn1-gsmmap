@@ -108,7 +108,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if u.EplmnList != nil {
 		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
-			if err := validatePLMNIdentityDigits(raw, false, fmt.Sprintf("PLMNList[%d]", i)); err != nil {
+			if err := validatePLMNIdentityDigits(raw, fmt.Sprintf("UpdateGprsLocation.EplmnList[%d]", i)); err != nil {
 				return nil, err
 			}
 			list.Values[i] = gsm_map.PLMNId(raw)
@@ -163,7 +163,7 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if u.AdjacentPLMNList != nil {
 		list := gsm_map.AdjacentPLMNList{Values: make([]gsm_map.PLMNId, len(u.AdjacentPLMNList))}
 		for i, raw := range u.AdjacentPLMNList {
-			if err := validatePLMNIdentityDigits(raw, false, fmt.Sprintf("PLMNList[%d]", i)); err != nil {
+			if err := validatePLMNIdentityDigits(raw, fmt.Sprintf("UpdateGprsLocation.AdjacentPLMNList[%d]", i)); err != nil {
 				return nil, err
 			}
 			list.Values[i] = gsm_map.PLMNId(raw)
@@ -502,13 +502,11 @@ func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
 		apn := append([]byte(nil), p.APN...)
 		out.Apn = &apn
 	}
-	if p.PdnGwIdentity != nil {
-		id, err := convertPdnGwIdentityToWire(p.PdnGwIdentity)
-		if err != nil {
-			return nil, err
-		}
-		out.PdnGwIdentity = id
+	id, err := convertPdnGwIdentityToWire(p.PdnGwIdentity)
+	if err != nil {
+		return nil, err
 	}
+	out.PdnGwIdentity = id
 	if p.ContextID != nil {
 		v := int64(*p.ContextID)
 		out.ContextId = &v

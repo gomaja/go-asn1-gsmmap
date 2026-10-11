@@ -598,3 +598,24 @@ func senderLCSSemLenientCases() []semLenientCase {
 		}},
 	}
 }
+
+// TS 29.002 V19.1.0 §17.7.6 permits each outcome or node indicator alone.
+func TestSenderReportSMIndicatorsRoundTrip(t *testing.T) {
+	for _, field := range []string{"IpSmGwIndicator", "Smsf3gppDeliveryOutcomeIndicator", "SmsfNon3gppDeliveryOutcomeIndicator", "DeliveryOutcomeIndicator", "GprsSupportIndicator"} {
+		t.Run(field, func(t *testing.T) {
+			in := minimalReportSMDeliveryStatus()
+			reflect.ValueOf(in).Elem().FieldByName(field).SetBool(true)
+			senderMobilityRoundTrip(t, in, asParser(ParseReportSMDeliveryStatus))
+		})
+	}
+}
+
+func TestSenderSriSmIndicatorsRoundTrip(t *testing.T) {
+	for _, field := range []string{"GprsNodeIndicator", "ImsNodeIndicator", "Smsf3gppAddressIndicator", "SmsfNon3gppAddressIndicator"} {
+		t.Run(field, func(t *testing.T) {
+			in := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123"}}
+			reflect.ValueOf(&in.LocationInfoWithLMSI).Elem().FieldByName(field).SetBool(true)
+			senderMobilityRoundTrip(t, in, asParser(ParseSriSmResp))
+		})
+	}
+}

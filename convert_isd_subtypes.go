@@ -69,7 +69,7 @@ func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubsc
 		}
 	}
 	if c.PlmnId != nil {
-		if err := validatePLMNIdentityDigits(c.PlmnId, false, "c.PlmnId"); err != nil {
+		if err := validatePLMNIdentityDigits(c.PlmnId, "CSGSubscriptionData.PlmnId"); err != nil {
 			return nil, err
 		}
 		p := gsm_map.PLMNId(c.PlmnId)
@@ -170,7 +170,7 @@ func convertAdjacentAccessRestrictionDataToWire(a *AdjacentAccessRestrictionData
 		return nil, nil
 	}
 
-	if err := validatePLMNIdentityDigits(a.PlmnId, false, "AdjacentAccessRestrictionData.PlmnId"); err != nil {
+	if err := validatePLMNIdentityDigits(a.PlmnId, "AdjacentAccessRestrictionData.PlmnId"); err != nil {
 		return nil, err
 	}
 	out := &gsm_map.AdjacentAccessRestrictionData{
@@ -240,7 +240,7 @@ func convertIMSIGroupIdToWire(g *IMSIGroupId) (*gsm_map.IMSIGroupId, error) {
 		return nil, nil
 	}
 
-	if err := validatePLMNIdentityDigits(g.PlmnId, false, "IMSIGroupId.PlmnId"); err != nil {
+	if err := validatePLMNIdentityDigits(g.PlmnId, "IMSIGroupId.PlmnId"); err != nil {
 		return nil, err
 	}
 	return &gsm_map.IMSIGroupId{

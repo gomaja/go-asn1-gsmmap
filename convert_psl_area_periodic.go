@@ -29,7 +29,7 @@ func convertAreaToWire(a *Area) (*gsm_map.Area, error) {
 		return nil, fmt.Errorf("Area.AreaType=%d: %w", a.AreaType, ErrAreaTypeInvalid)
 	}
 
-	if err := validatePLMNIdentityDigits(a.AreaIdentification, a.AreaType == AreaTypeCountryCode, "Area.AreaIdentification"); err != nil {
+	if err := validatePLMNIdentityDigits(a.AreaIdentification, "Area.AreaIdentification"); err != nil {
 		return nil, err
 	}
 	return &gsm_map.Area{
@@ -187,7 +187,7 @@ func convertReportingPLMNToWire(r *ReportingPLMN) (*gsm_map.ReportingPLMN, error
 		return nil, nil
 	}
 
-	if err := validatePLMNIdentityDigits(r.PlmnId, false, "ReportingPLMN.PlmnId"); err != nil {
+	if err := validatePLMNIdentityDigits(r.PlmnId, "ReportingPLMN.PlmnId"); err != nil {
 		return nil, err
 	}
 	out := &gsm_map.ReportingPLMN{

@@ -218,7 +218,7 @@ func convertEPSLocationToAsn1(loc *EPSLocationInformation) (*gsm_map.LocationInf
 	}
 
 	if loc.EUtranCellGlobalIdentity != nil {
-		if err := validatePLMNIdentityDigits(loc.EUtranCellGlobalIdentity, false, "loc.EUtranCellGlobalIdentity"); err != nil {
+		if err := validatePLMNIdentityDigits(loc.EUtranCellGlobalIdentity, "EPSLocationInformation.EUtranCellGlobalIdentity"); err != nil {
 			return nil, err
 		}
 		cgi := gsm_map.EUTRANCGI(loc.EUtranCellGlobalIdentity)
@@ -226,7 +226,7 @@ func convertEPSLocationToAsn1(loc *EPSLocationInformation) (*gsm_map.LocationInf
 	}
 
 	if loc.TrackingAreaIdentity != nil {
-		if err := validatePLMNIdentityDigits(loc.TrackingAreaIdentity, false, "loc.TrackingAreaIdentity"); err != nil {
+		if err := validatePLMNIdentityDigits(loc.TrackingAreaIdentity, "EPSLocationInformation.TrackingAreaIdentity"); err != nil {
 			return nil, err
 		}
 		ta := gsm_map.TAId(loc.TrackingAreaIdentity)
@@ -323,7 +323,7 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	li.CellGlobalIdOrServiceAreaIdOrLAI = cell
 
 	if loc.RouteingAreaIdentity != nil {
-		if err := validatePLMNIdentityDigits(loc.RouteingAreaIdentity, false, "loc.RouteingAreaIdentity"); err != nil {
+		if err := validatePLMNIdentityDigits(loc.RouteingAreaIdentity, "GPRSLocationInformation.RouteingAreaIdentity"); err != nil {
 			return nil, err
 		}
 		ra := gsm_map.RAIdentity(loc.RouteingAreaIdentity)

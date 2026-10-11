@@ -37,7 +37,7 @@ func semLenientCases() []semLenientCase {
 		a := semPSLArg()
 		a.LcsClientID = &LCSClientID{
 			LcsClientType: LCSClientTypeEmergencyServices,
-			LcsClientName: &LCSClientName{DataCodingScheme: 0x0f, NameString: HexBytes{0x41}, LcsFormatIndicator: new(LCSFormatIndicator)},
+			LcsClientName: &LCSClientName{DataCodingScheme: USSDDataCodingSchemeGSM7, NameString: HexBytes{0x41}, LcsFormatIndicator: new(LCSFormatIndicator)},
 		}
 		a.LcsPrivacyCheck = &LCSPrivacyCheck{CallSessionUnrelated: PrivacyCheckAllowedWithoutNotification}
 		a.AreaEventInfo = &AreaEventInfo{

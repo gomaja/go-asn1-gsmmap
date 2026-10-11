@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/gomaja/go-asn1/runtime/ber"
@@ -279,7 +280,7 @@ func TestSenderPDPAddressFamilies(t *testing.T) {
 			senderMobilityCheckPDPInfo(t, gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: p.PdpType, PdpAddress: &base, ExtPdpAddress: &ext}, want)
 		})
 	}
-	senderMobilityCheckPDPInfo(t, gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: []byte{0xf1, 0x21}, ExtPdpAddress: new([]byte{192, 0, 2, 1})}, ErrPDPContextInfoExtPDPAddressWithoutPDPAddress)
+	senderMobilityCheckPDPInfo(t, gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: []byte{0xf1, 0x21}, ExtPdpAddress: new([]byte{192, 0, 2, 1})}, ErrExtPDPAddressWithoutPDPAddress)
 	senderMobilityCheckPDPInfo(t, gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: []byte{0xf1, 0x21}, PdpAddress: new([]byte{192, 0, 2, 1})}, nil)
 }
 
@@ -305,7 +306,7 @@ func TestSenderPDPContextInfoQoSHierarchy(t *testing.T) {
 					v.FieldByName(name).Set(reflect.ValueOf(&b))
 				}
 				set(level)
-				senderMobilityCheckPDPInfo(t, c, ErrPDPContextInfoQoSWithoutPredecessor)
+				senderMobilityCheckPDPInfo(t, c, ErrExtQoSHierarchyViolated)
 				for n := level - 1; n >= 1; n-- {
 					set(n)
 				}
@@ -569,14 +570,40 @@ func senderMobilityLenientCases() []semLenientCase {
 		{ErrGeodeticInformationShapeInvalid, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{LocationInformation: &gsm_map.LocationInformation{GeodeticInformation: new(make([]byte, 10))}}}
 		}},
-		{ErrPDPContextInfoQoSWithoutPredecessor, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
+		{ErrExtQoSHierarchyViolated, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
 			return info(gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: []byte{0xf1, 0x21}, Qos2Subscribed: new([]byte{1})})
 		}},
-		{ErrPDPContextInfoExtPDPAddressWithoutPDPAddress, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
+		{ErrExtPDPAddressWithoutPDPAddress, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
 			return info(gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: []byte{0xf1, 0x21}, ExtPdpAddress: new([]byte{192, 0, 2, 1})})
 		}},
 		{ErrRouteingNumberTBCDInvalid, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{MnpInfoRes: &gsm_map.MNPInfoRes{RouteingNumber: new([]byte{0xff})}}}
 		}},
+	}
+}
+
+func TestSenderPDPContextInfoErrorContext(t *testing.T) {
+	valid := gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: []byte{0xf1, 0x21}}
+	for _, tc := range []struct {
+		field  string
+		change func(*gsm_map.PDPContextInfo)
+		want   error
+	}{
+		{"Qos2Requested", func(c *gsm_map.PDPContextInfo) { c.Qos2Requested = new([]byte{1}) }, ErrExtQoSHierarchyViolated},
+		{"Qos3Negotiated", func(c *gsm_map.PDPContextInfo) { c.Qos3Negotiated = new([]byte{1}) }, ErrExtQoSHierarchyViolated},
+		{"ExtPdpAddress", func(c *gsm_map.PDPContextInfo) { c.ExtPdpAddress = new([]byte{192, 0, 2, 1}) }, ErrExtPDPAddressWithoutPDPAddress},
+	} {
+		t.Run(tc.field, func(t *testing.T) {
+			invalid := valid
+			tc.change(&invalid)
+			in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{PsSubscriberState: &PsSubscriberState{PsPDPActiveReachableForPaging: []HexBytes{strictBER(t, &valid), strictBER(t, &invalid)}}}}
+			_, err := in.Marshal()
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("got %v, want %v", err, tc.want)
+			}
+			if !strings.Contains(err.Error(), "PDPContextInfo[1]") || !strings.Contains(err.Error(), "PDPContextInfo."+tc.field) {
+				t.Fatalf("missing entry or field: %v", err)
+			}
+		})
 	}
 }

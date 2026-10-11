@@ -347,7 +347,7 @@ const (
 )
 
 // EpsInfo is the EPS-Info CHOICE (opCode 23).
-// Marshal sets only ISR bits 0..2 (TS 29.002 V19.1.0 §17.7.1).
+// Marshal rejects ISR bits outside 0..2 (TS 29.002 V19.1.0 §17.7.1).
 // Set exactly one alternative: either PdnGwUpdate (non-nil) or
 // IsrInformation, whose IsrInformationBits bits fill exactly
 // (IsrInformationBits+7)/8 octets. Parse ignores a PdnGwUpdate without
@@ -3705,6 +3705,7 @@ var (
 	ErrDiameterIdentityNotASCII = errors.New("diameterIdentity: bytes must be ASCII per 3GPP TS 29.002 V19.1.0 §17.7.8 and RFC 6733 §4.3.1")
 	// 3GPP TS 29.002 V19.1.0 §§17.7.8,17.7.13.
 	ErrPLMNIdentityInvalidDigits                 = errors.New("plmnIdentity: MCC and MNC must contain decimal digits; only the third MNC digit may be filler per 3GPP TS 29.002 V19.1.0 §§17.7.8,17.7.13")
+	ErrExtForwOptionsReservedOctets              = errors.New("ExtForwOptions octets 2..5 are reserved for future use per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrExtForwOptionsUnusedBits                  = errors.New("ForwardingOptions bits 5, 2 and 1 must be zero per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrInterCUGRestrictionsUnusedBits            = errors.New("InterCUGRestrictions bits 8..3 must be zero per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrLCSPrivacyNotificationNotApplicable       = errors.New("LCSPrivacyClass.NotificationToMSUser requires SS-Code callSessionRelated or callSessionUnrelated per 3GPP TS 29.002 V19.1.0 §17.7.1")
@@ -3740,8 +3741,6 @@ var (
 	ErrRequestedInfoServingNodeWithoutLocationInformation     = errors.New("requestedInfo: ServingNodeIndication requires LocationInformation per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
 	ErrRequestedInfoServingNodeWithCurrentLocation            = errors.New("requestedInfo: ServingNodeIndication is forbidden with CurrentLocation per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
 	ErrGeodeticInformationShapeInvalid                        = errors.New("geodeticInformation: only ellipsoid point with uncertainty circle is allowed per 3GPP TS 29.002 V19.1.0 §17.7.1 GeodeticInformation and Q.763 (1999) §3.88(c)")
-	ErrPDPContextInfoQoSWithoutPredecessor                    = errors.New("pdpContextInfo: QoS2/3/4 requires its immediate predecessor per 3GPP TS 29.002 V19.1.0 §17.7.1 PDP-ContextInfo")
-	ErrPDPContextInfoExtPDPAddressWithoutPDPAddress           = errors.New("pdpContextInfo: ExtPdpAddress requires PdpAddress per 3GPP TS 29.002 V19.1.0 §17.7.1 PDP-ContextInfo")
 	ErrRouteingNumberTBCDInvalid                              = errors.New("mnpInfoRes: RouteingNumber filler is permitted only in the final high nibble per 3GPP TS 29.002 V19.1.0 §17.7.8 TBCD-STRING")
 
 	ErrSriSmRespNodeIndicatorsMutuallyExclusive       = errors.New("sriSmResp: at most one network node indicator may be present per 3GPP TS 29.002 V19.1.0 §17.7.6")
@@ -4030,8 +4029,8 @@ var (
 	ErrGroupIdFillerRequired     = errors.New("voiceGroupCallData/voiceBroadcastData: when LongGroupId is present, GroupId must be empty (sent as six TBCD fillers) per TS 29.002")
 	ErrLongGroupIdDecodedEmpty   = errors.New("voiceGroupCallData/voiceBroadcastData: present wire LongGroupId holds no digits; presence cannot round-trip through the string-based API")
 
-	ErrExtQoSHierarchyViolated            = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per 3GPP TS 29.002 V19.1.0 §17.7.1 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
-	ErrExtPDPAddressWithoutPDPAddress     = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrExtQoSHierarchyViolated            = errors.New("PDP-Context/PDP-ContextInfo: each QoS extension requires its immediate predecessor per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrExtPDPAddressWithoutPDPAddress     = errors.New("PDP-Context/PDP-ContextInfo: ExtPdpAddress may be present only if PdpAddress is present per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrGPRSSubscriptionDataMissingList    = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
 	ErrAMBRBandwidthOutOfRange            = errors.New("ambr: bandwidth fields must be non-negative")
 	ErrAPNConfigurationProfileMissingList = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")

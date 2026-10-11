@@ -36,6 +36,17 @@ func validateForwardingOptionsToWire(raw []byte) error {
 	return nil
 }
 
+// 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-ForwOptions reserves octets 2..5.
+func validateExtForwardingOptionsToWire(raw []byte) error {
+	if err := validateForwardingOptionsToWire(raw); err != nil {
+		return err
+	}
+	if len(raw) > 1 && len(raw) <= 5 {
+		return ErrExtForwOptionsReservedOctets
+	}
+	return nil
+}
+
 // 3GPP TS 29.002 V19.1.0 §17.7.8 ISDN-SubaddressString.
 func validateISDNSubaddressToWire(raw []byte) error {
 	if len(raw) > 0 {

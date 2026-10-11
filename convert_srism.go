@@ -220,7 +220,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	if s.LocationInfoWithLMSI.NetworkNodeDiameterAddress != nil {
 		node, err := convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.NetworkNodeDiameterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("li.NetworkNodeDiameterAddress: %w", err)
+			return nil, fmt.Errorf("LocationInfoWithLMSI.NetworkNodeDiameterAddress: %w", err)
 		}
 		li.NetworkNodeDiameterAddress = node
 	}
@@ -229,7 +229,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	if s.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress != nil {
 		node, err := convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("li.AdditionalNetworkNodeDiameterAddress: %w", err)
+			return nil, fmt.Errorf("LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress: %w", err)
 		}
 		li.AdditionalNetworkNodeDiameterAddress = node
 	}
@@ -252,7 +252,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	if s.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress != nil {
 		node, err := convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("li.ThirdNetworkNodeDiameterAddress: %w", err)
+			return nil, fmt.Errorf("LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress: %w", err)
 		}
 		li.ThirdNetworkNodeDiameterAddress = node
 	}
@@ -274,7 +274,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	if s.LocationInfoWithLMSI.Smsf3gppDiameterAddress != nil {
 		node, err := convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.Smsf3gppDiameterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("li.Smsf3gppDiameterAddress: %w", err)
+			return nil, fmt.Errorf("LocationInfoWithLMSI.Smsf3gppDiameterAddress: %w", err)
 		}
 		li.Smsf3gppDiameterAddress = node
 	}
@@ -293,7 +293,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	if s.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress != nil {
 		node, err := convertNetworkNodeDiameterAddressToWire(s.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("li.SmsfNon3gppDiameterAddress: %w", err)
+			return nil, fmt.Errorf("LocationInfoWithLMSI.SmsfNon3gppDiameterAddress: %w", err)
 		}
 		li.SmsfNon3gppDiameterAddress = node
 	}

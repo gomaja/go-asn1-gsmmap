@@ -126,7 +126,7 @@ func convertCellIdOrSaiToWire(cgi, lai HexBytes) (*gsm_map.CellGlobalIdOrService
 		return nil, nil
 	}
 	if cgiSet {
-		if err := validatePLMNIdentityDigits(cgi, false, "CellGlobalIdOrServiceAreaId"); err != nil {
+		if err := validatePLMNIdentityDigits(cgi, "CellGlobalIdOrServiceAreaIdOrLAI.CellGlobalIdOrServiceAreaIdFixedLength"); err != nil {
 			return nil, err
 		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
@@ -134,7 +134,7 @@ func convertCellIdOrSaiToWire(cgi, lai HexBytes) (*gsm_map.CellGlobalIdOrService
 		)
 		return &v, nil
 	}
-	if err := validatePLMNIdentityDigits(lai, false, "LAI"); err != nil {
+	if err := validatePLMNIdentityDigits(lai, "CellGlobalIdOrServiceAreaIdOrLAI.LaiFixedLength"); err != nil {
 		return nil, err
 	}
 	// laiSet

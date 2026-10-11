@@ -64,7 +64,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 	if a.SmsGmscDiameterAddress != nil {
 		node, err := convertNetworkNodeDiameterAddressToWire(a.SmsGmscDiameterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("arg.SmsGmscDiameterAddress: %w", err)
+			return nil, fmt.Errorf("AlertServiceCentre.SmsGmscDiameterAddress: %w", err)
 		}
 		arg.SmsGmscDiameterAddress = node
 	}
@@ -81,7 +81,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 	if a.NewSGSNDiameterAddress != nil {
 		node, err := convertNetworkNodeDiameterAddressToWire(a.NewSGSNDiameterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("arg.NewSGSNDiameterAddress: %w", err)
+			return nil, fmt.Errorf("AlertServiceCentre.NewSGSNDiameterAddress: %w", err)
 		}
 		arg.NewSGSNDiameterAddress = node
 	}
@@ -98,7 +98,7 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 	if a.NewMMEDiameterAddress != nil {
 		node, err := convertNetworkNodeDiameterAddressToWire(a.NewMMEDiameterAddress)
 		if err != nil {
-			return nil, fmt.Errorf("arg.NewMMEDiameterAddress: %w", err)
+			return nil, fmt.Errorf("AlertServiceCentre.NewMMEDiameterAddress: %w", err)
 		}
 		arg.NewMMEDiameterAddress = node
 	}

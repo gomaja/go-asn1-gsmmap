@@ -33,7 +33,7 @@ func convertLCSClientNameToWire(c *LCSClientName) (*gsm_map.LCSClientName, error
 	}
 
 	// TS 29.002 V19.1.0 §17.7.13: LCSClientName uses the default alphabet DCS 00001111.
-	if c.DataCodingScheme != USSDDataCodingScheme(0x0f) {
+	if c.DataCodingScheme != USSDDataCodingSchemeGSM7 {
 		return nil, ErrLCSClientNameDataCodingSchemeInvalid
 	}
 	out := &gsm_map.LCSClientName{

@@ -62,7 +62,7 @@ func validateDiameterIdentityASCII(raw []byte, field string) error {
 }
 
 // TS 29.002 V19.1.0 §§17.7.8,17.7.13: only MNC digit 3 may be filler.
-func validatePLMNIdentityDigits(raw []byte, countryOnly bool, field string) error {
+func validatePLMNIdentityDigits(raw []byte, field string) error {
 	if len(raw) >= 2 {
 		for i, d := range [3]byte{raw[0] & 0xf, raw[0] >> 4, raw[1] & 0xf} {
 			if d > 9 {
@@ -70,7 +70,7 @@ func validatePLMNIdentityDigits(raw []byte, countryOnly bool, field string) erro
 			}
 		}
 	}
-	if !countryOnly && len(raw) >= 3 {
+	if len(raw) >= 3 {
 		for i, d := range [3]byte{raw[2] & 0xf, raw[2] >> 4, raw[1] >> 4} {
 			if d > 9 && (i != 2 || d != 0xf) {
 				return fmt.Errorf("%s MNC digit %d: %w", field, i+1, ErrPLMNIdentityInvalidDigits)

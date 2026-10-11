@@ -545,7 +545,7 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	out := &gsm_map.LocationInformation5GS{}
 
 	if l.NrCellGlobalIdentity != nil {
-		if err := validatePLMNIdentityDigits(l.NrCellGlobalIdentity, false, "l.NrCellGlobalIdentity"); err != nil {
+		if err := validatePLMNIdentityDigits(l.NrCellGlobalIdentity, "LocationInformation5GS.NrCellGlobalIdentity"); err != nil {
 			return nil, err
 		}
 		cgi := gsm_map.NRCGI(l.NrCellGlobalIdentity)
@@ -553,7 +553,7 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.EUtranCellGlobalIdentity != nil {
-		if err := validatePLMNIdentityDigits(l.EUtranCellGlobalIdentity, false, "l.EUtranCellGlobalIdentity"); err != nil {
+		if err := validatePLMNIdentityDigits(l.EUtranCellGlobalIdentity, "LocationInformation5GS.EUtranCellGlobalIdentity"); err != nil {
 			return nil, err
 		}
 		cgi := gsm_map.EUTRANCGI(l.EUtranCellGlobalIdentity)
@@ -583,7 +583,7 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.TrackingAreaIdentity != nil {
-		if err := validatePLMNIdentityDigits(l.TrackingAreaIdentity, false, "l.TrackingAreaIdentity"); err != nil {
+		if err := validatePLMNIdentityDigits(l.TrackingAreaIdentity, "LocationInformation5GS.TrackingAreaIdentity"); err != nil {
 			return nil, err
 		}
 		ta := gsm_map.TAId(l.TrackingAreaIdentity)
@@ -598,7 +598,7 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.VplmnID != nil {
-		if err := validatePLMNIdentityDigits(l.VplmnID, false, "l.VplmnID"); err != nil {
+		if err := validatePLMNIdentityDigits(l.VplmnID, "LocationInformation5GS.VplmnID"); err != nil {
 			return nil, err
 		}
 		p := gsm_map.PLMNId(l.VplmnID)
@@ -621,7 +621,7 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.NrTrackingAreaIdentity != nil {
-		if err := validatePLMNIdentityDigits(l.NrTrackingAreaIdentity, false, "l.NrTrackingAreaIdentity"); err != nil {
+		if err := validatePLMNIdentityDigits(l.NrTrackingAreaIdentity, "LocationInformation5GS.NrTrackingAreaIdentity"); err != nil {
 			return nil, err
 		}
 		ta := gsm_map.NRTAId(l.NrTrackingAreaIdentity)

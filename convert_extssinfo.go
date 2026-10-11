@@ -117,8 +117,8 @@ func convertExtForwFeatureToWire(f *ExtForwFeature) (gsm_map.ExtForwFeature, err
 		out.ForwardedToSubaddress = &v
 	}
 	if f.ForwardingOptions != nil {
-		if err := validateForwardingOptionsToWire(f.ForwardingOptions); err != nil {
-			return gsm_map.ExtForwFeature{}, fmt.Errorf("ForwardingOptions: %w", err)
+		if err := validateExtForwardingOptionsToWire(f.ForwardingOptions); err != nil {
+			return gsm_map.ExtForwFeature{}, fmt.Errorf("ExtForwFeature.ForwardingOptions: %w", err)
 		}
 		v := gsm_map.ExtForwOptions(f.ForwardingOptions)
 		out.ForwardingOptions = &v

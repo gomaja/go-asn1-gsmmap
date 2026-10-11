@@ -196,10 +196,6 @@ var strictEncodeErrors = []error{
 	ErrRequestedInfoServingNodeWithCurrentLocation,
 	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 GeodeticInformation).
 	ErrGeodeticInformationShapeInvalid,
-	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 PDP-ContextInfo QoS predecessors).
-	ErrPDPContextInfoQoSWithoutPredecessor,
-	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 PDP-ContextInfo ExtPdpAddress).
-	ErrPDPContextInfoExtPDPAddressWithoutPDPAddress,
 	// Sender restriction; Parse retains this value (TS 29.002 V19.1.0 §17.7.8 TBCD-STRING).
 	ErrRouteingNumberTBCDInvalid,
 
@@ -240,9 +236,9 @@ var strictEncodeErrors = []error{
 	ErrCancelLocTypeOfUpdateNotApplicable,
 	// MTRF flag exclusion is a sender rule; Parse keeps both flags (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrCancelLocMtrfBothSet,
-	// QoS predecessor presence is a sender rule; Parse keeps each field (3GPP TS 29.002 V19.1.0 §17.7.1).
+	// QoS predecessor presence in PDP-Context/PDP-ContextInfo is a sender rule; Parse keeps each field (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrExtQoSHierarchyViolated,
-	// Base PDP address presence is a sender rule; Parse keeps the extended address (3GPP TS 29.002 V19.1.0 §17.7.1).
+	// Base PDP address presence in PDP-Context/PDP-ContextInfo is a sender rule; Parse keeps the extended address (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrExtPDPAddressWithoutPDPAddress,
 	// TDP uniqueness is a sender rule; Parse keeps repeated descriptors (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrCamelDuplicateTriggerDetectionPoint,

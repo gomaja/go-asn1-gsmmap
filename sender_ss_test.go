@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
@@ -187,6 +188,10 @@ func TestSenderSSCode(t *testing.T) {
 	reserved := []byte{0x00, 0x10, 0x15, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f, 0x30, 0x32, 0x40, 0x50, 0x60, 0x70, 0x80, 0xa0}
 	for _, path := range ssSenderCodePaths() {
 		for _, code := range reserved {
+			if path.name == "ISD result" {
+				ssSenderAccepted(t, path.message(HexBytes{code}), path.parse)
+				continue
+			}
 			if _, err := path.message(HexBytes{code}).Marshal(); !errors.Is(err, ErrSSCodeReserved) {
 				t.Fatalf("%s/%02x: got %v", path.name, code, err)
 			}
@@ -390,17 +395,29 @@ func TestSenderServiceCodes(t *testing.T) {
 		for _, path := range ssSenderServicePaths(bearer) {
 			t.Run(fmt.Sprintf("bearer=%t/%s", bearer, path.name), func(t *testing.T) {
 				for _, raw := range []HexBytes{{0x11, 1}, {0x11, 0, 0, 0, 0}} {
+					if path.name == "ISD result list" {
+						ssSenderAccepted(t, path.message(raw), path.parse)
+						continue
+					}
 					if _, err := path.message(raw).Marshal(); !errors.Is(err, reserved) {
 						t.Fatalf("%x: got %v", raw, err)
 					}
 				}
 				for _, code := range compoundCodes {
+					if path.name == "ISD result list" {
+						ssSenderAccepted(t, path.message(HexBytes{code}), path.parse)
+						continue
+					}
 					if _, err := path.message(HexBytes{code}).Marshal(); !errors.Is(err, compound) {
 						t.Fatalf("%02x: got %v", code, err)
 					}
 				}
 				if bearer {
 					for _, code := range []byte{0x81, 0x91, 0xa1, 0xb1, 0xc1, 0xe1, 0xf1} {
+						if path.name == "ISD result list" {
+							ssSenderAccepted(t, path.message(HexBytes{code}), path.parse)
+							continue
+						}
 						if _, err := path.message(HexBytes{code}).Marshal(); !errors.Is(err, ErrBearerServiceCodeUnusedBit) {
 							t.Fatalf("%02x: got %v", code, err)
 						}
@@ -482,4 +499,90 @@ func ssSenderLenientCases() []semLenientCase {
 		{ErrBearerServiceCodeUnusedBit, parse, service(true, []byte{0x81})},
 		{ErrCompoundBearerServiceCodeNotAllowed, parse, service(true, []byte{0x50})},
 	}
+}
+
+// TS 29.002 V19.1.0 §8.8.1.3 returns unsupported service codes received in ISD.
+func TestSenderISDResultEcho(t *testing.T) {
+	for code := 0; code <= 255; code++ {
+		for length := 1; length <= 5; length++ {
+			raw := make(HexBytes, length)
+			raw[0] = byte(code)
+			for i := 1; i < length; i++ {
+				raw[i] = byte(i)
+			}
+			in := &InsertSubscriberDataRes{SsList: []SsCode{SsCode(code)}, TeleserviceList: []HexBytes{raw}, BearerServiceList: []HexBytes{raw}}
+			data, err := in.Marshal()
+			if err != nil {
+				t.Fatalf("%02x/%d Marshal: %v", code, length, err)
+			}
+			got, err := ParseInsertSubscriberDataRes(data)
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			if !reflect.DeepEqual(in, got) {
+				t.Fatalf("%02x/%d result changed: got %+v, want %+v", code, length, got, in)
+			}
+		}
+	}
+	for _, bearer := range []bool{false, true} {
+		for _, raw := range []HexBytes{{}, {0x11, 0, 0, 0, 0, 0}} {
+			in := &InsertSubscriberDataRes{}
+			if bearer {
+				in.BearerServiceList = []HexBytes{raw}
+			} else {
+				in.TeleserviceList = []HexBytes{raw}
+			}
+			if _, err := in.Marshal(); err == nil {
+				t.Fatalf("bearer=%t/%x: accepted invalid SIZE", bearer, raw)
+			}
+		}
+	}
+}
+
+// TS 29.002 V19.1.0 §17.7.1 Ext-ForwOptions reserves octets 2..5.
+func TestSenderExtForwOptionsReservedOctets(t *testing.T) {
+	path := ssSenderForwardingPaths("options")[0]
+	for length := 2; length <= 5; length++ {
+		raw := make(HexBytes, length)
+		raw[0] = 4
+		if _, err := path.message(raw).Marshal(); !errors.Is(err, ErrExtForwOptionsReservedOctets) {
+			t.Fatalf("length %d: got %v", length, err)
+		}
+		w := semMust(convertInsertSubscriberDataArgToWire(path.message(HexBytes{4}).(*InsertSubscriberDataArg)))
+		w.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].ForwardingOptions = new(gsm_map.ExtForwOptions(raw))
+		got, err := ParseInsertSubscriberData(strictBER(t, w))
+		if err != nil {
+			t.Fatal(err)
+		}
+		options := got.ProvisionedSS[0].ForwardingInfo.ForwardingFeatureList[0].ForwardingOptions
+		if !reflect.DeepEqual(options, HexBytes{4}) {
+			t.Fatalf("Parse kept reserved octets: %x", options)
+		}
+		if _, err := got.Marshal(); err != nil {
+			t.Fatalf("Marshal after Parse: %v", err)
+		}
+	}
+	for _, path := range ssSenderForwardingPaths("options") {
+		for _, raw := range []HexBytes{{}, {4, 0}, {4, 0, 0, 0, 0, 0}} {
+			if path.name == "SRI" && len(raw) == 0 {
+				continue
+			}
+			if _, err := path.message(raw).Marshal(); err == nil {
+				t.Fatalf("%s/%x: accepted invalid SIZE", path.name, raw)
+			}
+		}
+	}
+}
+
+func TestSenderISDResultEchoReceivedCodes(t *testing.T) {
+	w := semMust(convertInsertSubscriberDataArgToWire(ssSenderISD(ExtSSInfo{SsData: &ExtSSData{SsCode: 0x21, SsStatus: HexBytes{1}}})))
+	w.ProvisionedSS.Values[0].SsData.SsCode = gsm_map.SSCode{0x15}
+	w.TeleserviceList = &gsm_map.TeleserviceList{Values: []gsm_map.ExtTeleserviceCode{{0x11, 0}}}
+	w.BearerServiceList = &gsm_map.BearerServiceList{Values: []gsm_map.ExtBearerServiceCode{{0x90}}}
+	received, err := ParseInsertSubscriberData(strictBER(t, w))
+	if err != nil {
+		t.Fatal(err)
+	}
+	in := &InsertSubscriberDataRes{SsList: []SsCode{received.ProvisionedSS[0].SsData.SsCode}, TeleserviceList: received.TeleserviceList, BearerServiceList: received.BearerServiceList}
+	senderMobilityRoundTrip(t, in, asParser(ParseInsertSubscriberDataRes))
 }

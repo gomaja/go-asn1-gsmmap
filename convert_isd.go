@@ -563,31 +563,23 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 	if r == nil {
 		return nil, ErrIsdResNil
 	}
+	// TS 29.002 V19.1.0 §8.8.1.3 returns unsupported codes received in ISD.
 	out := &gsm_map.InsertSubscriberDataRes{}
 	if r.TeleserviceList != nil {
 		out.TeleserviceList = &gsm_map.TeleserviceList{Values: make([]gsm_map.ExtTeleserviceCode, len(r.TeleserviceList))}
 		for i, t := range r.TeleserviceList {
-			if err := validateExtTeleserviceCodeToWire(t, senderInsertSubscriberData); err != nil {
-				return nil, fmt.Errorf("TeleserviceList[%d]: %w", i, err)
-			}
 			out.TeleserviceList.Values[i] = gsm_map.ExtTeleserviceCode(t)
 		}
 	}
 	if r.BearerServiceList != nil {
 		out.BearerServiceList = &gsm_map.BearerServiceList{Values: make([]gsm_map.ExtBearerServiceCode, len(r.BearerServiceList))}
 		for i, b := range r.BearerServiceList {
-			if err := validateExtBearerServiceCodeToWire(b, senderInsertSubscriberData); err != nil {
-				return nil, fmt.Errorf("BearerServiceList[%d]: %w", i, err)
-			}
 			out.BearerServiceList.Values[i] = gsm_map.ExtBearerServiceCode(b)
 		}
 	}
 	if r.SsList != nil {
 		out.SsList = &gsm_map.SSList{Values: make([]gsm_map.SSCode, len(r.SsList))}
 		for i, c := range r.SsList {
-			if err := validateSSCodeToWire(c, senderInsertSubscriberData); err != nil {
-				return nil, fmt.Errorf("SsList[%d]: %w", i, err)
-			}
 			out.SsList.Values[i] = gsm_map.SSCode{byte(c)}
 		}
 	}

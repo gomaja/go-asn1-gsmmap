@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"testing"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
@@ -478,7 +479,7 @@ func TestSenderPLMNDigits(t *testing.T) {
 	}
 }
 
-// TS 29.002 V19.1.0 §§17.7.8,17.7.13: country-only areas carry only MCC.
+// TS 29.002 V19.1.0 §17.7.13 AreaIdentification codes MCC and any included MNC.
 func TestSenderAreaCountryMCC(t *testing.T) {
 	for unused := byte(0); unused < 16; unused++ {
 		b := HexBytes{0x21, unused<<4 | 3}
@@ -535,4 +536,57 @@ func senderCommonLenientCases() []semLenientCase {
 		cases = append(cases, semLenientCase{tc.want, asParser(ParseUpdateLocation), func(*testing.T) semWire { w := update(); w.MscNumber = []byte{tc.header, 0x21}; return w }})
 	}
 	return cases
+}
+
+// TS 29.002 V19.1.0 §17.7.13 AreaIdentification assigns octet 3 to MNC digits.
+func TestSenderAreaCountryIncludedMNC(t *testing.T) {
+	for length := 3; length <= 7; length++ {
+		for _, prefix := range []HexBytes{{0x21, 0xf3, 0x54}, {0x21, 0x63, 0x54}, {0x21, 0xa3, 0x54}, {0x21, 0xf3, 0xfa}, {0x21, 0xf3, 0xf4}} {
+			raw := make(HexBytes, length)
+			copy(raw, prefix)
+			in := senderPSLArg()
+			in.AreaEventInfo = &AreaEventInfo{AreaDefinition: AreaDefinition{AreaList: AreaList{{AreaType: AreaTypeCountryCode, AreaIdentification: raw}}}}
+			data, err := in.Marshal()
+			if prefix[1] == 0xa3 || prefix[2] == 0xfa || prefix[2] == 0xf4 {
+				if !errors.Is(err, ErrPLMNIdentityInvalidDigits) {
+					t.Fatalf("%x: got %v", raw, err)
+				}
+				continue
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := ParseProvideSubscriberLocation(data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(got.AreaEventInfo.AreaDefinition.AreaList[0].AreaIdentification, raw) {
+				t.Fatalf("country area changed: %x", raw)
+			}
+		}
+	}
+}
+
+func TestSenderPLMNListErrorContexts(t *testing.T) {
+	for _, field := range []string{"EplmnList", "AdjacentPLMNList"} {
+		t.Run(field, func(t *testing.T) {
+			in := senderMobilityGPRS()
+			list := []HexBytes{{0x21, 0xf3, 0x54}, {0x21, 0xf3, 0xfa}}
+			if field == "EplmnList" {
+				in.EplmnList = list
+			} else {
+				in.AdjacentPLMNList = list
+			}
+			_, err := in.Marshal()
+			if !errors.Is(err, ErrPLMNIdentityInvalidDigits) || !strings.Contains(err.Error(), "UpdateGprsLocation."+field+"[1]") {
+				t.Fatalf("wrong field context: %v", err)
+			}
+		})
+	}
+	in := senderUpdateLocation()
+	in.EplmnList = []HexBytes{{0x21, 0xf3, 0x54}, {0x21, 0xf3, 0xfa}}
+	_, err := in.Marshal()
+	if !errors.Is(err, ErrPLMNIdentityInvalidDigits) || !strings.Contains(err.Error(), "UpdateLocation.EplmnList[1]") {
+		t.Fatalf("wrong field context: %v", err)
+	}
 }

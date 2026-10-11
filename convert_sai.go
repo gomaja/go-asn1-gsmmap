@@ -179,7 +179,7 @@ func convertSendAuthenticationInfoToArg(s *SendAuthenticationInfo) (*gsm_map.Sen
 		arg.RequestingNodeType = &v
 	}
 	if len(s.RequestingPLMNId) > 0 {
-		if err := validatePLMNIdentityDigits(s.RequestingPLMNId, false, "s.RequestingPLMNId"); err != nil {
+		if err := validatePLMNIdentityDigits(s.RequestingPLMNId, "SendAuthenticationInfo.RequestingPLMNId"); err != nil {
 			return nil, err
 		}
 		v := gsm_map.PLMNId(s.RequestingPLMNId)
