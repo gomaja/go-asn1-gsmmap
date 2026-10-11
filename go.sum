@@ -1,7 +1,7 @@
 github.com/gomaja/go-asn1 v0.0.0-20261011084734-d77484b8fa99 h1:5hD2w+yWFrBpRB3Zm/VCBGHGlSU5xhg7buBqV8dEMDU=
 github.com/gomaja/go-asn1 v0.0.0-20261011084734-d77484b8fa99/go.mod h1:KRznJ08GIF3SHIZS8QWEUJ7QDhCCuLrN94EbeQc0grQ=
-github.com/gomaja/go-sms v0.0.0-20261011101241-3b48f2266ec7 h1:Nv0rs/0llnuYySZ9IaomD7rFLdbFYqMjErBKJiWue8U=
-github.com/gomaja/go-sms v0.0.0-20261011101241-3b48f2266ec7/go.mod h1:nmWk00DAPX0Jkg+l8TvEEPg5DqDgoheohi1ZasxN+N8=
+github.com/gomaja/go-sms v0.0.0-20261011124355-9df85df32817 h1:FfVepg2atXQ0ggALivJgEG2IXsKjyJzEJgSkkKIvgj0=
+github.com/gomaja/go-sms v0.0.0-20261011124355-9df85df32817/go.mod h1:nmWk00DAPX0Jkg+l8TvEEPg5DqDgoheohi1ZasxN+N8=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
 github.com/google/go-cmp v0.7.0/go.mod h1:pXiqmnSA92OHEEa9HXL2W4E7lf9JzCmGVUdgjX3N/iU=
 github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
