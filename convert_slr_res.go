@@ -19,12 +19,17 @@ import (
 // gsm_map.SubscriberLocationReportRes from the public type. Every field
 // is optional, so an all-absent input yields an empty (but valid) wire
 // response. NaESRK and NaESRD are mutually exclusive (3GPP TS 29.002
-// V19.1.0 §17.7.13); a receiver of both fails the response.
+// V19.1.0 §17.7.13), so Marshal rejects both; a receiver of both fails the
+// response.
 func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*gsm_map.SubscriberLocationReportRes, error) {
 	if r == nil {
 		return nil, ErrSLRResNil
 	}
 
+	// TS 29.002 V19.1.0 §17.7.13: NaESRK and NaESRD are mutually exclusive.
+	if r.NaESRK != "" && r.NaESRD != "" {
+		return nil, ErrSLRResRoutingIdentifiersMutuallyExclusive
+	}
 	out := &gsm_map.SubscriberLocationReportRes{}
 
 	// [0] na-ESRK

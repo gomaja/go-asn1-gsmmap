@@ -158,6 +158,7 @@ func TestSupportedGADShapesBitMappingFromWire(t *testing.T) {
 func TestSupportedGADShapesUndersizedRejected(t *testing.T) {
 	bs := runtime.BitString{Bytes: []byte{0x80}, BitLength: 6}
 	wire, err := convertProvideSubscriberLocationArgToWire(&ProvideSubscriberLocationArg{
+		IMSI:         "001010123456789",
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation}, MlcNumber: "1",
 	})
 	if err != nil {
@@ -171,6 +172,7 @@ func TestSupportedGADShapesUndersizedRejected(t *testing.T) {
 func TestSupportedGADShapesOversizedRejected(t *testing.T) {
 	bs := runtime.BitString{Bytes: []byte{0xff, 0xff, 0xff}, BitLength: 17}
 	wire, err := convertProvideSubscriberLocationArgToWire(&ProvideSubscriberLocationArg{
+		IMSI:         "001010123456789",
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation}, MlcNumber: "1",
 	})
 	if err != nil {

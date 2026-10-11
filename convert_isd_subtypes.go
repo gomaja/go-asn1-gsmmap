@@ -14,6 +14,12 @@ func convertMCSSInfoToWire(m *MCSSInfo) (*gsm_map.MCSSInfo, error) {
 	if m == nil {
 		return nil, nil
 	}
+	if err := validateSSCodeToWire(m.SsCode, senderInsertSubscriberData); err != nil {
+		return nil, fmt.Errorf("SsCode: %w", err)
+	}
+	if err := validateExtSSStatusToWire(m.SsStatus); err != nil {
+		return nil, fmt.Errorf("SsStatus: %w", err)
+	}
 
 	return &gsm_map.MCSSInfo{
 		SsCode:   gsm_map.SSCode{byte(m.SsCode)},
@@ -44,9 +50,9 @@ func convertWireToMCSSInfo(w *gsm_map.MCSSInfo) (*MCSSInfo, error) {
 // — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
-func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) *gsm_map.CSGSubscriptionData {
+func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubscriptionData, error) {
 	if c == nil {
-		return nil
+		return nil, nil
 	}
 	csgID := bitStringToWire(c.CsgID, c.CsgIDBits)
 	out := &gsm_map.CSGSubscriptionData{
@@ -63,10 +69,13 @@ func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) *gsm_map.CSGSubscr
 		}
 	}
 	if c.PlmnId != nil {
+		if err := validatePLMNIdentityDigits(c.PlmnId, "CSGSubscriptionData.PlmnId"); err != nil {
+			return nil, err
+		}
 		p := gsm_map.PLMNId(c.PlmnId)
 		out.PlmnId = &p
 	}
-	return out
+	return out, nil
 }
 
 func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) *CSGSubscriptionData {
@@ -93,17 +102,20 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) *CSGSubscr
 	return out
 }
 
-func convertCSGSubscriptionDataListToWire(list CSGSubscriptionDataList) *gsm_map.CSGSubscriptionDataList {
+func convertCSGSubscriptionDataListToWire(list CSGSubscriptionDataList) (*gsm_map.CSGSubscriptionDataList, error) {
 	if list == nil {
-		return nil
+		return nil, nil
 	}
 
 	out := gsm_map.CSGSubscriptionDataList{Values: make([]gsm_map.CSGSubscriptionData, len(list))}
 	for i, csd := range list {
-		w := convertCSGSubscriptionDataToWire(&csd)
+		w, err := convertCSGSubscriptionDataToWire(&csd)
+		if err != nil {
+			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
+		}
 		out.Values[i] = *w
 	}
-	return &out
+	return &out, nil
 }
 
 func convertWireToCSGSubscriptionDataList(w *gsm_map.CSGSubscriptionDataList) CSGSubscriptionDataList {
@@ -119,17 +131,20 @@ func convertWireToCSGSubscriptionDataList(w *gsm_map.CSGSubscriptionDataList) CS
 	return out
 }
 
-func convertVPLMNCSGSubscriptionDataListToWire(list VPLMNCSGSubscriptionDataList) *gsm_map.VPLMNCSGSubscriptionDataList {
+func convertVPLMNCSGSubscriptionDataListToWire(list VPLMNCSGSubscriptionDataList) (*gsm_map.VPLMNCSGSubscriptionDataList, error) {
 	if list == nil {
-		return nil
+		return nil, nil
 	}
 
 	out := &gsm_map.VPLMNCSGSubscriptionDataList{Values: make([]gsm_map.CSGSubscriptionData, len(list))}
 	for i, csd := range list {
-		w := convertCSGSubscriptionDataToWire(&csd)
+		w, err := convertCSGSubscriptionDataToWire(&csd)
+		if err != nil {
+			return nil, fmt.Errorf("VPLMNCSGSubscriptionDataList[%d]: %w", i, err)
+		}
 		out.Values[i] = *w
 	}
-	return out
+	return out, nil
 }
 
 func convertWireToVPLMNCSGSubscriptionDataList(w *gsm_map.VPLMNCSGSubscriptionDataList) VPLMNCSGSubscriptionDataList {
@@ -155,6 +170,9 @@ func convertAdjacentAccessRestrictionDataToWire(a *AdjacentAccessRestrictionData
 		return nil, nil
 	}
 
+	if err := validatePLMNIdentityDigits(a.PlmnId, "AdjacentAccessRestrictionData.PlmnId"); err != nil {
+		return nil, err
+	}
 	out := &gsm_map.AdjacentAccessRestrictionData{
 		PlmnId:                gsm_map.PLMNId(a.PlmnId),
 		AccessRestrictionData: convertAccessRestrictionDataToBitString(&a.AccessRestrictionData),
@@ -222,6 +240,9 @@ func convertIMSIGroupIdToWire(g *IMSIGroupId) (*gsm_map.IMSIGroupId, error) {
 		return nil, nil
 	}
 
+	if err := validatePLMNIdentityDigits(g.PlmnId, "IMSIGroupId.PlmnId"); err != nil {
+		return nil, err
+	}
 	return &gsm_map.IMSIGroupId{
 		GroupServiceId: int64(g.GroupServiceID),
 		PlmnId:         gsm_map.PLMNId(g.PlmnId),

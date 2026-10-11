@@ -1,6 +1,10 @@
 package gsmmap
 
-import "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+import (
+	"fmt"
+
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+)
 
 // receiveGeographicalInformation applies the exception handling of 3GPP TS
 // 29.002 V19.1.0 §17.7.13 to a received location estimate (ext) and
@@ -84,4 +88,63 @@ func receiveVelocityEstimate(v *gsm_map.VelocityEstimate) (VelocityEstimate, err
 		return nil, ErrVelocityEstimateInvalidData
 	}
 	return VelocityEstimate(*v), nil
+}
+
+// TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §7.3 define sender geography.
+func validateSendGeographicalInformation(ext, add []byte, ignoreExt bool) error {
+	// Values outside ASN.1 SIZE bounds are left to the BER codec.
+	if !ignoreExt && len(ext) > 1 && len(ext) <= int(gsm_map.MaxExtGeographicalInformation) && !validGeographicalInformation(ext, false) {
+		return fmt.Errorf("LocationEstimate: %w", ErrExtGeographicalInformationInvalid)
+	}
+	if len(add) > 0 && len(add) <= int(gsm_map.MaxAddGeographicalInformation) && !validGeographicalInformation(add, true) {
+		return fmt.Errorf("AddLocationEstimate: %w", ErrAddGeographicalInformationInvalid)
+	}
+	return nil
+}
+
+// locationEstimateBesideAdd returns the locationEstimate sent beside a
+// non-empty add. 3GPP TS 29.002 V19.1.0 §7.6.11.11 composes a location
+// estimate of its type of shape and that shape's encoding, and puts the
+// encoding of a shape locationEstimate does not carry in add-LocationEstimate;
+// locationEstimate is then one octet (§§13A.2.3, 13A.3.3), which the
+// receiver discards (§17.7.13). An empty ext is sent as add's type of shape.
+// An add outside its SIZE is left to the BER codec.
+func locationEstimateBesideAdd(ext, add []byte) ([]byte, error) {
+	switch {
+	case len(ext) == 0:
+		return []byte{add[0] & 0xF0}, nil
+	case len(ext) == 1 && len(add) <= int(gsm_map.MaxAddGeographicalInformation) && ext[0]>>4 != add[0]>>4:
+		return nil, ErrLocationEstimateShapeMismatch
+	}
+	return ext, nil
+}
+
+// velocityEstimateLength holds the length of velocity types 0 to 3: 3GPP TS
+// 29.002 V19.1.0 §17.7.13 VelocityEstimate has octets 2 to 4, 2 to 5, 2 to 5
+// and 2 to 7 after the type octet.
+var velocityEstimateLength = [4]int{4, 5, 5, 7}
+
+// validateSendVelocityEstimate checks a VelocityEstimate before sending: its
+// type is one of the four 3GPP TS 29.002 V19.1.0 §17.7.13 allows, and its
+// length is that type's. The codec checks SIZE (4..7).
+func validateSendVelocityEstimate(v []byte) error {
+	if len(v) < 4 || len(v) > 7 {
+		return nil
+	}
+	typ := v[0] >> 4
+	if typ > 3 {
+		return ErrVelocityEstimateTypeInvalid
+	}
+	if len(v) != velocityEstimateLength[typ] {
+		return ErrVelocityEstimateLengthInvalid
+	}
+	return nil
+}
+
+// TS 29.002 V19.1.0 §17.7.13: either IMSI or MSISDN identifies the subscriber.
+func validateLCSSubscriberIdentity(imsi, msisdn string) error {
+	if imsi == "" && msisdn == "" {
+		return ErrLCSSubscriberIdentityMissing
+	}
+	return nil
 }

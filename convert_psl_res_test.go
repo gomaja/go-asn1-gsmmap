@@ -286,7 +286,7 @@ func TestProvideSubscriberLocationResMissingLocationEstimateRejected(t *testing.
 
 func TestProvideSubscriberLocationResCellIdOrSaiMutex(t *testing.T) {
 	in := &ProvideSubscriberLocationRes{
-		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40, 0, 0, 0, 0},
 		CellGlobalId:     HexBytes{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07},
 		LAI:              HexBytes{0x32, 0xf4, 0x10, 0x12, 0x34},
 	}
@@ -298,7 +298,7 @@ func TestProvideSubscriberLocationResCellIdOrSaiMutex(t *testing.T) {
 
 func TestProvideSubscriberLocationResCellGlobalIdSizeValidation(t *testing.T) {
 	in := &ProvideSubscriberLocationRes{
-		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40, 0, 0, 0, 0},
 		CellGlobalId:     HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be 7
 	}
 	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
@@ -309,7 +309,7 @@ func TestProvideSubscriberLocationResCellGlobalIdSizeValidation(t *testing.T) {
 
 func TestProvideSubscriberLocationResLAISizeValidation(t *testing.T) {
 	in := &ProvideSubscriberLocationRes{
-		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40, 0, 0, 0, 0},
 		LAI:              HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be 5
 	}
 	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
@@ -321,7 +321,7 @@ func TestProvideSubscriberLocationResLAISizeValidation(t *testing.T) {
 func TestProvideSubscriberLocationResUtranBaroPressureRangeValidation(t *testing.T) {
 	low := UtranBaroPressureMeas(29999) // under 30000 minimum
 	in := &ProvideSubscriberLocationRes{
-		LocationEstimate:      ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+		LocationEstimate:      ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40, 0, 0, 0, 0},
 		UtranBaroPressureMeas: &low,
 	}
 	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
@@ -333,7 +333,7 @@ func TestProvideSubscriberLocationResUtranBaroPressureRangeValidation(t *testing
 func TestProvideSubscriberLocationResAccuracyFulfilmentEncoderStrict(t *testing.T) {
 	bad := AccuracyFulfilmentIndicator(99)
 	in := &ProvideSubscriberLocationRes{
-		LocationEstimate:            ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+		LocationEstimate:            ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40, 0, 0, 0, 0},
 		AccuracyFulfilmentIndicator: &bad,
 	}
 	_, err := convertProvideSubscriberLocationResToWire(in)

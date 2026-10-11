@@ -127,6 +127,102 @@ func berSeeds(tb testing.TB) [][]byte {
 // strictEncodeErrors lists values Parse accepts but Marshal rejects. The
 // reasons include receiver mappings and deliberate decode leniency:
 var strictEncodeErrors = []error{
+	// ASCII DiameterIdentity is a sender rule (RFC 6733 §4.3.1; TS 29.002 §17.7.8).
+	ErrDiameterIdentityNotASCII,
+	// Decimal MCC/MNC coding is a sender rule (TS 29.002 §§17.7.8,17.7.13).
+	ErrPLMNIdentityInvalidDigits,
+	// Reserved address natures are retained on Parse (TS 29.002 §17.7.8).
+	ErrAddressNatureInvalid,
+	// Spare/reserved numbering plans are retained on Parse (TS 29.002 §17.7.8).
+	ErrAddressPlanInvalid,
+	// 3GPP TS 29.002 V19.1.0 §17.7.1 ForwardingOptions unused bits; Parse retains the value.
+	ErrExtForwOptionsUnusedBits,
+	// 3GPP TS 29.002 V19.1.0 §17.7.1 LCS-PrivacyClass notification applicability; Parse retains the value.
+	ErrLCSPrivacyNotificationNotApplicable,
+	// 3GPP TS 29.002 V19.1.0 §17.7.1 LCS-PrivacyClass external-client applicability; Parse retains the value.
+	ErrLCSPrivacyExternalClientListNotApplicable,
+	// 3GPP TS 29.002 V19.1.0 §17.7.1 LCS-PrivacyClass PLMN-client applicability; Parse retains the value.
+	ErrLCSPrivacyPLMNClientListNotApplicable,
+	// 3GPP TS 29.002 V19.1.0 §17.7.1 LCS-PrivacyClass extended-client count; Parse retains the value.
+	ErrLCSPrivacyExtendedClientCountInvalid,
+	// 3GPP TS 29.002 V19.1.0 §17.7.1 LCS-PrivacyClass service-type applicability; Parse retains the value.
+	ErrLCSPrivacyServiceTypeListNotApplicable,
+	// 3GPP TS 29.002 V19.1.0 §17.7.5 reserved SS-Code assignments; Parse retains the value.
+	ErrSSCodeReserved,
+	// 3GPP TS 29.002 V19.1.0 §17.7.5 ccbs-A and ccbs-B operation restrictions; Parse retains the value.
+	ErrSSCodeOperationInvalid,
+	// 3GPP TS 29.002 V19.1.0 §17.7.8 ISDN-SubaddressString header; Parse retains the value.
+	ErrISDNSubaddressHeaderInvalid,
+	// 3GPP TS 29.002 V19.1.0 §17.7.8 LCSServiceTypeID navigation; Parse retains the value.
+	ErrLCSServiceTypeIDReserved,
+	// 3GPP TS 29.002 V19.1.0 §17.7.8 Ext-SS-Status unused bits; Parse retains the value.
+	ErrExtSSStatusUnusedBits,
+	// 3GPP TS 29.002 V19.1.0 §17.7.9 Ext-TeleserviceCode reserved octets; Parse retains the value.
+	ErrExtTeleserviceCodeReservedOctets,
+	// 3GPP TS 29.002 V19.1.0 §17.7.10 Ext-BearerServiceCode reserved octets; Parse retains the value.
+	ErrExtBearerServiceCodeReservedOctets,
+	// 3GPP TS 29.002 V19.1.0 §17.7.9 compound teleservice operations; Parse retains the value.
+	ErrCompoundTeleserviceCodeNotAllowed,
+	// 3GPP TS 29.002 V19.1.0 §17.7.10 non-PLMN-specific bearer unused bit; Parse retains the value.
+	ErrBearerServiceCodeUnusedBit,
+	// 3GPP TS 29.002 V19.1.0 §17.7.10 compound bearer operations; Parse retains the value.
+	ErrCompoundBearerServiceCodeNotAllowed,
+
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 SupportedLCS-CapabilitySets).
+	ErrSGSNCapabilityLCSSet1NotAllowed,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 PDN-GW-Update).
+	ErrPdnGwUpdateMissingAPNOrContextID,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 PDN-Type).
+	ErrPDNTypeInvalid,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 PDP-Context and PDP-ContextInfo).
+	ErrPDPAddressFamilyCombinationInvalid,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 PDP-Type).
+	ErrPDPTypeInvalid,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 Ext-PDP-Type).
+	ErrExtPDPTypeInvalid,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 IMS-VoiceOverPS-SessionsInd).
+	ErrPSIResImsVoiceOverPSSessionsIndicationUnknown,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 NumberPortabilityStatus).
+	ErrNumberPortabilityStatusATIOnly,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 RequestedInfo CurrentLocation).
+	ErrRequestedInfoCurrentLocationWithoutLocationInformation,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 RequestedInfo LocationInformationEPS-Supported).
+	ErrRequestedInfoEPSSupportedWithoutLocationInformation,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 RequestedInfo RequestedNodes).
+	ErrRequestedInfoRequestedNodesInCSDomain,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 RequestedInfo ServingNodeIndication).
+	ErrRequestedInfoServingNodeWithoutLocationInformation,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 RequestedInfo ServingNodeIndication).
+	ErrRequestedInfoServingNodeWithCurrentLocation,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 GeodeticInformation).
+	ErrGeodeticInformationShapeInvalid,
+	// Sender restriction; Parse retains this value (TS 29.002 V19.1.0 §17.7.8 TBCD-STRING).
+	ErrRouteingNumberTBCDInvalid,
+
+	// TS 29.002 V19.1.0 §17.7.6: received overlapping node indicators are kept.
+	ErrSriSmRespNodeIndicatorsMutuallyExclusive,
+	// TS 29.002 V19.1.0 §17.7.6: received additional numbers of the same CHOICE type are kept.
+	ErrSriSmRespAdditionalNumbersSameType,
+	// TS 29.002 V19.1.0 §17.7.6: received conflicting outcome fields are kept.
+	ErrReportSMDeliveryStatusConflictingOutcomeFields,
+	// TS 29.002 V19.1.0 §17.7.6: an additional diagnostic without its primary is kept.
+	ErrIscAdditionalDiagnosticWithoutPrimary,
+	// TS 29.002 V19.1.0 §17.7.13: the received GPRS indicator with dummy node is kept.
+	ErrLCSLocationInfoGPRSIndicatorWithDummyNode,
+	// TS 29.002 V19.1.0 §17.7.13: received absent subscriber identities are kept.
+	ErrLCSSubscriberIdentityMissing,
+	// TS 29.002 V19.1.0 §17.7.13: a missing deferred reference is kept.
+	ErrLCSDeferredReferenceNumberMissing,
+	// TS 29.002 V19.1.0 §17.7.13: a received LCSClientName's DCS is kept.
+	ErrLCSClientNameDataCodingSchemeInvalid,
+	// §17.7.13 makes only an unlisted velocity type invalid data; a length
+	// that does not match the type is kept, and Marshal does not send it.
+	ErrVelocityEstimateLengthInvalid,
+	// TS 29.002 V19.1.0 §17.7.13: received inconsistent deferred data presence is kept.
+	ErrSLRArgDeferredmtLrDataPresence,
+	// TS 29.002 V19.1.0 §17.7.13: received nested location with a nonrestart cause is kept.
+	ErrDeferredmtLrDataLocationInfoRequiresRestart,
+
 	// A reserved AlertingPattern (§17.7.8) is decoded and not sent.
 	ErrAlertingPatternReserved,
 	// A 15-digit IMEI whose last digit is a peer's Check Digit instead of
@@ -140,9 +236,9 @@ var strictEncodeErrors = []error{
 	ErrCancelLocTypeOfUpdateNotApplicable,
 	// MTRF flag exclusion is a sender rule; Parse keeps both flags (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrCancelLocMtrfBothSet,
-	// QoS predecessor presence is a sender rule; Parse keeps each field (3GPP TS 29.002 V19.1.0 §17.7.1).
+	// QoS predecessor presence in PDP-Context/PDP-ContextInfo is a sender rule; Parse keeps each field (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrExtQoSHierarchyViolated,
-	// Base PDP address presence is a sender rule; Parse keeps the extended address (3GPP TS 29.002 V19.1.0 §17.7.1).
+	// Base PDP address presence in PDP-Context/PDP-ContextInfo is a sender rule; Parse keeps the extended address (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrExtPDPAddressWithoutPDPAddress,
 	// TDP uniqueness is a sender rule; Parse keeps repeated descriptors (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrCamelDuplicateTriggerDetectionPoint,

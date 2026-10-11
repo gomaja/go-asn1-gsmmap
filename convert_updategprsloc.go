@@ -108,6 +108,9 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if u.EplmnList != nil {
 		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
+			if err := validatePLMNIdentityDigits(raw, fmt.Sprintf("UpdateGprsLocation.EplmnList[%d]", i)); err != nil {
+				return nil, err
+			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
 		arg.EplmnList = &list
@@ -139,10 +142,16 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	// [19] names the SGSN by FQDN; [20] carries an FQDN or realm
 	// (RFC 6733 §4.3.1).
 	if len(u.SgsnName) > 0 {
+		if err := validateDiameterIdentityASCII(u.SgsnName, "UpdateGprsLocation.SgsnName"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.DiameterIdentity(u.SgsnName)
 		arg.SgsnName = &v
 	}
 	if len(u.SgsnRealm) > 0 {
+		if err := validateDiameterIdentityASCII(u.SgsnRealm, "UpdateGprsLocation.SgsnRealm"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.DiameterIdentity(u.SgsnRealm)
 		arg.SgsnRealm = &v
 	}
@@ -154,6 +163,9 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if u.AdjacentPLMNList != nil {
 		list := gsm_map.AdjacentPLMNList{Values: make([]gsm_map.PLMNId, len(u.AdjacentPLMNList))}
 		for i, raw := range u.AdjacentPLMNList {
+			if err := validatePLMNIdentityDigits(raw, fmt.Sprintf("UpdateGprsLocation.AdjacentPLMNList[%d]", i)); err != nil {
+				return nil, err
+			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
 		arg.AdjacentPLMNList = &list
@@ -318,6 +330,10 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	}
 
 	if s.SupportedLCSCapabilitySets != nil {
+		// TS 29.002 V19.1.0 §17.7.1 SupportedLCS-CapabilitySets.
+		if s.SupportedLCSCapabilitySets.LcsCapabilitySet1 {
+			return nil, ErrSGSNCapabilityLCSSet1NotAllowed
+		}
 		bs := convertLCSCapsToBitString(s.SupportedLCSCapabilitySets)
 		out.SupportedLCSCapabilitySets = &bs
 	}
@@ -436,6 +452,9 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 	}
 	// IsrInformation is BIT STRING (SIZE(3..8)) per TS 29.002 §17.7.1.
 	bs := bitStringToWire(e.IsrInformation, e.IsrInformationBits)
+	if bs.BitLength >= 3 && bs.BitLength <= 8 && len(bs.Bytes) == 1 && bs.Bytes[0]&0x1f != 0 {
+		return nil, ErrISRInformationUnknownBits
+	}
 	v := gsm_map.NewEPSInfoIsrInformation(bs)
 	return &v, nil
 }
@@ -471,18 +490,23 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 }
 
 func convertPdnGwUpdateToWire(p *PdnGwUpdate) (*gsm_map.PDNGWUpdate, error) {
+	// TS 29.002 V19.1.0 §17.7.1 PDN-GW-Update.
+	if p.PdnGwIdentity == nil {
+		return nil, ErrPdnGwUpdateMissingIdentity
+	}
+	if len(p.APN) == 0 && p.ContextID == nil {
+		return nil, ErrPdnGwUpdateMissingAPNOrContextID
+	}
 	out := &gsm_map.PDNGWUpdate{}
 	if len(p.APN) > 0 {
 		apn := append([]byte(nil), p.APN...)
 		out.Apn = &apn
 	}
-	if p.PdnGwIdentity != nil {
-		id, err := convertPdnGwIdentityToWire(p.PdnGwIdentity)
-		if err != nil {
-			return nil, err
-		}
-		out.PdnGwIdentity = id
+	id, err := convertPdnGwIdentityToWire(p.PdnGwIdentity)
+	if err != nil {
+		return nil, err
 	}
+	out.PdnGwIdentity = id
 	if p.ContextID != nil {
 		v := int64(*p.ContextID)
 		out.ContextId = &v

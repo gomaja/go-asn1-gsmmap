@@ -66,6 +66,9 @@ func convertServingNodeAddressToWire(s *ServingNodeAddress) (*gsm_map.ServingNod
 		return &v, nil
 	default: // mmeSet
 
+		if err := validateDiameterIdentityASCII(s.MmeNumber, "ServingNodeAddress.MmeNumber"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.NewServingNodeAddressMmeNumber(gsm_map.DiameterIdentity(s.MmeNumber))
 		return &v, nil
 	}
@@ -123,10 +126,16 @@ func convertCellIdOrSaiToWire(cgi, lai HexBytes) (*gsm_map.CellGlobalIdOrService
 		return nil, nil
 	}
 	if cgiSet {
+		if err := validatePLMNIdentityDigits(cgi, "CellGlobalIdOrServiceAreaIdOrLAI.CellGlobalIdOrServiceAreaIdFixedLength"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
 			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(cgi),
 		)
 		return &v, nil
+	}
+	if err := validatePLMNIdentityDigits(lai, "CellGlobalIdOrServiceAreaIdOrLAI.LaiFixedLength"); err != nil {
+		return nil, err
 	}
 	// laiSet
 
@@ -167,23 +176,34 @@ func convertProvideSubscriberLocationResToWire(r *ProvideSubscriberLocationRes) 
 		return nil, ErrPSLResNil
 	}
 
+	if err := validateSendGeographicalInformation(r.LocationEstimate, r.AddLocationEstimate, r.DeferredmtLrResponseIndicator); err != nil {
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes: %w", err)
+	}
+	if err := validateSendVelocityEstimate(r.VelocityEstimate); err != nil {
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes.VelocityEstimate: %w", err)
+	}
 	out := &gsm_map.ProvideSubscriberLocationRes{
 		LocationEstimate: gsm_map.ExtGeographicalInformation(r.LocationEstimate),
 	}
-	// locationEstimate is mandatory, but a receiver ignores it beside
-	// deferredmt-lrResponseIndicator and discards a one-octet value beside
-	// add-LocationEstimate (3GPP TS 29.002 V19.1.0 §17.7.13); Parse then
-	// leaves LocationEstimate empty. Such a value is sent as one octet: the
-	// type of shape of the additional estimate, or 0 without one.
-	if len(r.LocationEstimate) == 1 && len(r.AddLocationEstimate) == 0 && !r.DeferredmtLrResponseIndicator {
-		return nil, fmt.Errorf("ProvideSubscriberLocationRes.LocationEstimate: %w", ErrLocationEstimateOneOctetWithoutAdd)
-	}
-	if len(r.LocationEstimate) == 0 && (r.DeferredmtLrResponseIndicator || len(r.AddLocationEstimate) > 0) {
-		shape := byte(0)
-		if len(r.AddLocationEstimate) > 0 {
-			shape = r.AddLocationEstimate[0] & 0xF0
+	// locationEstimate is mandatory. A receiver ignores it beside
+	// deferredmt-lrResponseIndicator, so it is sent as given, or as one zero
+	// octet when empty. Otherwise a one-octet value beside add-LocationEstimate
+	// holds that estimate's type of shape (§7.6.11.11) and is discarded, and
+	// one without add-LocationEstimate is invalid data (3GPP TS 29.002 V19.1.0
+	// §17.7.13). Parse leaves LocationEstimate empty in each of these cases.
+	switch {
+	case r.DeferredmtLrResponseIndicator:
+		if len(r.LocationEstimate) == 0 {
+			out.LocationEstimate = gsm_map.ExtGeographicalInformation{0}
 		}
-		out.LocationEstimate = gsm_map.ExtGeographicalInformation{shape}
+	case len(r.AddLocationEstimate) > 0:
+		ext, err := locationEstimateBesideAdd(r.LocationEstimate, r.AddLocationEstimate)
+		if err != nil {
+			return nil, fmt.Errorf("ProvideSubscriberLocationRes.LocationEstimate: %w", err)
+		}
+		out.LocationEstimate = ext
+	case len(r.LocationEstimate) == 1:
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes.LocationEstimate: %w", ErrLocationEstimateOneOctetWithoutAdd)
 	}
 
 	if r.AgeOfLocationEstimate != nil {

@@ -32,6 +32,9 @@ func convertProvideSubscriberInfoToArg(p *ProvideSubscriberInfo) (*gsm_map.Provi
 
 	// CallPriority (optional, 0..15).
 	if p.CallPriority != nil {
+		if err := emlppPriorityRange(*p.CallPriority, "ProvideSubscriberInfo.CallPriority"); err != nil {
+			return nil, err
+		}
 		v := int64(*p.CallPriority)
 		arg.CallPriority = &v
 	}
@@ -67,6 +70,13 @@ func convertArgToProvideSubscriberInfo(arg *gsm_map.ProvideSubscriberInfoArg) (*
 }
 
 func convertProvideSubscriberInfoResToRes(p *ProvideSubscriberInfoRes) (*gsm_map.ProvideSubscriberInfoRes, error) {
+	// TS 29.002 V19.1.0 §17.7.1 IMS-VoiceOverPS-SessionsInd.
+	if p.SubscriberInfo.ImsVoiceOverPSSessionsIndication != nil && *p.SubscriberInfo.ImsVoiceOverPSSessionsIndication == IMSVoiceOverPSUnknown {
+		return nil, ErrPSIResImsVoiceOverPSSessionsIndicationUnknown
+	}
+	if err := validateSubscriberInfoOutsideATI(&p.SubscriberInfo); err != nil {
+		return nil, err
+	}
 	si, err := convertSubscriberInfoToWire(&p.SubscriberInfo)
 	if err != nil {
 		return nil, err

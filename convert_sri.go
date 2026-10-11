@@ -78,7 +78,7 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// BasicServiceGroup
 	if s.BasicServiceGroup != nil {
-		bsg, err := convertExtBasicServiceCodeToWire(s.BasicServiceGroup)
+		bsg, err := convertExtBasicServiceCodeToWire(s.BasicServiceGroup, senderSendRoutingInfo)
 		if err != nil {
 			return nil, fmt.Errorf("encoding BasicServiceGroup: %w", err)
 		}
@@ -87,7 +87,7 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// BasicServiceGroup2
 	if s.BasicServiceGroup2 != nil {
-		bsg2, err := convertExtBasicServiceCodeToWire(s.BasicServiceGroup2)
+		bsg2, err := convertExtBasicServiceCodeToWire(s.BasicServiceGroup2, senderSendRoutingInfo)
 		if err != nil {
 			return nil, fmt.Errorf("encoding BasicServiceGroup2: %w", err)
 		}
@@ -125,6 +125,11 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// AlertingPattern
 	if len(s.AlertingPattern) > 0 {
+		if len(s.AlertingPattern) == 1 {
+			if err := validateAlertingPatternToWire(AlertingPattern(s.AlertingPattern[0])); err != nil {
+				return nil, fmt.Errorf("AlertingPattern: %w", err)
+			}
+		}
 		v := gsm_map.AlertingPattern(s.AlertingPattern)
 		arg.AlertingPattern = &v
 	}
@@ -189,6 +194,9 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// CallPriority
 	if s.CallPriority != nil {
+		if err := emlppPriorityRange(*s.CallPriority, "Sri.CallPriority"); err != nil {
+			return nil, err
+		}
 		v := int64(*s.CallPriority)
 		arg.CallPriority = &v
 	}
@@ -352,6 +360,12 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 // --- SRI Response (SendRoutingInfoRes) full converters ---
 
 func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
+	if err := validateNumberPortabilityOutsideATI(s.NumberPortabilityStatus); err != nil {
+		return nil, err
+	}
+	if err := validateSubscriberInfoOutsideATI(s.SubscriberInfo); err != nil {
+		return nil, err
+	}
 	out := &gsm_map.SendRoutingInfoRes{}
 
 	// 3GPP TS 29.002 V19.1.0 §17.7.3: "IMSI must be present if
@@ -396,13 +410,16 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 	if s.SsList != nil {
 		out.SsList = &gsm_map.SSList{Values: make([]gsm_map.SSCode, len(s.SsList))}
 		for i, c := range s.SsList {
+			if err := validateSSCodeToWire(c, senderSendRoutingInfo); err != nil {
+				return nil, fmt.Errorf("SsList[%d]: %w", i, err)
+			}
 			out.SsList.Values[i] = gsm_map.SSCode{byte(c)}
 		}
 	}
 
 	// BasicService
 	if s.BasicService != nil {
-		bs, err := convertExtBasicServiceCodeToWire(s.BasicService)
+		bs, err := convertExtBasicServiceCodeToWire(s.BasicService, senderSendRoutingInfo)
 		if err != nil {
 			return nil, fmt.Errorf("encoding BasicService: %w", err)
 		}
@@ -483,13 +500,16 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 	if len(s.SsList2) > 0 {
 		out.SsList2 = &gsm_map.SSList{Values: make([]gsm_map.SSCode, len(s.SsList2))}
 		for i, c := range s.SsList2 {
+			if err := validateSSCodeToWire(c, senderSendRoutingInfo); err != nil {
+				return nil, fmt.Errorf("SsList2[%d]: %w", i, err)
+			}
 			out.SsList2.Values[i] = gsm_map.SSCode{byte(c)}
 		}
 	}
 
 	// BasicService2
 	if s.BasicService2 != nil {
-		bs2, err := convertExtBasicServiceCodeToWire(s.BasicService2)
+		bs2, err := convertExtBasicServiceCodeToWire(s.BasicService2, senderSendRoutingInfo)
 		if err != nil {
 			return nil, fmt.Errorf("encoding BasicService2: %w", err)
 		}

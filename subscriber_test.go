@@ -9,7 +9,7 @@ import (
 
 // PS-SubscriberState and UserCSGInformation: TS 29.002 V19.1.0 §17.7.1.
 func TestSubscriberAlternatives(t *testing.T) {
-	ctx := gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: gsm_map.PDPType{0x01, 0x21}}
+	ctx := gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: gsm_map.PDPType{0xf1, 0x21}}
 	contextBER := HexBytes(strictBER(t, &ctx))
 	reason := NotReachableReason(1)
 	cases := []struct {

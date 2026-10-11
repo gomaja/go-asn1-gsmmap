@@ -224,7 +224,7 @@ func TestUpdateGprsLocationWithLCSRoundTrip(t *testing.T) {
 		SGSNCapability: &SGSNCapability{
 			GprsEnhancementsSupportIndicator: true,
 			SupportedLCSCapabilitySets: &SupportedLCSCapabilitySets{
-				LcsCapabilitySet1: true,
+				LcsCapabilitySet1: false,
 				LcsCapabilitySet2: true,
 			},
 		},
@@ -243,8 +243,8 @@ func TestUpdateGprsLocationWithLCSRoundTrip(t *testing.T) {
 	if parsed.SGSNCapability == nil || parsed.SGSNCapability.SupportedLCSCapabilitySets == nil {
 		t.Fatal("LCS capability sets missing")
 	}
-	if !parsed.SGSNCapability.SupportedLCSCapabilitySets.LcsCapabilitySet1 {
-		t.Error("LcsCapabilitySet1 should be true")
+	if parsed.SGSNCapability.SupportedLCSCapabilitySets.LcsCapabilitySet1 {
+		t.Error("LcsCapabilitySet1 should be false")
 	}
 	if !parsed.SGSNCapability.SupportedLCSCapabilitySets.LcsCapabilitySet2 {
 		t.Error("LcsCapabilitySet2 should be true")
@@ -1068,7 +1068,7 @@ func TestATIResLocationInformation5GSRoundTrip(t *testing.T) {
 			Longitude:       113.02974700927734,
 			UncertaintyCode: func() *uint8 { v := uint8(0); return &v }(),
 		},
-		GeodeticInformation:      HexBytes{0x80, 0x31, 0x11, 0x11, 0x22, 0x22, 0x33, 0x33, 0x44, 0x44},
+		GeodeticInformation:      HexBytes{0x80, 0x81, 0x11, 0x11, 0x22, 0x22, 0x33, 0x33, 0x44, 0x44},
 		AmfAddress:               HexBytes("amf.example.com"),
 		TrackingAreaIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23},
 		CurrentLocationRetrieved: true,
@@ -1392,8 +1392,7 @@ func TestSriSmRespFullStressRoundTrip(t *testing.T) {
 				DiameterName:  HexBytes("third.example.com"),
 				DiameterRealm: HexBytes("example.com"),
 			},
-			ImsNodeIndicator: true,
-			Smsf3gppNumber:   "31688888888",
+			Smsf3gppNumber: "31688888888",
 			Smsf3gppDiameterAddress: &NetworkNodeDiameterAddress{
 				DiameterName:  HexBytes("smsf3gpp.example.com"),
 				DiameterRealm: HexBytes("example.com"),
@@ -1403,8 +1402,6 @@ func TestSriSmRespFullStressRoundTrip(t *testing.T) {
 				DiameterName:  HexBytes("smsfnon.example.com"),
 				DiameterRealm: HexBytes("example.com"),
 			},
-			Smsf3gppAddressIndicator:    true,
-			SmsfNon3gppAddressIndicator: true,
 		},
 		IpSmGwGuidance: &IpSmGwGuidance{
 			MinimumDeliveryTimeValue:     60,
@@ -2288,7 +2285,7 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 				Phase1: true, Phase2: true, Phase3: true, Phase4: true,
 			},
 			SupportedLCSCapabilitySets: &SupportedLCSCapabilitySets{
-				LcsCapabilitySet1: true, LcsCapabilitySet2: true,
+				LcsCapabilitySet1: false, LcsCapabilitySet2: true,
 				LcsCapabilitySet3: true, LcsCapabilitySet4: true, LcsCapabilitySet5: true,
 			},
 			OfferedCamel4CSIs: &OfferedCamel4CSIs{
@@ -2604,6 +2601,7 @@ func TestInformServiceCentreValidationErrors(t *testing.T) {
 			mutator: func(i *InformServiceCentre) {
 				v := 1000
 				i.AdditionalAbsentSubscriberDiagnosticSM = &v
+				i.AbsentSubscriberDiagnosticSM = new(1)
 			},
 			path: "additionalAbsentSubscriberDiagnosticSM", constraint: "(0..255)",
 		},
@@ -3249,7 +3247,7 @@ func TestProvideSubscriberInfoFullStressRoundTrip(t *testing.T) {
 				MME:  true,
 				SGSN: true,
 			},
-			ServingNodeIndication: true,
+			ServingNodeIndication: false,
 			LocalTimeZoneRequest:  true,
 		},
 		CallPriority: &callPrio,

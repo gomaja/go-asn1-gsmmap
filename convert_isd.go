@@ -91,12 +91,18 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 	if a.BearerServiceList != nil {
 		out.BearerServiceList = &gsm_map.BearerServiceList{Values: make([]gsm_map.ExtBearerServiceCode, len(a.BearerServiceList))}
 		for i, b := range a.BearerServiceList {
+			if err := validateExtBearerServiceCodeToWire(b, senderInsertSubscriberData); err != nil {
+				return nil, fmt.Errorf("BearerServiceList[%d]: %w", i, err)
+			}
 			out.BearerServiceList.Values[i] = gsm_map.ExtBearerServiceCode(b)
 		}
 	}
 	if a.TeleserviceList != nil {
 		out.TeleserviceList = &gsm_map.TeleserviceList{Values: make([]gsm_map.ExtTeleserviceCode, len(a.TeleserviceList))}
 		for i, t := range a.TeleserviceList {
+			if err := validateExtTeleserviceCodeToWire(t, senderInsertSubscriberData); err != nil {
+				return nil, fmt.Errorf("TeleserviceList[%d]: %w", i, err)
+			}
 			out.TeleserviceList.Values[i] = gsm_map.ExtTeleserviceCode(t)
 		}
 	}
@@ -215,7 +221,10 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.EpsSubscriptionData = w
 	}
 	if a.CsgSubscriptionDataList != nil {
-		l := convertCSGSubscriptionDataListToWire(a.CsgSubscriptionDataList)
+		l, err := convertCSGSubscriptionDataListToWire(a.CsgSubscriptionDataList)
+		if err != nil {
+			return nil, err
+		}
 		out.CsgSubscriptionDataList = l
 	}
 	if a.SgsnNumber != "" {
@@ -227,6 +236,9 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.SgsnNumber = &v
 	}
 	if len(a.MmeName) > 0 {
+		if err := validateDiameterIdentityASCII(a.MmeName, "InsertSubscriberDataArg.MmeName"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.DiameterIdentity(a.MmeName)
 		out.MmeName = &v
 	}
@@ -243,7 +255,10 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.SubscribedPeriodicLAUtimer = &v
 	}
 	if a.VplmnCsgSubscriptionDataList != nil {
-		l := convertVPLMNCSGSubscriptionDataListToWire(a.VplmnCsgSubscriptionDataList)
+		l, err := convertVPLMNCSGSubscriptionDataListToWire(a.VplmnCsgSubscriptionDataList)
+		if err != nil {
+			return nil, err
+		}
 		out.VplmnCsgSubscriptionDataList = l
 	}
 	if a.AdditionalMSISDN != "" {
@@ -548,6 +563,7 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 	if r == nil {
 		return nil, ErrIsdResNil
 	}
+	// TS 29.002 V19.1.0 §8.8.1.3 returns unsupported codes received in ISD.
 	out := &gsm_map.InsertSubscriberDataRes{}
 	if r.TeleserviceList != nil {
 		out.TeleserviceList = &gsm_map.TeleserviceList{Values: make([]gsm_map.ExtTeleserviceCode, len(r.TeleserviceList))}

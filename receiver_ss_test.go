@@ -36,7 +36,7 @@ func TestReceiverForwardingOptionsDiscardLaterOctets(t *testing.T) {
 	for _, options := range []HexBytes{{0xfc}, {0xfc, 0}, {0xfc, 0xff}, {0xfc, 1, 2}, {0xfc, 1, 2, 3}, {0xfc, 1, 2, 3, 4}} {
 		t.Run(fmt.Sprintf("%x", []byte(options)), func(t *testing.T) {
 			in := &InsertSubscriberDataArg{ProvisionedSS: []ExtSSInfo{{ForwardingInfo: &ExtForwInfo{
-				SsCode: 0x21, ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{1}, ForwardingOptions: options}},
+				SsCode: 0x21, ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{1}, ForwardingOptions: HexBytes{0xec}}},
 			}}}}
 			data, err := in.Marshal()
 			if err != nil {
@@ -46,9 +46,8 @@ func TestReceiverForwardingOptionsDiscardLaterOctets(t *testing.T) {
 			if err := input.UnmarshalBER(data); err != nil {
 				t.Fatal(err)
 			}
-			if !slices.Equal(*input.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].ForwardingOptions, options) {
-				t.Fatal("sender changed forwarding options")
-			}
+			*input.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].ForwardingOptions = gsm_map.ExtForwOptions(options)
+			data = strictBER(t, &input)
 			got, err := ParseInsertSubscriberData(data)
 			if err != nil {
 				t.Fatal(err)
@@ -57,16 +56,8 @@ func TestReceiverForwardingOptionsDiscardLaterOctets(t *testing.T) {
 			if info.SsCode != 0x21 || !slices.Equal(info.ForwardingFeatureList[0].ForwardingOptions, HexBytes{0xfc}) {
 				t.Fatalf("received forwarding info: %+v", info)
 			}
-			out, err := got.Marshal()
-			if err != nil {
-				t.Fatal(err)
-			}
-			var w gsm_map.InsertSubscriberDataArg
-			if err := w.UnmarshalBER(out); err != nil {
-				t.Fatal(err)
-			}
-			if !slices.Equal(*w.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].ForwardingOptions, []byte{0xfc}) {
-				t.Fatal("Marshal reintroduced discarded forwarding options")
+			if _, err := got.Marshal(); !errors.Is(err, ErrExtForwOptionsUnusedBits) {
+				t.Fatalf("reserved bits: %v", err)
 			}
 		})
 	}
@@ -77,12 +68,18 @@ func TestReceiverCUGRestrictionsIgnoreUnsupportedBits(t *testing.T) {
 		t.Run(fmt.Sprintf("%02x", value), func(t *testing.T) {
 			idx := 42
 			in := &InsertSubscriberDataArg{ProvisionedSS: []ExtSSInfo{{CugInfo: &CUGInfo{
-				CugFeatureList: []CUGFeature{{InterCUGRestrictions: value, PreferentialCUGIndex: &idx}},
+				CugFeatureList: []CUGFeature{{InterCUGRestrictions: value & 3, PreferentialCUGIndex: &idx}},
 			}}}}
 			data, err := in.Marshal()
 			if err != nil {
 				t.Fatal(err)
 			}
+			var w gsm_map.InsertSubscriberDataArg
+			if err := w.UnmarshalBER(data); err != nil {
+				t.Fatal(err)
+			}
+			w.ProvisionedSS.Values[0].CugInfo.CugFeatureList.Values[0].InterCUGRestrictions = gsm_map.InterCUGRestrictions{value}
+			data = strictBER(t, &w)
 			got, err := ParseInsertSubscriberData(data)
 			if err != nil {
 				t.Fatal(err)
@@ -104,13 +101,22 @@ func TestReceiverCallPriorityMapsSpareValues(t *testing.T) {
 			if priority >= 0 {
 				psi.CallPriority, sri.CallPriority = &priority, &priority
 			}
-			psiData, err := psi.Marshal()
-			if err != nil {
-				t.Fatal(err)
-			}
-			sriData, err := sri.Marshal()
-			if err != nil {
-				t.Fatal(err)
+			var psiData, sriData []byte
+			if priority >= 7 {
+				if _, err := psi.Marshal(); !errors.Is(err, ErrEMLPPPriorityOutOfRange) {
+					t.Fatal(err)
+				}
+				if _, err := sri.Marshal(); !errors.Is(err, ErrEMLPPPriorityOutOfRange) {
+					t.Fatal(err)
+				}
+				psi.CallPriority, sri.CallPriority = nil, nil
+				pw := semMust(convertProvideSubscriberInfoToArg(psi))
+				sw := semMust(convertSriToArg(sri))
+				pw.CallPriority, sw.CallPriority = new(int64(priority)), new(int64(priority))
+				psiData, sriData = strictBER(t, pw), strictBER(t, sw)
+			} else {
+				psiData = semMust(psi.Marshal())
+				sriData = semMust(sri.Marshal())
 			}
 			var psiWire gsm_map.ProvideSubscriberInfoArg
 			if err := psiWire.UnmarshalBER(psiData); err != nil {
@@ -178,20 +184,31 @@ func TestReceiverSSStatusDiscardLaterOctets(t *testing.T) {
 		t.Run(fmt.Sprintf("%x", []byte(status)), func(t *testing.T) {
 			in := &InsertSubscriberDataArg{
 				ProvisionedSS: []ExtSSInfo{
-					{ForwardingInfo: &ExtForwInfo{SsCode: 0x21, ForwardingFeatureList: []ExtForwFeature{{SsStatus: status}}}},
-					{CallBarringInfo: &ExtCallBarInfo{SsCode: 0x91, CallBarringFeatureList: []ExtCallBarringFeature{{SsStatus: status}}}},
-					{SsData: &ExtSSData{SsCode: 0x11, SsStatus: status}},
+					{ForwardingInfo: &ExtForwInfo{SsCode: 0x21, ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{1}}}}},
+					{CallBarringInfo: &ExtCallBarInfo{SsCode: 0x91, CallBarringFeatureList: []ExtCallBarringFeature{{SsStatus: HexBytes{1}}}}},
+					{SsData: &ExtSSData{SsCode: 0x11, SsStatus: HexBytes{1}}},
 				},
-				McSSInfo: &MCSSInfo{SsCode: 0x11, SsStatus: status, NbrSB: 2, NbrUser: 1},
+				McSSInfo: &MCSSInfo{SsCode: 0x11, SsStatus: HexBytes{1}, NbrSB: 2, NbrUser: 1},
 				LcsInformation: &LCSInformation{
-					LcsPrivacyExceptionList: LCSPrivacyExceptionList{{SsCode: 0xa1, SsStatus: status}},
-					MolrList:                MOLRList{{SsCode: 0xb0, SsStatus: status}},
+					LcsPrivacyExceptionList: LCSPrivacyExceptionList{{SsCode: 0xa1, SsStatus: HexBytes{1}}},
+					MolrList:                MOLRList{{SsCode: 0xb0, SsStatus: HexBytes{1}}},
 				},
 			}
 			data, err := in.Marshal()
 			if err != nil {
 				t.Fatal(err)
 			}
+			var input gsm_map.InsertSubscriberDataArg
+			if err := input.UnmarshalBER(data); err != nil {
+				t.Fatal(err)
+			}
+			input.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].SsStatus = gsm_map.ExtSSStatus(status)
+			input.ProvisionedSS.Values[1].CallBarringInfo.CallBarringFeatureList.Values[0].SsStatus = gsm_map.ExtSSStatus(status)
+			input.ProvisionedSS.Values[2].SsData.SsStatus = gsm_map.ExtSSStatus(status)
+			input.McSSInfo.SsStatus = gsm_map.ExtSSStatus(status)
+			input.LcsInformation.LcsPrivacyExceptionList.Values[0].SsStatus = gsm_map.ExtSSStatus(status)
+			input.LcsInformation.MolrList.Values[0].SsStatus = gsm_map.ExtSSStatus(status)
+			data = strictBER(t, &input)
 			got, err := ParseInsertSubscriberData(data)
 			if err != nil {
 				t.Fatal(err)
@@ -207,6 +224,12 @@ func TestReceiverSSStatusDiscardLaterOctets(t *testing.T) {
 				if !slices.Equal(value, status[:1]) {
 					t.Errorf("%s status = %x, want %x", name, []byte(value), []byte(status[:1]))
 				}
+			}
+			if status[0]&0xf0 != 0 {
+				if _, err := got.Marshal(); !errors.Is(err, ErrExtSSStatusUnusedBits) {
+					t.Fatalf("reserved status bits: %v", err)
+				}
+				return
 			}
 			out, err := got.Marshal()
 			if err != nil {
@@ -235,7 +258,7 @@ func TestReceiverSSStatusDiscardLaterOctets(t *testing.T) {
 // so an opaque PDP context keeps them, with every other extension.
 func TestOpaquePDPContextKeepsExtensions(t *testing.T) {
 	ctx := gsm_map.PDPContextInfo{
-		PdpContextIdentifier: 1, PdpType: gsm_map.PDPType{0, 0xf1},
+		PdpContextIdentifier: 1, PdpType: gsm_map.PDPType{0xf1, 0x21},
 		ExtensionContainer: &gsm_map.ExtensionContainer{
 			PrivateExtensionList: &gsm_map.PrivateExtensionList{Values: []gsm_map.PrivateExtension{{ExtId: runtime.ObjectIdentifier{1, 2, 3}}}},
 			PcsExtensions:        &gsm_map.PCSExtensions{ExtCount_: 1, ExtPresent_: []bool{true}, ExtData_: [][]byte{{0x85, 1, 0xaa}}},

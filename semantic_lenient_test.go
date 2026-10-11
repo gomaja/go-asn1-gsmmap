@@ -84,7 +84,7 @@ func semLenientCases() []semLenientCase {
 			GprsDataList: &gsm_map.GPRSDataList{Values: []gsm_map.PDPContext{*w}},
 		}}
 	}
-	return []semLenientCase{
+	cases := []semLenientCase{
 		{ErrAlertingPatternReserved, asParser(ParseUSSDArg), func(t *testing.T) semWire {
 			w := semMust(convertUSSDArgToWire(&USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: HexBytes{0x41}}))
 			w.AlertingPattern = &gsm_map.AlertingPattern{0x03}
@@ -269,6 +269,10 @@ func semLenientCases() []semLenientCase {
 			return w
 		}},
 	}
+	cases = append(cases, senderCommonLenientCases()...)
+	cases = append(cases, ssSenderLenientCases()...)
+	cases = append(cases, senderMobilityLenientCases()...)
+	return append(cases, senderLCSSemLenientCases()...)
 }
 
 func TestStrictEncodeErrorsAreReachable(t *testing.T) {

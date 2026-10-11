@@ -6,19 +6,20 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// validateExtQoSHierarchy enforces the spec hierarchy from
-// 3GPP TS 29.002 V19.1.0 §17.7.1: Ext2 requires Ext, Ext3 requires
-// Ext2, Ext4 requires Ext3. Each parameter is true when the
-// corresponding Ext{N}-QoS-Subscribed field is present.
-func validateExtQoSHierarchy(ext, ext2, ext3, ext4 bool) error {
-	if ext2 && !ext {
-		return fmt.Errorf("%w: Ext2 set without Ext", ErrExtQoSHierarchyViolated)
+// TS 29.002 V19.1.0 §17.7.1 PDP-Context/PDP-ContextInfo requires successive QoS extensions.
+func validateExtQoSHierarchy(present [4]bool, fields [4]string) error {
+	for i := 1; i < len(present); i++ {
+		if present[i] && !present[i-1] {
+			return fmt.Errorf("%s requires %s: %w", fields[i], fields[i-1], ErrExtQoSHierarchyViolated)
+		}
 	}
-	if ext3 && !ext2 {
-		return fmt.Errorf("%w: Ext3 set without Ext2", ErrExtQoSHierarchyViolated)
-	}
-	if ext4 && !ext3 {
-		return fmt.Errorf("%w: Ext4 set without Ext3", ErrExtQoSHierarchyViolated)
+	return nil
+}
+
+// TS 29.002 V19.1.0 §17.7.1 PDP-Context/PDP-ContextInfo requires the base address.
+func validateExtPDPAddressPresence(base, ext bool) error {
+	if ext && !base {
+		return ErrExtPDPAddressWithoutPDPAddress
 	}
 	return nil
 }
@@ -105,18 +106,20 @@ func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
 	}
 
 	if err := validateExtQoSHierarchy(
-		p.ExtQoSSubscribed != nil,
-		p.Ext2QoSSubscribed != nil,
-		p.Ext3QoSSubscribed != nil,
-		p.Ext4QoSSubscribed != nil,
+		[4]bool{p.ExtQoSSubscribed != nil, p.Ext2QoSSubscribed != nil, p.Ext3QoSSubscribed != nil, p.Ext4QoSSubscribed != nil},
+		[4]string{"PDPContext.ExtQoSSubscribed", "PDPContext.Ext2QoSSubscribed", "PDPContext.Ext3QoSSubscribed", "PDPContext.Ext4QoSSubscribed"},
 	); err != nil {
 		return nil, err
 	}
+	if err := validateExtPDPAddressPresence(p.PdpAddress != nil, p.ExtPdpAddress != nil); err != nil {
+		return nil, fmt.Errorf("PDPContext.ExtPdpAddress: %w", err)
+	}
 
-	if p.ExtPdpAddress != nil {
-		if p.PdpAddress == nil {
-			return nil, ErrExtPDPAddressWithoutPDPAddress
-		}
+	if err := validateSenderPDPTypes(p.PdpType, p.ExtPdpType); err != nil {
+		return nil, err
+	}
+	if err := validateSenderPDPAddressFamilies(p.PdpAddress, p.ExtPdpAddress); err != nil {
+		return nil, err
 	}
 
 	out := &gsm_map.PDPContext{

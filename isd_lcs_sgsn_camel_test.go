@@ -182,7 +182,7 @@ func TestServiceTypeList_BoundsRejected(t *testing.T) {
 	}
 	too := make(ServiceTypeList, 33)
 	for i := range too {
-		too[i] = ServiceType{ServiceTypeIdentity: int64(i)}
+		too[i] = ServiceType{ServiceTypeIdentity: int64(64 + i)}
 	}
 	_, err = strictWire(convertServiceTypeListToWire(too))
 	if !matchesConstraint(err, "serviceTypeList", "SIZE (1..32)") {
@@ -197,12 +197,10 @@ func TestServiceTypeList_BoundsRejected(t *testing.T) {
 func makeLCSPrivacyClass() LCSPrivacyClass {
 	notify := NotifyLocationAllowed
 	return LCSPrivacyClass{
-		SsCode:               SsCode(0x21),
+		SsCode:               SsCode(0xb3),
 		SsStatus:             HexBytes{0x01},
 		NotificationToMSUser: &notify,
 		ExternalClientList:   ExternalClientList{makeExternalClient()},
-		PlmnClientList:       PLMNClientList{LCSClientBroadcastService},
-		ServiceTypeList:      ServiceTypeList{{ServiceTypeIdentity: 1}},
 	}
 }
 
@@ -251,7 +249,7 @@ func TestLCSPrivacyExceptionList_BoundsRejected(t *testing.T) {
 
 func TestMOLRClass_RoundTrip(t *testing.T) {
 	in := MOLRClass{SsCode: SsCode(0x42), SsStatus: HexBytes{0x01}}
-	w := convertMOLRClassToWire(&in)
+	w := semMust(convertMOLRClassToWire(&in))
 	out := convertWireToMOLRClass(w)
 	if !reflect.DeepEqual(&in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, *out)
@@ -259,15 +257,15 @@ func TestMOLRClass_RoundTrip(t *testing.T) {
 }
 
 func TestMOLRList_BoundsRejected(t *testing.T) {
-	_, err := strictWire(convertMOLRListToWire(MOLRList{}), nil)
+	_, err := strictWire(convertMOLRListToWire(MOLRList{}))
 	if !matchesConstraint(err, "molr-List", "SIZE (1..3)") {
 		t.Fatalf("empty: want size err, got %v", err)
 	}
 	too := make(MOLRList, 4)
 	for i := range too {
-		too[i] = MOLRClass{SsCode: SsCode(byte(i)), SsStatus: HexBytes{0x01}}
+		too[i] = MOLRClass{SsCode: SsCode(0xc1 + byte(i)), SsStatus: HexBytes{0x01}}
 	}
-	_, err = strictWire(convertMOLRListToWire(too), nil)
+	_, err = strictWire(convertMOLRListToWire(too))
 	if !matchesConstraint(err, "molr-List", "SIZE (1..3)") {
 		t.Fatalf("over-max: want size err, got %v", err)
 	}

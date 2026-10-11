@@ -279,6 +279,7 @@ func semMtFsm(t *testing.T) *MtFsm {
 
 func semPSLArg() *ProvideSubscriberLocationArg {
 	return &ProvideSubscriberLocationArg{
+		IMSI:            "001010123456789",
 		LocationType:    LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 		MlcNumber:       "31612345678",
 		MlcNumberNature: address.NatureInternational,
@@ -288,6 +289,7 @@ func semPSLArg() *ProvideSubscriberLocationArg {
 
 func semSLRArg() *SubscriberLocationReportArg {
 	return &SubscriberLocationReportArg{
+		IMSI:            "001010123456789",
 		LcsEvent:        LCSEventEmergencyCallOrigination,
 		LcsClientID:     LCSClientID{LcsClientType: LCSClientTypeEmergencyServices},
 		LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "31650000000"},

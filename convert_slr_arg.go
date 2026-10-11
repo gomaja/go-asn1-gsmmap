@@ -34,13 +34,29 @@ func isRecognizedLCSEvent(v LCSEvent) bool {
 // gsm_map.SubscriberLocationReportArg from the public type. Semantic
 // validation errors carry field context and the relevant sentinel.
 //
-// Per spec, one of MSISDN or IMSI must be present. That cross-field
-// invariant is the caller's responsibility — the encoder does not
-// reject its absence, since reporting nodes may relay partial data and
-// the receiving GMLC correlates the subscriber by other means.
+// TS 29.002 V19.1.0 §17.7.13: Marshal requires IMSI or MSISDN.
 func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*gsm_map.SubscriberLocationReportArg, error) {
 	if a == nil {
 		return nil, ErrSLRArgNil
+	}
+
+	// TS 29.002 V19.1.0 §17.7.13: a subscriber identity is mandatory.
+	if err := validateLCSSubscriberIdentity(a.IMSI, a.MSISDN); err != nil {
+		return nil, err
+	}
+	// TS 29.002 V19.1.0 §17.7.13: a deferred response requires its reference.
+	if a.LcsEvent == LCSEventDeferredmtLrResponse && len(a.LcsReferenceNumber) == 0 {
+		return nil, ErrLCSDeferredReferenceNumberMissing
+	}
+	// TS 29.002 V19.1.0 §17.7.13: deferred data is present exactly for a deferred response.
+	if (a.LcsEvent == LCSEventDeferredmtLrResponse) != (a.DeferredmtLrData != nil) {
+		return nil, ErrSLRArgDeferredmtLrDataPresence
+	}
+	if err := validateSendGeographicalInformation(a.LocationEstimate, a.AddLocationEstimate, false); err != nil {
+		return nil, fmt.Errorf("SubscriberLocationReportArg: %w", err)
+	}
+	if err := validateSendVelocityEstimate(a.VelocityEstimate); err != nil {
+		return nil, fmt.Errorf("SubscriberLocationReportArg.VelocityEstimate: %w", err)
 	}
 
 	// Mandatory: LcsEvent (extensible enum; encoder strict 0..5).
@@ -114,12 +130,20 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	// [5] locationEstimate
 	// 3GPP TS 29.002 V19.1.0 §17.7.13: a receiver treats a one-octet
 	// locationEstimate without add-LocationEstimate as invalid data.
+	// §13A.3.3: an estimate in add-LocationEstimate is sent beside a
+	// one-octet locationEstimate, since its absence means no estimate.
 	if len(a.LocationEstimate) == 1 && len(a.AddLocationEstimate) == 0 {
 		return nil, fmt.Errorf("SubscriberLocationReportArg.LocationEstimate: %w", ErrLocationEstimateOneOctetWithoutAdd)
 	}
-	if len(a.LocationEstimate) > 0 {
-		v := gsm_map.ExtGeographicalInformation(a.LocationEstimate)
-		out.LocationEstimate = &v
+	ext := []byte(a.LocationEstimate)
+	if len(a.AddLocationEstimate) > 0 {
+		var err error
+		if ext, err = locationEstimateBesideAdd(ext, a.AddLocationEstimate); err != nil {
+			return nil, fmt.Errorf("SubscriberLocationReportArg.LocationEstimate: %w", err)
+		}
+	}
+	if len(ext) > 0 {
+		out.LocationEstimate = &ext
 	}
 	// [6] ageOfLocationEstimate
 	if a.AgeOfLocationEstimate != nil {
@@ -171,6 +195,9 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	// [15] lcsServiceTypeID
 	if a.LcsServiceTypeID != nil {
+		if err := validateLCSServiceTypeIDToWire(*a.LcsServiceTypeID); err != nil {
+			return nil, fmt.Errorf("LcsServiceTypeID: %w", err)
+		}
 		v := *a.LcsServiceTypeID
 
 		w := v

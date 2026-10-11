@@ -246,6 +246,9 @@ func convertServiceTypeToWire(s *ServiceType) (*gsm_map.ServiceType, error) {
 	if s.NotificationToMSUser != nil && !isValidNotificationToMSUser(*s.NotificationToMSUser) {
 		return nil, fmt.Errorf("ServiceType.NotificationToMSUser: %w (got %d)", ErrNotificationToMSUserInvalid, *s.NotificationToMSUser)
 	}
+	if err := validateLCSServiceTypeIDToWire(s.ServiceTypeIdentity); err != nil {
+		return nil, fmt.Errorf("ServiceType.ServiceTypeIdentity: %w", err)
+	}
 	out := &gsm_map.ServiceType{ServiceTypeIdentity: s.ServiceTypeIdentity}
 	if s.GmlcRestriction != nil {
 		v := *s.GmlcRestriction
@@ -306,6 +309,15 @@ func convertWireToServiceTypeList(w *gsm_map.ServiceTypeList) ServiceTypeList {
 func convertLCSPrivacyClassToWire(c *LCSPrivacyClass) (*gsm_map.LCSPrivacyClass, error) {
 	if c == nil {
 		return nil, nil
+	}
+	if err := validateSSCodeToWire(c.SsCode, senderInsertSubscriberData); err != nil {
+		return nil, fmt.Errorf("SsCode: %w", err)
+	}
+	if err := validateExtSSStatusToWire(c.SsStatus); err != nil {
+		return nil, fmt.Errorf("SsStatus: %w", err)
+	}
+	if err := validateLCSPrivacyClassToWire(c); err != nil {
+		return nil, err
 	}
 
 	if c.NotificationToMSUser != nil && !isValidNotificationToMSUser(*c.NotificationToMSUser) {
@@ -419,15 +431,21 @@ func convertWireToLCSPrivacyExceptionList(w *gsm_map.LCSPrivacyExceptionList) (L
 // MOLRClass / MOLRList — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
-func convertMOLRClassToWire(c *MOLRClass) *gsm_map.MOLRClass {
+func convertMOLRClassToWire(c *MOLRClass) (*gsm_map.MOLRClass, error) {
 	if c == nil {
-		return nil
+		return nil, nil
+	}
+	if err := validateSSCodeToWire(c.SsCode, senderInsertSubscriberData); err != nil {
+		return nil, fmt.Errorf("SsCode: %w", err)
+	}
+	if err := validateExtSSStatusToWire(c.SsStatus); err != nil {
+		return nil, fmt.Errorf("SsStatus: %w", err)
 	}
 
 	return &gsm_map.MOLRClass{
 		SsCode:   gsm_map.SSCode{byte(c.SsCode)},
 		SsStatus: gsm_map.ExtSSStatus(c.SsStatus),
-	}
+	}, nil
 }
 
 func convertWireToMOLRClass(w *gsm_map.MOLRClass) *MOLRClass {
@@ -441,16 +459,20 @@ func convertWireToMOLRClass(w *gsm_map.MOLRClass) *MOLRClass {
 	}
 }
 
-func convertMOLRListToWire(list MOLRList) *gsm_map.MOLRList {
+func convertMOLRListToWire(list MOLRList) (*gsm_map.MOLRList, error) {
 	if list == nil {
-		return nil
+		return nil, nil
 	}
 
 	out := gsm_map.MOLRList{Values: make([]gsm_map.MOLRClass, len(list))}
 	for i, c := range list {
-		out.Values[i] = *convertMOLRClassToWire(&c)
+		w, err := convertMOLRClassToWire(&c)
+		if err != nil {
+			return nil, fmt.Errorf("MOLRList[%d]: %w", i, err)
+		}
+		out.Values[i] = *w
 	}
-	return &out
+	return &out, nil
 }
 
 func convertWireToMOLRList(w *gsm_map.MOLRList) MOLRList {
@@ -531,7 +553,11 @@ func convertLCSInformationToWire(l *LCSInformation) (*gsm_map.LCSInformation, er
 		out.LcsPrivacyExceptionList = pe
 	}
 	if l.MolrList != nil {
-		out.MolrList = convertMOLRListToWire(l.MolrList)
+		w, err := convertMOLRListToWire(l.MolrList)
+		if err != nil {
+			return nil, err
+		}
+		out.MolrList = w
 	}
 	if l.AddLcsPrivacyExceptionList != nil {
 		if len(l.LcsPrivacyExceptionList) != int(gsm_map.MaxNumOfPrivacyClass) {

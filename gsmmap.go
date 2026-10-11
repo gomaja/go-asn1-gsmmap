@@ -65,7 +65,8 @@ type AdditionalNumber struct {
 	SgsnNumberPlan   uint8
 }
 
-// NetworkNodeDiameterAddress SEQUENCE.
+// NetworkNodeDiameterAddress SEQUENCE. Marshal checks ASCII encoding;
+// callers supply valid FQDNs/realms and node identities (RFC 6733 §4.3.1).
 type NetworkNodeDiameterAddress struct {
 	DiameterName  HexBytes // DiameterIdentity FQDN (RFC 6733 §4.3.1)
 	DiameterRealm HexBytes // DiameterIdentity FQDN or realm (RFC 6733 §4.3.1)
@@ -346,6 +347,7 @@ const (
 )
 
 // EpsInfo is the EPS-Info CHOICE (opCode 23).
+// Marshal rejects ISR bits outside 0..2 (TS 29.002 V19.1.0 §17.7.1).
 // Set exactly one alternative: either PdnGwUpdate (non-nil) or
 // IsrInformation, whose IsrInformationBits bits fill exactly
 // (IsrInformationBits+7)/8 octets. Parse ignores a PdnGwUpdate without
@@ -358,6 +360,7 @@ type EpsInfo struct {
 }
 
 // PdnGwUpdate SEQUENCE (opCode 23).
+// Marshal requires PdnGwIdentity and APN or ContextID (TS 29.002 V19.1.0 §17.7.1).
 type PdnGwUpdate struct {
 	APN           HexBytes       // [0] optional
 	PdnGwIdentity *PdnGwIdentity // [1] optional
@@ -561,6 +564,7 @@ type MnpInfoRes struct {
 }
 
 // ImsVoiceOverPSSessionsIndication per 3GPP TS 29.002 (opCode 71).
+// PSI result Marshal rejects unknown; Parse retains it (§17.7.1).
 type ImsVoiceOverPSSessionsIndication = gsm_map.IMSVoiceOverPSSessionsInd
 
 const (
@@ -2396,13 +2400,16 @@ type ServiceTypeList []ServiceType
 // SsCode is a single-octet SS-Code; SsStatus is the Ext-SS-Status
 // OCTET STRING (SIZE 1..5) shared with Ext-SS-Info.
 type LCSPrivacyClass struct {
-	SsCode                SsCode                // mandatory
-	SsStatus              HexBytes              // mandatory, Ext-SS-Status 1..5 octets; Parse keeps octet 1 (§17.7.8)
-	NotificationToMSUser  *NotificationToMSUser // [0] optional
-	ExternalClientList    ExternalClientList    // [1] optional, 0..5 entries
-	PlmnClientList        PLMNClientList        // [2] optional, 1..5 entries when present
+	SsCode               SsCode                // mandatory
+	SsStatus             HexBytes              // mandatory, Ext-SS-Status 1..5 octets; Parse keeps octet 1 (§17.7.8)
+	NotificationToMSUser *NotificationToMSUser // [0] optional
+	// SS-Code callSessionRelated additionally requires visited-node LCS Release 4+ (§17.7.1).
+	ExternalClientList ExternalClientList // [1] optional, 0..5 entries
+	PlmnClientList     PLMNClientList     // [2] optional, 1..5 entries when present
+	// The caller must ensure visited-node LCS Release 4+ and White Book SCCP (§17.7.1).
 	ExtExternalClientList ExtExternalClientList // [4] optional, 1..35 entries when present
-	ServiceTypeList       ServiceTypeList       // [5] optional, 1..32 entries when present
+	// The caller must ensure visited-node LCS Release 5+ (§17.7.1).
+	ServiceTypeList ServiceTypeList // [5] optional, 1..32 entries when present
 }
 
 // LCSPrivacyExceptionList (SEQUENCE SIZE 1..4 OF LCS-PrivacyClass) per
@@ -2909,7 +2916,7 @@ const (
 // request (opCode 83) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
 // Mandatory fields: LocationType, MlcNumber (digits string + Nature/Plan
-// triple); empty MlcNumber digits are rejected on encode.
+// triple), and at least one of IMSI or MSISDN; Marshal rejects missing identities.
 //
 // Optional fields follow the package-wide conventions:
 //   - Optional string fields (e.g., MSISDN, IMSI, IMEI, HGmlcAddress):
@@ -2965,10 +2972,13 @@ type ProvideSubscriberLocationArg struct {
 // beside AddLocationEstimate and is invalid data without it. Invalid data
 // returns ErrExtGeographicalInformationInvalidData,
 // ErrAddGeographicalInformationInvalidData or ErrVelocityEstimateInvalidData.
-// Marshal sends an empty LocationEstimate beside AddLocationEstimate or
-// DeferredmtLrResponseIndicator as one octet, which the receiver ignores or
-// discards, and rejects a one-octet one without them
-// (ErrLocationEstimateOneOctetWithoutAdd).
+// Beside DeferredmtLrResponseIndicator, Marshal sends LocationEstimate as
+// given, or as one zero octet when empty, since the receiver ignores it.
+// Otherwise it sends an empty LocationEstimate beside AddLocationEstimate as
+// one octet holding AddLocationEstimate's type of shape (§7.6.11.11), which
+// the receiver discards, and rejects a one-octet one without
+// AddLocationEstimate (ErrLocationEstimateOneOctetWithoutAdd) or of another
+// type of shape (ErrLocationEstimateShapeMismatch).
 // Optional fields follow the package-wide conventions:
 //   - Pointer fields: nil = absent.
 //   - HexBytes / string fields: nil/empty = absent.
@@ -3286,7 +3296,9 @@ type SequenceNumber = gsm_map.SequenceNumber
 // Identifies the network node that produced the location report.
 // NetworkNodeNumber is an ISDN-AddressString (MSC, SGSN, or the dummy
 // value "0") surfaced as digits + Nature/Plan triple consistent with
-// the rest of the public API. The DiameterIdentity fields (MmeName,
+// the rest of the public API. Marshal excludes GprsNodeIndicator with dummy 0;
+// callers confirm that other indicated numbers belong to an SGSN.
+// The DiameterIdentity fields (MmeName,
 // AaaServerName, SgsnName, SgsnRealm) are 9..255 octets per 3GPP TS
 // 29.002 V19.1.0 §17.7.8. Node names are FQDNs; SgsnRealm is a realm
 // (RFC 6733 §4.3.1).
@@ -3312,7 +3324,7 @@ type LCSLocationInfo struct {
 // DeferredmtLrData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // Present in SLR-Arg only when LcsEvent indicates a
 // deferredmt-lrResponse. LcsLocationInfo may be present only if
-// TerminationCause indicates mt-lrRestart (caller-enforced invariant).
+// TerminationCause indicates mt-lrRestart; Marshal checks both conditions.
 type DeferredmtLrData struct {
 	DeferredLocationEventType DeferredLocationEventType // mandatory
 	TerminationCause          *TerminationCause         // [0] optional
@@ -3327,10 +3339,9 @@ type DeferredmtLrData struct {
 // request (opCode 86) per 3GPP TS 29.002 V19.1.0 §17.7.13. Sent
 // from the MSC/SGSN/MME (or GMLC) to report a computed location.
 //
-// Mandatory fields: LcsEvent, LcsClientID, LcsLocationInfo. Per spec,
-// one of MSISDN or IMSI must also be present — that cross-field
-// invariant is the caller's responsibility (the encoder does not
-// reject its absence, since intermediaries may relay partial data).
+// Mandatory fields: LcsEvent, LcsClientID, LcsLocationInfo, and at least one
+// of MSISDN or IMSI. Marshal requires DeferredmtLrData and LcsReferenceNumber
+// for a deferredmt-lrResponse and excludes DeferredmtLrData for other events.
 //
 // Optional fields follow the package-wide conventions:
 //   - String fields (MSISDN, IMSI, IMEI, NaESRD, NaESRK, HGmlcAddress):
@@ -3347,9 +3358,12 @@ type DeferredmtLrData struct {
 // Parse applies §17.7.13: a valid LocationEstimate discards
 // AddLocationEstimate, valid or not; a one-octet LocationEstimate is
 // discarded beside AddLocationEstimate and is invalid data without it.
-// Invalid data returns the matching Err*InvalidData sentinel. Marshal rejects
-// a one-octet LocationEstimate without AddLocationEstimate
-// (ErrLocationEstimateOneOctetWithoutAdd).
+// Invalid data returns the matching Err*InvalidData sentinel. Marshal sends an
+// empty LocationEstimate beside AddLocationEstimate as one octet holding its
+// type of shape (§§7.6.11.11, 13A.3.3), and rejects a one-octet
+// LocationEstimate without AddLocationEstimate
+// (ErrLocationEstimateOneOctetWithoutAdd) or of another type of shape
+// (ErrLocationEstimateShapeMismatch).
 type SubscriberLocationReportArg struct {
 	// Mandatory.
 	LcsEvent        LCSEvent
@@ -3693,12 +3707,71 @@ type InsertSubscriberDataRes struct {
 
 // MAP operation sentinel errors.
 var (
+	// 3GPP TS 29.002 V19.1.0 §17.7.8; RFC 6733 §4.3.1.
+	ErrDiameterIdentityNotASCII = errors.New("diameterIdentity: bytes must be ASCII per 3GPP TS 29.002 V19.1.0 §17.7.8 and RFC 6733 §4.3.1")
+	// 3GPP TS 29.002 V19.1.0 §§17.7.8,17.7.13.
+	ErrPLMNIdentityInvalidDigits                 = errors.New("plmnIdentity: MCC and MNC must contain decimal digits; only the third MNC digit may be filler per 3GPP TS 29.002 V19.1.0 §§17.7.8,17.7.13")
+	ErrExtForwOptionsReservedOctets              = errors.New("ExtForwOptions octets 2..5 are reserved for future use per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrExtForwOptionsUnusedBits                  = errors.New("ForwardingOptions bits 5, 2 and 1 must be zero per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrInterCUGRestrictionsUnusedBits            = errors.New("InterCUGRestrictions bits 8..3 must be zero per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrLCSPrivacyNotificationNotApplicable       = errors.New("LCSPrivacyClass.NotificationToMSUser requires SS-Code callSessionRelated or callSessionUnrelated per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrLCSPrivacyExternalClientListNotApplicable = errors.New("LCSPrivacyClass.ExternalClientList requires SS-Code callSessionRelated or callSessionUnrelated per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrLCSPrivacyPLMNClientListNotApplicable     = errors.New("LCSPrivacyClass.PlmnClientList requires SS-Code plmnoperator per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrLCSPrivacyExtendedClientCountInvalid      = errors.New("LCSPrivacyClass.ExtExternalClientList requires more than five clients per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrLCSPrivacyServiceTypeListNotApplicable    = errors.New("LCSPrivacyClass.ServiceTypeList requires SS-Code serviceType per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrSSCodeReserved                            = errors.New("SS-Code is reserved for future use per 3GPP TS 29.002 V19.1.0 §17.7.5")
+	ErrSSCodeOperationInvalid                    = errors.New("SS-Code ccbs-A or ccbs-B is not permitted in this operation per 3GPP TS 29.002 V19.1.0 §17.7.5")
+	ErrISDNSubaddressHeaderInvalid               = errors.New("ISDNSubaddressString extension, type or unused bits are invalid per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	ErrLCSServiceTypeIDReserved                  = errors.New("LCSServiceTypeID navigation (8) is reserved for previous releases per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	ErrExtSSStatusUnusedBits                     = errors.New("ExtSSStatus bits 8..5 must be zero per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	ErrExtSSStatusReservedOctets                 = errors.New("ExtSSStatus octets 2..5 are reserved for future use per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	ErrExtTeleserviceCodeReservedOctets          = errors.New("ExtTeleserviceCode octets 2..5 are reserved for future use per 3GPP TS 29.002 V19.1.0 §17.7.9")
+	ErrExtBearerServiceCodeReservedOctets        = errors.New("ExtBearerServiceCode octets 2..5 are reserved for future use per 3GPP TS 29.002 V19.1.0 §17.7.10")
+	ErrCompoundTeleserviceCodeNotAllowed         = errors.New("compound teleservice codes require a call-independent supplementary-service operation per 3GPP TS 29.002 V19.1.0 §17.7.9")
+	ErrBearerServiceCodeUnusedBit                = errors.New("non-PLMN-specific bearer service codes require bit 8 zero per 3GPP TS 29.002 V19.1.0 §17.7.10")
+	ErrCompoundBearerServiceCodeNotAllowed       = errors.New("compound bearer service codes require a call-independent supplementary-service operation per 3GPP TS 29.002 V19.1.0 §17.7.10")
+
+	ErrSGSNCapabilityLCSSet1NotAllowed                        = errors.New("sgsnCapability: LCS capability set1 is forbidden for SGSNs per 3GPP TS 29.002 V19.1.0 §17.7.1 SupportedLCS-CapabilitySets")
+	ErrPdnGwUpdateMissingIdentity                             = errors.New("pdnGwUpdate: PdnGwIdentity is required per 3GPP TS 29.002 V19.1.0 §17.7.1 PDN-GW-Update")
+	ErrPdnGwUpdateMissingAPNOrContextID                       = errors.New("pdnGwUpdate: APN or ContextID is required per 3GPP TS 29.002 V19.1.0 §17.7.1 PDN-GW-Update")
+	ErrISRInformationUnknownBits                              = errors.New("epsInfo: ISR information may set only bits 0..2 per 3GPP TS 29.002 V19.1.0 §17.7.1 ISR-Information")
+	ErrPDNTypeInvalid                                         = errors.New("apnConfiguration: PDN type must be 01, 02, 03 or 04 per 3GPP TS 29.002 V19.1.0 §17.7.1 PDN-Type")
+	ErrPDPAddressFamilyCombinationInvalid                     = errors.New("pdpAddress: paired addresses must have different IPv4/IPv6 families per 3GPP TS 29.002 V19.1.0 §17.7.1 PDP-Context and PDP-ContextInfo")
+	ErrPDPTypeInvalid                                         = errors.New("pdpType: only PPP, IPv4, IPv6 and Non-IP are allowed per 3GPP TS 29.002 V19.1.0 §17.7.1 PDP-Type and TS 29.060 V19.0.0 §7.7.27")
+	ErrExtPDPTypeInvalid                                      = errors.New("extPdpType: only IPv4v6 is allowed per 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-PDP-Type and TS 29.060 V19.0.0 §7.7.27")
+	ErrPSIResImsVoiceOverPSSessionsIndicationUnknown          = errors.New("provideSubscriberInfoRes: IMS voice-over-PS indication unknown is forbidden per 3GPP TS 29.002 V19.1.0 §17.7.1 IMS-VoiceOverPS-SessionsInd")
+	ErrNumberPortabilityStatusATIOnly                         = errors.New("numberPortabilityStatus: values 4 and 5 are restricted to Any Time Interrogation per 3GPP TS 29.002 V19.1.0 §17.7.1 NumberPortabilityStatus")
+	ErrRequestedInfoCurrentLocationWithoutLocationInformation = errors.New("requestedInfo: CurrentLocation requires LocationInformation per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
+	ErrRequestedInfoEPSSupportedWithoutLocationInformation    = errors.New("requestedInfo: LocationInformationEPSSupported requires LocationInformation per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
+	ErrRequestedInfoRequestedNodesInCSDomain                  = errors.New("requestedInfo: RequestedNodes is forbidden in cs-Domain per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
+	ErrRequestedInfoServingNodeWithoutLocationInformation     = errors.New("requestedInfo: ServingNodeIndication requires LocationInformation per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
+	ErrRequestedInfoServingNodeWithCurrentLocation            = errors.New("requestedInfo: ServingNodeIndication is forbidden with CurrentLocation per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
+	ErrGeodeticInformationShapeInvalid                        = errors.New("geodeticInformation: only ellipsoid point with uncertainty circle is allowed per 3GPP TS 29.002 V19.1.0 §17.7.1 GeodeticInformation and Q.763 (1999) §3.88(c)")
+	ErrRouteingNumberTBCDInvalid                              = errors.New("mnpInfoRes: RouteingNumber filler is permitted only in the final high nibble per 3GPP TS 29.002 V19.1.0 §17.7.8 TBCD-STRING")
+
+	ErrSriSmRespNodeIndicatorsMutuallyExclusive       = errors.New("sriSmResp: at most one network node indicator may be present per 3GPP TS 29.002 V19.1.0 §17.7.6")
+	ErrSriSmRespAdditionalNumbersSameType             = errors.New("sriSmResp: AdditionalNumber and ThirdNumber must contain different number types per 3GPP TS 29.002 V19.1.0 §17.7.6")
+	ErrReportSMDeliveryStatusConflictingOutcomeFields = errors.New("reportSMDeliveryStatus: outcome indicators exclude the corresponding additional outcome and diagnostic, and IpSmGwIndicator excludes DeliveryOutcomeIndicator per 3GPP TS 29.002 V19.1.0 §17.7.6")
+	ErrIscAdditionalDiagnosticWithoutPrimary          = errors.New("informServiceCentre: AdditionalAbsentSubscriberDiagnosticSM requires AbsentSubscriberDiagnosticSM per 3GPP TS 29.002 V19.1.0 §17.7.6")
+	ErrLCSLocationInfoGPRSIndicatorWithDummyNode      = errors.New("lcsLocationInfo: GprsNodeIndicator must not be set with dummy NetworkNodeNumber 0 per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrLCSSubscriberIdentityMissing                   = errors.New("lcs: at least one of IMSI or MSISDN is mandatory in ProvideSubscriberLocationArg and SubscriberLocationReportArg per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrLCSDeferredReferenceNumberMissing              = errors.New("lcs: LcsReferenceNumber is required for activated/cancelled deferred PSL location and deferred SLR responses per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrLCSClientNameDataCodingSchemeInvalid           = errors.New("lcsClientName: DataCodingScheme must be 0x0f (default alphabet) per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrExtGeographicalInformationInvalid              = errors.New("lcs: ExtGeographicalInformation has an unsupported shape, incorrect shape length or coding per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §7.3")
+	ErrAddGeographicalInformationInvalid              = errors.New("lcs: AddGeographicalInformation has an undefined shape, incorrect shape length or coding per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §7.3")
+	ErrVelocityEstimateTypeInvalid                    = errors.New("lcs: VelocityEstimate type must be horizontal, horizontal with vertical, or their uncertainty variants per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8.6")
+	ErrVelocityEstimateLengthInvalid                  = errors.New("lcs: VelocityEstimate must be 4, 5, 5 or 7 octets for velocity types 0 to 3 per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrSLRArgDeferredmtLrDataPresence                 = errors.New("subscriberLocationReportArg: DeferredmtLrData must be present if and only if LcsEvent is deferredmt-lrResponse per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrDeferredmtLrDataLocationInfoRequiresRestart    = errors.New("deferredmt-lrData: LcsLocationInfo may be included only with TerminationCause mt-lrRestart per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrSLRResRoutingIdentifiersMutuallyExclusive      = errors.New("subscriberLocationReportRes: NaESRK and NaESRD are mutually exclusive per 3GPP TS 29.002 V19.1.0 §17.7.13")
+
 	ErrRoamingNotAllowedParameterMissing        = errors.New("roamingNotAllowed: mandatory parameter missing per 3GPP TS 29.002 V19.1.0 §17.1.2 and §17.6.6")
 	ErrExtGeographicalInformationInvalidData    = errors.New("lcs: received ExtGeographicalInformation is invalid data per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrAddGeographicalInformationInvalidData    = errors.New("lcs: received AddGeographicalInformation is invalid data without a valid ExtGeographicalInformation per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrVelocityEstimateInvalidData              = errors.New("lcs: received VelocityEstimate has an invalid velocity type per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8.6")
 	ErrSLRResRoutingIdentifiersReturnError      = errors.New("subscriberLocationReportRes: receipt of both NaESRK and NaESRD is treated as a return error per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrLocationEstimateOneOctetWithoutAdd       = errors.New("lcs: a one-octet LocationEstimate is sent only beside AddLocationEstimate, or in a deferred PSL result, per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrLocationEstimateShapeMismatch            = errors.New("lcs: a one-octet LocationEstimate beside AddLocationEstimate holds its type of shape per 3GPP TS 29.002 V19.1.0 §7.6.11.11")
 	ErrCallBarredParamUnknownAlternative        = errors.New("callBarredParam: unknown CHOICE alternative")
 	ErrGeoAltitudeOutOfRange                    = errors.New("geographical altitude is out of range")
 	ErrGeoAngleOutOfRange                       = errors.New("geographical angle is out of range")
@@ -3800,13 +3873,11 @@ var (
 	ErrPsSubscriberStateNoAlternative        = errors.New("psSubscriberState: CHOICE has no alternative set")
 	ErrPsSubscriberStateMultipleAlternatives = errors.New("psSubscriberState: CHOICE has multiple alternatives set")
 
-	// ErrAddressNatureInvalid is returned when an address nature of address
-	// is not one of the address.Nature* values (bits 7..5 of the first
-	// AddressString octet, 3GPP TS 29.002 V19.1.0 §17.7.8).
-	ErrAddressNatureInvalid = errors.New("address: nature of address must be one of address.Nature*")
-	// ErrAddressPlanInvalid is returned when an address numbering plan does
-	// not fit bits 4..1 of the first AddressString octet.
-	ErrAddressPlanInvalid = errors.New("address: numbering plan must be 0..15 (address.Plan*)")
+	// ErrAddressNatureInvalid is returned for an unassigned sender nature
+	// (bits 7..5 of AddressString, 3GPP TS 29.002 V19.1.0 §17.7.8).
+	ErrAddressNatureInvalid = errors.New("address: nature of address must be 0x00, 0x10, 0x20, 0x30, 0x40 or 0x60 per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	// ErrAddressPlanInvalid rejects unassigned numbering plans (TS 29.002 §17.7.8).
+	ErrAddressPlanInvalid = errors.New("address: numbering plan must be 0, 1, 3, 4, 6, 8 or 9 per 3GPP TS 29.002 V19.1.0 §17.7.8")
 
 	// ErrIdentityNotDigits is returned when an IMSI, IMEI or IMEISV holds a
 	// character other than 0-9. TBCD-STRING also carries * # a b c, but
@@ -3954,7 +4025,7 @@ var (
 	ErrExtSSInfoMultipleAlternatives            = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
 	ErrSSSubscriptionOptionNoAlternative        = errors.New("ssSubscriptionOption: CHOICE requires exactly one of CliRestriction or Override")
 	ErrSSSubscriptionOptionMultipleAlternatives = errors.New("ssSubscriptionOption: CHOICE may only have one of CliRestriction or Override set")
-	ErrEMLPPPriorityOutOfRange                  = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
+	ErrEMLPPPriorityOutOfRange                  = errors.New("EMLPP priority: values 7..15 are spare per 3GPP TS 29.002 V19.1.0 §17.7.8 EMLPP-Priority")
 	// ErrNoReplyConditionTimeOutOfRange is returned when an Ext-ForwFeature
 	// NoReplyConditionTime lies outside 5..30, the only values a sender uses
 	// (3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime).
@@ -3965,8 +4036,8 @@ var (
 	ErrGroupIdFillerRequired     = errors.New("voiceGroupCallData/voiceBroadcastData: when LongGroupId is present, GroupId must be empty (sent as six TBCD fillers) per TS 29.002")
 	ErrLongGroupIdDecodedEmpty   = errors.New("voiceGroupCallData/voiceBroadcastData: present wire LongGroupId holds no digits; presence cannot round-trip through the string-based API")
 
-	ErrExtQoSHierarchyViolated            = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per 3GPP TS 29.002 V19.1.0 §17.7.1 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
-	ErrExtPDPAddressWithoutPDPAddress     = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrExtQoSHierarchyViolated            = errors.New("PDP-Context/PDP-ContextInfo: each QoS extension requires its immediate predecessor per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrExtPDPAddressWithoutPDPAddress     = errors.New("PDP-Context/PDP-ContextInfo: ExtPdpAddress may be present only if PdpAddress is present per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrGPRSSubscriptionDataMissingList    = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
 	ErrAMBRBandwidthOutOfRange            = errors.New("ambr: bandwidth fields must be non-negative")
 	ErrAPNConfigurationProfileMissingList = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")

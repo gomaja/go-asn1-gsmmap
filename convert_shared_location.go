@@ -44,6 +44,9 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 	}
 
 	if loc.GeodeticInformation != nil {
+		if err := validateSenderGeodeticInformation(loc.GeodeticInformation); err != nil {
+			return nil, err
+		}
 		gd := gsm_map.GeodeticInformation(loc.GeodeticInformation)
 		li.GeodeticInformation = &gd
 	}
@@ -215,11 +218,17 @@ func convertEPSLocationToAsn1(loc *EPSLocationInformation) (*gsm_map.LocationInf
 	}
 
 	if loc.EUtranCellGlobalIdentity != nil {
+		if err := validatePLMNIdentityDigits(loc.EUtranCellGlobalIdentity, "EPSLocationInformation.EUtranCellGlobalIdentity"); err != nil {
+			return nil, err
+		}
 		cgi := gsm_map.EUTRANCGI(loc.EUtranCellGlobalIdentity)
 		li.EUtranCellGlobalIdentity = &cgi
 	}
 
 	if loc.TrackingAreaIdentity != nil {
+		if err := validatePLMNIdentityDigits(loc.TrackingAreaIdentity, "EPSLocationInformation.TrackingAreaIdentity"); err != nil {
+			return nil, err
+		}
 		ta := gsm_map.TAId(loc.TrackingAreaIdentity)
 		li.TrackingAreaIdentity = &ta
 	}
@@ -234,6 +243,9 @@ func convertEPSLocationToAsn1(loc *EPSLocationInformation) (*gsm_map.LocationInf
 	}
 
 	if loc.GeodeticInformation != nil {
+		if err := validateSenderGeodeticInformation(loc.GeodeticInformation); err != nil {
+			return nil, err
+		}
 		gd := gsm_map.GeodeticInformation(loc.GeodeticInformation)
 		li.GeodeticInformation = &gd
 	}
@@ -243,6 +255,9 @@ func convertEPSLocationToAsn1(loc *EPSLocationInformation) (*gsm_map.LocationInf
 	}
 
 	if loc.MmeName != nil {
+		if err := validateDiameterIdentityASCII(loc.MmeName, "EPSLocationInformation.MmeName"); err != nil {
+			return nil, err
+		}
 		mm := gsm_map.DiameterIdentity(loc.MmeName)
 		li.MmeName = &mm
 	}
@@ -308,6 +323,9 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	li.CellGlobalIdOrServiceAreaIdOrLAI = cell
 
 	if loc.RouteingAreaIdentity != nil {
+		if err := validatePLMNIdentityDigits(loc.RouteingAreaIdentity, "GPRSLocationInformation.RouteingAreaIdentity"); err != nil {
+			return nil, err
+		}
 		ra := gsm_map.RAIdentity(loc.RouteingAreaIdentity)
 		li.RouteingAreaIdentity = &ra
 	}
@@ -322,6 +340,9 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	}
 
 	if loc.GeodeticInformation != nil {
+		if err := validateSenderGeodeticInformation(loc.GeodeticInformation); err != nil {
+			return nil, err
+		}
 		gd := gsm_map.GeodeticInformation(loc.GeodeticInformation)
 		li.GeodeticInformation = &gd
 	}

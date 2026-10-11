@@ -376,6 +376,13 @@ func TestParseUpdateGprsLocation(t *testing.T) {
 			}
 
 			marshaledBytes, err := updGprsLoc.Marshal()
+			// TS 29.002 V19.1.0 §17.7.1 forbids SGSN LCS capability set1 on sending.
+			if tc.expectedLCSCapSets != nil && tc.expectedLCSCapSets.LcsCapabilitySet1 {
+				if !errors.Is(err, ErrSGSNCapabilityLCSSet1NotAllowed) {
+					t.Fatalf("Marshal: %v", err)
+				}
+				return
+			}
 			if err != nil {
 				t.Fatalf("Failed to marshal UpdateGprsLocation: %v", err)
 			}

@@ -62,6 +62,8 @@ func TestSLRArgRoundTrip(t *testing.T) {
 			NaESRKPlan:      0x01,
 		}},
 		{"with location estimate + age + IMEI", &SubscriberLocationReportArg{
+			DeferredmtLrData:      &DeferredmtLrData{},
+			LcsReferenceNumber:    HexBytes{1},
 			LcsEvent:              LCSEventDeferredmtLrResponse,
 			LcsClientID:           LCSClientID{LcsClientType: LCSClientTypePlmnOperatorServices},
 			LcsLocationInfo:       LCSLocationInfo{NetworkNodeNumber: "31650000000", NetworkNodeNumberNature: 0x10, NetworkNodeNumberPlan: 0x01},

@@ -69,6 +69,8 @@ func TestParsePSLDeferredLocationEventType(t *testing.T) {
 // and drops the others.
 func TestParseSLRDeferredLocationEventTypeIgnoresUnlistedBits(t *testing.T) {
 	a := minimalSLRArg()
+	a.LcsEvent = LCSEventDeferredmtLrResponse
+	a.LcsReferenceNumber = HexBytes{1}
 	a.DeferredmtLrData = &DeferredmtLrData{DeferredLocationEventType: DeferredLocationEventType{EnteringIntoArea: true}}
 	w, err := convertSubscriberLocationReportArgToWire(a)
 	if err != nil {

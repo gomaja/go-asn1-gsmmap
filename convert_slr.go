@@ -24,6 +24,10 @@ func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo,
 	if l.NetworkNodeNumber == "" {
 		return nil, ErrLCSLocationInfoNetworkNodeNumberEmpty
 	}
+	// TS 29.002 V19.1.0 §17.7.13: a dummy node is not an SGSN number.
+	if l.GprsNodeIndicator && l.NetworkNodeNumber == "0" {
+		return nil, ErrLCSLocationInfoGPRSIndicatorWithDummyNode
+	}
 	nodeWire, err := encodeAddressField(l.NetworkNodeNumber, l.NetworkNodeNumberNature, l.NetworkNodeNumberPlan)
 	if err != nil {
 		return nil, fmt.Errorf("encoding LCSLocationInfo.NetworkNodeNumber: %w", err)
@@ -55,18 +59,30 @@ func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo,
 		out.AdditionalLCSCapabilitySets = &bs
 	}
 	if len(l.MmeName) > 0 {
+		if err := validateDiameterIdentityASCII(l.MmeName, "LCSLocationInfo.MmeName"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.DiameterIdentity(l.MmeName)
 		out.MmeName = &v
 	}
 	if len(l.AaaServerName) > 0 {
+		if err := validateDiameterIdentityASCII(l.AaaServerName, "LCSLocationInfo.AaaServerName"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.DiameterIdentity(l.AaaServerName)
 		out.AaaServerName = &v
 	}
 	if len(l.SgsnName) > 0 {
+		if err := validateDiameterIdentityASCII(l.SgsnName, "LCSLocationInfo.SgsnName"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.DiameterIdentity(l.SgsnName)
 		out.SgsnName = &v
 	}
 	if len(l.SgsnRealm) > 0 {
+		if err := validateDiameterIdentityASCII(l.SgsnRealm, "LCSLocationInfo.SgsnRealm"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.DiameterIdentity(l.SgsnRealm)
 		out.SgsnRealm = &v
 	}
@@ -138,10 +154,7 @@ func convertWireToLCSLocationInfo(w *gsm_map.LCSLocationInfo) (*LCSLocationInfo,
 // DeferredmtLrData — 3GPP TS 29.002 V19.1.0 §17.7.13
 // ============================================================================
 //
-// LcsLocationInfo may be present only if TerminationCause indicates
-// mt-lrRestart per spec. That invariant is the caller's responsibility;
-// the codec preserves whatever is set, since intermediaries may relay
-// data they don't fully validate.
+// TS 29.002 V19.1.0 §17.7.13: Marshal permits nested LcsLocationInfo only with mt-lrRestart.
 
 // isRecognizedTerminationCause reports whether v is one of the
 // TerminationCause values 3GPP TS 29.002 V19.1.0 §17.7.13 lists, normal(0)
@@ -154,6 +167,10 @@ func isRecognizedTerminationCause(v TerminationCause) bool {
 func convertDeferredmtLrDataToWire(d *DeferredmtLrData) (*gsm_map.DeferredmtLrData, error) {
 	if d == nil {
 		return nil, nil
+	}
+	// TS 29.002 V19.1.0 §17.7.13: nested location requires a restart termination cause.
+	if d.LcsLocationInfo != nil && (d.TerminationCause == nil || *d.TerminationCause != TerminationMtLrRestart) {
+		return nil, ErrDeferredmtLrDataLocationInfoRequiresRestart
 	}
 	bs := convertDeferredLocationEventTypeToBitString(&d.DeferredLocationEventType)
 	out := &gsm_map.DeferredmtLrData{

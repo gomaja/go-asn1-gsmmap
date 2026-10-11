@@ -82,8 +82,8 @@ func makePDPContext() PDPContext {
 		Ext3QoSSubscribed:          HexBytes{0xbb},
 		Ext4QoSSubscribed:          HexBytes{0xcc},
 		ApnOiReplacement:           HexBytes("apn-oi-9b"), // 9 octets, exactly the lower bound
-		ExtPdpType:                 HexBytes{0xf1, 0x57},
-		ExtPdpAddress:              HexBytes{0x0a, 0x01},
+		ExtPdpType:                 HexBytes{0xf1, 0x8d},
+		ExtPdpAddress:              make(HexBytes, 16),
 		Ambr: &AMBR{
 			MaxRequestedBandwidthUL: 1_000_000,
 			MaxRequestedBandwidthDL: 5_000_000,
