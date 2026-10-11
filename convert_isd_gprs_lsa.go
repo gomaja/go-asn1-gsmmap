@@ -119,6 +119,13 @@ func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
 		}
 	}
 
+	if err := validateSenderPDPTypes(p.PdpType, p.ExtPdpType); err != nil {
+		return nil, err
+	}
+	if err := validateSenderPDPAddressFamilies(p.PdpAddress, p.ExtPdpAddress); err != nil {
+		return nil, err
+	}
+
 	out := &gsm_map.PDPContext{
 		PdpContextId:  gsm_map.ContextId(p.PdpContextId),
 		PdpType:       gsm_map.PDPType(p.PdpType),

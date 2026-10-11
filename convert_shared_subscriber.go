@@ -383,6 +383,9 @@ func decodePDPContextInfoList(list []HexBytes) (*gsm_map.PDPContextInfoList, err
 		if err != nil {
 			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
 		}
+		if err := validateSenderPDPContextInfo(&ctx); err != nil {
+			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
+		}
 		out.Values[i] = ctx
 	}
 	return &out, nil
@@ -394,6 +397,9 @@ func convertMnpInfoResToWire(m *MnpInfoRes) (*gsm_map.MNPInfoRes, error) {
 	out := &gsm_map.MNPInfoRes{}
 
 	if m.RouteingNumber != nil {
+		if err := validateSenderRouteingNumber(m.RouteingNumber); err != nil {
+			return nil, err
+		}
 		rn := gsm_map.RouteingNumber(m.RouteingNumber)
 		out.RouteingNumber = &rn
 	}
@@ -539,11 +545,17 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	out := &gsm_map.LocationInformation5GS{}
 
 	if l.NrCellGlobalIdentity != nil {
+		if err := validatePLMNIdentityDigits(l.NrCellGlobalIdentity, false, "l.NrCellGlobalIdentity"); err != nil {
+			return nil, err
+		}
 		cgi := gsm_map.NRCGI(l.NrCellGlobalIdentity)
 		out.NrCellGlobalIdentity = &cgi
 	}
 
 	if l.EUtranCellGlobalIdentity != nil {
+		if err := validatePLMNIdentityDigits(l.EUtranCellGlobalIdentity, false, "l.EUtranCellGlobalIdentity"); err != nil {
+			return nil, err
+		}
 		cgi := gsm_map.EUTRANCGI(l.EUtranCellGlobalIdentity)
 		out.EUtranCellGlobalIdentity = &cgi
 	}
@@ -558,6 +570,9 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.GeodeticInformation != nil {
+		if err := validateSenderGeodeticInformation(l.GeodeticInformation); err != nil {
+			return nil, err
+		}
 		gd := gsm_map.GeodeticInformation(l.GeodeticInformation)
 		out.GeodeticInformation = &gd
 	}
@@ -568,6 +583,9 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.TrackingAreaIdentity != nil {
+		if err := validatePLMNIdentityDigits(l.TrackingAreaIdentity, false, "l.TrackingAreaIdentity"); err != nil {
+			return nil, err
+		}
 		ta := gsm_map.TAId(l.TrackingAreaIdentity)
 		out.TrackingAreaIdentity = &ta
 	}
@@ -580,6 +598,9 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.VplmnID != nil {
+		if err := validatePLMNIdentityDigits(l.VplmnID, false, "l.VplmnID"); err != nil {
+			return nil, err
+		}
 		p := gsm_map.PLMNId(l.VplmnID)
 		out.VplmnId = &p
 	}
@@ -600,6 +621,9 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.NrTrackingAreaIdentity != nil {
+		if err := validatePLMNIdentityDigits(l.NrTrackingAreaIdentity, false, "l.NrTrackingAreaIdentity"); err != nil {
+			return nil, err
+		}
 		ta := gsm_map.NRTAId(l.NrTrackingAreaIdentity)
 		out.NrTrackingAreaIdentity = &ta
 	}

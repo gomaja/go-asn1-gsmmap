@@ -58,11 +58,17 @@ func convertWireToAdditionalNumber(w *gsm_map.AdditionalNumber) (*AdditionalNumb
 	return an, nil
 }
 
-func convertNetworkNodeDiameterAddressToWire(n *NetworkNodeDiameterAddress) *gsm_map.NetworkNodeDiameterAddress {
+func convertNetworkNodeDiameterAddressToWire(n *NetworkNodeDiameterAddress) (*gsm_map.NetworkNodeDiameterAddress, error) {
+	if err := validateDiameterIdentityASCII(n.DiameterName, "DiameterName"); err != nil {
+		return nil, err
+	}
+	if err := validateDiameterIdentityASCII(n.DiameterRealm, "DiameterRealm"); err != nil {
+		return nil, err
+	}
 	return &gsm_map.NetworkNodeDiameterAddress{
 		DiameterName:  gsm_map.DiameterIdentity(n.DiameterName),
 		DiameterRealm: gsm_map.DiameterIdentity(n.DiameterRealm),
-	}
+	}, nil
 }
 
 func convertWireToNetworkNodeDiameterAddress(w *gsm_map.NetworkNodeDiameterAddress) *NetworkNodeDiameterAddress {
@@ -216,10 +222,16 @@ func convertForwardingDataToWire(f *ForwardingData) (*gsm_map.ForwardingData, er
 		out.ForwardedToNumber = &as
 	}
 	if len(f.ForwardedToSubaddress) > 0 {
+		if err := validateISDNSubaddressToWire(f.ForwardedToSubaddress); err != nil {
+			return nil, fmt.Errorf("ForwardedToSubaddress: %w", err)
+		}
 		sa := gsm_map.ISDNSubaddressString(f.ForwardedToSubaddress)
 		out.ForwardedToSubaddress = &sa
 	}
 	if len(f.ForwardingOptions) > 0 {
+		if err := validateForwardingOptionsToWire(f.ForwardingOptions); err != nil {
+			return nil, fmt.Errorf("ForwardingOptions: %w", err)
+		}
 		fo := gsm_map.ForwardingOptions(f.ForwardingOptions)
 		out.ForwardingOptions = &fo
 	}
@@ -293,16 +305,22 @@ func convertWireToCugCheckInfo(w *gsm_map.CUGCheckInfo) *CugCheckInfo {
 
 // --- SRI CHOICE helpers ---
 
-func convertExtBasicServiceCodeToWire(e *ExtBasicServiceCode) (*gsm_map.ExtBasicServiceCode, error) {
+func convertExtBasicServiceCodeToWire(e *ExtBasicServiceCode, operation senderOperation) (*gsm_map.ExtBasicServiceCode, error) {
 	hasBearer := len(e.ExtBearerService) > 0
 	hasTele := len(e.ExtTeleservice) > 0
 	switch {
 	case hasBearer && hasTele:
 		return nil, ErrExtBasicServiceCodeMultipleAlternatives
 	case hasBearer:
+		if err := validateExtBearerServiceCodeToWire(e.ExtBearerService, operation); err != nil {
+			return nil, err
+		}
 		v := gsm_map.NewExtBasicServiceCodeExtBearerService(gsm_map.ExtBearerServiceCode(e.ExtBearerService))
 		return &v, nil
 	case hasTele:
+		if err := validateExtTeleserviceCodeToWire(e.ExtTeleservice, operation); err != nil {
+			return nil, err
+		}
 		v := gsm_map.NewExtBasicServiceCodeExtTeleservice(gsm_map.ExtTeleserviceCode(e.ExtTeleservice))
 		return &v, nil
 	default:

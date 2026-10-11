@@ -25,14 +25,14 @@ func mustHex(t *testing.T, s string) []byte {
 // whatever BER it arrived in, so the result meets §17.1.1.
 func TestOpaquePDPContextInfoInDER(t *testing.T) {
 	const (
-		pdp = "3007800101820200f1" // pdp-ContextIdentifier 1, pdp-Type 00f1
+		pdp = "30078001018202f121" // pdp-ContextIdentifier 1, pdp-Type f121
 		ati = "300f300da40ba509" + pdp
 	)
 	for _, tc := range []struct{ name, pdp, ati string }{
 		{"definite short form", pdp, ati},
-		{"long-form length", "300880810101820200f1", "3010300ea40ca50a300880810101820200f1"},
-		{"indefinite length", "3080800101820200f10000", "3011300fa40da50b3080800101820200f10000"},
-		{"constructed pdp-Type", "3009800101a204040200f1", "3011300fa40da50b3009800101a204040200f1"},
+		{"long-form length", "3008808101018202f121", "3010300ea40ca50a3008808101018202f121"},
+		{"indefinite length", "30808001018202f1210000", "3011300fa40da50b30808001018202f1210000"},
+		{"constructed pdp-Type", "3009800101a2040402f121", "3011300fa40da50b3009800101a2040402f121"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := ParseAnyTimeInterrogationRes(mustHex(t, tc.ati))
@@ -58,7 +58,7 @@ func TestOpaquePDPContextInfoInDER(t *testing.T) {
 	}
 	// An unknown extension addition, [30] here, is kept.
 	t.Run("extension addition", func(t *testing.T) {
-		const ext = "300a800101820200f19e01ff"
+		const ext = "300a8001018202f1219e01ff"
 		in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{PsSubscriberState: &PsSubscriberState{
 			PsPDPActiveReachableForPaging: []HexBytes{mustHex(t, ext)},
 		}}}
@@ -112,7 +112,7 @@ func TestOpaquePagingAreaInDER(t *testing.T) {
 // pins today's behaviour; when it fails, MarshalBER no longer replays the
 // received form and unmarshalAsDER can decode the entry once.
 func TestGoASN1Issue132MarshalBERReplaysReceivedForm(t *testing.T) {
-	const longForm = "300880810101820200f1"
+	const longForm = "3008808101018202f121"
 	var ctx gsm_map.PDPContextInfo
 	if err := ctx.UnmarshalBER(mustHex(t, longForm)); err != nil {
 		t.Fatal(err)

@@ -13,6 +13,7 @@ import (
 func lcsRulePSLArg(t *testing.T) *gsm_map.ProvideSubscriberLocationArg {
 	t.Helper()
 	w, err := convertProvideSubscriberLocationArgToWire(&ProvideSubscriberLocationArg{
+		IMSI:         "001010123456789",
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 		MlcNumber:    "12345", MlcNumberNature: 0x10, MlcNumberPlan: 1,
 	})

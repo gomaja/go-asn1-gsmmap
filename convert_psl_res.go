@@ -66,6 +66,9 @@ func convertServingNodeAddressToWire(s *ServingNodeAddress) (*gsm_map.ServingNod
 		return &v, nil
 	default: // mmeSet
 
+		if err := validateDiameterIdentityASCII(s.MmeNumber, "ServingNodeAddress.MmeNumber"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.NewServingNodeAddressMmeNumber(gsm_map.DiameterIdentity(s.MmeNumber))
 		return &v, nil
 	}
@@ -123,10 +126,16 @@ func convertCellIdOrSaiToWire(cgi, lai HexBytes) (*gsm_map.CellGlobalIdOrService
 		return nil, nil
 	}
 	if cgiSet {
+		if err := validatePLMNIdentityDigits(cgi, false, "CellGlobalIdOrServiceAreaId"); err != nil {
+			return nil, err
+		}
 		v := gsm_map.NewCellGlobalIdOrServiceAreaIdOrLAICellGlobalIdOrServiceAreaIdFixedLength(
 			gsm_map.CellGlobalIdOrServiceAreaIdFixedLength(cgi),
 		)
 		return &v, nil
+	}
+	if err := validatePLMNIdentityDigits(lai, false, "LAI"); err != nil {
+		return nil, err
 	}
 	// laiSet
 
@@ -167,6 +176,12 @@ func convertProvideSubscriberLocationResToWire(r *ProvideSubscriberLocationRes) 
 		return nil, ErrPSLResNil
 	}
 
+	if err := validateSendGeographicalInformation(r.LocationEstimate, r.AddLocationEstimate, r.DeferredmtLrResponseIndicator); err != nil {
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes: %w", err)
+	}
+	if err := validateSendVelocityEstimate(r.VelocityEstimate); err != nil {
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes.VelocityEstimate: %w", err)
+	}
 	out := &gsm_map.ProvideSubscriberLocationRes{
 		LocationEstimate: gsm_map.ExtGeographicalInformation(r.LocationEstimate),
 	}

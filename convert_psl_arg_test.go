@@ -13,10 +13,10 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// Minimal PSL-Arg: just the two mandatory fields (LocationType,
-// MlcNumber). Round-trip + Marshal/Parse.
+// Minimal PSL-Arg: LocationType, MlcNumber and one subscriber identity.
 func TestProvideSubscriberLocationArgMinimalRoundTrip(t *testing.T) {
 	in := &ProvideSubscriberLocationArg{
+		IMSI: "001010123456789",
 		LocationType: LocationType{
 			LocationEstimateType: LocationEstimateCurrentLocation,
 		},
@@ -172,6 +172,7 @@ func TestProvideSubscriberLocationArgNilRejected(t *testing.T) {
 
 func TestProvideSubscriberLocationArgEmptyMlcNumberRejected(t *testing.T) {
 	_, err := convertProvideSubscriberLocationArgToWire(&ProvideSubscriberLocationArg{
+		IMSI:         "001010123456789",
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 	})
 	if !errors.Is(err, ErrPSLArgMlcNumberEmpty) {
@@ -188,6 +189,7 @@ func TestProvideSubscriberLocationArgEmptyMlcNumberRejected(t *testing.T) {
 func TestProvideSubscriberLocationArgIMSIDigitCountValidation(t *testing.T) {
 	base := func() *ProvideSubscriberLocationArg {
 		return &ProvideSubscriberLocationArg{
+			IMSI:         "001010123456789",
 			LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 			MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		}
@@ -208,6 +210,7 @@ func TestProvideSubscriberLocationArgIMSIDigitCountValidation(t *testing.T) {
 func TestProvideSubscriberLocationArgIMEIDigitCountValidation(t *testing.T) {
 	base := func() *ProvideSubscriberLocationArg {
 		return &ProvideSubscriberLocationArg{
+			IMSI:         "001010123456789",
 			LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 			MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		}
@@ -226,6 +229,7 @@ func TestProvideSubscriberLocationArgIMEIDigitCountValidation(t *testing.T) {
 
 func TestProvideSubscriberLocationArgLMSISizeValidation(t *testing.T) {
 	a := &ProvideSubscriberLocationArg{
+		IMSI:         "001010123456789",
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LMSI: HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be exactly 4
@@ -238,6 +242,7 @@ func TestProvideSubscriberLocationArgLMSISizeValidation(t *testing.T) {
 func TestProvideSubscriberLocationArgLcsServiceTypeIDOutOfRange(t *testing.T) {
 	bad := int64(128)
 	a := &ProvideSubscriberLocationArg{
+		IMSI:         "001010123456789",
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LcsServiceTypeID: &bad,
@@ -255,6 +260,7 @@ func TestProvideSubscriberLocationArgLcsServiceTypeIDOutOfRange(t *testing.T) {
 
 func TestProvideSubscriberLocationArgLcsPrioritySizeValidation(t *testing.T) {
 	a := &ProvideSubscriberLocationArg{
+		IMSI:         "001010123456789",
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LcsPriority: LCSPriority{0x01, 0x02}, // 2 octets — must be 1
@@ -266,6 +272,7 @@ func TestProvideSubscriberLocationArgLcsPrioritySizeValidation(t *testing.T) {
 
 func TestProvideSubscriberLocationArgLcsReferenceNumberSizeValidation(t *testing.T) {
 	a := &ProvideSubscriberLocationArg{
+		IMSI:         "001010123456789",
 		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 		LcsReferenceNumber: LCSReferenceNumber{0x01, 0x02}, // 2 octets — must be 1
@@ -423,6 +430,7 @@ func TestProvideSubscriberLocationArgSubConverterErrorsPropagate(t *testing.T) {
 	// Out-of-range LocationEstimateType: should surface
 	// ErrLocationEstimateTypeInvalid (raised by convertLocationTypeToWire).
 	a := &ProvideSubscriberLocationArg{
+		IMSI:         "001010123456789",
 		LocationType: LocationType{LocationEstimateType: 99},
 		MlcNumber:    "31612345678", MlcNumberNature: 0x10, MlcNumberPlan: 0x01,
 	}

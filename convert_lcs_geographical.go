@@ -1,6 +1,10 @@
 package gsmmap
 
-import "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+import (
+	"fmt"
+
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+)
 
 // receiveGeographicalInformation applies the exception handling of 3GPP TS
 // 29.002 V19.1.0 §17.7.13 to a received location estimate (ext) and
@@ -84,4 +88,32 @@ func receiveVelocityEstimate(v *gsm_map.VelocityEstimate) (VelocityEstimate, err
 		return nil, ErrVelocityEstimateInvalidData
 	}
 	return VelocityEstimate(*v), nil
+}
+
+// TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §7.3 define sender geography.
+func validateSendGeographicalInformation(ext, add []byte, ignoreExt bool) error {
+	// Values outside ASN.1 SIZE bounds are left to the BER codec.
+	if !ignoreExt && len(ext) > 1 && len(ext) <= 20 && !validGeographicalInformation(ext, false) {
+		return fmt.Errorf("LocationEstimate: %w", ErrExtGeographicalInformationInvalid)
+	}
+	if len(add) > 0 && len(add) <= 91 && !validGeographicalInformation(add, true) {
+		return fmt.Errorf("AddLocationEstimate: %w", ErrAddGeographicalInformationInvalid)
+	}
+	return nil
+}
+
+// TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §8.6 define four velocity types.
+func validateSendVelocityEstimate(v []byte) error {
+	if len(v) > 0 && v[0]>>4 > 3 {
+		return ErrVelocityEstimateTypeInvalid
+	}
+	return nil
+}
+
+// TS 29.002 V19.1.0 §17.7.13: either IMSI or MSISDN identifies the subscriber.
+func validateLCSSubscriberIdentity(imsi, msisdn string) error {
+	if imsi == "" && msisdn == "" {
+		return ErrLCSSubscriberIdentityMissing
+	}
+	return nil
 }

@@ -246,7 +246,7 @@ func TestInsertSubscriberDataArg_PR_E1aSubtypesRoundTrip(t *testing.T) {
 func TestInsertSubscriberDataArg_ServiceListsRoundTrip(t *testing.T) {
 	in := &InsertSubscriberDataArg{
 		IMSI:              "214365",
-		BearerServiceList: []HexBytes{{0x10}, {0x20, 0x30}},
+		BearerServiceList: []HexBytes{{0x10}, {0x20}},
 		TeleserviceList:   []HexBytes{{0x11}, {0x21}},
 	}
 	encoded, err := in.Marshal()

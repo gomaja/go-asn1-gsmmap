@@ -69,7 +69,11 @@ func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 		arg.SmsGmscAddress = &v
 	}
 	if m.SmsGmscDiameterAddress != nil {
-		arg.SmsGmscDiameterAddress = convertNetworkNodeDiameterAddressToWire(m.SmsGmscDiameterAddress)
+		node, err := convertNetworkNodeDiameterAddressToWire(m.SmsGmscDiameterAddress)
+		if err != nil {
+			return nil, fmt.Errorf("arg.SmsGmscDiameterAddress: %w", err)
+		}
+		arg.SmsGmscDiameterAddress = node
 	}
 
 	return arg, nil

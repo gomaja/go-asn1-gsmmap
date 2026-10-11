@@ -191,6 +191,11 @@ func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfigurati
 		return nil, nil
 	}
 
+	// TS 29.002 V19.1.0 §17.7.1 PDN-Type.
+	if len(a.PdnType) == 1 && (a.PdnType[0] < 1 || a.PdnType[0] > 4) {
+		return nil, ErrPDNTypeInvalid
+	}
+
 	qos, err := convertEPSQoSSubscribedToWire(&a.EpsQosSubscribed)
 	if err != nil {
 		return nil, fmt.Errorf("APNConfiguration.EpsQosSubscribed: %w", err)

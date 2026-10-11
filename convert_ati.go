@@ -42,6 +42,23 @@ func convertATIToArg(ati *AnyTimeInterrogation) (*gsm_map.AnyTimeInterrogationAr
 func buildRequestedInfo(ri *RequestedInfo) (gsm_map.RequestedInfo, error) {
 	var wire gsm_map.RequestedInfo
 
+	// TS 29.002 V19.1.0 §17.7.1 RequestedInfo.
+	if ri.CurrentLocation && !ri.LocationInformation {
+		return wire, ErrRequestedInfoCurrentLocationWithoutLocationInformation
+	}
+	if ri.LocationInformationEPSSupported && !ri.LocationInformation {
+		return wire, ErrRequestedInfoEPSSupportedWithoutLocationInformation
+	}
+	if ri.RequestedNodes != nil && ri.RequestedDomain != nil && *ri.RequestedDomain == CsDomain {
+		return wire, ErrRequestedInfoRequestedNodesInCSDomain
+	}
+	if ri.ServingNodeIndication && !ri.LocationInformation {
+		return wire, ErrRequestedInfoServingNodeWithoutLocationInformation
+	}
+	if ri.ServingNodeIndication && ri.CurrentLocation {
+		return wire, ErrRequestedInfoServingNodeWithCurrentLocation
+	}
+
 	nullMarker := &struct{}{}
 
 	if ri.LocationInformation {

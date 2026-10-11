@@ -74,6 +74,10 @@ func absentDiagFromWire(p *gsm_map.AbsentSubscriberDiagnosticSM) *int {
 }
 
 func convertInformServiceCentreToArg(i *InformServiceCentre) (*gsm_map.InformServiceCentreArg, error) {
+	// TS 29.002 V19.1.0 §17.7.6: the additional diagnostic requires the primary diagnostic.
+	if i.AdditionalAbsentSubscriberDiagnosticSM != nil && i.AbsentSubscriberDiagnosticSM == nil {
+		return nil, ErrIscAdditionalDiagnosticWithoutPrimary
+	}
 	arg := &gsm_map.InformServiceCentreArg{}
 
 	if i.StoredMSISDN != "" {

@@ -1059,6 +1059,8 @@ func TestMarshalRejectsReservedSmRpMti(t *testing.T) {
 
 func slrWithTerminationCause(c TerminationCause) *SubscriberLocationReportArg {
 	a := minimalSLRArg()
+	a.LcsEvent = LCSEventDeferredmtLrResponse
+	a.LcsReferenceNumber = HexBytes{1}
 	a.DeferredmtLrData = &DeferredmtLrData{
 		DeferredLocationEventType: DeferredLocationEventType{MsAvailable: true},
 		TerminationCause:          &c,
@@ -1105,6 +1107,7 @@ func TestMarshalRejectsUnrecognizedTerminationCause(t *testing.T) {
 
 func pslArg() *ProvideSubscriberLocationArg {
 	return &ProvideSubscriberLocationArg{
+		IMSI:            "001010123456789",
 		LocationType:    LocationType{LocationEstimateType: LocationEstimateCurrentLocation},
 		MlcNumber:       "31612345678",
 		MlcNumberNature: address.NatureInternational,

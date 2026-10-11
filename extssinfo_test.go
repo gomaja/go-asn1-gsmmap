@@ -166,7 +166,7 @@ func TestExtForwInfoValidation(t *testing.T) {
 			SsCode: 0x21,
 			ForwardingFeatureList: []ExtForwFeature{{
 				SsStatus:          HexBytes{0x05},
-				ForwardingOptions: HexBytes{1, 2, 3, 4, 5, 6}, // 6 octets, max is 5
+				ForwardingOptions: HexBytes{0, 2, 3, 4, 5, 6}, // 6 octets, max is 5
 			}},
 		}))
 		if !matchesConstraint(err, "forwardingFeatureList.element[0].forwardingOptions", "SIZE (1..5)") {
@@ -233,7 +233,7 @@ func TestExtForwFeatureNilVsEmptyDiscipline(t *testing.T) {
 			SsCode: 0x21,
 			ForwardingFeatureList: []ExtForwFeature{{
 				SsStatus:              HexBytes{0x05},
-				ForwardedToSubaddress: make(HexBytes, 22), // 22 octets, max is 21
+				ForwardedToSubaddress: append(HexBytes{0x80}, make(HexBytes, 21)...), // 22 octets, max is 21
 			}},
 		}))
 		if !matchesConstraint(err, "forwardingFeatureList.element[0].forwardedToSubaddress", "SIZE (1..21)") {
@@ -410,6 +410,11 @@ func TestExtCallBarInfoRoundTrip(t *testing.T) {
 			{SsStatus: HexBytes{0x01, 0x02}},
 		},
 	}
+	// 3GPP TS 29.002 V19.1.0 §17.7.8 reserves status octets 2..5.
+	if _, err := (&InsertSubscriberDataArg{ProvisionedSS: []ExtSSInfo{{CallBarringInfo: in}}}).Marshal(); !errors.Is(err, ErrExtSSStatusReservedOctets) {
+		t.Fatalf("reserved status: %v", err)
+	}
+	in.CallBarringFeatureList[1].SsStatus = HexBytes{0x01}
 	wire, err := convertExtCallBarInfoToWire(in)
 	if err != nil {
 		t.Fatalf("encode: %v", err)
@@ -418,15 +423,7 @@ func TestExtCallBarInfoRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	// Unsupported status octets 2..5 are discarded on reception
-	// (3GPP TS 29.002 V19.1.0 §17.7.8), while the sender keeps them.
-	if len(wire.CallBarringFeatureList.Values[1].SsStatus) != 2 {
-		t.Fatal("sender discarded extended status")
-	}
-	want := *in
-	want.CallBarringFeatureList = append([]ExtCallBarringFeature(nil), in.CallBarringFeatureList...)
-	want.CallBarringFeatureList[1].SsStatus = HexBytes{0x01}
-	if diff := cmp.Diff(&want, got); diff != "" {
+	if diff := cmp.Diff(in, got); diff != "" {
 		t.Errorf("round-trip (-want +got):\n%s", diff)
 	}
 }

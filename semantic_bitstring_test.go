@@ -53,7 +53,7 @@ func TestMarshalBitStringOctetsMatchBitLength(t *testing.T) {
 		path, constraint string     // the *ber.ConstraintError Marshal returns
 	}{
 		{"isr-Information 3 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}, IsrInformationBits: 3}, nil), nil, "", ""},
-		{"isr-Information 8 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF}, IsrInformationBits: 8}, nil), nil, "", ""},
+		{"isr-Information 8 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}, IsrInformationBits: 8}, nil), nil, "", ""},
 		{"isr-Information 3 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0, 0x00}, IsrInformationBits: 3}, nil), &bitLength{"isr-Information", 3, 2}, "", ""},
 		{"isr-Information 8 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF, 0x00}, IsrInformationBits: 8}, nil), &bitLength{"isr-Information", 8, 2}, "", ""},
 		{"isr-Information octets without bits", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}}, nil), &bitLength{"isr-Information", 0, 1}, "", ""},

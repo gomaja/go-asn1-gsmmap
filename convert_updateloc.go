@@ -128,6 +128,11 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 			if err != nil {
 				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
 			}
+			if la.Choice == gsm_map.LocationAreaChoiceLaiFixedLength && la.LaiFixedLength != nil {
+				if err := validatePLMNIdentityDigits(*la.LaiFixedLength, false, fmt.Sprintf("PagingArea[%d].LAI", i)); err != nil {
+					return nil, err
+				}
+			}
 			pa.Values[i] = la
 		}
 		arg.PagingArea = &pa
@@ -139,13 +144,20 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	if u.EplmnList != nil {
 		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
+			if err := validatePLMNIdentityDigits(raw, false, fmt.Sprintf("PLMNList[%d]", i)); err != nil {
+				return nil, err
+			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
 		arg.EplmnList = &list
 	}
 
 	if u.MmeDiameterAddress != nil {
-		arg.MmeDiameterAddress = convertNetworkNodeDiameterAddressToWire(u.MmeDiameterAddress)
+		node, err := convertNetworkNodeDiameterAddressToWire(u.MmeDiameterAddress)
+		if err != nil {
+			return nil, fmt.Errorf("arg.MmeDiameterAddress: %w", err)
+		}
+		arg.MmeDiameterAddress = node
 	}
 
 	return arg, nil

@@ -38,10 +38,10 @@ func emlppPriorityFromWire(v int64) int {
 // decoded nature and plan are retained; encoding canonicalizes the
 // extension bit and drops trailing all-filler TBCD octets.
 func encodeAddressField(digits string, nature, plan uint8) ([]byte, error) {
-	if nature&^0b01110000 != 0 {
+	if nature&^0b01110000 != 0 || nature == 0x50 || nature == 0x70 {
 		return nil, fmt.Errorf("nature of address 0x%02X: %w", nature, ErrAddressNatureInvalid)
 	}
-	if plan&^0b00001111 != 0 {
+	if plan != 0 && plan != 1 && plan != 3 && plan != 4 && plan != 6 && plan != 8 && plan != 9 {
 		return nil, fmt.Errorf("numbering plan 0x%02X: %w", plan, ErrAddressPlanInvalid)
 	}
 	tbcdBytes, err := tbcd.Encode(digits)
@@ -49,6 +49,35 @@ func encodeAddressField(digits string, nature, plan uint8) ([]byte, error) {
 		return nil, err
 	}
 	return address.Encode(address.ExtensionNo, nature, plan, tbcdBytes), nil
+}
+
+// RFC 6733 §4.3.1: DiameterIdentity is ASCII; callers supply valid node/realm names.
+func validateDiameterIdentityASCII(raw []byte, field string) error {
+	for i, b := range raw {
+		if b > 0x7f {
+			return fmt.Errorf("%s octet %d: %w", field, i, ErrDiameterIdentityNotASCII)
+		}
+	}
+	return nil
+}
+
+// TS 29.002 V19.1.0 §§17.7.8,17.7.13: only MNC digit 3 may be filler.
+func validatePLMNIdentityDigits(raw []byte, countryOnly bool, field string) error {
+	if len(raw) >= 2 {
+		for i, d := range [3]byte{raw[0] & 0xf, raw[0] >> 4, raw[1] & 0xf} {
+			if d > 9 {
+				return fmt.Errorf("%s MCC digit %d: %w", field, i+1, ErrPLMNIdentityInvalidDigits)
+			}
+		}
+	}
+	if !countryOnly && len(raw) >= 3 {
+		for i, d := range [3]byte{raw[2] & 0xf, raw[2] >> 4, raw[1] >> 4} {
+			if d > 9 && (i != 2 || d != 0xf) {
+				return fmt.Errorf("%s MNC digit %d: %w", field, i+1, ErrPLMNIdentityInvalidDigits)
+			}
+		}
+	}
+	return nil
 }
 
 // decodeAddressField decodes an AddressString byte slice into a phone number string and address components.

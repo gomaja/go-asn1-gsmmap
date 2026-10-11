@@ -27,7 +27,7 @@ func TestLCSClientNameRoundTrip(t *testing.T) {
 			NameString:       HexBytes{0x41, 0x42, 0x43},
 		}},
 		{"with format indicator", &LCSClientName{
-			DataCodingScheme:   0x00,
+			DataCodingScheme:   0x0f,
 			NameString:         HexBytes{0x4e, 0x41, 0x4d, 0x45},
 			LcsFormatIndicator: &fmtMsisdn,
 		}},
@@ -256,7 +256,7 @@ func TestLCSClientIDFullPopulationRoundTrip(t *testing.T) {
 		LcsClientDialedByMSPlan:   0x01, // ISDN
 		LcsClientInternalID:       &internalID,
 		LcsClientName: &LCSClientName{
-			DataCodingScheme:   0x00,
+			DataCodingScheme:   0x0f,
 			NameString:         HexBytes{0x4e, 0x41, 0x4d, 0x45},
 			LcsFormatIndicator: &fmtMsisdn,
 		},

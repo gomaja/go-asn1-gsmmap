@@ -27,6 +27,11 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		return nil, ErrPSLArgNil
 	}
 
+	// TS 29.002 V19.1.0 §17.7.13: activating or cancelling deferred location requires a reference.
+	if (a.LocationType.LocationEstimateType == LocationEstimateActivateDeferredLocation || a.LocationType.LocationEstimateType == LocationEstimateCancelDeferredLocation) && len(a.LcsReferenceNumber) == 0 {
+		return nil, ErrLCSDeferredReferenceNumberMissing
+	}
+
 	// Mandatory: LocationType.
 	loc, err := convertLocationTypeToWire(&a.LocationType)
 	if err != nil {
@@ -36,6 +41,10 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 	// Mandatory: MlcNumber digits.
 	if a.MlcNumber == "" {
 		return nil, ErrPSLArgMlcNumberEmpty
+	}
+	// TS 29.002 V19.1.0 §17.7.13: a subscriber identity is mandatory.
+	if err := validateLCSSubscriberIdentity(a.IMSI, a.MSISDN); err != nil {
+		return nil, err
 	}
 	mlcWire, err := encodeAddressField(a.MlcNumber, a.MlcNumberNature, a.MlcNumberPlan)
 	if err != nil {
@@ -111,6 +120,9 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		out.LcsReferenceNumber = &v
 	}
 	if a.LcsServiceTypeID != nil {
+		if err := validateLCSServiceTypeIDToWire(*a.LcsServiceTypeID); err != nil {
+			return nil, fmt.Errorf("LcsServiceTypeID: %w", err)
+		}
 		v := *a.LcsServiceTypeID
 
 		w := v

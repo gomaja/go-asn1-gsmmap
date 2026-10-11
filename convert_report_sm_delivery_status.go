@@ -41,6 +41,13 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 	if r == nil {
 		return nil, ErrReportSMDeliveryStatusNil
 	}
+	// TS 29.002 V19.1.0 §17.7.6: indicators exclude the corresponding additional outcomes and diagnostics.
+	if r.DeliveryOutcomeIndicator && (r.AdditionalSMDeliveryOutcome != nil || r.AdditionalAbsentSubscriberDiagnosticSM != nil) ||
+		r.IpSmGwIndicator && (r.DeliveryOutcomeIndicator || r.IpSmGwSmDeliveryOutcome != nil || r.IpSmGwAbsentSubscriberDiagnosticSM != nil) ||
+		r.Smsf3gppDeliveryOutcomeIndicator && (r.Smsf3gppDeliveryOutcome != nil || r.Smsf3gppAbsentSubscriberDiagnosticSM != nil) ||
+		r.SmsfNon3gppDeliveryOutcomeIndicator && (r.SmsfNon3gppDeliveryOutcome != nil || r.SmsfNon3gppAbsentSubscriberDiagnosticSM != nil) {
+		return nil, ErrReportSMDeliveryStatusConflictingOutcomeFields
+	}
 	if r.MSISDN == "" {
 		return nil, ErrReportSMDeliveryStatusMSISDNEmpty
 	}

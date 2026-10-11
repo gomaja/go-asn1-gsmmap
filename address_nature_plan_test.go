@@ -216,7 +216,8 @@ func TestEncodeAddressFieldRejectsInvalidPlan(t *testing.T) {
 	}
 }
 
-func TestEncodeAddressFieldAcceptsEveryConstant(t *testing.T) {
+// TS 29.002 V19.1.0 §17.7.8 reserves nature 5/7 and unassigned numbering plans.
+func TestEncodeAddressFieldAssignedConstants(t *testing.T) {
 	natures := []uint8{
 		address.NatureUnknown, address.NatureInternational, address.NatureNational,
 		address.NatureNetworkSpecific, address.NatureSubscriber, address.NatureReserved,
@@ -230,6 +231,18 @@ func TestEncodeAddressFieldAcceptsEveryConstant(t *testing.T) {
 	for _, n := range natures {
 		for _, p := range plans {
 			got, err := encodeAddressField("31612345678", n, p)
+			if n == address.NatureReserved || n == address.NatureReservedExtension {
+				if !errors.Is(err, ErrAddressNatureInvalid) {
+					t.Errorf("nature 0x%02X: %v", n, err)
+				}
+				continue
+			}
+			if p == address.PlanReservedExtension {
+				if !errors.Is(err, ErrAddressPlanInvalid) {
+					t.Errorf("plan 0x%02X: %v", p, err)
+				}
+				continue
+			}
 			if err != nil {
 				t.Errorf("nature 0x%02X plan 0x%02X: %v", n, p, err)
 				continue
@@ -239,9 +252,11 @@ func TestEncodeAddressFieldAcceptsEveryConstant(t *testing.T) {
 			}
 		}
 	}
-	// Every 4-bit plan value is on the wire and must be accepted.
+	// Spare and reserved plans are received but not sent (§17.7.8).
 	for p := uint8(0); p <= 0x0F; p++ {
-		if _, err := encodeAddressField("1", address.NatureUnknown, p); err != nil {
+		_, err := encodeAddressField("1", address.NatureUnknown, p)
+		assigned := p == 0 || p == 1 || p == 3 || p == 4 || p == 6 || p == 8 || p == 9
+		if assigned && err != nil || !assigned && !errors.Is(err, ErrAddressPlanInvalid) {
 			t.Errorf("plan 0x%02X: %v", p, err)
 		}
 	}
