@@ -4,7 +4,7 @@ go 1.26.9
 
 require (
 	github.com/gomaja/go-asn1 v0.0.0-20261011084734-d77484b8fa99
-	github.com/gomaja/go-sms v0.0.0-20261002213211-02959b2bed2e
+	github.com/gomaja/go-sms v0.0.0-20261011101241-3b48f2266ec7
 	github.com/google/go-cmp v0.7.0
 )
 
