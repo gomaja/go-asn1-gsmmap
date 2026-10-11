@@ -102,10 +102,24 @@ func validateSendGeographicalInformation(ext, add []byte, ignoreExt bool) error 
 	return nil
 }
 
-// TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §8.6 define four velocity types.
+// velocityEstimateLength holds the length of velocity types 0 to 3: 3GPP TS
+// 29.002 V19.1.0 §17.7.13 VelocityEstimate has octets 2 to 4, 2 to 5, 2 to 5
+// and 2 to 7 after the type octet.
+var velocityEstimateLength = [4]int{4, 5, 5, 7}
+
+// validateSendVelocityEstimate checks a VelocityEstimate before sending: its
+// type is one of the four 3GPP TS 29.002 V19.1.0 §17.7.13 allows, and its
+// length is that type's. The codec checks SIZE (4..7).
 func validateSendVelocityEstimate(v []byte) error {
-	if len(v) > 0 && v[0]>>4 > 3 {
+	if len(v) < 4 || len(v) > 7 {
+		return nil
+	}
+	typ := v[0] >> 4
+	if typ > 3 {
 		return ErrVelocityEstimateTypeInvalid
+	}
+	if len(v) != velocityEstimateLength[typ] {
+		return ErrVelocityEstimateLengthInvalid
 	}
 	return nil
 }

@@ -219,6 +219,9 @@ var strictEncodeErrors = []error{
 	ErrLCSDeferredReferenceNumberMissing,
 	// TS 29.002 V19.1.0 §17.7.13: a received LCSClientName's DCS is kept.
 	ErrLCSClientNameDataCodingSchemeInvalid,
+	// §17.7.13 makes only an unlisted velocity type invalid data; a length
+	// that does not match the type is kept, and Marshal does not send it.
+	ErrVelocityEstimateLengthInvalid,
 	// TS 29.002 V19.1.0 §17.7.13: received inconsistent deferred data presence is kept.
 	ErrSLRArgDeferredmtLrDataPresence,
 	// TS 29.002 V19.1.0 §17.7.13: received nested location with a nonrestart cause is kept.

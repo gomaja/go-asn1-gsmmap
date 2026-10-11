@@ -3755,6 +3755,7 @@ var (
 	ErrExtGeographicalInformationInvalid              = errors.New("lcs: ExtGeographicalInformation has an unsupported shape, incorrect shape length or coding per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §7.3")
 	ErrAddGeographicalInformationInvalid              = errors.New("lcs: AddGeographicalInformation has an undefined shape, incorrect shape length or coding per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §7.3")
 	ErrVelocityEstimateTypeInvalid                    = errors.New("lcs: VelocityEstimate type must be horizontal, horizontal with vertical, or their uncertainty variants per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8.6")
+	ErrVelocityEstimateLengthInvalid                  = errors.New("lcs: VelocityEstimate must be 4, 5, 5 or 7 octets for velocity types 0 to 3 per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrSLRArgDeferredmtLrDataPresence                 = errors.New("subscriberLocationReportArg: DeferredmtLrData must be present if and only if LcsEvent is deferredmt-lrResponse per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrDeferredmtLrDataLocationInfoRequiresRestart    = errors.New("deferredmt-lrData: LcsLocationInfo may be included only with TerminationCause mt-lrRestart per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrSLRResRoutingIdentifiersMutuallyExclusive      = errors.New("subscriberLocationReportRes: NaESRK and NaESRD are mutually exclusive per 3GPP TS 29.002 V19.1.0 §17.7.13")

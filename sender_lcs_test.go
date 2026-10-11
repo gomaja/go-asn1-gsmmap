@@ -450,17 +450,25 @@ func TestSenderLCSGeographicalCoding(t *testing.T) {
 
 // TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §8.6 velocity type is the high nibble.
 func TestSenderLCSVelocityTypes(t *testing.T) {
+	// TS 29.002 V19.1.0 §17.7.13: types 0 to 3 take 4, 5, 5 and 7 octets.
+	lengths := map[byte]int{0: 4, 1: 5, 2: 5, 3: 7}
 	for typ := byte(0); typ < 16; typ++ {
-		v := HexBytes{typ<<4 | 3, 0, 0, 0}
-		r := &ProvideSubscriberLocationRes{LocationEstimate: make(HexBytes, 7), VelocityEstimate: v}
-		s := minimalSLRArg()
-		s.VelocityEstimate = v
-		var want error
-		if typ > 3 {
-			want = ErrVelocityEstimateTypeInvalid
+		for n := 4; n <= 7; n++ {
+			v := make(HexBytes, n)
+			v[0] = typ<<4 | 3
+			r := &ProvideSubscriberLocationRes{LocationEstimate: make(HexBytes, 7), VelocityEstimate: v}
+			s := minimalSLRArg()
+			s.VelocityEstimate = v
+			var want error
+			switch {
+			case typ > 3:
+				want = ErrVelocityEstimateTypeInvalid
+			case n != lengths[typ]:
+				want = ErrVelocityEstimateLengthInvalid
+			}
+			senderLCSCheck(t, r, asParser(ParseProvideSubscriberLocationRes), want)
+			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
 		}
-		senderLCSCheck(t, r, asParser(ParseProvideSubscriberLocationRes), want)
-		senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
 	}
 }
 
@@ -481,6 +489,10 @@ func TestSenderLCSNameParsePreservesDCS(t *testing.T) {
 // TS 29.002 V19.1.0 §§17.7.6,17.7.13: these sender violations remain received values.
 func senderLCSSemLenientCases() []semLenientCase {
 	return []semLenientCase{
+		{ErrVelocityEstimateLengthInvalid, asParser(ParseProvideSubscriberLocationRes), func(*testing.T) semWire {
+			v := gsm_map.VelocityEstimate{0x03, 0, 0, 0, 0, 0, 0} // type 0 in seven octets
+			return &gsm_map.ProvideSubscriberLocationRes{LocationEstimate: make(gsm_map.ExtGeographicalInformation, 7), VelocityEstimate: &v}
+		}},
 		{ErrSriSmRespNodeIndicatorsMutuallyExclusive, asParser(ParseSriSmResp), func(*testing.T) semWire {
 			w := semMust(convertSriSmRespToRes(&SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123"}}))
 			w.LocationInfoWithLMSI.GprsNodeIndicator = &struct{}{}
