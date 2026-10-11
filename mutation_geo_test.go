@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"errors"
 	"fmt"
+	"math"
 	"testing"
 )
 
@@ -64,7 +65,7 @@ func TestMutationGeoDecodeLengths(t *testing.T) {
 }
 
 // TS 23.032 V19.0.0 §6.1: 23-bit latitude magnitude and signed 24-bit longitude.
-// Encode's documented range rejects the poles included in the maximum latitude bin.
+// The maximum latitude bin includes the poles; Decode returns its lower edge.
 func TestMutationGeoCoordinates(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -72,8 +73,8 @@ func TestMutationGeoCoordinates(t *testing.T) {
 		want     HexBytes
 		wantErr  error
 	}{
-		{"south pole", -90, 0, nil, ErrGeoLatitudeOutOfRange},
-		{"north pole", 90, 0, nil, ErrGeoLatitudeOutOfRange},
+		{"south pole", -90, 0, HexBytes{0, 0xff, 0xff, 0xff, 0, 0, 0}, nil},
+		{"north pole", 90, 0, HexBytes{0, 0x7f, 0xff, 0xff, 0, 0, 0}, nil},
 		{"west boundary", 0, -180, HexBytes{0, 0, 0, 0, 0x80, 0, 0}, nil},
 		{"east boundary", 0, 180, nil, ErrGeoLongitudeOutOfRange},
 		{"maximum quantum", 8388607.0 * 90 / 8388608, 8388607.0 * 360 / 16777216, HexBytes{0, 0x7f, 0xff, 0xff, 0x7f, 0xff, 0xff}, nil},
@@ -93,7 +94,11 @@ func TestMutationGeoCoordinates(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			wantEqual(t, "latitude", tc.lat, got.Latitude)
+			wantLat := tc.lat
+			if tc.lat == 90 || tc.lat == -90 {
+				wantLat = math.Copysign(8388607.0*90/8388608, tc.lat)
+			}
+			wantEqual(t, "latitude", wantLat, got.Latitude)
 			wantEqual(t, "longitude", tc.lon, got.Longitude)
 		})
 	}

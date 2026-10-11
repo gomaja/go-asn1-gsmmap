@@ -101,6 +101,7 @@ What that means for a consumer:
 - CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`, `GPRSCSI`, `MGCSI`) omit `NotificationToCSE` and `CsiActive`; Parse drops those wire fields. Segmented CSI and SRI presence rules that depend on other segments remain the caller's responsibility, so `ErrCamelSMSCSIMissingTDPData`, `ErrCamelSMSCSIMissingCapabilityHandling` and `ErrGPRSCSIRequiresTDPListAndPhase` are removed.
 - `RoamingNotAllowedParam.RoamingNotAllowedCause` is a pointer, nil when the additional cause is present after successful strict decoding. `LCSQoS.LcsQosClass` decodes unrecognized values as `LCSQoSClassBestEffort`.
 - `ParseReturnErrorParameter(MapErrorCode, []byte)` replaces the per-error `Parse*Param` functions, and `MapErrorCode(code).String()` replaces `GetErrorString(code)`.
+- `GeographicalInfo.Encode` uses the TS 23.032 §6.1 floor bins and accepts latitudes ±90, encoding each pole in the maximum magnitude bin; decoding still returns the bin's lower edge. `ErrGeoLatitudeEncodingOverflow`, `ErrGeoLongitudeEncodingOverflow` and `ErrGeoLongitudeEncodingCollapse` are removed; these sentinels were not present in v1.0.2.
 
 **Renamed or retyped fields**
 

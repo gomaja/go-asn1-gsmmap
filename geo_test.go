@@ -3,7 +3,7 @@
 // Tests for geographical-information encoder validation per 3GPP TS 23.032.
 // The Encode() path must reject caller errors (out-of-range lat/lon,
 // out-of-range altitude, missing required fields) at the boundary rather
-// than silently clamping or zero-filling.
+// than accepting invalid input or zero-filling required fields.
 package gsmmap
 
 import (
@@ -12,11 +12,10 @@ import (
 	"testing"
 )
 
-// Encode must reject latitudes outside (-90, 90). The spec's encoding
-// cannot represent exactly ±90 without silent quantization, so those
-// boundary values are also rejected.
+// TS 23.032 V19.0.0 §6.1: the maximum latitude bin includes ±90.
+// Encode must reject latitudes outside [-90, 90].
 func TestGeoEncode_RejectsOutOfRangeLatitude(t *testing.T) {
-	for _, lat := range []float64{-90.01, 90.01, 200, -500, 90, -90} {
+	for _, lat := range []float64{-90.01, 90.01, 200, -500} {
 		gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: lat, Longitude: 0}
 		if _, err := gi.Encode(); err == nil {
 			t.Errorf("Latitude=%v: expected error, got nil", lat)
@@ -36,13 +35,15 @@ func TestGeoEncode_RejectsOutOfRangeLongitude(t *testing.T) {
 	}
 }
 
-// Encode must accept valid lat/lon values inside the open/half-open
-// ranges. lon=-180 is the only exactly-representable boundary value.
+// Encode accepts latitude in [-90, 90] and longitude in [-180, 180).
+// TS 23.032 V19.0.0 §6.1 extends the highest latitude bin to the poles.
 func TestGeoEncode_AcceptsBoundaryLatLon(t *testing.T) {
 	cases := []struct {
 		lat, lon float64
 	}{
 		{0, 0},
+		{90, 0},
+		{-90, 0},
 		{89.9999, 179.9999},
 		{-89.9999, -180},
 	}
@@ -54,53 +55,26 @@ func TestGeoEncode_AcceptsBoundaryLatLon(t *testing.T) {
 	}
 }
 
-// Encode must reject values that pass the caller-facing range check but
-// still round up to the next quantum in encodeLatLon. The ULP just below
-// 90 and +180 lands on 0x800000 after math.Round, so emitting it would
-// silently quantize to 0x7FFFFF.
-func TestGeoEncode_RejectsULPJustBelowBoundary(t *testing.T) {
-	// The largest float64 strictly less than 90 is 90 - 2^-46 ≈
-	// 89.99999999999999, which passes the < 90 guard and then rounds up
-	// to 0x800000 in encodeLatLon.
-	latULP := math.Nextafter(90, 0)
-	if latULP >= 90 {
-		t.Fatalf("math.Nextafter(90,0) was not strictly below 90: %v", latULP)
-	}
-	gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: latULP, Longitude: 0}
-	if _, err := gi.Encode(); err == nil {
-		t.Errorf("Latitude=%v (ULP below 90): expected error, got nil", latULP)
-	}
-
-	// Same for latitude near the negative boundary.
-	latNegULP := math.Nextafter(-90, 0)
-	if latNegULP <= -90 {
-		t.Fatalf("math.Nextafter(-90,0) was not strictly above -90: %v", latNegULP)
-	}
-	gi = &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: latNegULP, Longitude: 0}
-	if _, err := gi.Encode(); err == nil {
-		t.Errorf("Latitude=%v (ULP above -90): expected error, got nil", latNegULP)
-	}
-
-	// Same for longitude near +180.
-	lonULP := math.Nextafter(180, 0)
-	if lonULP >= 180 {
-		t.Fatalf("math.Nextafter(180,0) was not strictly below 180: %v", lonULP)
-	}
-	gi = &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: 0, Longitude: lonULP}
-	if _, err := gi.Encode(); err == nil {
-		t.Errorf("Longitude=%v (ULP below 180): expected error, got nil", lonULP)
-	}
-
-	// Longitude just above -180: math.Round lands on -0x800000, which is
-	// the legitimate quantum for lon=-180 exactly. Accepting this would
-	// silently collapse the caller's input onto -180 on the wire.
-	lonNegULP := math.Nextafter(-180, 0)
-	if lonNegULP <= -180 {
-		t.Fatalf("math.Nextafter(-180,0) was not strictly above -180: %v", lonNegULP)
-	}
-	gi = &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: 0, Longitude: lonNegULP}
-	if _, err := gi.Encode(); err == nil {
-		t.Errorf("Longitude=%v (ULP above -180): expected error, got nil", lonNegULP)
+// TS 23.032 V19.0.0 §6.1: valid inputs immediately inside the range
+// bounds belong to the boundary bins and must be accepted.
+func TestGeoEncode_AcceptsULPInsideBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		lat, lon float64
+		want     []byte
+	}{
+		{math.Nextafter(90, 0), 0, []byte{0, 0x7f, 0xff, 0xff, 0, 0, 0}},
+		{math.Nextafter(-90, 0), 0, []byte{0, 0xff, 0xff, 0xff, 0, 0, 0}},
+		{0, math.Nextafter(180, 0), []byte{0, 0, 0, 0, 0x7f, 0xff, 0xff}},
+		{0, math.Nextafter(-180, 0), []byte{0, 0, 0, 0, 0x80, 0, 0}},
+	} {
+		gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: tc.lat, Longitude: tc.lon}
+		got, err := gi.Encode()
+		if err != nil {
+			t.Fatalf("Encode(%v, %v): %v", tc.lat, tc.lon, err)
+		}
+		if !bytes.Equal(got, tc.want) {
+			t.Errorf("Encode(%v, %v) = %x, want %x", tc.lat, tc.lon, got, tc.want)
+		}
 	}
 }
 
