@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/gomaja/go-asn1/runtime/ber"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -99,14 +100,11 @@ func makeCSGEntry() CSGSubscriptionData {
 
 func TestCSGSubscriptionData_RoundTrip(t *testing.T) {
 	in := makeCSGEntry()
-	w, err := strictWire(convertCSGSubscriptionDataToWire(&in))
+	w, err := strictWire(convertCSGSubscriptionDataToWire(&in), nil)
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
-	out, err := convertWireToCSGSubscriptionData(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	out := convertWireToCSGSubscriptionData(w)
 	if !reflect.DeepEqual(&in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, *out)
 	}
@@ -124,11 +122,11 @@ func TestCSGSubscriptionData_BadCsgID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := (&InsertSubscriberDataArg{CsgSubscriptionDataList: CSGSubscriptionDataList{tc.in}}).Marshal()
 			if tc.name == "wrong octets" {
-				if !errors.Is(err, ErrBitStringOctetsMismatch) {
+				if !errors.Is(err, ber.ErrInvalidValue) {
 					t.Fatalf("want octet mismatch, got %v", err)
 				}
 			} else {
-				wantConstraintError(t, err, "csg-Id", "SIZE (27)")
+				wantConstraintError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", "SIZE (27)")
 			}
 		})
 	}
@@ -137,16 +135,16 @@ func TestCSGSubscriptionData_BadCsgID(t *testing.T) {
 func TestCSGSubscriptionData_BadAPN(t *testing.T) {
 	in := makeCSGEntry()
 	in.LipaAllowedAPNList = []HexBytes{{'a'}} // 1 octet, below the 2..63 range
-	_, err := convertCSGSubscriptionDataToWire(&in)
-	if !errors.Is(err, ErrAPNInvalidSize) {
-		t.Fatalf("want ErrAPNInvalidSize, got %v", err)
+	_, err := (&InsertSubscriberDataArg{CsgSubscriptionDataList: CSGSubscriptionDataList{in}}).Marshal()
+	if !matchesConstraint(err, "csg-SubscriptionDataList.element[0].lipa-AllowedAPNList.element[0]", "SIZE (2..63)") {
+		t.Fatalf("want codec constraint, got %v", err)
 	}
 }
 
 func TestCSGSubscriptionData_EmptyAPNList(t *testing.T) {
 	in := makeCSGEntry()
 	in.LipaAllowedAPNList = []HexBytes{} // present but empty → not allowed (use nil)
-	_, err := strictWire(convertCSGSubscriptionDataToWire(&in))
+	_, err := strictWire(convertCSGSubscriptionDataToWire(&in), nil)
 	if !matchesConstraint(err, "lipa-AllowedAPNList", "SIZE (1..50)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
@@ -159,7 +157,7 @@ func TestCSGSubscriptionData_OverMaxAPNList(t *testing.T) {
 		apns[i] = HexBytes{'a', 'p', 'n'}
 	}
 	in.LipaAllowedAPNList = apns
-	_, err := strictWire(convertCSGSubscriptionDataToWire(&in))
+	_, err := strictWire(convertCSGSubscriptionDataToWire(&in), nil)
 	if !matchesConstraint(err, "lipa-AllowedAPNList", "SIZE (1..50)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
@@ -168,7 +166,7 @@ func TestCSGSubscriptionData_OverMaxAPNList(t *testing.T) {
 func TestCSGSubscriptionData_BadPlmnId(t *testing.T) {
 	in := makeCSGEntry()
 	in.PlmnId = HexBytes{0x01, 0x02} // too short
-	_, err := strictWire(convertCSGSubscriptionDataToWire(&in))
+	_, err := strictWire(convertCSGSubscriptionDataToWire(&in), nil)
 	if !matchesConstraint(err, "plmn-Id", "SIZE (3)") {
 		t.Fatalf("want BER constraint error, got %v", err)
 	}
@@ -176,14 +174,11 @@ func TestCSGSubscriptionData_BadPlmnId(t *testing.T) {
 
 func TestCSGSubscriptionDataList_RoundTrip(t *testing.T) {
 	in := CSGSubscriptionDataList{makeCSGEntry(), makeCSGEntry()}
-	w, err := strictWire(convertCSGSubscriptionDataListToWire(in))
+	w, err := strictWire(convertCSGSubscriptionDataListToWire(in), nil)
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
-	out, err := convertWireToCSGSubscriptionDataList(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	out := convertWireToCSGSubscriptionDataList(w)
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch")
 	}
@@ -191,7 +186,7 @@ func TestCSGSubscriptionDataList_RoundTrip(t *testing.T) {
 
 func TestCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
 	empty := CSGSubscriptionDataList{}
-	_, err := strictWire(convertCSGSubscriptionDataListToWire(empty))
+	_, err := strictWire(convertCSGSubscriptionDataListToWire(empty), nil)
 	if !matchesConstraint(err, "csg-SubscriptionDataList", "SIZE (1..50)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
@@ -199,7 +194,7 @@ func TestCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
 	for i := range too {
 		too[i] = makeCSGEntry()
 	}
-	_, err = strictWire(convertCSGSubscriptionDataListToWire(too))
+	_, err = strictWire(convertCSGSubscriptionDataListToWire(too), nil)
 	if !matchesConstraint(err, "csg-SubscriptionDataList", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
@@ -207,21 +202,18 @@ func TestCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
 
 func TestVPLMNCSGSubscriptionDataList_RoundTrip(t *testing.T) {
 	in := VPLMNCSGSubscriptionDataList{makeCSGEntry()}
-	w, err := strictWire(convertVPLMNCSGSubscriptionDataListToWire(in))
+	w, err := strictWire(convertVPLMNCSGSubscriptionDataListToWire(in), nil)
 	if err != nil {
 		t.Fatalf("toWire: %v", err)
 	}
-	out, err := convertWireToVPLMNCSGSubscriptionDataList(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	out := convertWireToVPLMNCSGSubscriptionDataList(w)
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch")
 	}
 }
 
 func TestVPLMNCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
-	_, err := strictWire(convertVPLMNCSGSubscriptionDataListToWire(VPLMNCSGSubscriptionDataList{}))
+	_, err := strictWire(convertVPLMNCSGSubscriptionDataListToWire(VPLMNCSGSubscriptionDataList{}), nil)
 	if !matchesConstraint(err, "vplmn-Csg-SubscriptionDataList", "SIZE (1..50)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
@@ -229,7 +221,7 @@ func TestVPLMNCSGSubscriptionDataList_BoundsRejected(t *testing.T) {
 	for i := range too {
 		too[i] = makeCSGEntry()
 	}
-	_, err = strictWire(convertVPLMNCSGSubscriptionDataListToWire(too))
+	_, err = strictWire(convertVPLMNCSGSubscriptionDataListToWire(too), nil)
 	if !matchesConstraint(err, "vplmn-Csg-SubscriptionDataList", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
@@ -476,21 +468,15 @@ func TestResetIdList_RoundTrip(t *testing.T) {
 		HexBytes{0x01},
 		HexBytes{0x01, 0x02, 0x03, 0x04},
 	}
-	w, err := convertResetIdListToWire(in)
-	if err != nil {
-		t.Fatalf("toWire: %v", err)
-	}
-	out, err := convertWireToResetIdList(w)
-	if err != nil {
-		t.Fatalf("fromWire: %v", err)
-	}
+	w := convertResetIdListToWire(in)
+	out := convertWireToResetIdList(w)
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, out)
 	}
 }
 
 func TestResetIdList_BoundsRejected(t *testing.T) {
-	_, err := strictWire(convertResetIdListToWire(ResetIdList{}))
+	_, err := strictWire(convertResetIdListToWire(ResetIdList{}), nil)
 	if !matchesConstraint(err, "reset-Id-List", "SIZE (1..50)") {
 		t.Fatalf("empty: want size error, got %v", err)
 	}
@@ -498,7 +484,7 @@ func TestResetIdList_BoundsRejected(t *testing.T) {
 	for i := range too {
 		too[i] = HexBytes{0x01}
 	}
-	_, err = strictWire(convertResetIdListToWire(too))
+	_, err = strictWire(convertResetIdListToWire(too), nil)
 	if !matchesConstraint(err, "reset-Id-List", "SIZE (1..50)") {
 		t.Fatalf("over-max: want size error, got %v", err)
 	}
@@ -507,9 +493,9 @@ func TestResetIdList_BoundsRejected(t *testing.T) {
 func TestResetIdList_PerEntrySize(t *testing.T) {
 	cases := []HexBytes{{}, make(HexBytes, 5)}
 	for _, c := range cases {
-		_, err := convertResetIdListToWire(ResetIdList{c})
-		if !errors.Is(err, ErrResetIdInvalidSize) {
-			t.Fatalf("len=%d: want ErrResetIdInvalidSize, got %v", len(c), err)
+		_, err := (&InsertSubscriberDataArg{ResetIdList: ResetIdList{c}}).Marshal()
+		if !matchesConstraint(err, "reset-Id-List.element[0]", "SIZE (1..4)") {
+			t.Fatalf("len=%d: want codec constraint, got %v", len(c), err)
 		}
 	}
 }

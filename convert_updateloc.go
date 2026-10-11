@@ -138,10 +138,6 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	if u.EplmnList != nil {
 		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
-			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
 		arg.EplmnList = &list
@@ -274,10 +270,6 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 	if arg.EplmnList != nil && len(arg.EplmnList.Values) > 0 {
 		list := make([]HexBytes, len(arg.EplmnList.Values))
 		for i, plmn := range arg.EplmnList.Values {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateLocation: EplmnList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
-			}
 			list[i] = HexBytes(plmn)
 		}
 		u.EplmnList = list

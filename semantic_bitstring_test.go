@@ -1,6 +1,6 @@
 // semantic_bitstring_test.go
 //
-// The octet count of a BIT STRING against its bit length (go-asn1#80),
+// BIT STRING octet counts follow ITU-T X.690 (02/2021) §8.6.2,
 // checked through the public Marshal and Parse entry points.
 package gsmmap
 
@@ -11,12 +11,7 @@ import (
 	"github.com/gomaja/go-asn1/runtime/ber"
 )
 
-// X.690 (02/2021) §8.6.2: the octets of a BIT STRING hold its bits, the
-// unused bits of the last octet counted by the initial octet, so a value of
-// n bits has exactly (n+7)/8 octets. Marshal must not emit more octets than
-// the bit length accounts for: go-asn1 encodes every octet given and the
-// receiver then reads a longer bit length
-// (https://github.com/gomaja/go-asn1/issues/80).
+// ITU-T X.690 (02/2021) §8.6.2 requires octets consistent with the bit length.
 func TestMarshalBitStringOctetsMatchBitLength(t *testing.T) {
 	gprs := func(e *EpsInfo, c *SGSNCapability) *UpdateGprsLocation {
 		return &UpdateGprsLocation{
@@ -34,27 +29,31 @@ func TestMarshalBitStringOctetsMatchBitLength(t *testing.T) {
 	}
 	type marshaler interface{ Marshal() ([]byte, error) }
 	for _, tc := range []struct {
-		name string
-		msg  marshaler
-		want error // nil: Marshal and Parse succeed
+		name             string
+		msg              marshaler
+		want             error
+		path, constraint string
 	}{
-		{"isr-Information 3 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}, IsrInformationBits: 3}, nil), nil},
-		{"isr-Information 8 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF}, IsrInformationBits: 8}, nil), nil},
-		{"isr-Information 3 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0, 0x00}, IsrInformationBits: 3}, nil), ErrBitStringOctetsMismatch},
-		{"isr-Information 8 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF, 0x00}, IsrInformationBits: 8}, nil), ErrBitStringOctetsMismatch},
-		{"isr-Information octets without bits", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}}, nil), ErrBitStringOctetsMismatch},
-		{"supportedFeatures named bit 0", gprs(nil, &SGSNCapability{SupportedFeatures: &SupportedFeatures{OdbAllApn: true}}), nil},
-		{"supportedFeatures named bit 39", gprs(nil, &SGSNCapability{SupportedFeatures: &SupportedFeatures{NrAsSecondaryRAT: true}}), nil},
-		{"ext-SupportedFeatures named bit", gprs(nil, &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true}}), nil},
-		{"ext-SupportedFeatures unnamed bit 39", gprs(nil, &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnknownBits: HexBytes{0, 0, 0, 0, 1}}}), nil},
-		{"csg-Id 27 bits in 4 octets", csg(HexBytes{0x11, 0x22, 0x33, 0x40}, 27), nil},
-		{"csg-Id 27 bits in 10 octets", csg(make(HexBytes, 10), 27), ErrBitStringOctetsMismatch},
-		{"csg-Id 27 bits in 3 octets", csg(HexBytes{0x11, 0x22, 0x33}, 27), ErrBitStringOctetsMismatch},
-		{"csg-Id octets without bits", csg(HexBytes{0x11, 0x22, 0x33, 0x40}, 0), ErrBitStringOctetsMismatch},
+		{"isr-Information 3 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}, IsrInformationBits: 3}, nil), nil, "", ""},
+		{"isr-Information 8 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF}, IsrInformationBits: 8}, nil), nil, "", ""},
+		{"isr-Information 3 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0, 0x00}, IsrInformationBits: 3}, nil), ber.ErrInvalidValue, "", ""},
+		{"isr-Information 8 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF, 0x00}, IsrInformationBits: 8}, nil), ber.ErrInvalidValue, "", ""},
+		{"isr-Information octets without bits", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}}, nil), ber.ErrInvalidValue, "", ""},
+		{"supportedFeatures named bit 0", gprs(nil, &SGSNCapability{SupportedFeatures: &SupportedFeatures{OdbAllApn: true}}), nil, "", ""},
+		{"supportedFeatures named bit 39", gprs(nil, &SGSNCapability{SupportedFeatures: &SupportedFeatures{NrAsSecondaryRAT: true}}), nil, "", ""},
+		{"ext-SupportedFeatures named bit", gprs(nil, &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true}}), nil, "", ""},
+		{"ext-SupportedFeatures unnamed bit 39", gprs(nil, &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnknownBits: HexBytes{0, 0, 0, 0, 1}}}), nil, "", ""},
+		{"csg-Id 27 bits in 4 octets", csg(HexBytes{0x11, 0x22, 0x33, 0x40}, 27), nil, "", ""},
+		{"csg-Id 27 bits in 10 octets", csg(make(HexBytes, 10), 27), ber.ErrInvalidValue, "", ""},
+		{"csg-Id 27 bits in 3 octets", csg(HexBytes{0x11, 0x22, 0x33}, 27), ber.ErrInvalidValue, "", ""},
+		{"csg-Id octets without bits", csg(HexBytes{0x11, 0x22, 0x33, 0x40}, 0), nil, "subscriberInfo.locationInformation.userCSGInformation.csg-Id", "SIZE (27)"},
+		{"csg-Id negative bits", csg(HexBytes{0}, -1), nil, "subscriberInfo.locationInformation.userCSGInformation.csg-Id", "SIZE (27)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			data, err := tc.msg.Marshal()
-			if !errors.Is(err, tc.want) {
+			if tc.path != "" {
+				wantConstraintError(t, err, tc.path, tc.constraint)
+			} else if !errors.Is(err, tc.want) {
 				t.Fatalf("Marshal: err = %v, want %v", err, tc.want)
 			}
 			if err != nil {
@@ -82,7 +81,7 @@ func TestMarshalBitStringSize(t *testing.T) {
 	}
 	_, err := in.Marshal()
 	var ce *ber.ConstraintError
-	if !errors.As(err, &ce) || ce.Path != "isr-Information" || ce.Constraint != "SIZE (3..8)" {
+	if !errors.As(err, &ce) || ce.Path != "eps-info.isr-Information" || ce.Constraint != "SIZE (3..8)" {
 		t.Errorf("9 bits: err = %v, want the isr-Information SIZE (3..8) violation", err)
 	}
 }

@@ -33,8 +33,8 @@ func encodeAddressField(digits string, nature, plan uint8) ([]byte, error) {
 
 // decodeAddressField decodes an AddressString byte slice into a phone number string and address components.
 // Every AddressString it receives has at least the nature/plan octet: the
-// codec checks SIZE (1..n) of a field, and the callers check the element of
-// a SEQUENCE OF (isISDNAddressStringSize).
+// codec checks SIZE (1..n) for fields and SEQUENCE OF elements
+// (3GPP TS 29.002 V19.1.0 §17.7.8).
 func decodeAddressField(encoded []byte) (digits string, nature, plan uint8, err error) {
 	_, nat, pl, rawDigits := address.Decode(encoded)
 	digits, err = tbcd.Decode(rawDigits)
@@ -62,19 +62,6 @@ func decodeAddressWithDigits(encoded []byte, empty error) (digits string, nature
 		return "", 0, 0, empty
 	}
 	return digits, nature, plan, nil
-}
-
-// maxISDNAddressLength is maxISDN-AddressLength, the upper bound of
-// ISDN-AddressString SIZE (1..maxISDN-AddressLength) (3GPP TS 29.002 V19.1.0
-// §17.7.8).
-const maxISDNAddressLength = 9
-
-// isISDNAddressStringSize reports whether an ISDN-AddressString of n octets
-// fits SIZE (1..9). The codec checks it for a field, but not for the element
-// of a SEQUENCE OF.
-// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-func isISDNAddressStringSize(n int) bool {
-	return n >= 1 && n <= maxISDNAddressLength
 }
 
 // boolToNullPtr converts a Go bool into the ASN.1 NULL pointer convention
@@ -124,18 +111,6 @@ func narrowInt64(v int64) (int, error) {
 	return int(v), nil
 }
 
-// narrowInt64Range is like narrowInt64 but additionally enforces an
-// application-defined inclusive range [lo, hi]. Callers pass a field
-// name for inclusion in the error message. Delegates to narrowInt64
-// after the range check so callers passing a [lo, hi] that exceeds the
-// platform int bounds get the overflow safeguard.
-func narrowInt64Range(v int64, lo, hi int64, field string) (int, error) {
-	if v < lo || v > hi {
-		return 0, fmt.Errorf("%w: %s out of range %d..%d: %d", ErrIntegerOutOfRange, field, lo, hi, v)
-	}
-	return narrowInt64(v)
-}
-
 func bigIntFromInt64(v int64) *big.Int {
 	return big.NewInt(v)
 }
@@ -148,16 +123,6 @@ func int64FromBigInt(v *big.Int, field string) (int64, error) {
 		return 0, fmt.Errorf("%w: %s overflows int64: %s", ErrInt64Overflow, field, v.String())
 	}
 	return v.Int64(), nil
-}
-
-// validateAPN checks the APN element of a LIPAAllowedAPNList. The codec does
-// not yet enforce SEQUENCE OF element SIZE constraints:
-// https://github.com/gomaja/go-asn1/issues/79 (TS 29.002 §17.7.1).
-func validateAPN(b HexBytes, field string) error {
-	if len(b) < 2 || len(b) > 63 {
-		return fmt.Errorf("%s: %w (got %d)", field, ErrAPNInvalidSize, len(b))
-	}
-	return nil
 }
 
 // identity is an identity of 3GPP TS 23.003 carried as a TBCD-STRING (3GPP

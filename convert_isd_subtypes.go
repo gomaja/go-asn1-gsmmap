@@ -44,16 +44,11 @@ func convertWireToMCSSInfo(w *gsm_map.MCSSInfo) (*MCSSInfo, error) {
 // — 3GPP TS 29.002 V19.1.0 §17.7.1
 // ============================================================================
 
-func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubscriptionData, error) {
+func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) *gsm_map.CSGSubscriptionData {
 	if c == nil {
-		return nil, nil
+		return nil
 	}
-	// CSG-Id SIZE (27) is checked by the BER codec; bitStringToWire also
-	// enforces the octet count (3GPP TS 29.002 V19.1.0 §17.7.1, X.690 §8.6.2).
-	csgID, err := bitStringToWire("CSGSubscriptionData.CsgID", c.CsgID, c.CsgIDBits)
-	if err != nil {
-		return nil, err
-	}
+	csgID := bitStringToWire(c.CsgID, c.CsgIDBits)
 	out := &gsm_map.CSGSubscriptionData{
 		CsgId: csgID,
 	}
@@ -64,9 +59,6 @@ func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubsc
 	if c.LipaAllowedAPNList != nil {
 		out.LipaAllowedAPNList = &gsm_map.LIPAAllowedAPNList{Values: make([]gsm_map.APN, len(c.LipaAllowedAPNList))}
 		for i, apn := range c.LipaAllowedAPNList {
-			if err := validateAPN(apn, fmt.Sprintf("CSGSubscriptionData.LipaAllowedAPNList[%d]", i)); err != nil {
-				return nil, err
-			}
 			out.LipaAllowedAPNList.Values[i] = gsm_map.APN(apn)
 		}
 	}
@@ -74,12 +66,12 @@ func convertCSGSubscriptionDataToWire(c *CSGSubscriptionData) (*gsm_map.CSGSubsc
 		p := gsm_map.PLMNId(c.PlmnId)
 		out.PlmnId = &p
 	}
-	return out, nil
+	return out
 }
 
-func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubscriptionData, error) {
+func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) *CSGSubscriptionData {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := &CSGSubscriptionData{
@@ -92,80 +84,65 @@ func convertWireToCSGSubscriptionData(w *gsm_map.CSGSubscriptionData) (*CSGSubsc
 	if w.LipaAllowedAPNList != nil {
 		out.LipaAllowedAPNList = make([]HexBytes, len(w.LipaAllowedAPNList.Values))
 		for i, apn := range w.LipaAllowedAPNList.Values {
-			if err := validateAPN(HexBytes(apn), fmt.Sprintf("CSGSubscriptionData.LipaAllowedAPNList[%d]", i)); err != nil {
-				return nil, err
-			}
 			out.LipaAllowedAPNList[i] = HexBytes(apn)
 		}
 	}
 	if w.PlmnId != nil {
 		out.PlmnId = HexBytes(*w.PlmnId)
 	}
-	return out, nil
+	return out
 }
 
-func convertCSGSubscriptionDataListToWire(list CSGSubscriptionDataList) (*gsm_map.CSGSubscriptionDataList, error) {
+func convertCSGSubscriptionDataListToWire(list CSGSubscriptionDataList) *gsm_map.CSGSubscriptionDataList {
 	if list == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := gsm_map.CSGSubscriptionDataList{Values: make([]gsm_map.CSGSubscriptionData, len(list))}
 	for i, csd := range list {
-		w, err := convertCSGSubscriptionDataToWire(&csd)
-		if err != nil {
-			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
-		}
+		w := convertCSGSubscriptionDataToWire(&csd)
 		out.Values[i] = *w
 	}
-	return &out, nil
+	return &out
 }
 
-func convertWireToCSGSubscriptionDataList(w *gsm_map.CSGSubscriptionDataList) (CSGSubscriptionDataList, error) {
+func convertWireToCSGSubscriptionDataList(w *gsm_map.CSGSubscriptionDataList) CSGSubscriptionDataList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := make(CSGSubscriptionDataList, len(w.Values))
 	for i, csd := range w.Values {
-		c, err := convertWireToCSGSubscriptionData(&csd)
-		if err != nil {
-			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
-		}
+		c := convertWireToCSGSubscriptionData(&csd)
 		out[i] = *c
 	}
-	return out, nil
+	return out
 }
 
-func convertVPLMNCSGSubscriptionDataListToWire(list VPLMNCSGSubscriptionDataList) (*gsm_map.VPLMNCSGSubscriptionDataList, error) {
+func convertVPLMNCSGSubscriptionDataListToWire(list VPLMNCSGSubscriptionDataList) *gsm_map.VPLMNCSGSubscriptionDataList {
 	if list == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := &gsm_map.VPLMNCSGSubscriptionDataList{Values: make([]gsm_map.CSGSubscriptionData, len(list))}
 	for i, csd := range list {
-		w, err := convertCSGSubscriptionDataToWire(&csd)
-		if err != nil {
-			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
-		}
+		w := convertCSGSubscriptionDataToWire(&csd)
 		out.Values[i] = *w
 	}
-	return out, nil
+	return out
 }
 
-func convertWireToVPLMNCSGSubscriptionDataList(w *gsm_map.VPLMNCSGSubscriptionDataList) (VPLMNCSGSubscriptionDataList, error) {
+func convertWireToVPLMNCSGSubscriptionDataList(w *gsm_map.VPLMNCSGSubscriptionDataList) VPLMNCSGSubscriptionDataList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := make(VPLMNCSGSubscriptionDataList, len(w.Values))
 	for i, csd := range w.Values {
-		c, err := convertWireToCSGSubscriptionData(&csd)
-		if err != nil {
-			return nil, fmt.Errorf("CSGSubscriptionDataList[%d]: %w", i, err)
-		}
+		c := convertWireToCSGSubscriptionData(&csd)
 		out[i] = *c
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -365,32 +342,26 @@ func convertWireToEDRXCycleLengthList(w *gsm_map.EDRXCycleLengthList) (EDRXCycle
 // Reset-Id is a leaf OCTET STRING (SIZE 1..4).
 // ============================================================================
 
-func convertResetIdListToWire(list ResetIdList) (*gsm_map.ResetIdList, error) {
+func convertResetIdListToWire(list ResetIdList) *gsm_map.ResetIdList {
 	if list == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := gsm_map.ResetIdList{Values: make([]gsm_map.ResetId, len(list))}
 	for i, r := range list {
-		if len(r) < 1 || len(r) > 4 {
-			return nil, fmt.Errorf("ResetIdList[%d]: %w (got %d)", i, ErrResetIdInvalidSize, len(r))
-		}
 		out.Values[i] = gsm_map.ResetId(r)
 	}
-	return &out, nil
+	return &out
 }
 
-func convertWireToResetIdList(w *gsm_map.ResetIdList) (ResetIdList, error) {
+func convertWireToResetIdList(w *gsm_map.ResetIdList) ResetIdList {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	out := make(ResetIdList, len(w.Values))
 	for i, r := range w.Values {
-		if len(r) < 1 || len(r) > 4 {
-			return nil, fmt.Errorf("ResetIdList[%d]: %w (got %d)", i, ErrResetIdInvalidSize, len(r))
-		}
 		out[i] = HexBytes(r)
 	}
-	return out, nil
+	return out
 }

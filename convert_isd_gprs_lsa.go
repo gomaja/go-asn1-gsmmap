@@ -119,27 +119,6 @@ func convertPDPContextToWire(p *PDPContext) (*gsm_map.PDPContext, error) {
 		}
 	}
 
-	if p.SiptoPermission != nil {
-		if *p.SiptoPermission < 0 || *p.SiptoPermission > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOPermissionInvalid, *p.SiptoPermission)
-		}
-	}
-	if p.SiptoLocalNetworkPermission != nil {
-		if *p.SiptoLocalNetworkPermission < 0 || *p.SiptoLocalNetworkPermission > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOLocalNetworkPermissionInvalid, *p.SiptoLocalNetworkPermission)
-		}
-	}
-	if p.LipaPermission != nil {
-		if *p.LipaPermission < 0 || *p.LipaPermission > 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrLIPAPermissionInvalid, *p.LipaPermission)
-		}
-	}
-	if p.NIDDMechanism != nil {
-		if *p.NIDDMechanism < 0 || *p.NIDDMechanism > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrNIDDMechanismInvalid, *p.NIDDMechanism)
-		}
-	}
-
 	out := &gsm_map.PDPContext{
 		PdpContextId:  gsm_map.ContextId(p.PdpContextId),
 		PdpType:       gsm_map.PDPType(p.PdpType),
@@ -278,16 +257,10 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 	}
 	if w.SiptoPermission != nil {
 		v := *w.SiptoPermission
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOPermissionInvalid, v)
-		}
 		out.SiptoPermission = &v
 	}
 	if w.LipaPermission != nil {
 		v := *w.LipaPermission
-		if v < 0 || v > 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrLIPAPermissionInvalid, v)
-		}
 		out.LipaPermission = &v
 	}
 	if w.RestorationPriority != nil {
@@ -295,16 +268,10 @@ func convertWireToPDPContext(w *gsm_map.PDPContext) (*PDPContext, error) {
 	}
 	if w.SiptoLocalNetworkPermission != nil {
 		v := *w.SiptoLocalNetworkPermission
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOLocalNetworkPermissionInvalid, v)
-		}
 		out.SiptoLocalNetworkPermission = &v
 	}
 	if w.NIDDMechanism != nil {
 		v := *w.NIDDMechanism
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrNIDDMechanismInvalid, v)
-		}
 		out.NIDDMechanism = &v
 	}
 	if w.SCEFID != nil {
@@ -456,12 +423,6 @@ func convertLSAInformationToWire(l *LSAInformation) (*gsm_map.LSAInformation, er
 	if l == nil {
 		return nil, nil
 	}
-	if l.LsaOnlyAccessIndicator != nil {
-		v := *l.LsaOnlyAccessIndicator
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrLSAOnlyAccessIndicatorInvalid, v)
-		}
-	}
 	out := &gsm_map.LSAInformation{
 		CompleteDataListIncluded: boolToNullPtr(l.CompleteDataListIncluded),
 	}
@@ -488,9 +449,6 @@ func convertWireToLSAInformation(w *gsm_map.LSAInformation) (*LSAInformation, er
 	}
 	if w.LsaOnlyAccessIndicator != nil {
 		v := *w.LsaOnlyAccessIndicator
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrLSAOnlyAccessIndicatorInvalid, v)
-		}
 		out.LsaOnlyAccessIndicator = &v
 	}
 	if w.LsaDataList != nil {

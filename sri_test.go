@@ -39,7 +39,6 @@ func TestSriSentinelErrorsExist(t *testing.T) {
 	errs := []error{
 		ErrSriMissingMSISDN,
 		ErrSriMissingGmscOrGsmSCFAddress,
-		ErrSriInvalidInterrogationType,
 		ErrExtBasicServiceCodeMultipleAlternatives,
 		ErrExtBasicServiceCodeNoAlternative,
 	}
@@ -48,6 +47,8 @@ func TestSriSentinelErrorsExist(t *testing.T) {
 			t.Errorf("sentinel error is nil")
 		}
 	}
+	_, err := (&Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}).Marshal()
+	wantConstraintError(t, err, "interrogationType", "ENUMERATED {0, 1}")
 }
 
 func TestAllowedServicesBitStringRoundTrip(t *testing.T) {
@@ -231,10 +232,7 @@ func TestExternalSignalInfoRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := convertWireToExternalSignalInfo(w)
-	if err != nil {
-		t.Fatal(err)
-	}
+	got := convertWireToExternalSignalInfo(w)
 	if got.ProtocolID != in.ProtocolID || !bytes.Equal(got.SignalInfo, in.SignalInfo) {
 		t.Errorf("got %+v want %+v", got, in)
 	}
@@ -290,7 +288,7 @@ func TestSriValidationErrors(t *testing.T) {
 	}{
 		{"missing msisdn", &Sri{GmscOrGsmSCFAddress: "1"}, ErrSriMissingMSISDN, "", ""},
 		{"missing gmsc", &Sri{MSISDN: "1"}, ErrSriMissingGmscOrGsmSCFAddress, "", ""},
-		{"bad interrogation", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}, ErrSriInvalidInterrogationType, "", ""},
+		{"bad interrogation", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}, nil, "interrogationType", "ENUMERATED {0, 1}"},
 		{"bad numberOfForwarding", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", NumberOfForwarding: intPtr(9)}, nil, "numberOfForwarding", "(1..5)"},
 		{"bad orCapability", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", OrCapability: intPtr(200)}, nil, "or-Capability", "(1..127)"},
 		{"bad callref", &Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", CallReferenceNumber: make(HexBytes, 9)}, nil, "callReferenceNumber", "SIZE (1..8)"},

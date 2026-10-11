@@ -87,18 +87,9 @@ func convertWireToCallBarredParam(w *gsm_map.CallBarredParam) (*CallBarredParam,
 	switch w.Choice {
 	case gsm_map.CallBarredParamChoiceCallBarringCause:
 		v := *w.CallBarringCause
-		// CallBarringCause is non-extensible (3GPP TS 29.002 V19.1.0 §17.7.7);
-		// reject out-of-range values per project convention.
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		if int64(v) < 0 || int64(v) > 1 {
-			return nil, fmt.Errorf("CallBarredParam.CallBarringCause=%d: %w", v, ErrCallBarringCauseInvalid)
-		}
 		out.CallBarringCause = &v
 	case gsm_map.CallBarredParamChoiceExtensibleCallBarredParam:
-		ext, err := convertWireToExtensibleCallBarredParam(w.ExtensibleCallBarredParam)
-		if err != nil {
-			return nil, fmt.Errorf("CallBarredParam.ExtensibleCallBarredParam: %w", err)
-		}
+		ext := convertWireToExtensibleCallBarredParam(w.ExtensibleCallBarredParam)
 		out.ExtensibleCallBarredParam = ext
 	default:
 		return nil, fmt.Errorf("%w: CallBarredParam: unsupported choice %d", ErrCallBarredParamUnknownAlternative, w.Choice)
@@ -106,9 +97,9 @@ func convertWireToCallBarredParam(w *gsm_map.CallBarredParam) (*CallBarredParam,
 	return out, nil
 }
 
-func convertWireToExtensibleCallBarredParam(w *gsm_map.ExtensibleCallBarredParam) (*ExtensibleCallBarredParam, error) {
+func convertWireToExtensibleCallBarredParam(w *gsm_map.ExtensibleCallBarredParam) *ExtensibleCallBarredParam {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	out := &ExtensibleCallBarredParam{
 		UnauthorisedMessageOriginator: nullPtrToBool(w.UnauthorisedMessageOriginator),
@@ -116,26 +107,14 @@ func convertWireToExtensibleCallBarredParam(w *gsm_map.ExtensibleCallBarredParam
 	}
 	if w.CallBarringCause != nil {
 		v := *w.CallBarringCause
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		if int64(v) < 0 || int64(v) > 1 {
-			return nil, fmt.Errorf("ExtensibleCallBarredParam.CallBarringCause=%d: %w", v, ErrCallBarringCauseInvalid)
-		}
 		out.CallBarringCause = &v
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
 // SystemFailureParam — TS 29.002 §17.7.7 (errorCode 34)
 // ============================================================================
-
-// isValidNetworkResource reports whether v is one of the NetworkResource
-// values of 3GPP TS 29.002 V19.1.0 §17.7.8, plmn (0) to rss (7). The type is
-// not extensible.
-// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-func isValidNetworkResource(v gsm_map.NetworkResource) bool {
-	return v >= gsm_map.NetworkResourcePlmn && v <= gsm_map.NetworkResourceRss
-}
 
 func convertWireToSystemFailureParam(w *gsm_map.SystemFailureParam) (*SystemFailureParam, error) {
 	if w == nil {
@@ -145,15 +124,9 @@ func convertWireToSystemFailureParam(w *gsm_map.SystemFailureParam) (*SystemFail
 	switch w.Choice {
 	case gsm_map.SystemFailureParamChoiceNetworkResource:
 		v := *w.NetworkResource
-		if !isValidNetworkResource(v) {
-			return nil, fmt.Errorf("SystemFailureParam.NetworkResource=%d: %w", v, ErrNetworkResourceInvalid)
-		}
 		out.NetworkResource = &v
 	case gsm_map.SystemFailureParamChoiceExtensibleSystemFailureParam:
-		ext, err := convertWireToExtensibleSystemFailureParam(w.ExtensibleSystemFailureParam)
-		if err != nil {
-			return nil, fmt.Errorf("SystemFailureParam.ExtensibleSystemFailureParam: %w", err)
-		}
+		ext := convertWireToExtensibleSystemFailureParam(w.ExtensibleSystemFailureParam)
 		out.ExtensibleSystemFailureParam = ext
 	default:
 		return nil, fmt.Errorf("%w: SystemFailureParam: unsupported choice %d", ErrSystemFailureParamUnknownAlternative, w.Choice)
@@ -161,16 +134,13 @@ func convertWireToSystemFailureParam(w *gsm_map.SystemFailureParam) (*SystemFail
 	return out, nil
 }
 
-func convertWireToExtensibleSystemFailureParam(w *gsm_map.ExtensibleSystemFailureParam) (*ExtensibleSystemFailureParam, error) {
+func convertWireToExtensibleSystemFailureParam(w *gsm_map.ExtensibleSystemFailureParam) *ExtensibleSystemFailureParam {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	out := &ExtensibleSystemFailureParam{}
 	if w.NetworkResource != nil {
 		v := *w.NetworkResource
-		if !isValidNetworkResource(v) {
-			return nil, fmt.Errorf("ExtensibleSystemFailureParam.NetworkResource=%d: %w", v, ErrNetworkResourceInvalid)
-		}
 		out.NetworkResource = &v
 	}
 	// 3GPP TS 29.002 V19.1.0 §17.7.8 AdditionalNetworkResource: "if unknown
@@ -185,16 +155,16 @@ func convertWireToExtensibleSystemFailureParam(w *gsm_map.ExtensibleSystemFailur
 		c := *v
 		out.FailureCauseParam = &c
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
 // RoamingNotAllowedParam — TS 29.002 §17.7.7 (errorCode 8)
 // ============================================================================
 
-func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) (*RoamingNotAllowedParam, error) {
+func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) *RoamingNotAllowedParam {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	out := &RoamingNotAllowedParam{}
 	if w.AdditionalRoamingNotAllowedCause != nil {
@@ -203,20 +173,11 @@ func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) (*Ro
 		// then the roamingNotAllowedCause shall be discarded."
 		v := *w.AdditionalRoamingNotAllowedCause
 		out.AdditionalRoamingNotAllowedCause = &v
-		return out, nil
-	}
-	// RoamingNotAllowedCause is non-extensible (3GPP TS 29.002 V19.1.0 §17.7.7) with non-contiguous values: 0
-	// (plmnRoamingNotAllowed) and 3 (operatorDeterminedBarring).
-	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	switch w.RoamingNotAllowedCause {
-	case gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
-		gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring:
-	default:
-		return nil, fmt.Errorf("RoamingNotAllowedParam.RoamingNotAllowedCause=%d: %w", w.RoamingNotAllowedCause, ErrRoamingNotAllowedCauseInvalid)
+		return out
 	}
 	c := w.RoamingNotAllowedCause
 	out.RoamingNotAllowedCause = &c
-	return out, nil
+	return out
 }
 
 // ============================================================================

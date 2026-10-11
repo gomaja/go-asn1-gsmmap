@@ -215,10 +215,7 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 	if w == nil {
 		return nil, nil
 	}
-	mt, err := mmCodesFromWire("MGCSI.MobilityTriggers", w.MobilityTriggers, isPSMMCode)
-	if err != nil {
-		return nil, err
-	}
+	mt := mmCodesFromWire(w.MobilityTriggers, isPSMMCode)
 	if mt == nil {
 		return nil, nil
 	}

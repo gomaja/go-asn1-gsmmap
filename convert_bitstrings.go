@@ -2,25 +2,13 @@
 
 package gsmmap
 
-import (
-	"fmt"
-
-	"github.com/gomaja/go-asn1/runtime"
-)
+import "github.com/gomaja/go-asn1/runtime"
 
 // bitStringToWire builds the BIT STRING of a field the public type carries
-// as raw octets and a bit length. X.690 (02/2021) §8.6.2 carries a BIT
-// STRING of n bits in (n+7)/8 octets, the initial octet counting the unused
-// bits of the last one, so the octets must number exactly (bits+7)/8:
-// go-asn1 does not enforce BIT STRING bit length and byte consistency:
-// https://github.com/gomaja/go-asn1/issues/80. It encodes every octet given
-// with the unused-bit count of the bit length, and the receiver reads a
-// longer bit length. The SIZE of the bit length is the codec's check.
-func bitStringToWire(field string, octets []byte, bits int) (runtime.BitString, error) {
-	if bits < 0 || len(octets) != (bits+7)/8 {
-		return runtime.BitString{}, fmt.Errorf("%s: %d octets for %d bits: %w", field, len(octets), bits, ErrBitStringOctetsMismatch)
-	}
-	return runtime.BitString{Bytes: clearPaddingBits(octets, bits), BitLength: bits}, nil
+// as raw octets and a bit length. The codec checks their consistency per
+// ITU-T X.690 (02/2021) §8.6.2.2.
+func bitStringToWire(octets []byte, bits int) runtime.BitString {
+	return runtime.BitString{Bytes: clearPaddingBits(octets, bits), BitLength: bits}
 }
 
 // bitStringFromWire copies the octets of a decoded BIT STRING with the

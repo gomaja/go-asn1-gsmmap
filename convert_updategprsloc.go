@@ -108,10 +108,6 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if u.EplmnList != nil {
 		list := gsm_map.EPLMNList{Values: make([]gsm_map.PLMNId, len(u.EplmnList))}
 		for i, raw := range u.EplmnList {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
-			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
 		arg.EplmnList = &list
@@ -158,10 +154,6 @@ func convertUpdateGprsLocationToArg(u *UpdateGprsLocation) (*gsm_map.UpdateGprsL
 	if u.AdjacentPLMNList != nil {
 		list := gsm_map.AdjacentPLMNList{Values: make([]gsm_map.PLMNId, len(u.AdjacentPLMNList))}
 		for i, raw := range u.AdjacentPLMNList {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(raw) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] length %d: %w", i, len(raw), ErrPLMNIdInvalidLength)
-			}
 			list.Values[i] = gsm_map.PLMNId(raw)
 		}
 		arg.AdjacentPLMNList = &list
@@ -258,10 +250,6 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	if arg.EplmnList != nil && len(arg.EplmnList.Values) > 0 {
 		list := make([]HexBytes, len(arg.EplmnList.Values))
 		for i, plmn := range arg.EplmnList.Values {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: EplmnList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
-			}
 			list[i] = HexBytes(plmn)
 		}
 		u.EplmnList = list
@@ -299,10 +287,6 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 	if arg.AdjacentPLMNList != nil && len(arg.AdjacentPLMNList.Values) > 0 {
 		list := make([]HexBytes, len(arg.AdjacentPLMNList.Values))
 		for i, plmn := range arg.AdjacentPLMNList.Values {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(plmn) != 3 {
-				return nil, fmt.Errorf("UpdateGprsLocation: AdjacentPLMNList[%d] length %d: %w", i, len(plmn), ErrPLMNIdInvalidLength)
-			}
 			list[i] = HexBytes(plmn)
 		}
 		u.AdjacentPLMNList = list
@@ -451,10 +435,7 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 		return &v, nil
 	}
 	// IsrInformation is BIT STRING (SIZE(3..8)) per TS 29.002 §17.7.1.
-	bs, err := bitStringToWire("EpsInfo.IsrInformation", e.IsrInformation, e.IsrInformationBits)
-	if err != nil {
-		return nil, err
-	}
+	bs := bitStringToWire(e.IsrInformation, e.IsrInformationBits)
 	v := gsm_map.NewEPSInfoIsrInformation(bs)
 	return &v, nil
 }

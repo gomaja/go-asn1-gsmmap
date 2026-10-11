@@ -15,15 +15,7 @@ func validateSri(s *Sri) error {
 	if s.GmscOrGsmSCFAddress == "" {
 		return ErrSriMissingGmscOrGsmSCFAddress
 	}
-	if s.InterrogationType != InterrogationBasicCall && s.InterrogationType != InterrogationForwarding {
-		return ErrSriInvalidInterrogationType
-	}
 
-	// ForwardingReason — 0..2 (3GPP TS 29.002 V19.1.0 §17.7.3).
-	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	if s.ForwardingReason != nil && (*s.ForwardingReason < 0 || *s.ForwardingReason > 2) {
-		return fmt.Errorf("ForwardingReason=%d: %w", *s.ForwardingReason, ErrSriForwardingReasonInvalid)
-	}
 	// SupportedCCBS-Phase, 3GPP TS 29.002 V19.1.0 §17.7.3: "Only value 1 is
 	// used. Values in the ranges 2-127 are reserved for future use."
 	if s.SupportedCCBSPhase != nil && *s.SupportedCCBSPhase != 1 {
@@ -216,10 +208,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 	}
 
 	// InterrogationType — 0 (basicCall) or 1 (forwarding), 3GPP TS 29.002 V19.1.0 §17.7.3.
-	it, err := narrowInt64Range(int64(arg.InterrogationType), 0, 1, "InterrogationType")
-	if err != nil {
-		return nil, fmt.Errorf("decoding InterrogationType: %w: %w", ErrSriInvalidInterrogationType, err)
-	}
+	it := int(arg.InterrogationType)
 
 	s := &Sri{
 		MSISDN:                    msisdn,
@@ -258,11 +247,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// ForwardingReason — 0..2 (3GPP TS 29.002 V19.1.0 §17.7.3).
 	if arg.ForwardingReason != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		v, err := narrowInt64Range(int64(*arg.ForwardingReason), 0, 2, "ForwardingReason")
-		if err != nil {
-			return nil, fmt.Errorf("ForwardingReason: %w: %w", ErrSriForwardingReasonInvalid, err)
-		}
+		v := int(*arg.ForwardingReason)
 		fr := ForwardingReason(v)
 		s.ForwardingReason = &fr
 	}
@@ -287,19 +272,13 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// NetworkSignalInfo
 	if arg.NetworkSignalInfo != nil {
-		v, err := convertWireToExternalSignalInfo(arg.NetworkSignalInfo)
-		if err != nil {
-			return nil, fmt.Errorf("decoding NetworkSignalInfo: %w", err)
-		}
+		v := convertWireToExternalSignalInfo(arg.NetworkSignalInfo)
 		s.NetworkSignalInfo = v
 	}
 
 	// NetworkSignalInfo2
 	if arg.NetworkSignalInfo2 != nil {
-		v, err := convertWireToExternalSignalInfo(arg.NetworkSignalInfo2)
-		if err != nil {
-			return nil, fmt.Errorf("decoding NetworkSignalInfo2: %w", err)
-		}
+		v := convertWireToExternalSignalInfo(arg.NetworkSignalInfo2)
 		s.NetworkSignalInfo2 = v
 	}
 
@@ -602,10 +581,6 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	if res.SsList != nil && len(res.SsList.Values) > 0 {
 		out.SsList = make([]SsCode, len(res.SsList.Values))
 		for i, c := range res.SsList.Values {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(c) != 1 {
-				return nil, fmt.Errorf("SsList[%d] length %d: %w", i, len(c), ErrSriSsListSsCodeInvalidLength)
-			}
 			out.SsList[i] = SsCode(c[0])
 		}
 	}
@@ -700,10 +675,6 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 	if res.SsList2 != nil && len(res.SsList2.Values) > 0 {
 		out.SsList2 = make([]SsCode, len(res.SsList2.Values))
 		for i, c := range res.SsList2.Values {
-			// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-			if len(c) != 1 {
-				return nil, fmt.Errorf("SsList2[%d] length %d: %w", i, len(c), ErrSriSsList2SsCodeInvalidLength)
-			}
 			out.SsList2[i] = SsCode(c[0])
 		}
 	}
@@ -738,10 +709,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// GsmBearerCapability
 	if res.GsmBearerCapability != nil {
-		v, err := convertWireToExternalSignalInfo(res.GsmBearerCapability)
-		if err != nil {
-			return nil, fmt.Errorf("decoding GsmBearerCapability: %w", err)
-		}
+		v := convertWireToExternalSignalInfo(res.GsmBearerCapability)
 		out.GsmBearerCapability = v
 	}
 

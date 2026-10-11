@@ -71,10 +71,6 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 
 	// ImsVoiceOverPSSessionsIndication — 0..2 per TS 29.002.
 	if s.ImsVoiceOverPSSessionsIndication != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		if *s.ImsVoiceOverPSSessionsIndication < 0 || *s.ImsVoiceOverPSSessionsIndication > 2 {
-			return nil, fmt.Errorf("ImsVoiceOverPSSessionsIndication=%d: %w", *s.ImsVoiceOverPSSessionsIndication, ErrImsVoiceOverPSSessionsIndicationInvalid)
-		}
 		v := *s.ImsVoiceOverPSSessionsIndication
 		si.ImsVoiceOverPSSessionsIndication = &v
 	}
@@ -117,10 +113,6 @@ func convertSubscriberInfoToWire(s *SubscriberInfo) (*gsm_map.SubscriberInfo, er
 
 	// DaylightSavingTime — 0..2 per TS 29.002.
 	if s.DaylightSavingTime != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		if *s.DaylightSavingTime < 0 || *s.DaylightSavingTime > 2 {
-			return nil, fmt.Errorf("DaylightSavingTime=%d: %w", *s.DaylightSavingTime, ErrDaylightSavingTimeInvalid)
-		}
 		dst := gsm_map.DaylightSavingTime(*s.DaylightSavingTime)
 		si.DaylightSavingTime = &dst
 	}
@@ -200,11 +192,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 
 	// ImsVoiceOverPSSessionsIndication — 0..2 per TS 29.002.
 	if si.ImsVoiceOverPSSessionsIndication != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		v, err := narrowInt64Range(int64(*si.ImsVoiceOverPSSessionsIndication), 0, 2, "ImsVoiceOverPSSessionsIndication")
-		if err != nil {
-			return nil, fmt.Errorf("ImsVoiceOverPSSessionsIndication: %w: %w", ErrImsVoiceOverPSSessionsIndicationInvalid, err)
-		}
+		v := int(*si.ImsVoiceOverPSSessionsIndication)
 		iv := ImsVoiceOverPSSessionsIndication(v)
 		out.ImsVoiceOverPSSessionsIndication = &iv
 	}
@@ -243,11 +231,7 @@ func convertWireToSubscriberInfo(si *gsm_map.SubscriberInfo) (*SubscriberInfo, e
 
 	// DaylightSavingTime — 0..2 per TS 29.002.
 	if si.DaylightSavingTime != nil {
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		v, err := narrowInt64Range(int64(*si.DaylightSavingTime), 0, 2, "DaylightSavingTime")
-		if err != nil {
-			return nil, fmt.Errorf("DaylightSavingTime: %w: %w", ErrDaylightSavingTimeInvalid, err)
-		}
+		v := int(*si.DaylightSavingTime)
 		out.DaylightSavingTime = &v
 	}
 
@@ -329,10 +313,6 @@ func convertPsSubscriberStateToWire(p *PsSubscriberState) (*gsm_map.PSSubscriber
 		return &v, nil
 	case p.NetDetNotReachable != nil:
 		// NotReachableReason — 0..3 (3GPP TS 29.002 V19.1.0 §17.7.1).
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		if *p.NetDetNotReachable < 0 || *p.NetDetNotReachable > 3 {
-			return nil, fmt.Errorf("PsSubscriberState.NetDetNotReachable=%d: %w", *p.NetDetNotReachable, ErrPsSubscriberStateNetDetNotReachableInvalid)
-		}
 		v := gsm_map.NewPSSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(int64(*p.NetDetNotReachable)))
 		return &v, nil
 	}
@@ -365,11 +345,7 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 	case gsm_map.PSSubscriberStateChoiceNetDetNotReachable:
 		// NotReachableReason — 0..3 per TS 29.002 (msPurged / imsiDetached /
 		// restrictedArea / notRegistered).
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		v, err := narrowInt64Range(int64(*w.NetDetNotReachable), 0, 3, "PsSubscriberState.NetDetNotReachable")
-		if err != nil {
-			return nil, fmt.Errorf("PsSubscriberState.NetDetNotReachable: %w: %w", ErrPsSubscriberStateNetDetNotReachableInvalid, err)
-		}
+		v := int(*w.NetDetNotReachable)
 		out.NetDetNotReachable = &v
 	default:
 		return nil, fmt.Errorf("%w: PsSubscriberState: unknown CHOICE value %d", ErrPsSubscriberStateUnknownAlternative, w.Choice)
@@ -524,11 +500,8 @@ func convertWireToGprsMSClass(w *gsm_map.GPRSMSClass) *GprsMSClass {
 
 // --- UserCSGInformation (opCode 71) ---
 
-func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInformation, error) {
-	csgID, err := bitStringToWire("UserCSGInformation.CsgID", u.CsgID, u.CsgIDBits)
-	if err != nil {
-		return nil, err
-	}
+func convertUserCSGInformationToWire(u *UserCSGInformation) *gsm_map.UserCSGInformation {
+	csgID := bitStringToWire(u.CsgID, u.CsgIDBits)
 	out := &gsm_map.UserCSGInformation{CsgId: csgID}
 	if u.AccessMode != nil {
 		out.AccessMode = []byte(u.AccessMode)
@@ -536,7 +509,7 @@ func convertUserCSGInformationToWire(u *UserCSGInformation) (*gsm_map.UserCSGInf
 	if u.CMI != nil {
 		out.Cmi = []byte(u.CMI)
 	}
-	return out, nil
+	return out
 }
 
 func convertWireToUserCSGInformation(w *gsm_map.UserCSGInformation) *UserCSGInformation {

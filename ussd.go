@@ -23,9 +23,6 @@ import (
 	"github.com/gomaja/go-sms/encoding/ucs2"
 )
 
-// maxUSSDStringLength is maxUSSD-StringLength, 3GPP TS 29.002 V19.1.0 §17.7.4.
-const maxUSSDStringLength = 160
-
 // Sentinel errors of the USSD codec. All are wrapped with context and are
 // matchable with errors.Is.
 var (
@@ -231,8 +228,8 @@ func (d USSDDataCodingScheme) Encode(text string) ([]byte, error) {
 			return nil, fmt.Errorf("packing GSM 7 bit USSD-String: %w", err)
 		}
 	}
-	if len(out) > maxUSSDStringLength {
-		return nil, fmt.Errorf("encoded USSD-String is %d octets, maximum %d: %w", len(out), maxUSSDStringLength, ErrUSSDTextTooLong)
+	if len(out) > int(gsm_map.MaxUSSDStringLength) {
+		return nil, fmt.Errorf("encoded USSD-String is %d octets, maximum %d: %w", len(out), int(gsm_map.MaxUSSDStringLength), ErrUSSDTextTooLong)
 	}
 	return out, nil
 }

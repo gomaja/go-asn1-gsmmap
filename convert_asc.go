@@ -57,9 +57,6 @@ func convertAlertServiceCentreToArg(a *AlertServiceCentre) (*gsm_map.AlertServic
 
 	if a.SmsGmscAlertEvent != nil {
 		ev := *a.SmsGmscAlertEvent
-		if ev != SmsGmscAlertMsAvailableForMtSms && ev != SmsGmscAlertMsUnderNewServingNode {
-			return nil, ErrAscInvalidSmsGmscAlertEvent
-		}
 		v := ev
 		arg.SmsGmscAlertEvent = &v
 	}
@@ -149,9 +146,6 @@ func convertArgToAlertServiceCentre(arg *gsm_map.AlertServiceCentreArg) (*AlertS
 
 	if arg.SmsGmscAlertEvent != nil {
 		ev := *arg.SmsGmscAlertEvent
-		if ev != SmsGmscAlertMsAvailableForMtSms && ev != SmsGmscAlertMsUnderNewServingNode {
-			return nil, ErrAscInvalidSmsGmscAlertEvent
-		}
 		out.SmsGmscAlertEvent = &ev
 	}
 

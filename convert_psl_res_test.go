@@ -297,7 +297,7 @@ func TestProvideSubscriberLocationResCellGlobalIdSizeValidation(t *testing.T) {
 		CellGlobalId:     HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be 7
 	}
 	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
-	if !matchesConstraint(err, "cellGlobalIdOrServiceAreaIdFixedLength", "SIZE (7)") {
+	if !matchesConstraint(err, "cellIdOrSai.cellGlobalIdOrServiceAreaIdFixedLength", "SIZE (7)") {
 		t.Errorf("encode CGI=3: want BER constraint error, got %v", err)
 	}
 }
@@ -308,7 +308,7 @@ func TestProvideSubscriberLocationResLAISizeValidation(t *testing.T) {
 		LAI:              HexBytes{0x01, 0x02, 0x03}, // 3 octets — must be 5
 	}
 	_, err := strictWire(convertProvideSubscriberLocationResToWire(in))
-	if !matchesConstraint(err, "laiFixedLength", "SIZE (5)") {
+	if !matchesConstraint(err, "cellIdOrSai.laiFixedLength", "SIZE (5)") {
 		t.Errorf("encode LAI=3: want BER constraint error, got %v", err)
 	}
 }

@@ -300,7 +300,7 @@ func TestParseCamelCapabilityHandlingAbovePhase4(t *testing.T) {
 		v := gsm_map.CamelCapabilityHandling(17)
 		w.VlrCamelSubscriptionInfo.OCSI.CamelCapabilityHandling = &v
 		_, err := ParseInsertSubscriberData(tolerantBER(t, w))
-		wantConstraintError(t, err, "vlrcamelsubscriptioninfo.ocsi.camelCapabilityHandling", "(1..16)")
+		wantConstraintError(t, err, "vlrCamelSubscriptionInfo.o-CSI.camelCapabilityHandling", "(1..16)")
 	})
 }
 
@@ -399,16 +399,15 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 		{OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo, CallTypeCriteria: &forwarded},
 		{OBcsmTriggerDetectionPoint: OBcsmTriggerRouteSelectFailure},
 	}
-	// ignoredData and ignoredCriteria carry the unlisted TDP and a field the
-	// decoder would reject, which proves that it skips the whole sequence.
+	// 3GPP TS 29.002 V19.1.0 §17.7.1 ignores sequences with unlisted TDPs.
+	// Their other fields satisfy the ASN.1 constraints.
 	ignoredData := func(w []gsm_map.OBcsmCamelTDPData, tdp OBcsmTriggerDetectionPoint) []gsm_map.OBcsmCamelTDPData {
 		e := w[0]
 		e.OBcsmTriggerDetectionPoint, e.ServiceKey, e.DefaultCallHandling = tdp, 11, -1
 		return slices.Insert(w, 1, e)
 	}
 	ignoredCriteria := func(w []gsm_map.OBcsmCamelTDPCriteria, tdp OBcsmTriggerDetectionPoint) []gsm_map.OBcsmCamelTDPCriteria {
-		bad := CallTypeCriteria(99)
-		return slices.Insert(w, 1, gsm_map.OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: tdp, CallTypeCriteria: &bad})
+		return slices.Insert(w, 1, gsm_map.OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: tdp, CallTypeCriteria: &forwarded})
 	}
 	for _, tdp := range []OBcsmTriggerDetectionPoint{1, 3, 5, -1, math.MaxInt64} {
 		t.Run(fmt.Sprintf("VLR, wire %d", tdp), func(t *testing.T) {
@@ -422,6 +421,13 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 			got := parseISD(t, w).VlrCamelSubscriptionInfo
 			wantEqual(t, "O-CSI", kept, got.OCSI.OBcsmCamelTDPDataList)
 			wantEqual(t, "O-BcsmCamelTDP-CriteriaList", keptCriteria, got.OBcsmCamelTDPCriteriaList)
+			bad := CallTypeCriteria(99)
+			vlr.OBcsmCamelTDPCriteriaList.Values[1].CallTypeCriteria = &bad
+			parsed, err := ParseInsertSubscriberData(tolerantBER(t, w))
+			wantConstraintError(t, err, "vlrCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[1].callTypeCriteria", "ENUMERATED {0, 1}")
+			if parsed != nil {
+				t.Errorf("malformed ignored sequence: got %+v, want nil", parsed)
+			}
 		})
 		t.Run(fmt.Sprintf("GMSC, wire %d", tdp), func(t *testing.T) {
 			g := gmscCamel()
@@ -434,6 +440,13 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 			got := parseSriRespGmsc(t, w)
 			wantEqual(t, "O-CSI", kept, got.OCSI.OBcsmCamelTDPDataList)
 			wantEqual(t, "O-BcsmCamelTDP-CriteriaList", keptCriteria, got.OBcsmCamelTDPCriteriaList)
+			bad := CallTypeCriteria(99)
+			wg.OBcsmCamelTDPCriteriaList.Values[1].CallTypeCriteria = &bad
+			parsed, err := ParseSriResp(tolerantBER(t, w))
+			wantConstraintError(t, err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[1].callTypeCriteria", "ENUMERATED {0, 1}")
+			if parsed != nil {
+				t.Errorf("malformed ignored sequence: got %+v, want nil", parsed)
+			}
 		})
 	}
 	// With every entry ignored the O-CSI and the criteria list are absent;

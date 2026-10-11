@@ -150,19 +150,9 @@ func convertWireToSpecificAPNInfoList(w *gsm_map.SpecificAPNInfoList) (SpecificA
 // WLANOffloadability — TS 29.002 MAP-MS-DataTypes
 // ============================================================================
 
-func convertWLANOffloadabilityToWire(o *WLANOffloadability) (*gsm_map.WLANOffloadability, error) {
+func convertWLANOffloadabilityToWire(o *WLANOffloadability) *gsm_map.WLANOffloadability {
 	if o == nil {
-		return nil, nil
-	}
-	if o.WlanOffloadabilityEUTRAN != nil {
-		if v := *o.WlanOffloadabilityEUTRAN; v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (EUTRAN got %d)", ErrWLANOffloadabilityIndicationInvalid, v)
-		}
-	}
-	if o.WlanOffloadabilityUTRAN != nil {
-		if v := *o.WlanOffloadabilityUTRAN; v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (UTRAN got %d)", ErrWLANOffloadabilityIndicationInvalid, v)
-		}
+		return nil
 	}
 	out := &gsm_map.WLANOffloadability{}
 	if o.WlanOffloadabilityEUTRAN != nil {
@@ -173,29 +163,23 @@ func convertWLANOffloadabilityToWire(o *WLANOffloadability) (*gsm_map.WLANOffloa
 		v := *o.WlanOffloadabilityUTRAN
 		out.WlanOffloadabilityUTRAN = &v
 	}
-	return out, nil
+	return out
 }
 
-func convertWireToWLANOffloadability(w *gsm_map.WLANOffloadability) (*WLANOffloadability, error) {
+func convertWireToWLANOffloadability(w *gsm_map.WLANOffloadability) *WLANOffloadability {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	out := &WLANOffloadability{}
 	if w.WlanOffloadabilityEUTRAN != nil {
 		v := *w.WlanOffloadabilityEUTRAN
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (EUTRAN got %d)", ErrWLANOffloadabilityIndicationInvalid, v)
-		}
 		out.WlanOffloadabilityEUTRAN = &v
 	}
 	if w.WlanOffloadabilityUTRAN != nil {
 		v := *w.WlanOffloadabilityUTRAN
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (UTRAN got %d)", ErrWLANOffloadabilityIndicationInvalid, v)
-		}
 		out.WlanOffloadabilityUTRAN = &v
 	}
-	return out, nil
+	return out
 }
 
 // ============================================================================
@@ -205,37 +189,6 @@ func convertWireToWLANOffloadability(w *gsm_map.WLANOffloadability) (*WLANOffloa
 func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfiguration, error) {
 	if a == nil {
 		return nil, nil
-	}
-
-	if a.PdnGwAllocationType != nil {
-		if v := *a.PdnGwAllocationType; v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrPDNGWAllocationTypeInvalid, v)
-		}
-	}
-	if a.SiptoPermission != nil {
-		if v := *a.SiptoPermission; v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOPermissionInvalid, v)
-		}
-	}
-	if a.LipaPermission != nil {
-		if v := *a.LipaPermission; v < 0 || v > 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrLIPAPermissionInvalid, v)
-		}
-	}
-	if a.SiptoLocalNetworkPermission != nil {
-		if v := *a.SiptoLocalNetworkPermission; v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOLocalNetworkPermissionInvalid, v)
-		}
-	}
-	if a.NIDDMechanism != nil {
-		if v := *a.NIDDMechanism; v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrNIDDMechanismInvalid, v)
-		}
-	}
-	if a.PdnConnectionContinuity != nil {
-		if v := *a.PdnConnectionContinuity; v < 0 || v > 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrPDNConnectionContinuityInvalid, v)
-		}
 	}
 
 	qos, err := convertEPSQoSSubscribedToWire(&a.EpsQosSubscribed)
@@ -309,10 +262,7 @@ func convertAPNConfigurationToWire(a *APNConfiguration) (*gsm_map.APNConfigurati
 		out.SiptoLocalNetworkPermission = &v
 	}
 	if a.WlanOffloadability != nil {
-		wo, err := convertWLANOffloadabilityToWire(a.WlanOffloadability)
-		if err != nil {
-			return nil, fmt.Errorf("APNConfiguration.WlanOffloadability: %w", err)
-		}
+		wo := convertWLANOffloadabilityToWire(a.WlanOffloadability)
 		out.WlanOffloadability = wo
 	}
 	if a.NIDDMechanism != nil {
@@ -361,9 +311,6 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 	}
 	if w.PdnGwAllocationType != nil {
 		v := *w.PdnGwAllocationType
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrPDNGWAllocationTypeInvalid, v)
-		}
 		out.PdnGwAllocationType = &v
 	}
 	if w.ChargingCharacteristics != nil {
@@ -391,16 +338,10 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 	}
 	if w.SiptoPermission != nil {
 		v := *w.SiptoPermission
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOPermissionInvalid, v)
-		}
 		out.SiptoPermission = &v
 	}
 	if w.LipaPermission != nil {
 		v := *w.LipaPermission
-		if v < 0 || v > 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrLIPAPermissionInvalid, v)
-		}
 		out.LipaPermission = &v
 	}
 	if w.RestorationPriority != nil {
@@ -408,23 +349,14 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 	}
 	if w.SiptoLocalNetworkPermission != nil {
 		v := *w.SiptoLocalNetworkPermission
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrSIPTOLocalNetworkPermissionInvalid, v)
-		}
 		out.SiptoLocalNetworkPermission = &v
 	}
 	if w.WlanOffloadability != nil {
-		wo, err := convertWireToWLANOffloadability(w.WlanOffloadability)
-		if err != nil {
-			return nil, fmt.Errorf("APNConfiguration.WlanOffloadability: %w", err)
-		}
+		wo := convertWireToWLANOffloadability(w.WlanOffloadability)
 		out.WlanOffloadability = wo
 	}
 	if w.NIDDMechanism != nil {
 		v := *w.NIDDMechanism
-		if v < 0 || v > 1 {
-			return nil, fmt.Errorf("%w (got %d)", ErrNIDDMechanismInvalid, v)
-		}
 		out.NIDDMechanism = &v
 	}
 	if w.SCEFID != nil {
@@ -432,9 +364,6 @@ func convertWireToAPNConfiguration(w *gsm_map.APNConfiguration) (*APNConfigurati
 	}
 	if w.PdnConnectionContinuity != nil {
 		v := *w.PdnConnectionContinuity
-		if v < 0 || v > 2 {
-			return nil, fmt.Errorf("%w (got %d)", ErrPDNConnectionContinuityInvalid, v)
-		}
 		out.PdnConnectionContinuity = &v
 	}
 	return out, nil

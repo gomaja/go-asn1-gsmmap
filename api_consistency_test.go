@@ -202,13 +202,13 @@ func TestCSGIdPublicConstraint(t *testing.T) {
 			}
 			continue
 		}
-		wantConstraintError(t, err, "csg-Id", "SIZE (27)")
+		wantConstraintError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", "SIZE (27)")
 	}
 	user := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{LocationInformation: &CSLocationInformation{
 		VlrNumber: "12", UserCSGInformation: &UserCSGInformation{CsgID: HexBytes{0x12, 0x34, 0x56, 0x60}, CsgIDBits: 26},
 	}}}
 	_, err := user.Marshal()
-	wantConstraintError(t, err, "csg-Id", "SIZE (27)")
+	wantConstraintError(t, err, "subscriberInfo.locationInformation.userCSGInformation.csg-Id", "SIZE (27)")
 }
 
 func TestISDIstAlertTimerUsesInt(t *testing.T) {
@@ -279,10 +279,7 @@ func TestBitStringPaddingBitsCleared(t *testing.T) {
 	padded := runtime.BitString{Bytes: []byte{0x12, 0x34, 0x56, 0x3F}, BitLength: 27}
 	want := HexBytes{0x12, 0x34, 0x56, 0x20}
 
-	csg, err := convertWireToCSGSubscriptionData(&gsm_map.CSGSubscriptionData{CsgId: padded})
-	if err != nil {
-		t.Fatal(err)
-	}
+	csg := convertWireToCSGSubscriptionData(&gsm_map.CSGSubscriptionData{CsgId: padded})
 	if !bytes.Equal(csg.CsgID, want) || csg.CsgIDBits != 27 {
 		t.Errorf("CSGSubscriptionData.CsgID = %x (%d bits), want %x (27 bits)", csg.CsgID, csg.CsgIDBits, want)
 	}
@@ -327,10 +324,7 @@ func TestLocationCellIdAndLAIBothSet(t *testing.T) {
 // Marshal sends zero padding bits whatever the caller's octets hold, so a
 // value marshals to the same octets before and after a round trip.
 func TestBitStringToWireClearsPaddingBits(t *testing.T) {
-	bs, err := bitStringToWire("AdditionalInfo", []byte{0xAB, 0xFF}, 9)
-	if err != nil {
-		t.Fatal(err)
-	}
+	bs := bitStringToWire([]byte{0xAB, 0xFF}, 9)
 	if !bytes.Equal(bs.Bytes, []byte{0xAB, 0x80}) || bs.BitLength != 9 {
 		t.Errorf("bitStringToWire = %x (%d bits), want ab80 (9 bits)", bs.Bytes, bs.BitLength)
 	}
@@ -361,10 +355,10 @@ func TestFeatureBitLengthOutOfRange(t *testing.T) {
 		path string
 		size string
 	}{
-		{"SupportedFeatures 2^30", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: 1 << 30}}, "supportedFeatures", "SIZE (26..40)"},
-		{"SupportedFeatures MaxInt", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: math.MaxInt}}, "supportedFeatures", "SIZE (26..40)"},
-		{"ExtSupportedFeatures 41", &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{BitLength: 41}}, "ext-SupportedFeatures", "SIZE (1..40)"},
-		{"ExtSupportedFeatures MaxInt", &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{BitLength: math.MaxInt}}, "ext-SupportedFeatures", "SIZE (1..40)"},
+		{"SupportedFeatures 2^30", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: 1 << 30}}, "sgsn-Capability.supportedFeatures", "SIZE (26..40)"},
+		{"SupportedFeatures MaxInt", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: math.MaxInt}}, "sgsn-Capability.supportedFeatures", "SIZE (26..40)"},
+		{"ExtSupportedFeatures 41", &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{BitLength: 41}}, "sgsn-Capability.ext-SupportedFeatures", "SIZE (1..40)"},
+		{"ExtSupportedFeatures MaxInt", &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{BitLength: math.MaxInt}}, "sgsn-Capability.ext-SupportedFeatures", "SIZE (1..40)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := (&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "12", SGSNAddress: "192.0.2.1", SGSNCapability: tc.caps}).Marshal()
@@ -383,8 +377,8 @@ func TestEmptyOptionalListRejected(t *testing.T) {
 		msg        interface{ Marshal() ([]byte, error) }
 		path, size string
 	}{
-		{"GPRS-CSI", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{GprsCSI: &GPRSCSI{GprsCamelTDPDataList: GPRSCamelTDPDataList{}}}}, "gprs-CamelTDPDataList", "SIZE (1..10)"},
-		{"MO-SMS-CSI", &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{MoSmsCSI: &SMSCSI{SmsCAMELTDPDataList: []SMSCAMELTDPData{}}}}, "sms-CAMEL-TDP-DataList", "SIZE (1..10)"},
+		{"GPRS-CSI", &InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{GprsCSI: &GPRSCSI{GprsCamelTDPDataList: GPRSCamelTDPDataList{}}}}, "sgsn-CAMEL-SubscriptionInfo.gprs-CSI.gprs-CamelTDPDataList", "SIZE (1..10)"},
+		{"MO-SMS-CSI", &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{MoSmsCSI: &SMSCSI{SmsCAMELTDPDataList: []SMSCAMELTDPData{}}}}, "vlrCamelSubscriptionInfo.mo-sms-CSI.sms-CAMEL-TDP-DataList", "SIZE (1..10)"},
 		{"UpdateLocation EPLMN", &UpdateLocation{IMSI: "001010123456789", MscNumber: "12", VlrNumber: "12", EplmnList: []HexBytes{}}, "eplmn-List", "SIZE (1..50)"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -483,9 +483,6 @@ func convertGMLCListToWire(list GMLCList) (*gsm_map.GMLCList, error) {
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
 		}
-		if !isISDNAddressStringSize(len(isdn)) {
-			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(isdn), ErrGMLCListEntryInvalidSize)
-		}
 		out.Values[i] = isdn
 	}
 	return &out, nil
@@ -498,9 +495,6 @@ func convertWireToGMLCList(w *gsm_map.GMLCList) (GMLCList, error) {
 
 	out := make(GMLCList, len(w.Values))
 	for i, a := range w.Values {
-		if !isISDNAddressStringSize(len(a)) {
-			return nil, fmt.Errorf("GMLCList[%d]: %d octets: %w", i, len(a), ErrGMLCListEntryInvalidSize)
-		}
 		s, nature, plan, err := decodeAddressField(a)
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
@@ -540,7 +534,7 @@ func convertLCSInformationToWire(l *LCSInformation) (*gsm_map.LCSInformation, er
 		out.MolrList = convertMOLRListToWire(l.MolrList)
 	}
 	if l.AddLcsPrivacyExceptionList != nil {
-		if len(l.LcsPrivacyExceptionList) != maxNumOfPrivacyClass {
+		if len(l.LcsPrivacyExceptionList) != int(gsm_map.MaxNumOfPrivacyClass) {
 			return nil, ErrLCSAddPrivacyExceptionListNotAllowed
 		}
 		if err := checkPrivacyClassSSCodesDistinct(l.LcsPrivacyExceptionList, l.AddLcsPrivacyExceptionList); err != nil {
@@ -580,7 +574,7 @@ func convertWireToLCSInformation(w *gsm_map.LCSInformation) (*LCSInformation, er
 	// "If the mentioned condition is not satisfied the receiving node shall
 	// discard add-lcs-PrivacyExceptionList" (see
 	// ErrLCSAddPrivacyExceptionListNotAllowed).
-	if w.AddLcsPrivacyExceptionList != nil && len(out.LcsPrivacyExceptionList) == maxNumOfPrivacyClass {
+	if w.AddLcsPrivacyExceptionList != nil && len(out.LcsPrivacyExceptionList) == int(gsm_map.MaxNumOfPrivacyClass) {
 		al, err := convertWireToLCSPrivacyExceptionList(w.AddLcsPrivacyExceptionList)
 		if err != nil {
 			return nil, fmt.Errorf("LCSInformation.AddLcsPrivacyExceptionList: %w", err)
@@ -592,11 +586,6 @@ func convertWireToLCSInformation(w *gsm_map.LCSInformation) (*LCSInformation, er
 	}
 	return out, nil
 }
-
-// maxNumOfPrivacyClass is the LCS-PrivacyExceptionList bound, and the
-// number of classes lcs-PrivacyExceptionList must hold before
-// add-lcs-PrivacyExceptionList may be sent (3GPP TS 29.002 V19.1.0 §17.7.1).
-const maxNumOfPrivacyClass = 4
 
 // checkPrivacyClassSSCodesDistinct returns ErrLCSPrivacyClassDuplicateSSCode
 // when an SS-Code of add is also in list.

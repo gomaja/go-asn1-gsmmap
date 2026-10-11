@@ -2411,7 +2411,7 @@ func TestUpdateGprsLocationEpsInfoIsrMinimum(t *testing.T) {
 				},
 			}
 			_, err := in.Marshal()
-			wantConstraintError(t, err, "isr-Information", "SIZE (3..8)")
+			wantConstraintError(t, err, "eps-info.isr-Information", "SIZE (3..8)")
 		})
 	}
 }
@@ -2745,8 +2745,8 @@ func TestAlertServiceCentreValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for invalid SmsGmscAlertEvent")
 		}
-		if !errors.Is(err, ErrAscInvalidSmsGmscAlertEvent) {
-			t.Errorf("expected ErrAscInvalidSmsGmscAlertEvent, got: %v", err)
+		if !matchesConstraint(err, "smsGmscAlertEvent", "ENUMERATED {0, 1}") {
+			t.Errorf("expected codec constraint, got: %v", err)
 		}
 	})
 }
@@ -3574,7 +3574,7 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for wrong LMSI length")
 		}
-		if !matchesConstraint(err, "lmsi", "SIZE (4)") {
+		if !matchesConstraint(err, "identity.imsi-WithLMSI.lmsi", "SIZE (4)") {
 			t.Errorf("expected BER constraint error, got: %v", err)
 		}
 	})
@@ -3961,7 +3961,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelMissingGsmSCFAddress) {
 			t.Errorf("want ErrCamelMissingGsmSCFAddress, got %v", err)
 		}
@@ -3980,8 +3980,8 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !matchesConstraint(err, "serviceKey", "(0..2147483647)") {
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-CSI.o-BcsmCamelTDPDataList.element[0].serviceKey", "(0..2147483647)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -4009,8 +4009,8 @@ func TestCamelValidationErrors(t *testing.T) {
 
 	t.Run("InvalidTDPDataListSize_Empty", func(t *testing.T) {
 		in := &GmscCamelSubscriptionInfo{OCSI: &OCSI{}}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !matchesConstraint(err, "o-BcsmCamelTDPDataList", "SIZE (1..10)") {
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-CSI.o-BcsmCamelTDPDataList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -4027,9 +4027,9 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !errors.Is(err, ErrCamelInvalidMatchType) {
-			t.Errorf("want ErrCamelInvalidMatchType, got %v", err)
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.matchType", "ENUMERATED {0, 1}") {
+			t.Errorf("want codec constraint, got %v", err)
 		}
 	})
 
@@ -4043,9 +4043,9 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !errors.Is(err, ErrCamelInvalidCallTypeCriteria) {
-			t.Errorf("want ErrCamelInvalidCallTypeCriteria, got %v", err)
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].callTypeCriteria", "ENUMERATED {0, 1}") {
+			t.Errorf("want codec constraint, got %v", err)
 		}
 	})
 
@@ -4060,7 +4060,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelMissingDestinationNumberCriteria) {
 			t.Errorf("want ErrCamelMissingDestinationNumberCriteria, got %v", err)
 		}
@@ -4078,8 +4078,8 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !matchesConstraint(err, "element[0]", "(1..15)") {
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.destinationNumberLengthList.element[0]", "(1..15)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -4093,7 +4093,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelInvalidCauseValue) {
 			t.Errorf("want ErrCamelInvalidCauseValue, got %v", err)
 		}
@@ -4112,7 +4112,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				CamelCapabilityHandling: intPtr(3),
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelMissingDialledNumber) {
 			t.Errorf("want ErrCamelMissingDialledNumber, got %v", err)
 		}
@@ -4130,7 +4130,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelMissingDestinationNumber) {
 			t.Errorf("want ErrCamelMissingDestinationNumber, got %v", err)
 		}
@@ -4145,8 +4145,8 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !matchesConstraint(err, "o-CauseValueCriteria", "SIZE (1..5)") {
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].o-CauseValueCriteria", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -4157,8 +4157,8 @@ func TestCamelValidationErrors(t *testing.T) {
 			big[i] = OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo}
 		}
 		in := &GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
-		_, err := strictWire(convertGmscCamelSubInfoToWire(in))
-		if !matchesConstraint(err, "o-BcsmCamelTDP-CriteriaList", "SIZE (1..10)") {
+		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
 	})
@@ -4179,9 +4179,10 @@ func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 				},
 			}},
 		}
-		_, err := convertWireToGmscCamelSubInfo(&wire)
-		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
-			t.Errorf("want ErrCamelInvalidCauseValueOctetLength, got %v", err)
+		parent := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &gsm_map.ExtendedRoutingInfo{Choice: gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo, CamelRoutingInfo: &gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: wire}}}
+		_, err := ParseSriResp(tolerantBER(t, parent))
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].o-CauseValueCriteria.element[0]", "SIZE (1)") {
+			t.Errorf("want CauseValue SIZE (1), got %v", err)
 		}
 	})
 
@@ -4196,9 +4197,10 @@ func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 				},
 			}},
 		}
-		_, err := convertWireToGmscCamelSubInfo(&wire)
-		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
-			t.Errorf("want ErrCamelInvalidCauseValueOctetLength, got %v", err)
+		parent := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &gsm_map.ExtendedRoutingInfo{Choice: gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo, CamelRoutingInfo: &gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: wire}}}
+		_, err := ParseSriResp(tolerantBER(t, parent))
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].o-CauseValueCriteria.element[0]", "SIZE (1)") {
+			t.Errorf("want CauseValue SIZE (1), got %v", err)
 		}
 	})
 
@@ -4213,9 +4215,10 @@ func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 				},
 			}},
 		}
-		_, err := convertWireToGmscCamelSubInfo(&wire)
-		if !errors.Is(err, ErrCamelInvalidCauseValueOctetLength) {
-			t.Errorf("want ErrCamelInvalidCauseValueOctetLength, got %v", err)
+		parent := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &gsm_map.ExtendedRoutingInfo{Choice: gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo, CamelRoutingInfo: &gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: wire}}}
+		_, err := ParseSriResp(tolerantBER(t, parent))
+		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.t-BCSM-CAMEL-TDP-CriteriaList.element[0].t-CauseValueCriteria.element[0]", "SIZE (1)") {
+			t.Errorf("want CauseValue SIZE (1), got %v", err)
 		}
 	})
 }
@@ -4258,7 +4261,7 @@ func TestCamelDecodeRejectsInvalidServiceKey(t *testing.T) {
 			}},
 		},
 	}
-	wantConstraintError(t, strictDecodeWire(&wire), "ocsi.o-BcsmCamelTDPDataList.element[0].serviceKey", "(0..2147483647)")
+	wantConstraintError(t, strictDecodeWire(&wire), "o-CSI.o-BcsmCamelTDPDataList.element[0].serviceKey", "(0..2147483647)")
 }
 
 // TestCamelDecodeRejectsOversizedCriteriaList verifies that the decoder rejects
@@ -4272,5 +4275,5 @@ func TestCamelDecodeRejectsOversizedCriteriaList(t *testing.T) {
 		}
 	}
 	wire := gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
-	wantConstraintError(t, strictDecodeWire(&wire), "o-BcsmCamelTDP-CriteriaList.OBcsmCamelTDPCriteriaList", "SIZE (1..10)")
+	wantConstraintError(t, strictDecodeWire(&wire), "o-BcsmCamelTDP-CriteriaList", "SIZE (1..10)")
 }

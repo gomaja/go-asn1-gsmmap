@@ -161,42 +161,33 @@ func TestAbsentSubscriberReasonIgnoresUnknown(t *testing.T) {
 func TestRoamingNotAllowedCauseDiscardedWithAdditionalCause(t *testing.T) {
 	additional := gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed
 	for _, cause := range []gsm_map.RoamingNotAllowedCause{0, 1, 2, 3, -1, math.MaxInt64} {
-		data, err := (&gsm_map.RoamingNotAllowedParam{
-			RoamingNotAllowedCause:           cause,
-			AdditionalRoamingNotAllowedCause: &additional,
-		}).MarshalBER()
-		if err != nil {
-			t.Fatalf("MarshalBER: %v", err)
-		}
-		v, err := ParseReturnErrorParameter(MapErrorRoamingNotAllowed, data)
-		if err != nil {
-			t.Fatalf("cause %d: ParseReturnErrorParameter: %v", cause, err)
-		}
-		got := v.(*RoamingNotAllowedParam)
-		if got.RoamingNotAllowedCause != nil {
-			t.Errorf("cause %d: RoamingNotAllowedCause = %d, want it discarded (nil)", cause, *got.RoamingNotAllowedCause)
-		}
-		if got.AdditionalRoamingNotAllowedCause == nil || *got.AdditionalRoamingNotAllowedCause != additional {
-			t.Errorf("cause %d: AdditionalRoamingNotAllowedCause = %v", cause, got.AdditionalRoamingNotAllowedCause)
-		}
-
-		// Without the additional cause the non-extensible cause is checked.
-		data, err = (&gsm_map.RoamingNotAllowedParam{RoamingNotAllowedCause: cause}).MarshalBER()
-		if err != nil {
-			t.Fatalf("MarshalBER: %v", err)
-		}
-		v, err = ParseReturnErrorParameter(MapErrorRoamingNotAllowed, data)
-		listed := cause == gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed ||
-			cause == gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring
-		switch {
-		case listed && err != nil:
-			t.Errorf("cause %d without the additional cause: %v", cause, err)
-		case listed:
-			if c := v.(*RoamingNotAllowedParam).RoamingNotAllowedCause; c == nil || *c != cause {
-				t.Errorf("cause %d without the additional cause: RoamingNotAllowedCause = %v", cause, c)
+		for _, withAdditional := range []bool{true, false} {
+			w := &gsm_map.RoamingNotAllowedParam{RoamingNotAllowedCause: cause}
+			if withAdditional {
+				w.AdditionalRoamingNotAllowedCause = &additional
 			}
-		case err == nil:
-			t.Errorf("cause %d without the additional cause: Parse accepted it", cause)
+			v, err := ParseReturnErrorParameter(MapErrorRoamingNotAllowed, tolerantBER(t, w))
+			if cause != 0 && cause != 3 {
+				wantConstraintError(t, err, "roamingNotAllowedCause", "ENUMERATED {0, 3}")
+				if v != nil {
+					t.Errorf("cause %d additional %t: got %v, want nil", cause, withAdditional, v)
+				}
+				continue
+			}
+			if err != nil {
+				t.Fatalf("cause %d additional %t: %v", cause, withAdditional, err)
+			}
+			got := v.(*RoamingNotAllowedParam)
+			if withAdditional {
+				if got.RoamingNotAllowedCause != nil {
+					t.Errorf("cause %d: RoamingNotAllowedCause = %v, want nil", cause, got.RoamingNotAllowedCause)
+				}
+				if got.AdditionalRoamingNotAllowedCause == nil || *got.AdditionalRoamingNotAllowedCause != additional {
+					t.Errorf("cause %d: AdditionalRoamingNotAllowedCause = %v", cause, got.AdditionalRoamingNotAllowedCause)
+				}
+			} else if c := got.RoamingNotAllowedCause; c == nil || *c != cause {
+				t.Errorf("cause %d without additional cause: RoamingNotAllowedCause = %v", cause, c)
+			}
 		}
 	}
 }

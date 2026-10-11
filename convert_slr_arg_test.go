@@ -190,7 +190,7 @@ func TestSLRArgEncodeNegative(t *testing.T) {
 		{"LcsReferenceNumber wrong size", func(a *SubscriberLocationReportArg) { a.LcsReferenceNumber = HexBytes{0x01, 0x02} }, nil, "lcs-ReferenceNumber", "SIZE (1)"},
 		{"GeranPositioningData too short", func(a *SubscriberLocationReportArg) { a.GeranPositioningData = HexBytes{0x01} }, nil, "geranPositioningData", "SIZE (2..10)"},
 		{"UtranPositioningData too short", func(a *SubscriberLocationReportArg) { a.UtranPositioningData = HexBytes{0x01, 0x02} }, nil, "utranPositioningData", "SIZE (3..11)"},
-		{"CellGlobalId wrong size", func(a *SubscriberLocationReportArg) { a.CellGlobalId = HexBytes{0x01} }, nil, "cellGlobalIdOrServiceAreaIdFixedLength", "SIZE (7)"},
+		{"CellGlobalId wrong size", func(a *SubscriberLocationReportArg) { a.CellGlobalId = HexBytes{0x01} }, nil, "cellIdOrSai.cellGlobalIdOrServiceAreaIdFixedLength", "SIZE (7)"},
 		{"CGI and LAI both set", func(a *SubscriberLocationReportArg) {
 			a.CellGlobalId = make(HexBytes, 7)
 			a.LAI = make(HexBytes, 5)

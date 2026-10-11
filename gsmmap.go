@@ -3642,7 +3642,6 @@ var (
 	ErrGoIntOverflow                            = errors.New("integer does not fit Go int")
 	ErrInt64Overflow                            = errors.New("integer does not fit int64")
 	ErrIntegerMissing                           = errors.New("integer value is missing")
-	ErrIntegerOutOfRange                        = errors.New("integer value is out of range")
 	ErrPdnGwIdentityAddressMissing              = errors.New("PdnGwIdentity has no address or name")
 	ErrPdnGwIdentityIPv4AddressInvalidLength    = errors.New("PdnGwIdentity IPv4Address has invalid length")
 	ErrPdnGwIdentityIPv6AddressInvalidLength    = errors.New("PdnGwIdentity IPv6Address has invalid length")
@@ -3656,18 +3655,7 @@ var (
 	ErrSystemFailureParamUnknownAlternative     = errors.New("systemFailureParam: unknown CHOICE alternative")
 	ErrTPDUDecodedNil                           = errors.New("TPDU decoder returned nil without an error")
 
-	ErrSriForwardingReasonInvalid                 = errors.New("sri: ForwardingReason must be 0..2")
-	ErrNumberPortabilityStatusInvalid             = errors.New("NumberPortabilityStatus must be a listed value")
-	ErrSriSsListSsCodeInvalidLength               = errors.New("sri: SsList SS-Code must be exactly 1 octet")
-	ErrSriSsList2SsCodeInvalidLength              = errors.New("sri: SsList2 SS-Code must be exactly 1 octet")
-	ErrSsCSIEventListSsCodeInvalidLength          = errors.New("ssCSI: SsEventList SsCode must be exactly 1 octet")
-	ErrPLMNIdInvalidLength                        = errors.New("PLMNId must be exactly 3 octets")
-	ErrImsVoiceOverPSSessionsIndicationInvalid    = errors.New("ImsVoiceOverPSSessionsIndication must be 0..2")
-	ErrDaylightSavingTimeInvalid                  = errors.New("DaylightSavingTime must be 0..2")
-	ErrPsSubscriberStateNetDetNotReachableInvalid = errors.New("PsSubscriberState.NetDetNotReachable must be 0..3")
-	ErrSubscriberStateNotReachableReasonInvalid   = errors.New("SubscriberState.NotReachableReason must be 0..3")
-	ErrCallBarringCauseInvalid                    = errors.New("CallBarringCause must be 0..1")
-	ErrRoamingNotAllowedCauseInvalid              = errors.New("RoamingNotAllowedCause must be 0 or 3")
+	ErrNumberPortabilityStatusInvalid = errors.New("NumberPortabilityStatus must be a listed value")
 
 	ErrAdditionalNumberUnknownAlternative                   = errors.New("additionalNumber: unknown CHOICE alternative")
 	ErrExtBasicServiceCodeUnknownAlternative                = errors.New("extBasicServiceCode: unknown CHOICE alternative")
@@ -3697,9 +3685,7 @@ var (
 
 	ErrSriMissingMSISDN              = errors.New("sri: MSISDN is empty")
 	ErrSriMissingGmscOrGsmSCFAddress = errors.New("sri: GmscOrGsmSCFAddress is empty")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrSriInvalidInterrogationType  = errors.New("sri: InterrogationType must be 0 or 1")
-	ErrSriInvalidSupportedCCBSPhase = errors.New("sri: SupportedCCBSPhase must be 1; 3GPP TS 29.002 V19.1.0 §17.7.3 reserves 2..127, which a receiver maps to 1")
+	ErrSriInvalidSupportedCCBSPhase  = errors.New("sri: SupportedCCBSPhase must be 1; 3GPP TS 29.002 V19.1.0 §17.7.3 reserves 2..127, which a receiver maps to 1")
 	// ErrISTSupportIndicatorInvalid and ErrUnavailabilityCauseInvalid: the
 	// encoder sends only the listed values; the decoder keeps any other
 	// (both types are extensible, 3GPP TS 29.002 V19.1.0 §17.1.4).
@@ -3718,19 +3704,14 @@ var (
 	// decoder ignores an Ext-ExternalSignalInfo with any other value per
 	// 3GPP TS 29.002 V19.1.0 §17.7.8.
 	ErrExtProtocolIDInvalid = errors.New("extExternalSignalInfo: ExtProtocolID must be ets-300356(1); a receiver ignores the whole Ext-ExternalSignalInfo with any other value per 3GPP TS 29.002 V19.1.0 §17.7.8")
-	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrProtocolIDInvalid = errors.New("externalSignalInfo: ProtocolID must be gsm-0408(1), gsm-0806(2), gsm-BSSMAP(3) or ets-300102-1(4) per 3GPP TS 29.002 V19.1.0 §17.7.8 (non-extensible ENUMERATED)")
+
 	// ErrProtocolIDReserved is returned by Marshal for ProtocolID gsm-BSSMAP
 	// (3). 3GPP TS 29.002 V19.1.0 §17.7.8 ProtocolId: "Value 3 is reserved
 	// and must not be used". The value is listed, so Parse keeps it.
 	ErrProtocolIDReserved = errors.New("externalSignalInfo: ProtocolID gsm-BSSMAP(3) is reserved and must not be used per 3GPP TS 29.002 V19.1.0 §17.7.8")
-	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrNetworkResourceInvalid = errors.New("systemFailureParam: NetworkResource must be plmn(0) to rss(7) per 3GPP TS 29.002 V19.1.0 §17.7.8 (non-extensible ENUMERATED)")
 
 	ErrMtFsmUnexpectedTPDUType = errors.New("mtFsm: unexpected TPDU type")
 	ErrMoFsmUnexpectedTPDUType = errors.New("moFsm: unexpected TPDU type")
-	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrMoFsmSmDeliveryOutcomeInvalid = errors.New("moFsm: SmDeliveryOutcome must be memoryCapacityExceeded(0), absentSubscriber(1) or successfulTransfer(2) per 3GPP TS 29.002 V19.1.0 §17.7.6 (non-extensible ENUMERATED)")
 
 	ErrSuperChargerInfoNoAlternative        = errors.New("superChargerInfo: CHOICE has no alternative set")
 	ErrSuperChargerInfoMultipleAlternatives = errors.New("superChargerInfo: CHOICE has multiple alternatives set")
@@ -3815,8 +3796,6 @@ var (
 
 	ErrAscMissingMSISDN               = errors.New("alertServiceCentre: MSISDN is empty")
 	ErrAscMissingServiceCentreAddress = errors.New("alertServiceCentre: ServiceCentreAddress is empty")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrAscInvalidSmsGmscAlertEvent = errors.New("alertServiceCentre: SmsGmscAlertEvent must be 0 or 1")
 
 	ErrUpdateLocationMissingMscNumber        = errors.New("updateLocation: MscNumber is empty")
 	ErrUpdateLocationMissingVlrNumber        = errors.New("updateLocation: VlrNumber is empty")
@@ -3860,25 +3839,17 @@ var (
 	ErrCancelLocTypeOfUpdateNotApplicable = errors.New("cancelLocation: TypeOfUpdate is only valid when CancellationType is updateProcedure or initialAttachProcedure")
 	ErrCancelLocMtrfBothSet               = errors.New("cancelLocation: MtrfSupportedAndAuthorized and MtrfSupportedAndNotAuthorized are mutually exclusive")
 
-	ErrCamelInvalidOTriggerPoint       = errors.New("camel: O-BcsmTriggerDetectionPoint must be collectedInfo(2) or routeSelectFailure(4)")
-	ErrCamelInvalidTTriggerPoint       = errors.New("camel: T-BcsmTriggerDetectionPoint must be termAttemptAuthorized(12), tBusy(13), or tNoAnswer(14)")
-	ErrCamelInvalidDefaultCallHandling = errors.New("camel: DefaultCallHandling must be continueCall(0) or releaseCall(1)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrCamelInvalidCallTypeCriteria = errors.New("camel: CallTypeCriteria must be forwarded(0) or notForwarded(1)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrCamelInvalidMatchType     = errors.New("camel: MatchType must be inhibiting(0) or enabling(1)")
-	ErrCamelMissingGsmSCFAddress = errors.New("camel: GsmSCFAddress is mandatory and must be non-empty")
-	ErrCamelMissingDialledNumber = errors.New("camel: DialledNumber is mandatory on DPAnalysedInfoCriterium")
-	ErrCamelInvalidCauseValue    = errors.New("camel: CauseValue must be 0..127")
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrCamelInvalidCauseValueOctetLength     = errors.New("camel: CauseValue is OCTET STRING (SIZE(1)) — each entry must be exactly 1 octet")
+	ErrCamelInvalidOTriggerPoint             = errors.New("camel: O-BcsmTriggerDetectionPoint must be collectedInfo(2) or routeSelectFailure(4)")
+	ErrCamelInvalidTTriggerPoint             = errors.New("camel: T-BcsmTriggerDetectionPoint must be termAttemptAuthorized(12), tBusy(13), or tNoAnswer(14)")
+	ErrCamelInvalidDefaultCallHandling       = errors.New("camel: DefaultCallHandling must be continueCall(0) or releaseCall(1)")
+	ErrCamelMissingGsmSCFAddress             = errors.New("camel: GsmSCFAddress is mandatory and must be non-empty")
+	ErrCamelMissingDialledNumber             = errors.New("camel: DialledNumber is mandatory on DPAnalysedInfoCriterium")
+	ErrCamelInvalidCauseValue                = errors.New("camel: CauseValue must be 0..127")
 	ErrCamelMissingDestinationNumber         = errors.New("camel: DestinationNumberList entry must have non-empty Digits")
 	ErrCamelMissingDestinationNumberCriteria = errors.New("camel: DestinationNumberCriteria requires at least one of DestinationNumberList or DestinationNumberLengthList")
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrDestinationNumberInvalidSize         = errors.New("camel: each DestinationNumberList entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
-	ErrCamelInvalidSMSTriggerDetectionPoint = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) in an MO-SMS-CSI and sms-DeliveryRequest(2) in an MT-SMS-CSI or MT-smsCAMELTDP-Criteria; a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrCamelInvalidDefaultSMSHandling       = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
-	ErrCamelInvalidMTSMSTPDUType            = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0) or sms-STATUS-REPORT(2); sms-SUBMIT-REPORT(1) is not used in CAMEL phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrCamelInvalidSMSTriggerDetectionPoint  = errors.New("camel: SmsTriggerDetectionPoint must be sms-CollectedInfo(1) in an MO-SMS-CSI and sms-DeliveryRequest(2) in an MT-SMS-CSI or MT-smsCAMELTDP-Criteria; a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrCamelInvalidDefaultSMSHandling        = errors.New("camel: DefaultSMSHandling must be continueTransaction(0) or releaseTransaction(1)")
+	ErrCamelInvalidMTSMSTPDUType             = errors.New("camel: MT-SMS-TPDU-Type must be sms-DELIVER(0) or sms-STATUS-REPORT(2); sms-SUBMIT-REPORT(1) is not used in CAMEL phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// ErrCamelDuplicateTriggerDetectionPoint is returned when an
 	// O-BcsmCamelTDPDataList, T-BcsmCamelTDPDataList, SMS-CAMEL-TDP-DataList
 	// or GPRS-CamelTDPDataList holds two entries with the same trigger
@@ -3898,69 +3869,33 @@ var (
 	ErrSSCSICCBSToVLR  = errors.New("ssCSI: an SS-CSI sent to the VLR shall not contain a marking for ccbs, which the VLR discards, per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// Ext-SS-Info CHOICE / nested SEQUENCE validation
-	ErrExtSSInfoNoAlternative        = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
-	ErrExtSSInfoMultipleAlternatives = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrIntraCUGOptionsInvalidValue              = errors.New("cugSubscription: IntraCUGOptions must be noCUG-Restrictions(0), cugIC-CallBarred(1), or cugOG-CallBarred(2)")
+	ErrExtSSInfoNoAlternative                   = errors.New("extSSInfo: exactly one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo must be set")
+	ErrExtSSInfoMultipleAlternatives            = errors.New("extSSInfo: only one of ForwardingInfo, CallBarringInfo, CugInfo, SsData, EmlppInfo may be set")
 	ErrSSSubscriptionOptionNoAlternative        = errors.New("ssSubscriptionOption: CHOICE requires exactly one of CliRestriction or Override")
 	ErrSSSubscriptionOptionMultipleAlternatives = errors.New("ssSubscriptionOption: CHOICE may only have one of CliRestriction or Override set")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrCliRestrictionOptionInvalidValue = errors.New("ssSubscriptionOption: CliRestrictionOption must be permanent(0), temporaryDefaultRestricted(1), or temporaryDefaultAllowed(2)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrOverrideCategoryInvalidValue = errors.New("extSSInfo: OverrideCategory must be overrideEnabled(0) or overrideDisabled(1)")
-	ErrEMLPPPriorityOutOfRange      = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
+	ErrEMLPPPriorityOutOfRange                  = errors.New("extSSInfo: EMLPP priority must be 0..6 per TS 29.002 (values 7..15 are spare and would be silently remapped on decode)")
 	// ErrNoReplyConditionTimeOutOfRange is returned when an Ext-ForwFeature
 	// NoReplyConditionTime lies outside 5..30, the only values a sender uses
 	// (3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime).
 	ErrNoReplyConditionTimeOutOfRange = errors.New("extSSInfo: NoReplyConditionTime must be 5..30 per 3GPP TS 29.002 V19.1.0 §17.7.1 Ext-NoRepCondTime (values 1..4 and 31..100 are reserved and are mapped to 5 and 30 on decode)")
 
 	ErrODBDataMissingGeneralData = errors.New("odbData: OdbGeneralData is mandatory and must be non-nil")
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrZoneCodeInvalidSize       = errors.New("zoneCode: each entry must be exactly 2 octets")
 	ErrGroupIdMissingWithoutLong = errors.New("voiceGroupCallData/voiceBroadcastData: GroupId must contain digits when LongGroupId is absent")
 	ErrGroupIdFillerRequired     = errors.New("voiceGroupCallData/voiceBroadcastData: when LongGroupId is present, GroupId must be empty (sent as six TBCD fillers) per TS 29.002")
 	ErrLongGroupIdDecodedEmpty   = errors.New("voiceGroupCallData/voiceBroadcastData: present wire LongGroupId holds no digits; presence cannot round-trip through the string-based API")
 
-	// go-asn1 does not enforce BIT STRING bit length and byte consistency: https://github.com/gomaja/go-asn1/issues/80.
-	ErrBitStringOctetsMismatch = errors.New("bitString: a BIT STRING of n bits must have exactly (n+7)/8 octets per X.690 §8.6.2")
-	// Encode checks bit length against bytes: https://github.com/gomaja/go-asn1/issues/80.
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrAPNInvalidSize = errors.New("apn: each entry must be 2..63 octets per 3GPP TS 29.002 V19.1.0 §17.7.1")
-
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrResetIdInvalidSize = errors.New("resetId: each entry must be 1..4 octets per TS 29.002")
-
-	ErrExtQoSHierarchyViolated         = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per 3GPP TS 29.002 V19.1.0 §17.7.1 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
-	ErrExtPDPAddressWithoutPDPAddress  = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	ErrGPRSSubscriptionDataMissingList = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
-	ErrAMBRBandwidthOutOfRange         = errors.New("ambr: bandwidth fields must be non-negative")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrSIPTOPermissionInvalid = errors.New("pdpContext: SiptoPermission must be siptoAboveRanAllowed(0) or siptoAboveRanNotAllowed(1)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrSIPTOLocalNetworkPermissionInvalid = errors.New("pdpContext: SiptoLocalNetworkPermission must be siptoAtLocalNetworkAllowed(0) or siptoAtLocalNetworkNotAllowed(1)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrLIPAPermissionInvalid = errors.New("pdpContext: LipaPermission must be lipaProhibited(0), lipaOnly(1), or lipaConditional(2)")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrNIDDMechanismInvalid = errors.New("pdpContext: NIDDMechanism must be sGi-based-data-delivery(0) or sCEF-based-data-delivery(1)")
-
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrLSAOnlyAccessIndicatorInvalid = errors.New("lsaInformation: LsaOnlyAccessIndicator must be accessOutsideLSAsAllowed(0) or accessOutsideLSAsRestricted(1)")
-
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrPDNGWAllocationTypeInvalid = errors.New("apnConfiguration: PdnGwAllocationType must be static(0) or dynamic(1) per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrPDNConnectionContinuityInvalid = errors.New("apnConfiguration: PdnConnectionContinuity must be 0..2 per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrWLANOffloadabilityIndicationInvalid = errors.New("wlanOffloadability: WLAN-Offloadability-Indication must be notAllowed(0) or allowed(1)")
-	ErrAPNConfigurationProfileMissingList  = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")
+	ErrExtQoSHierarchyViolated            = errors.New("pdpContext: Ext{2,3,4}-QoS-Subscribed must follow the spec hierarchy per 3GPP TS 29.002 V19.1.0 §17.7.1 (Ext2 requires Ext, Ext3 requires Ext2, Ext4 requires Ext3)")
+	ErrExtPDPAddressWithoutPDPAddress     = errors.New("pdpContext: ExtPdpAddress may be present only if PdpAddress is present per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrGPRSSubscriptionDataMissingList    = errors.New("gprsSubscriptionData: GprsDataList is mandatory and must contain at least one entry")
+	ErrAMBRBandwidthOutOfRange            = errors.New("ambr: bandwidth fields must be non-negative")
+	ErrAPNConfigurationProfileMissingList = errors.New("apnConfigurationProfile: EpsDataList is mandatory and must contain at least one entry")
 
 	ErrGMLCRestrictionInvalid      = errors.New("externalClient: GmlcRestriction must be gmlcList(0) or homeCountry(1)")
 	ErrNotificationToMSUserInvalid = errors.New("notificationToMSUser: must be 0..3 per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	// Sender accepts only defined values; receivers preserve unknown extensions (3GPP TS 29.002 V19.1.0 §17.1.4).
 	ErrLCSClientInternalIDInvalid = errors.New("lcsClientInternalID: LCSClientInternalID must be 0..4 per 3GPP TS 29.002 V19.1.0 §17.7.8 (extensible enum: unknown values preserved on decode)")
 	ErrGMLCListEntryEmpty         = errors.New("gmlcList: entry must carry digits, on encode and decode")
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrGMLCListEntryInvalidSize = errors.New("gmlcList: entry is an ISDN-AddressString of 1..9 octets (at most 16 digits) per 3GPP TS 29.002 V19.1.0 §17.7.8")
+
 	// ErrLCSAddPrivacyExceptionListNotAllowed: "add-lcs-PrivacyExceptionList
 	// may be sent only if lcs-PrivacyExceptionList is present and contains four
 	// instances of LCS-PrivacyClass" (3GPP TS 29.002 V19.1.0 §17.7.1). Marshal
@@ -3976,24 +3911,13 @@ var (
 	// ErrNetworkAccessModeInvalid: the encoder sends only the listed values;
 	// the decoder discards any other per 3GPP TS 29.002 V19.1.0 §17.7.1.
 	ErrNetworkAccessModeInvalid = errors.New("insertSubscriberDataArg: NetworkAccessMode must be packetAndCircuit(0), onlyCircuit(1) or onlyPacket(2); a receiver discards any other value per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrSubscriberStatusInvalid = errors.New("insertSubscriberDataArg: SubscriberStatus must be serviceGranted(0) or operatorDeterminedBarring(1) per 3GPP TS 29.002 V19.1.0 §17.7.1 (non-extensible ENUMERATED)")
-	ErrIsdResNil               = errors.New("insertSubscriberDataRes: argument must not be nil")
-	// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrRegionalSubscriptionResponseInvalid = errors.New("insertSubscriberDataRes: RegionalSubscriptionResponse must be networkNode-AreaRestricted(0) to regionalSubscNotSupported(3) per 3GPP TS 29.002 V19.1.0 §17.7.1 (non-extensible ENUMERATED)")
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrIsdBearerServiceCodeSize = errors.New("insertSubscriberDataArg: each Ext-BearerServiceCode must be 1..5 octets per TS 29.002")
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrIsdTeleserviceCodeSize = errors.New("insertSubscriberDataArg: each Ext-TeleserviceCode must be 1..5 octets per TS 29.002")
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrIsdResSsListSize      = errors.New("insertSubscriberDataRes: SsList entries must each be exactly 1 octet (SS-Code) per TS 29.002")
-	ErrIsdMSISDNDecodedEmpty = errors.New("insertSubscriberDataArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrIsdResNil                = errors.New("insertSubscriberDataRes: argument must not be nil")
+	ErrIsdMSISDNDecodedEmpty    = errors.New("insertSubscriberDataArg: present wire ISDN-AddressString decoded to empty digits; presence cannot round-trip through string-based API")
 
 	ErrDefaultGPRSHandlingInvalid        = errors.New("gprsCamelTDPData: DefaultSessionHandling encoder requires continueTransaction(0) or releaseTransaction(1); decoder applies spec exception clause 3GPP TS 29.002 V19.1.0 §17.7.1 (values 2..31 → continueTransaction; >31 → releaseTransaction)")
 	ErrGPRSTriggerDetectionPointInvalid  = errors.New("gprsCamelTDPData: GprsTriggerDetectionPoint must be attach(1), attachChangeOfPosition(2), pdp-ContextEstablishment(11), pdp-ContextEstablishmentAcknowledgement(12) or pdp-ContextChangeOfPosition(14); a receiver ignores any other entry per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrCamelCapabilityHandlingOutOfRange = errors.New("camel: CamelCapabilityHandling must be 1..4 (CAMEL phases 1 to 4) when set; the decoder treats received values above 4 as phase 4 per 3GPP TS 29.002 V19.1.0 §17.7.1")
-	// go-asn1 does not enforce SEQUENCE OF element SIZE: https://github.com/gomaja/go-asn1/issues/79.
-	ErrMMCodeInvalidSize = errors.New("mobilityTriggers: each MM-Code of an M-CSI or MG-CSI must be exactly 1 octet per 3GPP TS 29.002 V19.1.0 §17.7.1")
+
 	// ErrMCSIMMCodeInvalid and ErrMGCSIMMCodeInvalid: an M-CSI, sent to the
 	// VLR, carries the CS domain MM-Codes and an MG-CSI, sent to the SGSN,
 	// the PS domain ones; the receiver ignores any other (3GPP TS 29.002
@@ -4111,11 +4035,9 @@ var (
 	ErrRequestedDomainInvalid = errors.New("requestedInfo: RequestedDomain must be cs-Domain(0) or ps-Domain(1); a receiver maps values above 1 to cs-Domain per 3GPP TS 29.002 V19.1.0 §17.7.1")
 
 	// ReportSMDeliveryStatus top-level (TS 29.002 §17.7.6).
-	ErrReportSMDeliveryStatusNil                       = errors.New("reportSMDeliveryStatus: nil argument is not permitted")
-	ErrReportSMDeliveryStatusMSISDNEmpty               = errors.New("reportSMDeliveryStatus: MSISDN digits are mandatory on encode and decode")
-	ErrReportSMDeliveryStatusServiceCentreAddressEmpty = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory on encode and decode")
-	// go-asn1 does not validate ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-	ErrReportSMDeliveryStatusOutcomeInvalid              = errors.New("reportSMDeliveryStatus: SmDeliveryOutcome must be 0..2 per TS 29.002 §17.7.6")
+	ErrReportSMDeliveryStatusNil                         = errors.New("reportSMDeliveryStatus: nil argument is not permitted")
+	ErrReportSMDeliveryStatusMSISDNEmpty                 = errors.New("reportSMDeliveryStatus: MSISDN digits are mandatory on encode and decode")
+	ErrReportSMDeliveryStatusServiceCentreAddressEmpty   = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory on encode and decode")
 	ErrReportSMDeliveryStatusResNil                      = errors.New("reportSMDeliveryStatusRes: nil argument is not permitted")
 	ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty = errors.New("reportSMDeliveryStatusRes: present wire StoredMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 )

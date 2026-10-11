@@ -232,34 +232,34 @@ func TestPDPContext_ExtQoSHierarchy(t *testing.T) {
 
 func TestPDPContext_EnumOutOfRange(t *testing.T) {
 	cases := []struct {
-		name string
-		mut  func(*PDPContext)
-		want error
+		name             string
+		mut              func(*PDPContext)
+		path, constraint string
 	}{
 		{"SiptoPermission", func(p *PDPContext) {
 			v := SIPTOPermission(99)
 			p.SiptoPermission = &v
-		}, ErrSIPTOPermissionInvalid},
+		}, "gprsSubscriptionData.gprsDataList.element[0].sipto-Permission", "ENUMERATED {0, 1}"},
 		{"SiptoLocalNetworkPermission", func(p *PDPContext) {
 			v := SIPTOLocalNetworkPermission(99)
 			p.SiptoLocalNetworkPermission = &v
-		}, ErrSIPTOLocalNetworkPermissionInvalid},
+		}, "gprsSubscriptionData.gprsDataList.element[0].sipto-local-network-Permission", "ENUMERATED {0, 1}"},
 		{"LipaPermission", func(p *PDPContext) {
 			v := LIPAPermission(99)
 			p.LipaPermission = &v
-		}, ErrLIPAPermissionInvalid},
+		}, "gprsSubscriptionData.gprsDataList.element[0].lipa-Permission", "ENUMERATED {0, 1, 2}"},
 		{"NIDDMechanism", func(p *PDPContext) {
 			v := NIDDMechanism(99)
 			p.NIDDMechanism = &v
-		}, ErrNIDDMechanismInvalid},
+		}, "gprsSubscriptionData.gprsDataList.element[0].nIDD-Mechanism", "ENUMERATED {0, 1}"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			in := makePDPContext()
 			tc.mut(&in)
-			_, err := convertPDPContextToWire(&in)
-			if !errors.Is(err, tc.want) {
-				t.Fatalf("want %v, got %v", tc.want, err)
+			_, err := (&InsertSubscriberDataArg{GprsSubscriptionData: &GPRSSubscriptionData{GprsDataList: GPRSDataList{in}}}).Marshal()
+			if !matchesConstraint(err, tc.path, tc.constraint) {
+				t.Fatalf("want %v, got %v", tc.path, err)
 			}
 		})
 	}
@@ -462,8 +462,8 @@ func TestLSAInformation_MinimalRoundTrip(t *testing.T) {
 func TestLSAInformation_OnlyAccessIndicatorOutOfRange(t *testing.T) {
 	v := LSAOnlyAccessIndicator(99)
 	in := &LSAInformation{LsaOnlyAccessIndicator: &v}
-	_, err := convertLSAInformationToWire(in)
-	if !errors.Is(err, ErrLSAOnlyAccessIndicatorInvalid) {
-		t.Fatalf("want ErrLSAOnlyAccessIndicatorInvalid, got %v", err)
+	_, err := (&InsertSubscriberDataArg{LsaInformation: in}).Marshal()
+	if !matchesConstraint(err, "lsaInformation.lsaOnlyAccessIndicator", "ENUMERATED {0, 1}") {
+		t.Fatalf("want codec constraint, got %v", err)
 	}
 }

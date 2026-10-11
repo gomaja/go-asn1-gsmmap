@@ -65,10 +65,7 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 	}
 
 	if loc.UserCSGInformation != nil {
-		csg, err := convertUserCSGInformationToWire(loc.UserCSGInformation)
-		if err != nil {
-			return nil, fmt.Errorf("UserCSGInformation: %w", err)
-		}
+		csg := convertUserCSGInformationToWire(loc.UserCSGInformation)
 		li.UserCSGInformation = csg
 	}
 
@@ -176,10 +173,6 @@ func convertSubscriberStateToAsn1(ss *SubscriberStateInfo) (*gsm_map.SubscriberS
 		if ss.NotReachableReason == nil {
 			return nil, fmt.Errorf("%w: SubscriberState: StateNetDetNotReachable requires a non-nil NotReachableReason", ErrSubscriberStateNotReachableReasonMissing)
 		}
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		if *ss.NotReachableReason < 0 || *ss.NotReachableReason > 3 {
-			return nil, fmt.Errorf("SubscriberState.NotReachableReason=%d: %w", *ss.NotReachableReason, ErrSubscriberStateNotReachableReasonInvalid)
-		}
 		s = gsm_map.NewSubscriberStateNetDetNotReachable(gsm_map.NotReachableReason(*ss.NotReachableReason))
 	case StateNotProvidedFromVLR:
 		s = gsm_map.NewSubscriberStateNotProvidedFromVLR(struct{}{})
@@ -201,11 +194,7 @@ func convertAsn1ToSubscriberState(ss *gsm_map.SubscriberState) (*SubscriberState
 		info.State = StateCamelBusy
 	case gsm_map.SubscriberStateChoiceNetDetNotReachable:
 		info.State = StateNetDetNotReachable
-		// go-asn1 does not enforce ENUMERATED membership: https://github.com/gomaja/go-asn1/issues/81.
-		reason, err := narrowInt64Range(int64(*ss.NetDetNotReachable), 0, 3, "NotReachableReason")
-		if err != nil {
-			return nil, fmt.Errorf("SubscriberState.NotReachableReason: %w: %w", ErrSubscriberStateNotReachableReasonInvalid, err)
-		}
+		reason := int(*ss.NetDetNotReachable)
 		info.NotReachableReason = &reason
 	case gsm_map.SubscriberStateChoiceNotProvidedFromVLR:
 		info.State = StateNotProvidedFromVLR
@@ -352,10 +341,7 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	}
 
 	if loc.UserCSGInformation != nil {
-		csg, err := convertUserCSGInformationToWire(loc.UserCSGInformation)
-		if err != nil {
-			return nil, fmt.Errorf("UserCSGInformation: %w", err)
-		}
+		csg := convertUserCSGInformationToWire(loc.UserCSGInformation)
 		li.UserCSGInformation = csg
 	}
 
