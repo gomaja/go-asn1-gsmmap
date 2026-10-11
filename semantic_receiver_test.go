@@ -21,7 +21,7 @@ func TestNetworkAccessModeDiscardsUnknown(t *testing.T) {
 		mode := v
 		in := &InsertSubscriberDataArg{IMSI: "204080012345678", NetworkAccessMode: &mode}
 		got := semMarshalParseISD(t, in)
-		semWantEqual(t, "ISD", in, got)
+		wantEqual(t, "ISD", in, got)
 	}
 	for _, v := range []NetworkAccessMode{3, -1, math.MaxInt64} {
 		mode := v
@@ -57,7 +57,7 @@ func TestExtExternalSignalInfoIgnoredForUnknownProtocol(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseSri: %v", err)
 	}
-	semWantEqual(t, "AdditionalSignalInfo", in.AdditionalSignalInfo, got.AdditionalSignalInfo)
+	wantEqual(t, "AdditionalSignalInfo", in.AdditionalSignalInfo, got.AdditionalSignalInfo)
 
 	for _, v := range []int64{0, 2, -1, math.MaxInt64} {
 		bad := base()

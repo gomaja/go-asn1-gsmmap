@@ -9,11 +9,11 @@ import (
 type ShapeType int
 
 const (
-	ShapeEllipsoidPoint                   ShapeType = 0
-	ShapeEllipsoidPointUncertainty        ShapeType = 1
-	ShapeEllipsoidPointUncertaintyEllipse ShapeType = 3
-	ShapeEllipsoidPointAltitude           ShapeType = 9
-	ShapeEllipsoidArc                     ShapeType = 10
+	ShapeEllipsoidPoint                             ShapeType = 0
+	ShapeEllipsoidPointUncertainty                  ShapeType = 1
+	ShapeEllipsoidPointUncertaintyEllipse           ShapeType = 3
+	ShapeEllipsoidPointAltitudeUncertaintyEllipsoid ShapeType = 9
+	ShapeEllipsoidArc                               ShapeType = 10
 )
 
 // GeographicalInfo represents decoded geographical information per 3GPP TS 23.032.
@@ -25,8 +25,9 @@ const (
 //   - AngleMajorAxis carries the orientation of the semi-major axis in
 //     degrees, integer 0..179 (1° steps).
 //   - OffsetAngle and IncludedAngle for the Ellipsoid Arc shape carry
-//     the octet value directly: stored N represents N × 2 degrees, so
-//     the valid octet range is 0..179 (representing 0..358° in 2° steps).
+//     the octet value N, 0..179, in 2° steps (TS 23.032 V19.0.0 §6.7):
+//     an offset angle a with 2N <= a < 2(N+1), an included angle a with
+//     2N < a <= 2(N+1), so N = 179 includes the full 360°.
 type GeographicalInfo struct {
 	ShapeType            ShapeType `json:"ShapeType"`
 	Latitude             float64   `json:"Latitude"`
@@ -119,7 +120,7 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 		gi.AngleMajorAxis = &angle
 		gi.Confidence = &confidence
 
-	case ShapeEllipsoidPointAltitude:
+	case ShapeEllipsoidPointAltitudeUncertaintyEllipsoid:
 		if len(data) < 14 {
 			return nil, fmt.Errorf("%w: ellipsoid point with altitude requires 14 octets, got %d", ErrGeoPointAltitudeInvalidLength, len(data))
 		}
@@ -164,28 +165,24 @@ func DecodeGeographicalInfo(data []byte) (*GeographicalInfo, error) {
 	return gi, nil
 }
 
-// Encode encodes a GeographicalInfo back to raw octets per 3GPP TS 23.032.
+// Encode encodes a GeographicalInfo back to raw octets per 3GPP TS 23.032 V19.0.0.
 //
-// Accepted ranges:
-//   - Latitude must lie in the open interval (-90, 90). Exact ±90 is
-//     rejected because the 23-bit wire encoding cannot represent it
-//     without quantization.
-//   - Longitude must lie in the half-open interval [-180, 180). The
-//     lower bound -180 is exactly representable (two's-complement
-//     0x800000); the upper bound +180 is not and is rejected.
-//   - Values whose float64 ULP rounds onto a quantum they don't
-//     represent are rejected: ULPs just inside ±90 and +180 round up
-//     to the next quantum, and ULPs just above -180 round down onto
-//     -180's own quantum. All would otherwise silently quantize.
+// Coordinate coding follows §6.1:
+//   - Latitude must lie in [-90, 90]. The magnitude bin is
+//     floor(abs(latitude) * 2^23 / 90), with the maximum bin extended
+//     to include the poles; the sign bit denotes the southern hemisphere.
+//   - Longitude must lie in [-180, 180). Its signed bin is
+//     floor(longitude * 2^24 / 360), encoded in 24-bit two's complement.
+//
+// DecodeGeographicalInfo returns the lower magnitude/longitude edge of
+// each bin, so decoded coordinates may differ from the input by less
+// than one bin (roughly 1.07e-5° latitude and 2.14e-5° longitude), or
+// exactly one latitude bin at a pole.
 //
 // Rejects non-finite coordinates, missing required shape fields,
 // shape-specific 7-bit fields whose value exceeds 127, and angular
 // octets (AngleMajorAxis, OffsetAngle, IncludedAngle) exceeding the
-// TS 23.032 bound of 179. Accepted inputs are rounded to the nearest
-// representable quantum (roughly 1.07e-5° for latitude and 2.14e-5°
-// for longitude), so the decoded float64 may differ from the caller's
-// by up to half a quantum; the ULP-rejection rules above ensure it
-// never crosses onto a different boundary.
+// TS 23.032 bound of 179.
 //
 // DecodeGeographicalInfo deliberately accepts spec-invalid wire input
 // (e.g. an AngleMajorAxis octet of 200) without error so that a
@@ -200,16 +197,13 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	if math.IsNaN(gi.Longitude) || math.IsInf(gi.Longitude, 0) {
 		return nil, fmt.Errorf("%w: longitude is not a finite number: %v", ErrGeoLongitudeNotFinite, gi.Longitude)
 	}
-	if gi.Latitude <= -90 || gi.Latitude >= 90 {
-		return nil, fmt.Errorf("%w: latitude out of range (-90, 90): %v", ErrGeoLatitudeOutOfRange, gi.Latitude)
+	if gi.Latitude < -90 || gi.Latitude > 90 {
+		return nil, fmt.Errorf("%w: latitude out of range [-90, 90]: %v", ErrGeoLatitudeOutOfRange, gi.Latitude)
 	}
 	if gi.Longitude < -180 || gi.Longitude >= 180 {
 		return nil, fmt.Errorf("%w: longitude out of range [-180, 180): %v", ErrGeoLongitudeOutOfRange, gi.Longitude)
 	}
-	latBytes, lonBytes, err := encodeLatLon(gi.Latitude, gi.Longitude)
-	if err != nil {
-		return nil, err
-	}
+	latBytes, lonBytes := encodeLatLon(gi.Latitude, gi.Longitude)
 
 	switch gi.ShapeType {
 	case ShapeEllipsoidPoint:
@@ -260,7 +254,7 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 		data[10] = *gi.Confidence
 		return data, nil
 
-	case ShapeEllipsoidPointAltitude:
+	case ShapeEllipsoidPointAltitudeUncertaintyEllipsoid:
 		if gi.Altitude == nil || gi.UncertaintySemiMajor == nil ||
 			gi.UncertaintySemiMinor == nil || gi.AngleMajorAxis == nil ||
 			gi.UncertaintyAltitude == nil || gi.Confidence == nil {
@@ -337,7 +331,7 @@ func (gi *GeographicalInfo) Encode() ([]byte, error) {
 	}
 }
 
-// decodeLatLon decodes latitude and longitude from 6 octets per 3GPP TS 23.032.
+// decodeLatLon returns bin edges from 6 octets per TS 23.032 V19.0.0 §6.1.
 //
 //	Octets 1-3: Latitude  — bit 7 of octet 1 = sign (0=North, 1=South),
 //	            bits 6-0 of octet 1 + octets 2-3 = 23-bit magnitude
@@ -362,44 +356,37 @@ func decodeLatLon(data []byte) (lat, lon float64) {
 	return lat, lon
 }
 
-// encodeLatLon encodes latitude and longitude to 6 octets per 3GPP TS 23.032.
+// encodeLatLon encodes valid coordinates per TS 23.032 V19.0.0 §6.1.
 // Returns [3]byte for latitude (sign in bit 7, 23-bit magnitude) and
 // [3]byte for longitude (24-bit two's complement).
 //
-// Returns an error when the rounded quantum would force a value inside
-// the caller-facing open range to share bytes with a boundary it didn't
-// ask for. That happens for float64 ULPs just inside the ±90 and +180
-// open bounds (they round up to 0x800000, colliding with the rejected
-// boundary) and symmetrically for ULPs just above −180 (they round down
-// to −0x800000, colliding with the legitimate -180 encoding).
-func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte, err error) {
+// Scale by the power of two before division to preserve decoded bin edges
+// and avoid underflow for subnormal longitude inputs.
+// Clamp the extended polar bin and any floating-point upper-bound rounding
+// to the highest encodable bin, after Encode has validated the input range.
+func encodeLatLon(lat, lon float64) (latBytes [3]byte, lonBytes [3]byte) {
+	// math.Signbit keeps the sign of -0, which decodeLatLon returns for
+	// the southern bin 0.
 	var sign byte
-	rawLat := lat
-	if lat < 0 {
+	if math.Signbit(lat) {
 		sign = 1
 		lat = -lat
 	}
-	latN := uint32(math.Round(lat / 90.0 * float64(1<<23)))
+	latN := uint32(math.Floor(lat * float64(1<<23) / 90.0))
 	if latN > 0x7FFFFF {
-		return latBytes, lonBytes, fmt.Errorf("%w: latitude %v rounds past the ±90 boundary of the 23-bit encoding", ErrGeoLatitudeEncodingOverflow, rawLat)
+		latN = 0x7FFFFF
 	}
 	latBytes[0] = sign<<7 | byte((latN>>16)&0x7F)
 	latBytes[1] = byte(latN >> 8)
 	latBytes[2] = byte(latN)
 
-	lonN := int32(math.Round(lon / 360.0 * float64(1<<24)))
+	lonN := int32(math.Floor(lon * float64(1<<24) / 360.0))
 	if lonN > 0x7FFFFF {
-		return latBytes, lonBytes, fmt.Errorf("%w: longitude %v rounds past the +180 boundary of the 24-bit encoding", ErrGeoLongitudeEncodingOverflow, lon)
-	}
-	// -0x800000 is the legitimate quantum for lon=-180 exactly. Any other
-	// caller value that rounds onto it (ULPs in (-180, -179.99998927°])
-	// would silently collapse onto -180 on the wire.
-	if lonN == -0x800000 && lon != -180 {
-		return latBytes, lonBytes, fmt.Errorf("%w: longitude %v rounds onto the -180 quantum (would silently collapse onto -180)", ErrGeoLongitudeEncodingCollapse, lon)
+		lonN = 0x7FFFFF
 	}
 	lonBytes[0] = byte(lonN >> 16)
 	lonBytes[1] = byte(lonN >> 8)
 	lonBytes[2] = byte(lonN)
 
-	return latBytes, lonBytes, nil
+	return latBytes, lonBytes
 }

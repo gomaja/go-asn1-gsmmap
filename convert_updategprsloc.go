@@ -447,11 +447,22 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 		if err != nil {
 			return nil, err
 		}
+		// TS 29.002 V19.1.0 §17.7.1 PDN-GW-Update: the HSS ignores
+		// the entire EPS-Info if pdn-gw-Identity is absent.
+		if pgw.PdnGwIdentity == nil {
+			return nil, nil
+		}
 		return &EpsInfo{PdnGwUpdate: pgw}, nil
 	case gsm_map.EPSInfoChoiceIsrInformation:
 		bits := w.IsrInformation.BitLength
+		data := bitStringFromWire(*w.IsrInformation)
+		// TS 29.002 V19.1.0 §17.7.1 ISR-Information: discard unknown
+		// assignments, retaining the CHOICE and its received bit length.
+		if len(data) > 0 {
+			data[0] &= 0xE0
+		}
 		return &EpsInfo{
-			IsrInformation:     bitStringFromWire(*w.IsrInformation),
+			IsrInformation:     data,
 			IsrInformationBits: bits,
 		}, nil
 	default:

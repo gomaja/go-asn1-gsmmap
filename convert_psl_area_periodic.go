@@ -169,10 +169,6 @@ func convertWireToPeriodicLDRInfo(w *gsm_map.PeriodicLDRInfo) (*PeriodicLDRInfo,
 		return nil, nil
 	}
 
-	if w.ReportingAmount*w.ReportingInterval > PeriodicLDRProductMax {
-		return nil, fmt.Errorf("PeriodicLDRInfo: ReportingAmount(%d) × ReportingInterval(%d) = %d: %w",
-			w.ReportingAmount, w.ReportingInterval, w.ReportingAmount*w.ReportingInterval, ErrPeriodicLDRProductExceeded)
-	}
 	return &PeriodicLDRInfo{
 		ReportingAmount:   w.ReportingAmount,
 		ReportingInterval: w.ReportingInterval,

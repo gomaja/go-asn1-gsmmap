@@ -59,9 +59,7 @@ func convertArgToProvideSubscriberInfo(arg *gsm_map.ProvideSubscriberInfoArg) (*
 
 	// CallPriority (optional, 0..15).
 	if arg.CallPriority != nil {
-		v := *arg.CallPriority
-
-		iv := int(v)
+		iv := emlppPriorityFromWire(*arg.CallPriority)
 		out.CallPriority = &iv
 	}
 

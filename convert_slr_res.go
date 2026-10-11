@@ -18,7 +18,8 @@ import (
 // convertSubscriberLocationReportResToWire builds the wire-form
 // gsm_map.SubscriberLocationReportRes from the public type. Every field
 // is optional, so an all-absent input yields an empty (but valid) wire
-// response. NaESRK and NaESRD are independent optionals, not a CHOICE.
+// response. NaESRK and NaESRD are mutually exclusive (3GPP TS 29.002
+// V19.1.0 §17.7.13); a receiver of both fails the response.
 func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*gsm_map.SubscriberLocationReportRes, error) {
 	if r == nil {
 		return nil, ErrSLRResNil
@@ -81,6 +82,10 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationReportRes) (*SubscriberLocationReportRes, error) {
 	if w == nil {
 		return nil, ErrSLRResNil
+	}
+	// TS 29.002 V19.1.0 §17.7.13: both identifiers make the response unsuccessful.
+	if w.NaESRK != nil && w.NaESRD != nil {
+		return nil, ErrSLRResRoutingIdentifiersReturnError
 	}
 
 	out := &SubscriberLocationReportRes{}

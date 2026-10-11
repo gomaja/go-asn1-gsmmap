@@ -342,7 +342,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 	// CallPriority — EMLPP-Priority 0..15 per TS 29.002.
 	if arg.CallPriority != nil {
-		v := int(*arg.CallPriority)
+		v := emlppPriorityFromWire(*arg.CallPriority)
 		s.CallPriority = &v
 	}
 

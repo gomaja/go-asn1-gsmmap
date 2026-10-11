@@ -170,6 +170,21 @@ func convertProvideSubscriberLocationResToWire(r *ProvideSubscriberLocationRes) 
 	out := &gsm_map.ProvideSubscriberLocationRes{
 		LocationEstimate: gsm_map.ExtGeographicalInformation(r.LocationEstimate),
 	}
+	// locationEstimate is mandatory, but a receiver ignores it beside
+	// deferredmt-lrResponseIndicator and discards a one-octet value beside
+	// add-LocationEstimate (3GPP TS 29.002 V19.1.0 §17.7.13); Parse then
+	// leaves LocationEstimate empty. Such a value is sent as one octet: the
+	// type of shape of the additional estimate, or 0 without one.
+	if len(r.LocationEstimate) == 1 && len(r.AddLocationEstimate) == 0 && !r.DeferredmtLrResponseIndicator {
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes.LocationEstimate: %w", ErrLocationEstimateOneOctetWithoutAdd)
+	}
+	if len(r.LocationEstimate) == 0 && (r.DeferredmtLrResponseIndicator || len(r.AddLocationEstimate) > 0) {
+		shape := byte(0)
+		if len(r.AddLocationEstimate) > 0 {
+			shape = r.AddLocationEstimate[0] & 0xF0
+		}
+		out.LocationEstimate = gsm_map.ExtGeographicalInformation{shape}
+	}
 
 	if r.AgeOfLocationEstimate != nil {
 		out.AgeOfLocationEstimate = intPtrTo64(r.AgeOfLocationEstimate)
@@ -251,16 +266,17 @@ func convertWireToProvideSubscriberLocationRes(w *gsm_map.ProvideSubscriberLocat
 	}
 
 	out := &ProvideSubscriberLocationRes{
-		LocationEstimate: ExtGeographicalInformation(w.LocationEstimate),
+		DeferredmtLrResponseIndicator: nullPtrToBool(w.DeferredmtLrResponseIndicator),
 	}
+	ext, add, err := receiveGeographicalInformation(w.LocationEstimate, w.AddLocationEstimate, out.DeferredmtLrResponseIndicator)
+	if err != nil {
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes.LocationEstimate: %w", err)
+	}
+	out.LocationEstimate, out.AddLocationEstimate = ext, add
 
 	if w.AgeOfLocationEstimate != nil {
 		out.AgeOfLocationEstimate = int64PtrTo(w.AgeOfLocationEstimate)
 	}
-	if w.AddLocationEstimate != nil {
-		out.AddLocationEstimate = AddGeographicalInformation(*w.AddLocationEstimate)
-	}
-	out.DeferredmtLrResponseIndicator = nullPtrToBool(w.DeferredmtLrResponseIndicator)
 
 	if w.GeranPositioningData != nil {
 		out.GeranPositioningData = PositioningDataInformation(*w.GeranPositioningData)
@@ -282,8 +298,9 @@ func convertWireToProvideSubscriberLocationRes(w *gsm_map.ProvideSubscriberLocat
 		v := *w.AccuracyFulfilmentIndicator
 		out.AccuracyFulfilmentIndicator = &v
 	}
-	if w.VelocityEstimate != nil {
-		out.VelocityEstimate = VelocityEstimate(*w.VelocityEstimate)
+	out.VelocityEstimate, err = receiveVelocityEstimate(w.VelocityEstimate)
+	if err != nil {
+		return nil, fmt.Errorf("ProvideSubscriberLocationRes.VelocityEstimate: %w", err)
 	}
 	out.MoLrShortCircuitIndicator = nullPtrToBool(w.MoLrShortCircuitIndicator)
 

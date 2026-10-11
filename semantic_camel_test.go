@@ -13,17 +13,9 @@ import (
 	"testing"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-	"github.com/google/go-cmp/cmp"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
 )
-
-func semWantEqual[T any](t *testing.T, name string, want, got T) {
-	t.Helper()
-	if d := cmp.Diff(want, got); d != "" {
-		t.Errorf("%s mismatch (-want +got):\n%s", name, d)
-	}
-}
 
 // semCamelPhase is the CamelCapabilityHandling of every CSI built here.
 const semCamelPhase = 4
@@ -122,7 +114,7 @@ func TestMTSMSTPDUTypeListedPhase4ValuesRoundTrip(t *testing.T) {
 		SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{MtSmsCAMELTDPCriteriaList: criteria},
 	}
 	got := semMarshalParseISD(t, in)
-	semWantEqual(t, "ISD", in, got)
+	wantEqual(t, "ISD", in, got)
 }
 
 func TestParseIgnoresTPDUCriterionWithSubmitReport(t *testing.T) {
@@ -157,8 +149,8 @@ func TestParseIgnoresTPDUCriterionWithSubmitReport(t *testing.T) {
 		{SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest},
 		{SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest},
 	}
-	semWantEqual(t, "VLR", want, got.VlrCamelSubscriptionInfo.MtSmsCAMELTDPCriteriaList)
-	semWantEqual(t, "SGSN", want, got.SgsnCAMELSubscriptionInfo.MtSmsCAMELTDPCriteriaList)
+	wantEqual(t, "VLR", want, got.VlrCamelSubscriptionInfo.MtSmsCAMELTDPCriteriaList)
+	wantEqual(t, "SGSN", want, got.SgsnCAMELSubscriptionInfo.MtSmsCAMELTDPCriteriaList)
 }
 
 // --- SMS-CSI presence ---
@@ -173,7 +165,7 @@ func TestMarshalSMSCSITDPDataListSize(t *testing.T) {
 		MoSmsCSI: &SMSCSI{SmsCAMELTDPDataList: list, CamelCapabilityHandling: semPhase()},
 	}}
 	got := semMarshalParseISD(t, in)
-	semWantEqual(t, "ISD", in, got)
+	wantEqual(t, "ISD", in, got)
 
 	in.VlrCamelSubscriptionInfo.MoSmsCSI.SmsCAMELTDPDataList = append(list, semSMSTDPData(SMSTriggerDetectionPointSmsCollectedInfo))
 	if _, err := in.Marshal(); !errors.Is(err, ErrCamelDuplicateTriggerDetectionPoint) {
@@ -194,6 +186,6 @@ func TestDCSIRoundTrip(t *testing.T) {
 			DCSI: &DCSI{DPAnalysedInfoCriteriaList: list[:n], CamelCapabilityHandling: semPhase()},
 		}}
 		got := semMarshalParseISD(t, in)
-		semWantEqual(t, "ISD", in, got)
+		wantEqual(t, "ISD", in, got)
 	}
 }

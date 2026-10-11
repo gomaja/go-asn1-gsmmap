@@ -357,7 +357,7 @@ func convertWireToLCSPrivacyClass(w *gsm_map.LCSPrivacyClass) (*LCSPrivacyClass,
 
 	out := &LCSPrivacyClass{
 		SsCode:               SsCode(w.SsCode[0]),
-		SsStatus:             HexBytes(w.SsStatus),
+		SsStatus:             keepFirstOctet(w.SsStatus),
 		NotificationToMSUser: notificationToMSUserFromWire(w.NotificationToMSUser),
 	}
 	if w.ExternalClientList != nil {
@@ -437,7 +437,7 @@ func convertWireToMOLRClass(w *gsm_map.MOLRClass) *MOLRClass {
 
 	return &MOLRClass{
 		SsCode:   SsCode(w.SsCode[0]),
-		SsStatus: HexBytes(w.SsStatus),
+		SsStatus: keepFirstOctet(w.SsStatus),
 	}
 }
 

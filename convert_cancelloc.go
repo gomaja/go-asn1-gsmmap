@@ -181,8 +181,8 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 	out := &CancelLocation{Identity: id}
 
 	// CancellationType and TypeOfUpdate are extensible ENUMERATEDs (3GPP TS
-	// 29.002 V19.1.0 §17.7.1). Unknown values are copied unless the
-	// TypeOfUpdate applicability rule below rejects the combination.
+	// 29.002 V19.1.0 §17.7.1). Preserve received values and combinations;
+	// TypeOfUpdate applicability and MTRF exclusivity restrict Marshal.
 	if arg.CancellationType != nil {
 		ct := *arg.CancellationType
 		out.CancellationType = &ct
@@ -190,20 +190,11 @@ func convertArgToCancelLocation(arg *gsm_map.CancelLocationArg) (*CancelLocation
 
 	if arg.TypeOfUpdate != nil {
 		t := *arg.TypeOfUpdate
-		// TS 29.002: TypeOfUpdate only valid with updateProcedure/initialAttachProcedure.
-		if out.CancellationType == nil ||
-			(*out.CancellationType != CancellationTypeUpdateProcedure &&
-				*out.CancellationType != CancellationTypeInitialAttachProcedure) {
-			return nil, ErrCancelLocTypeOfUpdateNotApplicable
-		}
 		out.TypeOfUpdate = &t
 	}
 
 	out.MtrfSupportedAndAuthorized = nullPtrToBool(arg.MtrfSupportedAndAuthorized)
 	out.MtrfSupportedAndNotAuthorized = nullPtrToBool(arg.MtrfSupportedAndNotAuthorized)
-	if out.MtrfSupportedAndAuthorized && out.MtrfSupportedAndNotAuthorized {
-		return nil, ErrCancelLocMtrfBothSet
-	}
 
 	if arg.NewMSCNumber != nil {
 		digits, nature, plan, err := decodeAddressWithDigits(*arg.NewMSCNumber, ErrCancelLocNewMSCNumberDecodedEmpty)

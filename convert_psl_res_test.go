@@ -134,7 +134,7 @@ func TestServingNodeAddressSgsnNumberDecodedEmptyRejected(t *testing.T) {
 // An invalid generated CHOICE value is rejected by the conversion boundary.
 func TestProvideSubscriberLocationResCellIdOrSaiInvalidChoice(t *testing.T) {
 	w := &gsm_map.ProvideSubscriberLocationRes{
-		LocationEstimate: gsm_map.ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+		LocationEstimate: gsm_map.ExtGeographicalInformation{0, 0x20, 0x30, 0x40, 0, 0, 0},
 		CellIdOrSai:      &gsm_map.CellGlobalIdOrServiceAreaIdOrLAI{Choice: 99},
 	}
 	_, err := convertWireToProvideSubscriberLocationRes(w)
@@ -161,7 +161,7 @@ func TestServingNodeAddressNilPassesThrough(t *testing.T) {
 func TestProvideSubscriberLocationResMinimalRoundTrip(t *testing.T) {
 	// Minimal: only the mandatory LocationEstimate.
 	in := &ProvideSubscriberLocationRes{
-		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80},
+		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x7f},
 	}
 	wire, err := convertProvideSubscriberLocationResToWire(in)
 	if err != nil {
@@ -194,9 +194,9 @@ func TestProvideSubscriberLocationResFullPopulationRoundTrip(t *testing.T) {
 	acc := AccuracyFulfilmentRequestedAccuracyFulfilled
 	baro := UtranBaroPressureMeas(101325)
 	in := &ProvideSubscriberLocationRes{
-		LocationEstimate:               ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80},
+		LocationEstimate:               ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x7f},
 		AgeOfLocationEstimate:          &age,
-		AddLocationEstimate:            AddGeographicalInformation{0x01, 0x02, 0x03, 0x04, 0x05},
+		AddLocationEstimate:            AddGeographicalInformation{0, 0x02, 0x03, 0x04, 0x05, 0, 0},
 		DeferredmtLrResponseIndicator:  true,
 		GeranPositioningData:           PositioningDataInformation{0x01, 0x02, 0x03, 0x04},
 		UtranPositioningData:           UtranPositioningDataInfo{0x01, 0x02, 0x03, 0x04, 0x05},
@@ -212,6 +212,11 @@ func TestProvideSubscriberLocationResFullPopulationRoundTrip(t *testing.T) {
 		UtranBaroPressureMeas:          &baro,
 		UtranCivicAddress:              UtranCivicAddress("123 Main St"),
 	}
+	// TS 29.002 V19.1.0 §17.7.13: a deferred result ignores LocationEstimate,
+	// and an Add beside a valid Ext is discarded.
+	want := *in
+	want.LocationEstimate = nil
+	want.AddLocationEstimate = nil
 	wire, err := convertProvideSubscriberLocationResToWire(in)
 	if err != nil {
 		t.Fatalf("encode: %v", err)
@@ -220,7 +225,7 @@ func TestProvideSubscriberLocationResFullPopulationRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if !reflect.DeepEqual(in, out) {
+	if !reflect.DeepEqual(&want, out) {
 		t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", in, out)
 	}
 
@@ -233,7 +238,7 @@ func TestProvideSubscriberLocationResFullPopulationRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	if !reflect.DeepEqual(in, parsed) {
+	if !reflect.DeepEqual(&want, parsed) {
 		t.Errorf("Marshal/Parse mismatch:\n in=%+v\nout=%+v", in, parsed)
 	}
 }
@@ -241,7 +246,7 @@ func TestProvideSubscriberLocationResFullPopulationRoundTrip(t *testing.T) {
 func TestProvideSubscriberLocationResLAIRoundTrip(t *testing.T) {
 	// Use the LAI alternative of the CellIdOrSai CHOICE.
 	in := &ProvideSubscriberLocationRes{
-		LocationEstimate: ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+		LocationEstimate: ExtGeographicalInformation{0, 0x20, 0x30, 0x40, 0, 0, 0},
 		LAI:              HexBytes{0x32, 0xf4, 0x10, 0x12, 0x34}, // 5 octets
 	}
 	wire, err := convertProvideSubscriberLocationResToWire(in)
@@ -342,7 +347,7 @@ func TestProvideSubscriberLocationResAccuracyFulfilmentEncoderStrict(t *testing.
 func TestProvideSubscriberLocationResAccuracyFulfilmentDecoderLenient(t *testing.T) {
 	bad := gsm_map.AccuracyFulfilmentIndicator(99)
 	w := &gsm_map.ProvideSubscriberLocationRes{
-		LocationEstimate:            gsm_map.ExtGeographicalInformation{0x10, 0x20, 0x30, 0x40},
+		LocationEstimate:            gsm_map.ExtGeographicalInformation{0, 0x20, 0x30, 0x40, 0, 0, 0},
 		AccuracyFulfilmentIndicator: &bad,
 	}
 	out, err := convertWireToProvideSubscriberLocationRes(w)

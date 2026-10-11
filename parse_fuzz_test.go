@@ -136,6 +136,28 @@ var strictEncodeErrors = []error{
 	// ProtocolId gsm-BSSMAP (3) is listed, so Parse keeps it, but §17.7.8:
 	// "Value 3 is reserved and must not be used".
 	ErrProtocolIDReserved,
+	// TypeOfUpdate applicability is a sender rule; Parse keeps it (3GPP TS 29.002 V19.1.0 §17.7.1).
+	ErrCancelLocTypeOfUpdateNotApplicable,
+	// MTRF flag exclusion is a sender rule; Parse keeps both flags (3GPP TS 29.002 V19.1.0 §17.7.1).
+	ErrCancelLocMtrfBothSet,
+	// QoS predecessor presence is a sender rule; Parse keeps each field (3GPP TS 29.002 V19.1.0 §17.7.1).
+	ErrExtQoSHierarchyViolated,
+	// Base PDP address presence is a sender rule; Parse keeps the extended address (3GPP TS 29.002 V19.1.0 §17.7.1).
+	ErrExtPDPAddressWithoutPDPAddress,
+	// TDP uniqueness is a sender rule; Parse keeps repeated descriptors (3GPP TS 29.002 V19.1.0 §17.7.1).
+	ErrCamelDuplicateTriggerDetectionPoint,
+	// D-CSI list presence with capability handling is a sender rule; Parse keeps its absence (3GPP TS 29.002 V19.1.0 §17.7.1).
+	ErrCamelDCSICapabilityHandlingWithoutList,
+	// Destination criteria list presence is a sender rule; Parse keeps both absent (3GPP TS 29.002 V19.1.0 §17.7.1).
+	ErrCamelMissingDestinationNumberCriteria,
+	// GroupId fillers with LongGroupId are a sender rule; Parse keeps both IDs (3GPP TS 29.002 V19.1.0 §17.7.1).
+	ErrGroupIdFillerRequired,
+	// Horizontal accuracy bit 8 is a sender rule; Parse keeps the octet (3GPP TS 29.002 V19.1.0 §17.7.13).
+	ErrHorizontalAccuracyReservedBit,
+	// Vertical accuracy bit 8 is a sender rule; Parse keeps the octet (3GPP TS 29.002 V19.1.0 §17.7.13).
+	ErrVerticalAccuracyReservedBit,
+	// The periodic reporting product cap is a sender rule; Parse keeps both operands (3GPP TS 29.002 V19.1.0 §17.7.13).
+	ErrPeriodicLDRProductExceeded,
 	// Unknown values of extensible ENUMERATEDs are kept (§17.1.4); negative
 	// values lie outside the ranges the exception handling maps.
 	ErrCancelLocInvalidCancellationType,

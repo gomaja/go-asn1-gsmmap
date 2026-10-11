@@ -69,7 +69,7 @@ func TestMarshalAddLCSPrivacyExceptionList(t *testing.T) {
 				}
 				return
 			}
-			semWantEqual(t, "ISD", in, semMarshalParseISD(t, in))
+			wantEqual(t, "ISD", in, semMarshalParseISD(t, in))
 		})
 	}
 }

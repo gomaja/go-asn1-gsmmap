@@ -3,20 +3,21 @@
 // Tests for geographical-information encoder validation per 3GPP TS 23.032.
 // The Encode() path must reject caller errors (out-of-range lat/lon,
 // out-of-range altitude, missing required fields) at the boundary rather
-// than silently clamping or zero-filling.
+// than accepting invalid input or zero-filling required fields.
 package gsmmap
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"math"
 	"testing"
 )
 
-// Encode must reject latitudes outside (-90, 90). The spec's encoding
-// cannot represent exactly ±90 without silent quantization, so those
-// boundary values are also rejected.
+// TS 23.032 V19.0.0 §6.1: the maximum latitude bin includes ±90.
+// Encode must reject latitudes outside [-90, 90].
 func TestGeoEncode_RejectsOutOfRangeLatitude(t *testing.T) {
-	for _, lat := range []float64{-90.01, 90.01, 200, -500, 90, -90} {
+	for _, lat := range []float64{-90.01, 90.01, 200, -500} {
 		gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: lat, Longitude: 0}
 		if _, err := gi.Encode(); err == nil {
 			t.Errorf("Latitude=%v: expected error, got nil", lat)
@@ -36,13 +37,15 @@ func TestGeoEncode_RejectsOutOfRangeLongitude(t *testing.T) {
 	}
 }
 
-// Encode must accept valid lat/lon values inside the open/half-open
-// ranges. lon=-180 is the only exactly-representable boundary value.
+// Encode accepts latitude in [-90, 90] and longitude in [-180, 180).
+// TS 23.032 V19.0.0 §6.1 extends the highest latitude bin to the poles.
 func TestGeoEncode_AcceptsBoundaryLatLon(t *testing.T) {
 	cases := []struct {
 		lat, lon float64
 	}{
 		{0, 0},
+		{90, 0},
+		{-90, 0},
 		{89.9999, 179.9999},
 		{-89.9999, -180},
 	}
@@ -54,53 +57,26 @@ func TestGeoEncode_AcceptsBoundaryLatLon(t *testing.T) {
 	}
 }
 
-// Encode must reject values that pass the caller-facing range check but
-// still round up to the next quantum in encodeLatLon. The ULP just below
-// 90 and +180 lands on 0x800000 after math.Round, so emitting it would
-// silently quantize to 0x7FFFFF.
-func TestGeoEncode_RejectsULPJustBelowBoundary(t *testing.T) {
-	// The largest float64 strictly less than 90 is 90 - 2^-46 ≈
-	// 89.99999999999999, which passes the < 90 guard and then rounds up
-	// to 0x800000 in encodeLatLon.
-	latULP := math.Nextafter(90, 0)
-	if latULP >= 90 {
-		t.Fatalf("math.Nextafter(90,0) was not strictly below 90: %v", latULP)
-	}
-	gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: latULP, Longitude: 0}
-	if _, err := gi.Encode(); err == nil {
-		t.Errorf("Latitude=%v (ULP below 90): expected error, got nil", latULP)
-	}
-
-	// Same for latitude near the negative boundary.
-	latNegULP := math.Nextafter(-90, 0)
-	if latNegULP <= -90 {
-		t.Fatalf("math.Nextafter(-90,0) was not strictly above -90: %v", latNegULP)
-	}
-	gi = &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: latNegULP, Longitude: 0}
-	if _, err := gi.Encode(); err == nil {
-		t.Errorf("Latitude=%v (ULP above -90): expected error, got nil", latNegULP)
-	}
-
-	// Same for longitude near +180.
-	lonULP := math.Nextafter(180, 0)
-	if lonULP >= 180 {
-		t.Fatalf("math.Nextafter(180,0) was not strictly below 180: %v", lonULP)
-	}
-	gi = &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: 0, Longitude: lonULP}
-	if _, err := gi.Encode(); err == nil {
-		t.Errorf("Longitude=%v (ULP below 180): expected error, got nil", lonULP)
-	}
-
-	// Longitude just above -180: math.Round lands on -0x800000, which is
-	// the legitimate quantum for lon=-180 exactly. Accepting this would
-	// silently collapse the caller's input onto -180 on the wire.
-	lonNegULP := math.Nextafter(-180, 0)
-	if lonNegULP <= -180 {
-		t.Fatalf("math.Nextafter(-180,0) was not strictly above -180: %v", lonNegULP)
-	}
-	gi = &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: 0, Longitude: lonNegULP}
-	if _, err := gi.Encode(); err == nil {
-		t.Errorf("Longitude=%v (ULP above -180): expected error, got nil", lonNegULP)
+// TS 23.032 V19.0.0 §6.1: valid inputs immediately inside the range
+// bounds belong to the boundary bins and must be accepted.
+func TestGeoEncode_AcceptsULPInsideBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		lat, lon float64
+		want     []byte
+	}{
+		{math.Nextafter(90, 0), 0, []byte{0, 0x7f, 0xff, 0xff, 0, 0, 0}},
+		{math.Nextafter(-90, 0), 0, []byte{0, 0xff, 0xff, 0xff, 0, 0, 0}},
+		{0, math.Nextafter(180, 0), []byte{0, 0, 0, 0, 0x7f, 0xff, 0xff}},
+		{0, math.Nextafter(-180, 0), []byte{0, 0, 0, 0, 0x80, 0, 0}},
+	} {
+		gi := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: tc.lat, Longitude: tc.lon}
+		got, err := gi.Encode()
+		if err != nil {
+			t.Fatalf("Encode(%v, %v): %v", tc.lat, tc.lon, err)
+		}
+		if !bytes.Equal(got, tc.want) {
+			t.Errorf("Encode(%v, %v) = %x, want %x", tc.lat, tc.lon, got, tc.want)
+		}
 	}
 }
 
@@ -139,7 +115,7 @@ func TestGeoEncode_AltitudeRangeCheck(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			alt := tc.alt
 			gi := &GeographicalInfo{
-				ShapeType: ShapeEllipsoidPointAltitude,
+				ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 				Latitude:  0, Longitude: 0,
 				Altitude:             &alt,
 				UncertaintySemiMajor: u8(1),
@@ -165,7 +141,7 @@ func TestGeoEncode_AltitudeBoundaryRoundTrip(t *testing.T) {
 	for _, alt := range []int16{32767, -32767, 0, 1, -1, 100, -100} {
 		a := alt
 		gi := &GeographicalInfo{
-			ShapeType: ShapeEllipsoidPointAltitude,
+			ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 			Latitude:  0, Longitude: 0,
 			Altitude:             &a,
 			UncertaintySemiMajor: u8(1),
@@ -211,7 +187,7 @@ func TestGeoEncode_RejectsMissingRequiredFields(t *testing.T) {
 		{
 			"EllipsoidPointAltitude missing Altitude",
 			&GeographicalInfo{
-				ShapeType: ShapeEllipsoidPointAltitude,
+				ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 				Latitude:  0, Longitude: 0,
 				UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
 				AngleMajorAxis: u8(0), UncertaintyAltitude: u8(1), Confidence: u8(50),
@@ -334,7 +310,7 @@ func TestGeoEncode_Rejects7BitFieldsOverflow(t *testing.T) {
 			func() *GeographicalInfo {
 				alt := int16(100)
 				return &GeographicalInfo{
-					ShapeType: ShapeEllipsoidPointAltitude,
+					ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 					Altitude:  &alt, UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
 					AngleMajorAxis: u8(0), UncertaintyAltitude: u8(200), Confidence: u8(50),
 				}
@@ -390,7 +366,7 @@ func TestGeoEncode_RejectsAngularFieldsOutOfRange(t *testing.T) {
 		{
 			"Altitude: AngleMajorAxis=200",
 			&GeographicalInfo{
-				ShapeType: ShapeEllipsoidPointAltitude,
+				ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 				Altitude:  &alt, UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
 				AngleMajorAxis: u8(200), UncertaintyAltitude: u8(1), Confidence: u8(50),
 			},
@@ -448,7 +424,7 @@ func TestGeoEncode_AcceptsAngularFieldsAtBoundary(t *testing.T) {
 		{
 			"Altitude: AngleMajorAxis=179",
 			&GeographicalInfo{
-				ShapeType: ShapeEllipsoidPointAltitude,
+				ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid,
 				Altitude:  &alt, UncertaintySemiMajor: u8(1), UncertaintySemiMinor: u8(1),
 				AngleMajorAxis: u8(179), UncertaintyAltitude: u8(1), Confidence: u8(50),
 			},
@@ -506,3 +482,138 @@ func u8(v uint8) *uint8 { return &v }
 
 // u16 returns a pointer to the given uint16 literal.
 func u16(v uint16) *uint16 { return &v }
+
+// TS 23.032 V19.0.0 §§6.2, 7.3.2: C=10, x=0.1 and seven-bit K.
+func TestGeoUncertainty(t *testing.T) {
+	for _, tc := range []struct {
+		k      byte
+		meters float64
+	}{
+		{0, 0}, {1, 1.0000000000000009}, {2, 2.100000000000002},
+	} {
+		t.Run(fmt.Sprint(tc.k), func(t *testing.T) {
+			got, err := DecodeGeographicalInfo([]byte{0x10, 0, 0, 0, 0, 0, 0, tc.k})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.UncertaintyMeters == nil || got.UncertaintyCode == nil {
+				t.Fatal("missing uncertainty")
+			}
+			wantEqual(t, "code", tc.k, *got.UncertaintyCode)
+			wantEqual(t, "metres", tc.meters, *got.UncertaintyMeters)
+		})
+	}
+}
+
+// TS 23.032 V19.0.0 §§7.3.1, 7.3.7: point and arc layouts.
+func TestGeoDecodeLengths(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		data    []byte
+		want    error
+		message string
+	}{
+		{"empty", nil, ErrGeoInformationTooShort, "geographical information too short"},
+		{"point header", []byte{0}, ErrGeoPointInvalidLength, "ellipsoid point requires 7 octets, got 1"},
+		{"arc truncated", []byte{0xa0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, ErrGeoArcInvalidLength, "ellipsoid arc requires 13 octets, got 12"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := DecodeGeographicalInfo(tc.data)
+			if got != nil || !errors.Is(err, tc.want) {
+				t.Fatalf("Decode = %v, %v; want nil, %v", got, err, tc.want)
+			}
+			wantEqual(t, "error", fmt.Sprintf("%s: %s", tc.want, tc.message), err.Error())
+		})
+	}
+	got, err := DecodeGeographicalInfo([]byte{0xa0, 0, 0, 0, 0, 0, 0, 0x12, 0x34, 3, 4, 5, 99})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.InnerRadius == nil || got.UncertaintyRadius == nil || got.OffsetAngle == nil || got.IncludedAngle == nil || got.Confidence == nil {
+		t.Fatal("missing arc fields")
+	}
+	wantEqual(t, "shape", ShapeEllipsoidArc, got.ShapeType)
+	wantEqual(t, "radius", uint16(0x1234), *got.InnerRadius)
+	wantEqual(t, "uncertainty", uint8(3), *got.UncertaintyRadius)
+	wantEqual(t, "offset", uint8(4), *got.OffsetAngle)
+	wantEqual(t, "included", uint8(5), *got.IncludedAngle)
+	wantEqual(t, "confidence", uint8(99), *got.Confidence)
+}
+
+// TS 23.032 V19.0.0 §6.1: 23-bit latitude magnitude and signed 24-bit longitude.
+// The maximum latitude bin includes the poles; Decode returns its lower edge.
+func TestGeoCoordinates(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		lat, lon float64
+		want     HexBytes
+		wantErr  error
+	}{
+		{"south pole", -90, 0, HexBytes{0, 0xff, 0xff, 0xff, 0, 0, 0}, nil},
+		{"north pole", 90, 0, HexBytes{0, 0x7f, 0xff, 0xff, 0, 0, 0}, nil},
+		{"west boundary", 0, -180, HexBytes{0, 0, 0, 0, 0x80, 0, 0}, nil},
+		{"east boundary", 0, 180, nil, ErrGeoLongitudeOutOfRange},
+		{"maximum quantum", 8388607.0 * 90 / 8388608, 8388607.0 * 360 / 16777216, HexBytes{0, 0x7f, 0xff, 0xff, 0x7f, 0xff, 0xff}, nil},
+		{"southern hemisphere", -45, -90, HexBytes{0, 0xc0, 0, 0, 0xc0, 0, 0}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := &GeographicalInfo{ShapeType: ShapeEllipsoidPoint, Latitude: tc.lat, Longitude: tc.lon}
+			data, err := in.Encode()
+			if !errors.Is(err, tc.wantErr) {
+				t.Fatalf("Encode = %x, %v; want %v", data, err, tc.wantErr)
+			}
+			wantEqual(t, "octets", tc.want, HexBytes(data))
+			if err != nil {
+				return
+			}
+			got, err := DecodeGeographicalInfo(tc.want)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantLat := tc.lat
+			if tc.lat == 90 || tc.lat == -90 {
+				wantLat = math.Copysign(8388607.0*90/8388608, tc.lat)
+			}
+			wantEqual(t, "latitude", wantLat, got.Latitude)
+			wantEqual(t, "longitude", tc.lon, got.Longitude)
+		})
+	}
+}
+
+// TS 23.032 V19.0.0 §§6.3, 7.3.6: zero altitude has an unset sign bit.
+func TestGeoZeroAltitude(t *testing.T) {
+	alt := int16(0)
+	zero := uint8(0)
+	in := &GeographicalInfo{ShapeType: ShapeEllipsoidPointAltitudeUncertaintyEllipsoid, Altitude: &alt,
+		UncertaintySemiMajor: &zero, UncertaintySemiMinor: &zero, AngleMajorAxis: &zero,
+		UncertaintyAltitude: &zero, Confidence: &zero}
+	got, err := in.Encode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantEqual(t, "octets", HexBytes{0x90, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, HexBytes(got))
+}
+
+// TS 23.032 V19.0.0 §§6.5, 7.3.7: confidence occupies seven bits.
+func TestGeoArcConfidence(t *testing.T) {
+	for _, confidence := range []uint8{99, 128} {
+		t.Run(fmt.Sprint(confidence), func(t *testing.T) {
+			radius := uint16(0x1234)
+			uncertainty, offset, included := uint8(3), uint8(4), uint8(5)
+			in := &GeographicalInfo{ShapeType: ShapeEllipsoidArc, InnerRadius: &radius,
+				UncertaintyRadius: &uncertainty, OffsetAngle: &offset, IncludedAngle: &included, Confidence: &confidence}
+			got, err := in.Encode()
+			if confidence == 128 {
+				if got != nil || !errors.Is(err, ErrGeoCodeOutOfRange) {
+					t.Fatalf("Encode = %x, %v; want confidence range error", got, err)
+				}
+				wantEqual(t, "error", fmt.Sprintf("%s: Confidence out of range [0, 127]: 128", ErrGeoCodeOutOfRange), err.Error())
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantEqual(t, "octets", HexBytes{0xa0, 0, 0, 0, 0, 0, 0, 0x12, 0x34, 3, 4, 5, 99}, HexBytes(got))
+		})
+	}
+}

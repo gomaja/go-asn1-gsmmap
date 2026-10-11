@@ -331,7 +331,7 @@ func TestParseReturnErrorParameterUnknownErrorCode(t *testing.T) {
 }
 
 func TestParseReturnErrorParameterEmptyData(t *testing.T) {
-	// Empty data: returns (nil, nil) regardless of errorCode.
+	// Empty optional parameters, including absentSubscriberSM, return (nil, nil).
 	out, err := ParseReturnErrorParameter(6, nil)
 	if err != nil {
 		t.Errorf("empty data: want nil error, got %v", err)

@@ -352,7 +352,10 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 }
 
 // encodePDPContextInfoList serializes each gsm_map.PDPContextInfo entry to
-// its DER encoding, which the caller sees as opaque bytes.
+// its DER encoding, which the caller sees as opaque bytes. Every extension is
+// kept, private extensions included: 3GPP TS 29.002 V19.1.0 §17.7.11 has the
+// receiver discard the private extensions it does not support, and only the
+// caller knows which it supports.
 func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, error) {
 	if list == nil {
 		list = &gsm_map.PDPContextInfoList{}

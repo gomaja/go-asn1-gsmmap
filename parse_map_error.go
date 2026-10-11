@@ -32,10 +32,17 @@ import (
 //	MapErrorUnauthorizedRequestingNetwork (52) → *UnauthorizedRequestingNetworkParam
 //
 // unknownAlphabet (71) and ussd-Busy (72) have no parameter. For them, for
-// any error code not listed above, and when data is empty, the result is
-// (nil, nil), so a caller can pass every ReturnError without branching first.
+// any error code not listed above, and when an optional parameter is empty,
+// the result is (nil, nil). An empty roamingNotAllowed parameter instead
+// returns ErrRoamingNotAllowedParameterMissing: it is semantically mandatory
+// (3GPP TS 29.002 V19.1.0 §17.1.2 and §17.6.6). The dialogue owner constructs
+// the TCAP reject with problem code "Mistyped parameter" if the dialogue still
+// exists, as required by §17.1.2 NOTE 2.
 func ParseReturnErrorParameter(errorCode MapErrorCode, data []byte) (any, error) {
 	if len(data) == 0 {
+		if errorCode == MapErrorRoamingNotAllowed {
+			return nil, fmt.Errorf("decoding RoamingNotAllowedParam: %w", ErrRoamingNotAllowedParameterMissing)
+		}
 		return nil, nil
 	}
 	switch errorCode {
