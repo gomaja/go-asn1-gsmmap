@@ -13,6 +13,7 @@ import (
 	"errors"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -22,10 +23,10 @@ func TestMarshalIMEISpareDigit(t *testing.T) {
 			imei string
 			want error
 		}{
-			{"490154203237510", nil},                      // TAC, SNR, spare digit 0
-			{"490154203237511", ErrIMEISpareDigitNotZero}, // a check digit in the spare position
-			{"490154203237518", ErrIMEISpareDigitNotZero},
-			{"490154203237519", ErrIMEISpareDigitNotZero},
+			{"490154203237510", nil},                               // TAC, SNR, spare digit 0
+			{"490154203237511", identity.ErrIMEISpareDigitNotZero}, // a check digit in the spare position
+			{"490154203237518", identity.ErrIMEISpareDigitNotZero},
+			{"490154203237519", identity.ErrIMEISpareDigitNotZero},
 			{"4901542032375100", nil}, // TAC, SNR, SVN 00
 			{"4901542032375199", nil}, // SVN 99: any SVN digits
 		} {
@@ -69,8 +70,8 @@ func TestParseIMEICheckDigitTolerated(t *testing.T) {
 		if imei[14] == '0' && err != nil {
 			t.Errorf("%s: Marshal: %v", imei, err)
 		}
-		if imei[14] != '0' && !errors.Is(err, ErrIMEISpareDigitNotZero) {
-			t.Errorf("%s: Marshal: err = %v, want ErrIMEISpareDigitNotZero", imei, err)
+		if imei[14] != '0' && !errors.Is(err, identity.ErrIMEISpareDigitNotZero) {
+			t.Errorf("%s: Marshal: err = %v, want identity.ErrIMEISpareDigitNotZero", imei, err)
 		}
 	}
 }

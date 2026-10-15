@@ -11,6 +11,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"testing"
+
+	identity "github.com/gomaja/go-3gpp-identity"
 )
 
 // UpdateLocationArg has mandatory imsi, msc-Number, vlr-Number
@@ -31,8 +33,8 @@ func TestUpdateLocationMandatoryFields(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
+		if !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("expected identity.ErrEmpty, got: %v", err)
 		}
 	})
 

@@ -35,11 +35,10 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 	}
 
 	if loc.GeographicalInformation != nil {
-		raw, err := loc.GeographicalInformation.Encode()
-		if err != nil {
-			return nil, fmt.Errorf("encoding GeographicalInformation: %w", err)
+		if err := validateSenderGeographicalInformation(loc.GeographicalInformation); err != nil {
+			return nil, err
 		}
-		gi := raw
+		gi := gsm_map.GeographicalInformation(loc.GeographicalInformation)
 		li.GeographicalInformation = &gi
 	}
 
@@ -112,11 +111,7 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 	}
 
 	if li.GeographicalInformation != nil {
-		gi, err := DecodeGeographicalInfo(*li.GeographicalInformation)
-		if err != nil {
-			return nil, fmt.Errorf("decoding GeographicalInformation: %w", err)
-		}
-		loc.GeographicalInformation = gi
+		loc.GeographicalInformation = *li.GeographicalInformation
 	}
 
 	if li.GeodeticInformation != nil {
@@ -234,11 +229,10 @@ func convertEPSLocationToAsn1(loc *EPSLocationInformation) (*gsm_map.LocationInf
 	}
 
 	if loc.GeographicalInformation != nil {
-		raw, err := loc.GeographicalInformation.Encode()
-		if err != nil {
-			return nil, fmt.Errorf("encoding GeographicalInformation: %w", err)
+		if err := validateSenderGeographicalInformation(loc.GeographicalInformation); err != nil {
+			return nil, err
 		}
-		gi := raw
+		gi := gsm_map.GeographicalInformation(loc.GeographicalInformation)
 		li.GeographicalInformation = &gi
 	}
 
@@ -286,11 +280,7 @@ func convertAsn1ToEPSLocation(li *gsm_map.LocationInformationEPS) (*EPSLocationI
 	}
 
 	if li.GeographicalInformation != nil {
-		gi, err := DecodeGeographicalInfo(*li.GeographicalInformation)
-		if err != nil {
-			return nil, fmt.Errorf("decoding GeographicalInformation: %w", err)
-		}
-		loc.GeographicalInformation = gi
+		loc.GeographicalInformation = *li.GeographicalInformation
 	}
 
 	if li.GeodeticInformation != nil {
@@ -331,11 +321,10 @@ func convertGPRSLocationToAsn1(loc *GPRSLocationInformation) (*gsm_map.LocationI
 	}
 
 	if loc.GeographicalInformation != nil {
-		raw, err := loc.GeographicalInformation.Encode()
-		if err != nil {
-			return nil, fmt.Errorf("encoding GeographicalInformation: %w", err)
+		if err := validateSenderGeographicalInformation(loc.GeographicalInformation); err != nil {
+			return nil, err
 		}
-		gi := raw
+		gi := gsm_map.GeographicalInformation(loc.GeographicalInformation)
 		li.GeographicalInformation = &gi
 	}
 
@@ -408,11 +397,7 @@ func convertAsn1ToGPRSLocation(li *gsm_map.LocationInformationGPRS) (*GPRSLocati
 	}
 
 	if li.GeographicalInformation != nil {
-		gi, err := DecodeGeographicalInfo(*li.GeographicalInformation)
-		if err != nil {
-			return nil, fmt.Errorf("decoding GeographicalInformation: %w", err)
-		}
-		loc.GeographicalInformation = gi
+		loc.GeographicalInformation = *li.GeographicalInformation
 	}
 
 	if li.GeodeticInformation != nil {

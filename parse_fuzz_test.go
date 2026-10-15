@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -130,7 +131,7 @@ var strictEncodeErrors = []error{
 	// ASCII DiameterIdentity is a sender rule (RFC 6733 §4.3.1; TS 29.002 §17.7.8).
 	ErrDiameterIdentityNotASCII,
 	// Decimal MCC/MNC coding is a sender rule (TS 29.002 §§17.7.8,17.7.13).
-	ErrPLMNIdentityInvalidDigits,
+	identity.ErrPLMNIdentityDigits,
 	// Reserved address natures are retained on Parse (TS 29.002 §17.7.8).
 	ErrAddressNatureInvalid,
 	// Spare/reserved numbering plans are retained on Parse (TS 29.002 §17.7.8).
@@ -194,6 +195,8 @@ var strictEncodeErrors = []error{
 	ErrRequestedInfoServingNodeWithoutLocationInformation,
 	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 RequestedInfo ServingNodeIndication).
 	ErrRequestedInfoServingNodeWithCurrentLocation,
+	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 GeographicalInformation).
+	ErrGeographicalInformationInvalid,
 	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 GeodeticInformation).
 	ErrGeodeticInformationShapeInvalid,
 	// Sender restriction; Parse retains this value (TS 29.002 V19.1.0 §17.7.8 TBCD-STRING).
@@ -216,8 +219,8 @@ var strictEncodeErrors = []error{
 	// TS 29.002 V19.1.0 §17.7.13: a received LCSClientName's DCS is kept.
 	ErrLCSClientNameDataCodingSchemeInvalid,
 	// §17.7.13 makes only an unlisted velocity type invalid data; a length
-	// that does not match the type is kept, and Marshal does not send it.
-	ErrVelocityEstimateLengthInvalid,
+	// or coding TS 23.032 does not allow is kept, and Marshal does not send it.
+	ErrVelocityEstimateInvalid,
 	// TS 29.002 V19.1.0 §17.7.13: received inconsistent deferred data presence is kept.
 	ErrSLRArgDeferredmtLrDataPresence,
 	// TS 29.002 V19.1.0 §17.7.13: received nested location with a nonrestart cause is kept.
@@ -228,7 +231,7 @@ var strictEncodeErrors = []error{
 	// A 15-digit IMEI whose last digit is a peer's Check Digit instead of
 	// the spare digit 0. Parse keeps it on purpose; Marshal sends 0 (3GPP
 	// TS 29.002 V19.1.0 §17.7.8 IMEI, 3GPP TS 23.003 V20.1.0 §6.2.1).
-	ErrIMEISpareDigitNotZero,
+	identity.ErrIMEISpareDigitNotZero,
 	// ProtocolId gsm-BSSMAP (3) is listed, so Parse keeps it, but §17.7.8:
 	// "Value 3 is reserved and must not be used".
 	ErrProtocolIDReserved,

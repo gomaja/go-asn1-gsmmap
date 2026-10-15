@@ -5,11 +5,12 @@ import (
 	"errors"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // An identity whose octets are all filler holds no digits. decodeIdentityDigits
-// is the single place that rejects it, with ErrIdentityEmpty.
+// is the single place that rejects it, with identity.ErrEmpty.
 func TestParseAllFillerIdentityRejected(t *testing.T) {
 	fill := []byte{0xFF, 0xFF, 0xFF}
 	t.Run("CancelLocation imsi", func(t *testing.T) {
@@ -18,8 +19,8 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ParseCancelLocation(data); !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("err = %v, want ErrIdentityEmpty", err)
+		if _, err := ParseCancelLocation(data); !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("err = %v, want identity.ErrEmpty", err)
 		}
 	})
 	t.Run("CancelLocation imsi-WithLMSI", func(t *testing.T) {
@@ -30,8 +31,8 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ParseCancelLocation(data); !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("err = %v, want ErrIdentityEmpty", err)
+		if _, err := ParseCancelLocation(data); !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("err = %v, want identity.ErrEmpty", err)
 		}
 	})
 	t.Run("MoFsm SM-RP-DA imsi", func(t *testing.T) {
@@ -48,8 +49,8 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ParseMoFsm(data); !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("err = %v, want ErrIdentityEmpty", err)
+		if _, err := ParseMoFsm(data); !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("err = %v, want identity.ErrEmpty", err)
 		}
 	})
 	t.Run("MtFsm SM-RP-DA imsi", func(t *testing.T) {
@@ -66,8 +67,8 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err := ParseMtFsm(data); !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("err = %v, want ErrIdentityEmpty", err)
+		if _, err := ParseMtFsm(data); !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("err = %v, want identity.ErrEmpty", err)
 		}
 	})
 	t.Run("ProvideSubscriberLocation imsi and imei", func(t *testing.T) {
@@ -84,8 +85,8 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s: %v", name, err)
 			}
-			if _, err := ParseProvideSubscriberLocation(data); !errors.Is(err, ErrIdentityEmpty) {
-				t.Errorf("%s: err = %v, want ErrIdentityEmpty", name, err)
+			if _, err := ParseProvideSubscriberLocation(data); !errors.Is(err, identity.ErrEmpty) {
+				t.Errorf("%s: err = %v, want identity.ErrEmpty", name, err)
 			}
 		}
 	})
@@ -93,8 +94,8 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 
 func TestIdentityEmptyNilAndEmpty(t *testing.T) {
 	for _, in := range [][]byte{nil, {}, {0xff}} {
-		if _, err := decodeIdentityDigits(identityIMSI, in); !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("decodeIdentityDigits(%#v) err = %v, want ErrIdentityEmpty", in, err)
+		if _, err := decodeIdentityDigits(identityIMSI, in); !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("decodeIdentityDigits(%#v) err = %v, want identity.ErrEmpty", in, err)
 		}
 	}
 }

@@ -561,11 +561,10 @@ func convertLocationInformation5GSToWire(l *LocationInformation5GS) (*gsm_map.Lo
 	}
 
 	if l.GeographicalInformation != nil {
-		raw, err := l.GeographicalInformation.Encode()
-		if err != nil {
-			return nil, fmt.Errorf("encoding GeographicalInformation: %w", err)
+		if err := validateSenderGeographicalInformation(l.GeographicalInformation); err != nil {
+			return nil, err
 		}
-		gi := raw
+		gi := gsm_map.GeographicalInformation(l.GeographicalInformation)
 		out.GeographicalInformation = &gi
 	}
 
@@ -643,11 +642,7 @@ func convertWireToLocationInformation5GS(w *gsm_map.LocationInformation5GS) (*Lo
 	}
 
 	if w.GeographicalInformation != nil {
-		gi, err := DecodeGeographicalInfo(*w.GeographicalInformation)
-		if err != nil {
-			return nil, fmt.Errorf("decoding GeographicalInformation: %w", err)
-		}
-		out.GeographicalInformation = gi
+		out.GeographicalInformation = *w.GeographicalInformation
 	}
 
 	if w.GeodeticInformation != nil {

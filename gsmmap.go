@@ -538,7 +538,7 @@ type SubscriberInfo struct {
 	SubscriberState                  *SubscriberStateInfo              // [1]
 	LocationInformationGPRS          *GPRSLocationInformation          // [3]
 	PsSubscriberState                *PsSubscriberState                // [4] CHOICE
-	IMEI                             string                            // [5] digits; empty if absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see ErrIMEISpareDigitNotZero)
+	IMEI                             string                            // [5] digits; empty if absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see identity.ErrIMEISpareDigitNotZero)
 	MsClassmark2                     HexBytes                          // [6] raw octets; nil if absent
 	GprsMSClass                      *GprsMSClass                      // [7]
 	MnpInfoRes                       *MnpInfoRes                       // [8]
@@ -614,18 +614,18 @@ type UserCSGInformation struct {
 // The caller sets CurrentLocationRetrieved when location information was
 // retrieved after successful paging (3GPP TS 29.002 V19.1.0 §17.7.1).
 type LocationInformation5GS struct {
-	NrCellGlobalIdentity     HexBytes          // [0]
-	EUtranCellGlobalIdentity HexBytes          // [1]
-	GeographicalInformation  *GeographicalInfo // [2]
-	GeodeticInformation      HexBytes          // [3]
-	AmfAddress               HexBytes          // [4] FQDN
-	TrackingAreaIdentity     HexBytes          // [5]
-	CurrentLocationRetrieved bool              // [6] NULL
-	AgeOfLocationInformation *int              // [7] minutes
-	VplmnID                  HexBytes          // [8] 3 octets
-	LocalTimeZone            HexBytes          // [9]
-	RatType                  *UsedRatType      // [10]
-	NrTrackingAreaIdentity   HexBytes          // [12]
+	NrCellGlobalIdentity     HexBytes     // [0]
+	EUtranCellGlobalIdentity HexBytes     // [1]
+	GeographicalInformation  HexBytes     // [2] 8 octets, TS 23.032 ellipsoid point with uncertainty circle
+	GeodeticInformation      HexBytes     // [3]
+	AmfAddress               HexBytes     // [4] FQDN
+	TrackingAreaIdentity     HexBytes     // [5]
+	CurrentLocationRetrieved bool         // [6] NULL
+	AgeOfLocationInformation *int         // [7] minutes
+	VplmnID                  HexBytes     // [8] 3 octets
+	LocalTimeZone            HexBytes     // [9]
+	RatType                  *UsedRatType // [10]
+	NrTrackingAreaIdentity   HexBytes     // [12]
 }
 
 // SubscriberStateInfo represents the subscriber state CHOICE.
@@ -664,7 +664,7 @@ type CSLocationInformation struct {
 	MscNumber                string // decoded; empty if absent
 	MscNumberNature          uint8
 	MscNumberPlan            uint8
-	GeographicalInformation  *GeographicalInfo   // decoded per 3GPP TS 23.032; nil if absent
+	GeographicalInformation  HexBytes            // raw 8 octets, TS 23.032 ellipsoid point with uncertainty circle; nil if absent
 	GeodeticInformation      HexBytes            // raw 10 octets; nil if absent
 	CellGlobalId             HexBytes            // raw fixed-length cell ID or SAI; empty if absent
 	LAI                      HexBytes            // raw 5-octet LAI; empty if absent
@@ -679,11 +679,11 @@ type CSLocationInformation struct {
 
 // EPSLocationInformation contains EPS/LTE location data.
 type EPSLocationInformation struct {
-	AgeOfLocationInformation *int              // minutes; nil if absent
-	EUtranCellGlobalIdentity HexBytes          // raw 7 octets; nil if absent
-	TrackingAreaIdentity     HexBytes          // raw 5 octets; nil if absent
-	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
-	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
+	AgeOfLocationInformation *int     // minutes; nil if absent
+	EUtranCellGlobalIdentity HexBytes // raw 7 octets; nil if absent
+	TrackingAreaIdentity     HexBytes // raw 5 octets; nil if absent
+	GeographicalInformation  HexBytes // raw 8 octets, TS 23.032 ellipsoid point with uncertainty circle; nil if absent
+	GeodeticInformation      HexBytes // raw 10 octets; nil if absent
 	// The caller sets CurrentLocationRetrieved when location information was
 	// retrieved after successful paging (3GPP TS 29.002 V19.1.0 §17.7.1).
 	CurrentLocationRetrieved bool
@@ -692,13 +692,13 @@ type EPSLocationInformation struct {
 
 // GPRSLocationInformation contains GPRS domain location data (opCode 71).
 type GPRSLocationInformation struct {
-	AgeOfLocationInformation *int              // minutes; nil if absent
-	CellGlobalId             HexBytes          // raw fixed-length cell ID or SAI; empty if absent
-	LAI                      HexBytes          // raw 5-octet LAI; empty if absent
-	RouteingAreaIdentity     HexBytes          // raw octets; nil if absent
-	GeographicalInformation  *GeographicalInfo // decoded per 3GPP TS 23.032; nil if absent
-	GeodeticInformation      HexBytes          // raw 10 octets; nil if absent
-	SgsnNumber               string            // decoded; empty if absent
+	AgeOfLocationInformation *int     // minutes; nil if absent
+	CellGlobalId             HexBytes // raw fixed-length cell ID or SAI; empty if absent
+	LAI                      HexBytes // raw 5-octet LAI; empty if absent
+	RouteingAreaIdentity     HexBytes // raw octets; nil if absent
+	GeographicalInformation  HexBytes // raw 8 octets, TS 23.032 ellipsoid point with uncertainty circle; nil if absent
+	GeodeticInformation      HexBytes // raw 10 octets; nil if absent
+	SgsnNumber               string   // decoded; empty if absent
 	SgsnNumberNature         uint8
 	SgsnNumberPlan           uint8
 	SelectedLSAIdentity      HexBytes            // [4] LSAIdentity; nil if absent
@@ -2990,12 +2990,12 @@ type ProvideSubscriberLocationArg struct {
 	// Optional.
 	LcsClientID               *LCSClientID
 	PrivacyOverride           bool     // [1] NULL flag
-	IMSI                      string   // TBCD-decoded digits; "" = absent (6..15 digits, ErrIMSIInvalidLength)
+	IMSI                      string   // TBCD-decoded digits; "" = absent (6..15 digits, identity.ErrIMSILength)
 	MSISDN                    string   // ISDN-AddressString digits; "" = absent
 	MSISDNNature              uint8    // address nature indicator
 	MSISDNPlan                uint8    // numbering plan indicator
 	LMSI                      HexBytes // 4 octets opaque
-	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see ErrIMEISpareDigitNotZero)
+	IMEI                      string   // TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see identity.ErrIMEISpareDigitNotZero)
 	LcsPriority               LCSPriority
 	LcsQoS                    *LCSQoS
 	SupportedGADShapes        *SupportedGADShapes
@@ -3442,8 +3442,8 @@ type SubscriberLocationReportArg struct {
 	MSISDN       string // [0] ISDN-AddressString digits; "" = absent
 	MSISDNNature uint8
 	MSISDNPlan   uint8
-	IMSI         string // [1] TBCD-decoded digits; "" = absent (6..15 digits, ErrIMSIInvalidLength)
-	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see ErrIMEISpareDigitNotZero)
+	IMSI         string // [1] TBCD-decoded digits; "" = absent (6..15 digits, identity.ErrIMSILength)
+	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see identity.ErrIMEISpareDigitNotZero)
 
 	// Optional emergency-services routing identifiers (ISDN-AddressString).
 	NaESRD       string // [3] North-American Emergency Service Routing Digits; "" = absent
@@ -3778,9 +3778,7 @@ type InsertSubscriberDataRes struct {
 // MAP operation sentinel errors.
 var (
 	// 3GPP TS 29.002 V19.1.0 §17.7.8; RFC 6733 §4.3.1.
-	ErrDiameterIdentityNotASCII = errors.New("diameterIdentity: bytes must be ASCII per 3GPP TS 29.002 V19.1.0 §17.7.8 and RFC 6733 §4.3.1")
-	// 3GPP TS 29.002 V19.1.0 §§17.7.8,17.7.13.
-	ErrPLMNIdentityInvalidDigits                 = errors.New("plmnIdentity: MCC and MNC must contain decimal digits; only the third MNC digit may be filler per 3GPP TS 29.002 V19.1.0 §§17.7.8,17.7.13")
+	ErrDiameterIdentityNotASCII                  = errors.New("diameterIdentity: bytes must be ASCII per 3GPP TS 29.002 V19.1.0 §17.7.8 and RFC 6733 §4.3.1")
 	ErrExtForwOptionsReservedOctets              = errors.New("ExtForwOptions octets 2..5 are reserved for future use per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrExtForwOptionsUnusedBits                  = errors.New("ForwardingOptions bits 5, 2 and 1 must be zero per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrInterCUGRestrictionsUnusedBits            = errors.New("InterCUGRestrictions bits 8..3 must be zero per 3GPP TS 29.002 V19.1.0 §17.7.1")
@@ -3816,6 +3814,7 @@ var (
 	ErrRequestedInfoRequestedNodesInCSDomain                  = errors.New("requestedInfo: RequestedNodes is forbidden in cs-Domain per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
 	ErrRequestedInfoServingNodeWithoutLocationInformation     = errors.New("requestedInfo: ServingNodeIndication requires LocationInformation per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
 	ErrRequestedInfoServingNodeWithCurrentLocation            = errors.New("requestedInfo: ServingNodeIndication is forbidden with CurrentLocation per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
+	ErrGeographicalInformationInvalid                         = errors.New("geographicalInformation: only an ellipsoid point with uncertainty circle coded per 3GPP TS 23.032 V19.0.0 §7.3.2 is allowed per 3GPP TS 29.002 V19.1.0 §17.7.1 GeographicalInformation")
 	ErrGeodeticInformationShapeInvalid                        = errors.New("geodeticInformation: only ellipsoid point with uncertainty circle is allowed per 3GPP TS 29.002 V19.1.0 §17.7.1 GeodeticInformation and Q.763 (1999) §3.88(c)")
 	ErrRouteingNumberTBCDInvalid                              = errors.New("mnpInfoRes: RouteingNumber filler is permitted only in the final high nibble per 3GPP TS 29.002 V19.1.0 §17.7.8 TBCD-STRING")
 
@@ -3829,8 +3828,7 @@ var (
 	ErrLCSClientNameDataCodingSchemeInvalid           = errors.New("lcsClientName: DataCodingScheme must be 0x0f (default alphabet) per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrExtGeographicalInformationInvalid              = errors.New("lcs: ExtGeographicalInformation has an unsupported shape, incorrect shape length or coding per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §7.3")
 	ErrAddGeographicalInformationInvalid              = errors.New("lcs: AddGeographicalInformation has an undefined shape, incorrect shape length or coding per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §7.3")
-	ErrVelocityEstimateTypeInvalid                    = errors.New("lcs: VelocityEstimate type must be horizontal, horizontal with vertical, or their uncertainty variants per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8.6")
-	ErrVelocityEstimateLengthInvalid                  = errors.New("lcs: VelocityEstimate must be 4, 5, 5 or 7 octets for velocity types 0 to 3 per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrVelocityEstimateInvalid                        = errors.New("lcs: VelocityEstimate has an undefined velocity type, incorrect length or coding per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8")
 	ErrSLRArgDeferredmtLrDataPresence                 = errors.New("subscriberLocationReportArg: DeferredmtLrData must be present if and only if LcsEvent is deferredmt-lrResponse per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrDeferredmtLrDataLocationInfoRequiresRestart    = errors.New("deferredmt-lrData: LcsLocationInfo may be included only with TerminationCause mt-lrRestart per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrSLRResRoutingIdentifiersMutuallyExclusive      = errors.New("subscriberLocationReportRes: NaESRK and NaESRD are mutually exclusive per 3GPP TS 29.002 V19.1.0 §17.7.13")
@@ -3843,24 +3841,6 @@ var (
 	ErrLocationEstimateOneOctetWithoutAdd       = errors.New("lcs: a one-octet LocationEstimate is sent only beside AddLocationEstimate, or in a deferred PSL result, per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrLocationEstimateShapeMismatch            = errors.New("lcs: a one-octet LocationEstimate beside AddLocationEstimate holds its type of shape per 3GPP TS 29.002 V19.1.0 §7.6.11.11")
 	ErrCallBarredParamUnknownAlternative        = errors.New("callBarredParam: unknown CHOICE alternative")
-	ErrGeoAltitudeOutOfRange                    = errors.New("geographical altitude is out of range")
-	ErrGeoAngleOutOfRange                       = errors.New("geographical angle is out of range")
-	ErrGeoArcFieldsMissing                      = errors.New("ellipsoid arc has missing fields")
-	ErrGeoArcInvalidLength                      = errors.New("ellipsoid arc has invalid length")
-	ErrGeoCodeOutOfRange                        = errors.New("geographical code is out of range")
-	ErrGeoInformationTooShort                   = errors.New("geographical information is too short")
-	ErrGeoLatitudeNotFinite                     = errors.New("latitude is not finite")
-	ErrGeoLatitudeOutOfRange                    = errors.New("latitude is out of range")
-	ErrGeoLongitudeNotFinite                    = errors.New("longitude is not finite")
-	ErrGeoLongitudeOutOfRange                   = errors.New("longitude is out of range")
-	ErrGeoPointAltitudeFieldsMissing            = errors.New("ellipsoid point with altitude has missing fields")
-	ErrGeoPointAltitudeInvalidLength            = errors.New("ellipsoid point with altitude has invalid length")
-	ErrGeoPointInvalidLength                    = errors.New("ellipsoid point has invalid length")
-	ErrGeoPointUncertaintyEllipseFieldsMissing  = errors.New("ellipsoid point with uncertainty ellipse has missing fields")
-	ErrGeoPointUncertaintyEllipseInvalidLength  = errors.New("ellipsoid point with uncertainty ellipse has invalid length")
-	ErrGeoPointUncertaintyFieldsMissing         = errors.New("ellipsoid point with uncertainty has missing fields")
-	ErrGeoPointUncertaintyInvalidLength         = errors.New("ellipsoid point with uncertainty has invalid length")
-	ErrGeoShapeTypeInvalid                      = errors.New("geographical shape type is unsupported")
 	ErrInt64Overflow                            = errors.New("integer does not fit int64")
 	ErrIntegerMissing                           = errors.New("integer value is missing")
 	ErrPdnGwIdentityAddressMissing              = errors.New("PdnGwIdentity has no address or name")
@@ -3948,38 +3928,6 @@ var (
 	ErrAddressNatureInvalid = errors.New("address: nature of address must be 0x00, 0x10, 0x20, 0x30, 0x40 or 0x60 per 3GPP TS 29.002 V19.1.0 §17.7.8")
 	// ErrAddressPlanInvalid rejects unassigned numbering plans (TS 29.002 §17.7.8).
 	ErrAddressPlanInvalid = errors.New("address: numbering plan must be 0, 1, 3, 4, 6, 8 or 9 per 3GPP TS 29.002 V19.1.0 §17.7.8")
-
-	// ErrIdentityNotDigits is returned when an IMSI, IMEI or IMEISV holds a
-	// character other than 0-9. TBCD-STRING also carries * # a b c, but
-	// TS 23.003 defines these identities as decimal digit strings.
-	ErrIdentityNotDigits = errors.New("identity: IMSI, IMEI and IMEISV must consist of digits 0-9 only (TS 23.003)")
-
-	// ErrIdentityEmpty is returned when an IMSI, IMEI or IMEISV is absent,
-	// empty or decodes to no digits (e.g. all TBCD filler).
-	ErrIdentityEmpty = errors.New("identity: IMSI, IMEI or IMEISV holds no digits")
-
-	// ErrIMSIInvalidLength is returned when an IMSI does not have 6 to 15
-	// digits: a three-digit MCC, a two- or three-digit MNC and an MSIN, "Not
-	// more than 15 digits" (3GPP TS 23.003 V20.1.0 §2.2, §2.3).
-	ErrIMSIInvalidLength = errors.New("identity: IMSI must have 6 to 15 digits (MCC, MNC and MSIN) per 3GPP TS 23.003 V20.1.0 §2.2")
-	// ErrIMEIInvalidLength is returned when an IMEI field does not hold 15
-	// digits (IMEI, 3GPP TS 23.003 V20.1.0 §6.2.1) or 16 digits (with the
-	// software version number, §6.2.2), the two forms 3GPP TS 29.002 V19.1.0
-	// §17.7.8 IMEI carries.
-	ErrIMEIInvalidLength = errors.New("identity: IMEI must have 15 digits, or 16 with the software version number, per 3GPP TS 23.003 V20.1.0 §6.2 and 3GPP TS 29.002 V19.1.0 §17.7.8")
-	// ErrIMEISpareDigitNotZero is returned by Marshal for a 15-digit IMEI
-	// whose last digit is not 0. 3GPP TS 29.002 V19.1.0 §17.7.8 IMEI: "If
-	// the SVN is not present the last octet shall contain the digit 0 and a
-	// filler." 3GPP TS 23.003 V20.1.0 §6.2.1: "if this digit is Spare Digit
-	// it shall be set to zero, when transmitted by the MS", and "The Check
-	// Digit is not part of the digits transmitted". Parse keeps a non-zero
-	// spare digit, so an IMEI from a peer that puts the Check Digit there
-	// decodes; Marshal rejects a non-zero spare digit. Every public IMEI field follows this
-	// rule.
-	ErrIMEISpareDigitNotZero = errors.New("identity: a 15-digit IMEI carries the spare digit 0 in its last position, not the check digit, per 3GPP TS 29.002 V19.1.0 §17.7.8 and 3GPP TS 23.003 V20.1.0 §6.2.1")
-	// ErrIMEISVInvalidLength is returned when an IMEISV does not have 16
-	// digits (3GPP TS 23.003 V20.1.0 §6.2.2).
-	ErrIMEISVInvalidLength = errors.New("identity: IMEISV must have 16 digits per 3GPP TS 23.003 V20.1.0 §6.2.2")
 
 	// ErrIscStoredMSISDNDecodedEmpty is returned when a wire storedMSISDN
 	// carries no digits: StoredMSISDN "" means absent, so the field could not

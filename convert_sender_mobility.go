@@ -1,9 +1,12 @@
 package gsmmap
 
 import (
+	"bytes"
 	"fmt"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-gad"
+	"github.com/gomaja/go-tbcd"
 )
 
 // TS 29.002 V19.1.0 §17.7.1 PDP-Type and Ext-PDP-Type; TS 29.060 V19.0.0 §7.7.27 Figures35..39.
@@ -86,12 +89,35 @@ func validateSenderGeodeticInformation(b []byte) error {
 	return nil
 }
 
-// TS 29.002 V19.1.0 §17.7.8 TBCD-STRING uses filler only after the final odd digit.
+// validateSenderGeographicalInformation checks a GeographicalInformation
+// before sending: 3GPP TS 29.002 V19.1.0 §17.7.1 allows only an ellipsoid
+// point with uncertainty circle, coded per 3GPP TS 23.032 V19.0.0 §7.3.2.
+// The codec checks SIZE (8).
+func validateSenderGeographicalInformation(b []byte) error {
+	if len(b) != 8 {
+		return nil
+	}
+	if shape := gad.Shape(b[0] >> 4); shape != gad.ShapeEllipsoidPointUncertaintyCircle {
+		return fmt.Errorf("%w: %v", ErrGeographicalInformationInvalid, shape)
+	}
+	if err := gad.Validate(b); err != nil {
+		return fmt.Errorf("%w: %w", ErrGeographicalInformationInvalid, err)
+	}
+	return nil
+}
+
+// validateSenderRouteingNumber checks that a RouteingNumber is the TBCD
+// coding of its digits: TS 29.002 V19.1.0 §17.7.8 TBCD-STRING uses filler
+// only after the final odd digit, so neither inside the digits nor as a
+// trailing filler octet.
 func validateSenderRouteingNumber(b []byte) error {
-	for i, v := range b {
-		if v&0x0f == 0x0f || (v>>4 == 0x0f && i != len(b)-1) {
-			return fmt.Errorf("octet %d: %w", i, ErrRouteingNumberTBCDInvalid)
-		}
+	digits, err := tbcd.Decode(b)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrRouteingNumberTBCDInvalid, err)
+	}
+	// Decode returns digits of the TBCD alphabet only, which Encode accepts.
+	if enc, _ := tbcd.Encode(digits); !bytes.Equal(enc, b) {
+		return fmt.Errorf("%w: trailing filler octet", ErrRouteingNumberTBCDInvalid)
 	}
 	return nil
 }

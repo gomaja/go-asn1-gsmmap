@@ -9,6 +9,8 @@ package gsmmap
 import (
 	"reflect"
 	"testing"
+
+	identity "github.com/gomaja/go-3gpp-identity"
 )
 
 // minimalSLRArg is the smallest valid arg: the three mandatory fields
@@ -69,7 +71,7 @@ func TestSLRArgRoundTrip(t *testing.T) {
 			LcsLocationInfo:       LCSLocationInfo{NetworkNodeNumber: "31650000000", NetworkNodeNumberNature: 0x10, NetworkNodeNumberPlan: 0x01},
 			IMSI:                  "204080000000001",
 			IMEI:                  "490154203237510",
-			LocationEstimate:      HexBytes{0x04, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60},
+			LocationEstimate:      HexBytes{0x00, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60},
 			AgeOfLocationEstimate: func() *int { v := int(age); return &v }(),
 		}},
 		{"CGI cell id", &SubscriberLocationReportArg{
@@ -151,7 +153,7 @@ func TestSLRArgRoundTrip(t *testing.T) {
 // through real BER encoding.
 func TestSLRArgBERRoundTrip(t *testing.T) {
 	in := minimalSLRArg()
-	in.LocationEstimate = HexBytes{0x04, 0x10, 0x20, 0x30, 0, 0, 0}
+	in.LocationEstimate = HexBytes{0x00, 0x10, 0x20, 0x30, 0, 0, 0}
 	in.MSISDN = "31612345678"
 	in.MSISDNNature = 0x10
 	in.MSISDNPlan = 0x01
@@ -184,9 +186,9 @@ func TestSLRArgEncodeNegative(t *testing.T) {
 		{"LcsEvent out of range", func(a *SubscriberLocationReportArg) { a.LcsEvent = LCSEvent(99) }, ErrLCSEventInvalid, "", ""},
 		{"LcsClientType out of range", func(a *SubscriberLocationReportArg) { a.LcsClientID.LcsClientType = LCSClientType(99) }, ErrLCSClientTypeInvalid, "", ""},
 		{"LcsLocationInfo empty node", func(a *SubscriberLocationReportArg) { a.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeNumberEmpty, "", ""},
-		{"IMSI too short", func(a *SubscriberLocationReportArg) { a.IMSI = "1234" }, ErrIMSIInvalidLength, "", ""},
-		{"IMSI too long", func(a *SubscriberLocationReportArg) { a.IMSI = "1234567890123456" }, ErrIMSIInvalidLength, "", ""},
-		{"IMEI wrong length", func(a *SubscriberLocationReportArg) { a.IMEI = "12345" }, ErrIMEIInvalidLength, "", ""},
+		{"IMSI too short", func(a *SubscriberLocationReportArg) { a.IMSI = "1234" }, identity.ErrIMSILength, "", ""},
+		{"IMSI too long", func(a *SubscriberLocationReportArg) { a.IMSI = "1234567890123456" }, identity.ErrIMSILength, "", ""},
+		{"IMEI wrong length", func(a *SubscriberLocationReportArg) { a.IMEI = "12345" }, identity.ErrIMEILength, "", ""},
 		{"LocationEstimate too long", func(a *SubscriberLocationReportArg) { a.LocationEstimate = make(HexBytes, 21) }, nil, "locationEstimate", "SIZE (1..20)"},
 		{"AddLocationEstimate too long", func(a *SubscriberLocationReportArg) { a.AddLocationEstimate = make(HexBytes, 92) }, nil, "add-LocationEstimate", "SIZE (1..91)"},
 		{"LcsReferenceNumber wrong size", func(a *SubscriberLocationReportArg) { a.LcsReferenceNumber = HexBytes{0x01, 0x02} }, nil, "lcs-ReferenceNumber", "SIZE (1)"},

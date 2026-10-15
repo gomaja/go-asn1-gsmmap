@@ -14,8 +14,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-tbcd"
 )
 
 // --- ODB-Data (3GPP TS 29.002 V19.1.0 §17.7.1) ---

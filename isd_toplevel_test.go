@@ -4,6 +4,8 @@ import (
 	"errors"
 	"reflect"
 	"testing"
+
+	identity "github.com/gomaja/go-3gpp-identity"
 )
 
 // ----------------------------------------------------------------------------
@@ -370,8 +372,8 @@ func TestInsertSubscriberDataArg_IMSISizeRejected(t *testing.T) {
 	for _, digits := range []string{"12", "1234", "12345", "1234567890123456"} {
 		in := &InsertSubscriberDataArg{IMSI: digits}
 		_, err := in.Marshal()
-		if !errors.Is(err, ErrIMSIInvalidLength) {
-			t.Fatalf("%d digits: want ErrIMSIInvalidLength, got %v", len(digits), err)
+		if !errors.Is(err, identity.ErrIMSILength) {
+			t.Fatalf("%d digits: want identity.ErrIMSILength, got %v", len(digits), err)
 		}
 	}
 }

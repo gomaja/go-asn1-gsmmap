@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -461,7 +462,7 @@ func TestSenderPLMNDigits(t *testing.T) {
 						}
 						continue
 					}
-					if !errors.Is(err, ErrPLMNIdentityInvalidDigits) {
+					if !errors.Is(err, identity.ErrPLMNIdentityDigits) {
 						t.Fatalf("digit%d=%x: %v", pos, d, err)
 					}
 				}
@@ -506,7 +507,7 @@ func TestSenderAreaCountryMCC(t *testing.T) {
 			v := semPSLArg()
 			v.IMSI = "001010123456789"
 			v.AreaEventInfo = &AreaEventInfo{AreaDefinition: AreaDefinition{AreaList: AreaList{{AreaType: AreaTypeCountryCode, AreaIdentification: b}}}}
-			if _, err := v.Marshal(); !errors.Is(err, ErrPLMNIdentityInvalidDigits) {
+			if _, err := v.Marshal(); !errors.Is(err, identity.ErrPLMNIdentityDigits) {
 				t.Fatalf("%x: %v", b, err)
 			}
 		}
@@ -523,7 +524,7 @@ func senderCommonLenientCases() []semLenientCase {
 			w.MmeDiameterAddress = &gsm_map.NetworkNodeDiameterAddress{DiameterName: gsm_map.DiameterIdentity{0x80, 'o', 'd', 'e', '.', 't', 'e', 's', 't'}, DiameterRealm: gsm_map.DiameterIdentity("realm.test")}
 			return w
 		}},
-		{ErrPLMNIdentityInvalidDigits, asParser(ParseUpdateLocation), func(*testing.T) semWire {
+		{identity.ErrPLMNIdentityDigits, asParser(ParseUpdateLocation), func(*testing.T) semWire {
 			w := update()
 			w.EplmnList = &gsm_map.EPLMNList{Values: []gsm_map.PLMNId{{0xaa, 0xff, 0xaa}}}
 			return w
@@ -548,7 +549,7 @@ func TestSenderAreaCountryIncludedMNC(t *testing.T) {
 			in.AreaEventInfo = &AreaEventInfo{AreaDefinition: AreaDefinition{AreaList: AreaList{{AreaType: AreaTypeCountryCode, AreaIdentification: raw}}}}
 			data, err := in.Marshal()
 			if prefix[1] == 0xa3 || prefix[2] == 0xfa || prefix[2] == 0xf4 {
-				if !errors.Is(err, ErrPLMNIdentityInvalidDigits) {
+				if !errors.Is(err, identity.ErrPLMNIdentityDigits) {
 					t.Fatalf("%x: got %v", raw, err)
 				}
 				continue
@@ -578,7 +579,7 @@ func TestSenderPLMNListErrorContexts(t *testing.T) {
 				in.AdjacentPLMNList = list
 			}
 			_, err := in.Marshal()
-			if !errors.Is(err, ErrPLMNIdentityInvalidDigits) || !strings.Contains(err.Error(), "UpdateGprsLocation."+field+"[1]") {
+			if !errors.Is(err, identity.ErrPLMNIdentityDigits) || !strings.Contains(err.Error(), "UpdateGprsLocation."+field+"[1]") {
 				t.Fatalf("wrong field context: %v", err)
 			}
 		})
@@ -586,7 +587,7 @@ func TestSenderPLMNListErrorContexts(t *testing.T) {
 	in := senderUpdateLocation()
 	in.EplmnList = []HexBytes{{0x21, 0xf3, 0x54}, {0x21, 0xf3, 0xfa}}
 	_, err := in.Marshal()
-	if !errors.Is(err, ErrPLMNIdentityInvalidDigits) || !strings.Contains(err.Error(), "UpdateLocation.EplmnList[1]") {
+	if !errors.Is(err, identity.ErrPLMNIdentityDigits) || !strings.Contains(err.Error(), "UpdateLocation.EplmnList[1]") {
 		t.Fatalf("wrong field context: %v", err)
 	}
 }

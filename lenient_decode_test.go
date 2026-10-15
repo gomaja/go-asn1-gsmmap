@@ -12,9 +12,9 @@ import (
 	"testing"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-tbcd"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // IstSupportIndicator: ENUMERATED { 0, 1, ... }, spec exception: values

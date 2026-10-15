@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"math/big"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	"github.com/gomaja/go-asn1/runtime/ber"
+	"github.com/gomaja/go-tbcd"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 const errEncodingIMSI = "encoding IMSI: %w"
@@ -61,19 +62,21 @@ func validateDiameterIdentityASCII(raw []byte, field string) error {
 	return nil
 }
 
-// TS 29.002 V19.1.0 §§17.7.8,17.7.13: only MNC digit 3 may be filler.
+// validatePLMNIdentityDigits checks the PLMN-Id that raw starts with (3GPP
+// TS 29.002 V19.1.0 §§17.7.8, 17.7.13): only MNC digit 3 may be filler. A
+// two-octet AreaIdentification holds only the MCC (§17.7.13). The codec
+// checks each field's SIZE.
 func validatePLMNIdentityDigits(raw []byte, field string) error {
-	if len(raw) >= 2 {
+	if len(raw) >= 3 {
+		if err := identity.ValidatePLMNIdentity(raw[:3]); err != nil {
+			return fmt.Errorf("%s: %w", field, err)
+		}
+		return nil
+	}
+	if len(raw) == 2 {
 		for i, d := range [3]byte{raw[0] & 0xf, raw[0] >> 4, raw[1] & 0xf} {
 			if d > 9 {
-				return fmt.Errorf("%s MCC digit %d: %w", field, i+1, ErrPLMNIdentityInvalidDigits)
-			}
-		}
-	}
-	if len(raw) >= 3 {
-		for i, d := range [3]byte{raw[2] & 0xf, raw[2] >> 4, raw[1] >> 4} {
-			if d > 9 && (i != 2 || d != 0xf) {
-				return fmt.Errorf("%s MNC digit %d: %w", field, i+1, ErrPLMNIdentityInvalidDigits)
+				return fmt.Errorf("%s MCC digit %d: %w", field, i+1, identity.ErrPLMNIdentityDigits)
 			}
 		}
 	}
@@ -161,28 +164,17 @@ func int64FromBigInt(v *big.Int, field string) (int64, error) {
 	return v.Int64(), nil
 }
 
-// identity is an identity of 3GPP TS 23.003 carried as a TBCD-STRING (3GPP
-// TS 29.002 V19.1.0 §17.7.8) and the digit counts the MAP field carrying it
-// admits. The octet SIZE the codec checks admits more digit counts than the
-// identity has, so the count is checked here, identically on encode and
-// decode.
-type identity struct {
-	min, max int
-	err      error
-	// spareDigit marks an identity whose min-digit form ends in a spare
-	// digit that is sent as 0 (the IMEI, see identityIMEI).
-	spareDigit bool
+// identityField is an identity of 3GPP TS 23.003 carried as a TBCD-STRING
+// (3GPP TS 29.002 V19.1.0 §17.7.8). The octet SIZE the codec checks admits
+// more digit counts than the identity has, so go-3gpp-identity checks the
+// decoded digits: received on Parse, sent on Marshal.
+type identityField struct {
+	received, sent func(digits string) error
 }
 
 var (
-	// identityIMSI: 3GPP TS 23.003 V20.1.0 §2.2 "IMSI is composed of three
-	// parts: 1) Mobile Country Code (MCC) consisting of three digits. [...]
-	// 2) Mobile Network Code (MNC) consisting of two or three digits [...]
-	// 3) Mobile Subscriber Identification Number (MSIN)", "Not more than 15
-	// digits" (figure 1); §2.3 "The number of digits in IMSI shall not
-	// exceed 15." The shortest IMSI is a three-digit MCC, a two-digit MNC
-	// and a one-digit MSIN.
-	identityIMSI = identity{min: 6, max: 15, err: ErrIMSIInvalidLength}
+	// identityIMSI: 6 to 15 digits, 3GPP TS 23.003 V20.1.0 §§2.2, 2.3.
+	identityIMSI = identityField{received: identity.ValidateIMSI, sent: identity.ValidateIMSI}
 
 	// identityIMEI: 3GPP TS 23.003 V20.1.0 §6.2.1 composes the IMEI of the
 	// TAC ("Its length is 8 digits"), the SNR ("Its length is 6 digits") and
@@ -199,62 +191,51 @@ var (
 	// is the Check Digit see paragraph below; if this digit is Spare Digit it
 	// shall be set to zero, when transmitted by the MS." and "The Check Digit
 	// is not part of the digits transmitted". Marshal rejects a 15-digit
-	// IMEI that does not end in 0 (ErrIMEISpareDigitNotZero). Parse accepts
-	// any 15th digit, so a peer that transmits the Check Digit
+	// IMEI that does not end in 0 (identity.ErrIMEISpareDigitNotZero). Parse
+	// accepts any 15th digit, so a peer that transmits the Check Digit
 	// decodes; such a value does not marshal again.
-	identityIMEI = identity{min: 15, max: 16, err: ErrIMEIInvalidLength, spareDigit: true}
+	identityIMEI = identityField{received: imeiField(identity.ValidateIMEI), sent: imeiField(identity.ValidateIMEISpareDigit)}
 
 	// identityIMEISV: the IMEISV parameter (3GPP TS 29.002 V19.1.0
 	// §7.6.2.3a, ADD-Info imeisv), 16 digits per 3GPP TS 23.003 V20.1.0
 	// §6.2.2.
-	identityIMEISV = identity{min: 16, max: 16, err: ErrIMEISVInvalidLength}
+	identityIMEISV = identityField{received: identity.ValidateIMEISV, sent: identity.ValidateIMEISV}
 )
+
+// imeiField checks the digits of a MAP IMEI field: a 16-digit IMEISV, or
+// otherwise the 15-digit IMEI that imei checks.
+func imeiField(imei func(string) error) func(string) error {
+	return func(digits string) error {
+		if len(digits) == 16 {
+			return identity.ValidateIMEISV(digits)
+		}
+		return imei(digits)
+	}
+}
 
 // encodeIdentityDigits TBCD-encodes the digits of an IMSI, IMEI or IMEISV.
 // The TBCD-STRING alphabet of TS 29.002 V19.1.0 §17.7.8 also carries
 // * # a b c, but these identities are decimal digit strings (TS 23.003), so
-// anything else is rejected with ErrIdentityNotDigits.
-func encodeIdentityDigits(id identity, digits string) ([]byte, error) {
-	if err := checkIdentityDigits(id, digits); err != nil {
+// anything else is rejected with identity.ErrNotDigits, and no digits at all
+// with identity.ErrEmpty.
+func encodeIdentityDigits(id identityField, digits string) ([]byte, error) {
+	if err := id.sent(digits); err != nil {
 		return nil, err
-	}
-	if id.spareDigit && len(digits) == id.min && digits[len(digits)-1] != '0' {
-		return nil, fmt.Errorf("%w (got %q)", ErrIMEISpareDigitNotZero, digits[len(digits)-1])
 	}
 	return tbcd.Encode(digits)
 }
 
-// decodeIdentityDigits is the inverse of encodeIdentityDigits, with the
-// encode-only spare-digit rule.
-func decodeIdentityDigits(id identity, raw []byte) (string, error) {
+// decodeIdentityDigits is the inverse of encodeIdentityDigits. Octets that
+// are all TBCD filler, which tbcd.Decode drops, are identity.ErrEmpty.
+func decodeIdentityDigits(id identityField, raw []byte) (string, error) {
 	digits, err := tbcd.Decode(raw)
 	if err != nil {
 		return "", err
 	}
-	if err := checkIdentityDigits(id, digits); err != nil {
+	if err := id.received(digits); err != nil {
 		return "", err
 	}
 	return digits, nil
-}
-
-// checkIdentityDigits is the single place that checks an identity's
-// digits. No digits at all (an absent value, or octets that are all TBCD
-// filler, which tbcd.Decode drops) is ErrIdentityEmpty; a character other
-// than 0-9 is ErrIdentityNotDigits; a digit count outside the identity's
-// rule is id.err.
-func checkIdentityDigits(id identity, digits string) error {
-	if digits == "" {
-		return ErrIdentityEmpty
-	}
-	for i := 0; i < len(digits); i++ {
-		if digits[i] < '0' || digits[i] > '9' {
-			return fmt.Errorf("%w: %q at index %d", ErrIdentityNotDigits, digits[i], i)
-		}
-	}
-	if len(digits) < id.min || len(digits) > id.max {
-		return fmt.Errorf("%w (got %d digits)", id.err, len(digits))
-	}
-	return nil
 }
 
 // derCodec is a generated go-asn1 type with BER decoding and DER encoding.

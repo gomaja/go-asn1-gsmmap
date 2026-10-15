@@ -11,6 +11,7 @@ import (
 	"errors"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -21,10 +22,10 @@ func TestInsertSubscriberDataIMSIDigits(t *testing.T) {
 	}{
 		{"123456", nil},
 		{"204080012345678", nil},
-		{"12345", ErrIMSIInvalidLength},
-		{"1234567890123456", ErrIMSIInvalidLength},
-		{"20408001234567a", ErrIdentityNotDigits},
-		{"20408001234567*", ErrIdentityNotDigits},
+		{"12345", identity.ErrIMSILength},
+		{"1234567890123456", identity.ErrIMSILength},
+		{"20408001234567a", identity.ErrNotDigits},
+		{"20408001234567*", identity.ErrNotDigits},
 	} {
 		t.Run(tc.imsi, func(t *testing.T) {
 			in := &InsertSubscriberDataArg{IMSI: tc.imsi}
@@ -53,9 +54,9 @@ func TestParseInsertSubscriberDataIMSIDigits(t *testing.T) {
 		want error
 		digs string
 	}{
-		{"three digits in SIZE (3)", gsm_map.IMSI{0x00, 0xF1, 0xFF}, ErrIMSIInvalidLength, ""},
-		{"all filler", gsm_map.IMSI{0xFF, 0xFF, 0xFF}, ErrIdentityEmpty, ""},
-		{"TBCD a", gsm_map.IMSI{0x21, 0x43, 0xC5}, ErrIdentityNotDigits, ""},
+		{"three digits in SIZE (3)", gsm_map.IMSI{0x00, 0xF1, 0xFF}, identity.ErrIMSILength, ""},
+		{"all filler", gsm_map.IMSI{0xFF, 0xFF, 0xFF}, identity.ErrEmpty, ""},
+		{"TBCD a", gsm_map.IMSI{0x21, 0x43, 0xC5}, identity.ErrNotDigits, ""},
 		{"six digits", gsm_map.IMSI{0x21, 0x43, 0x65}, nil, "123456"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -88,9 +89,9 @@ func TestCorrelationIDHlrIDDigits(t *testing.T) {
 	}{
 		{"204080", nil},
 		{"204080012345678", nil},
-		{"20408", ErrIMSIInvalidLength},
-		{"2040800123456789", ErrIMSIInvalidLength},
-		{"20408a", ErrIdentityNotDigits},
+		{"20408", identity.ErrIMSILength},
+		{"2040800123456789", identity.ErrIMSILength},
+		{"20408a", identity.ErrNotDigits},
 	} {
 		t.Run("Marshal "+tc.hlr, func(t *testing.T) {
 			data, err := sriSm(tc.hlr).Marshal()
@@ -114,8 +115,8 @@ func TestCorrelationIDHlrIDDigits(t *testing.T) {
 		hlr  gsm_map.HLRId
 		want error
 	}{
-		{"five digits", gsm_map.HLRId{0x02, 0x04, 0xF8}, ErrIMSIInvalidLength},
-		{"octets AA BB", gsm_map.HLRId{0xAA, 0xBB, 0xAA}, ErrIdentityNotDigits},
+		{"five digits", gsm_map.HLRId{0x02, 0x04, 0xF8}, identity.ErrIMSILength},
+		{"octets AA BB", gsm_map.HLRId{0xAA, 0xBB, 0xAA}, identity.ErrNotDigits},
 		{"six digits", gsm_map.HLRId{0x02, 0x04, 0x08}, nil},
 	} {
 		t.Run("Parse "+tc.name, func(t *testing.T) {

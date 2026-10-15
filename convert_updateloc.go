@@ -12,7 +12,7 @@ import (
 func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, error) {
 	// imsi, msc-Number and vlr-Number are mandatory in UpdateLocationArg
 	// (3GPP TS 29.002 V19.1.0 §17.7.1). An empty IMSI fails in
-	// encodeIdentityDigits with ErrIdentityEmpty.
+	// encodeIdentityDigits with identity.ErrEmpty.
 	if u.MscNumber == "" {
 		return nil, ErrUpdateLocationMissingMscNumber
 	}
