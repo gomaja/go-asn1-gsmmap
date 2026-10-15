@@ -8,8 +8,10 @@ import (
 	"math"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	"github.com/gomaja/go-asn1-gsmmap/address"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-gad"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -589,18 +591,14 @@ func TestATIResNetDetNotReachableRoundTrip(t *testing.T) {
 
 func TestATIResCSLocationRoundTrip(t *testing.T) {
 	age := 120
+	geo := testGeographicalInformation(t, 22.632522583007812, 113.02974700927734, 0)
 	res := &AnyTimeInterrogationRes{
 		SubscriberInfo: SubscriberInfo{
 			LocationInformation: &CSLocationInformation{
 				AgeOfLocationInformation: &age,
 				VlrNumber:                "628160360000",
 				MscNumber:                "628160360001",
-				GeographicalInformation: &GeographicalInfo{
-					ShapeType:       ShapeEllipsoidPointUncertainty,
-					Latitude:        22.632522583007812,
-					Longitude:       113.02974700927734,
-					UncertaintyCode: func() *uint8 { v := uint8(0); return &v }(),
-				},
+				GeographicalInformation:  geo,
 				CurrentLocationRetrieved: true,
 				SAIPresent:               true,
 			},
@@ -630,17 +628,22 @@ func TestATIResCSLocationRoundTrip(t *testing.T) {
 	if loc.MscNumber != "628160360001" {
 		t.Errorf("MscNumber: got %s, want 628160360001", loc.MscNumber)
 	}
-	if loc.GeographicalInformation == nil {
-		t.Fatal("GeographicalInformation is nil")
+	if !bytes.Equal(loc.GeographicalInformation, geo) {
+		t.Errorf("GeographicalInformation: got %x, want %x", loc.GeographicalInformation, geo)
 	}
-	if loc.GeographicalInformation.ShapeType != ShapeEllipsoidPointUncertainty {
-		t.Errorf("GeographicalInformation.ShapeType: got %d, want %d", loc.GeographicalInformation.ShapeType, ShapeEllipsoidPointUncertainty)
+	d, err := gad.Decode(loc.GeographicalInformation)
+	if err != nil {
+		t.Fatalf("gad.Decode: %v", err)
 	}
-	if math.Abs(loc.GeographicalInformation.Latitude-22.632522583007812) > 0.0001 {
-		t.Errorf("GeographicalInformation.Latitude: got %f, want ~22.6325", loc.GeographicalInformation.Latitude)
+	circle, ok := d.(gad.EllipsoidPointUncertaintyCircle)
+	if !ok {
+		t.Fatalf("GeographicalInformation shape: got %v, want %v", d.Shape(), gad.ShapeEllipsoidPointUncertaintyCircle)
 	}
-	if math.Abs(loc.GeographicalInformation.Longitude-113.02974700927734) > 0.0001 {
-		t.Errorf("GeographicalInformation.Longitude: got %f, want ~113.0297", loc.GeographicalInformation.Longitude)
+	if math.Abs(circle.Latitude.Degrees()-22.632522583007812) > 0.0001 {
+		t.Errorf("GeographicalInformation latitude: got %f, want ~22.6325", circle.Latitude.Degrees())
+	}
+	if math.Abs(circle.Longitude.Degrees()-113.02974700927734) > 0.0001 {
+		t.Errorf("GeographicalInformation longitude: got %f, want ~113.0297", circle.Longitude.Degrees())
 	}
 	if !loc.CurrentLocationRetrieved {
 		t.Error("CurrentLocationRetrieved should be true")
@@ -1062,12 +1065,7 @@ func TestATIResLocationInformation5GSRoundTrip(t *testing.T) {
 	in := &LocationInformation5GS{
 		NrCellGlobalIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45, 0x67, 0x89},
 		EUtranCellGlobalIdentity: HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23, 0x45, 0x67},
-		GeographicalInformation: &GeographicalInfo{
-			ShapeType:       ShapeEllipsoidPointUncertainty,
-			Latitude:        22.632522583007812,
-			Longitude:       113.02974700927734,
-			UncertaintyCode: func() *uint8 { v := uint8(0); return &v }(),
-		},
+		GeographicalInformation:  testGeographicalInformation(t, 22.632522583007812, 113.02974700927734, 0),
 		GeodeticInformation:      HexBytes{0x80, 0x81, 0x11, 0x11, 0x22, 0x22, 0x33, 0x33, 0x44, 0x44},
 		AmfAddress:               HexBytes("amf.example.com"),
 		TrackingAreaIdentity:     HexBytes{0x62, 0xf2, 0x20, 0x01, 0x23},
@@ -1099,11 +1097,8 @@ func TestATIResLocationInformation5GSRoundTrip(t *testing.T) {
 	if !bytes.Equal(got.EUtranCellGlobalIdentity, in.EUtranCellGlobalIdentity) {
 		t.Errorf("EUtranCellGlobalIdentity: got %x, want %x", got.EUtranCellGlobalIdentity, in.EUtranCellGlobalIdentity)
 	}
-	if got.GeographicalInformation == nil {
-		t.Fatal("GeographicalInformation is nil")
-	}
-	if math.Abs(got.GeographicalInformation.Latitude-in.GeographicalInformation.Latitude) > 0.0001 {
-		t.Errorf("Latitude: got %f, want %f", got.GeographicalInformation.Latitude, in.GeographicalInformation.Latitude)
+	if !bytes.Equal(got.GeographicalInformation, in.GeographicalInformation) {
+		t.Errorf("GeographicalInformation: got %x, want %x", got.GeographicalInformation, in.GeographicalInformation)
 	}
 	if !bytes.Equal(got.GeodeticInformation, in.GeodeticInformation) {
 		t.Errorf("GeodeticInformation: got %x, want %x", got.GeodeticInformation, in.GeodeticInformation)
@@ -2858,8 +2853,8 @@ func TestPurgeMSValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
+		if !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("expected identity.ErrEmpty, got: %v", err)
 		}
 	})
 }
@@ -3063,8 +3058,8 @@ func TestSendAuthenticationInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
+		if !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("expected identity.ErrEmpty, got: %v", err)
 		}
 	})
 
@@ -3305,8 +3300,8 @@ func TestProvideSubscriberInfoValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing IMSI")
 		}
-		if !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
+		if !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("expected identity.ErrEmpty, got: %v", err)
 		}
 	})
 
@@ -3554,8 +3549,8 @@ func TestCancelLocationValidationErrors(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for empty nested IMSI")
 		}
-		if !errors.Is(err, ErrIdentityEmpty) {
-			t.Errorf("expected ErrIdentityEmpty, got: %v", err)
+		if !errors.Is(err, identity.ErrEmpty) {
+			t.Errorf("expected identity.ErrEmpty, got: %v", err)
 		}
 	})
 

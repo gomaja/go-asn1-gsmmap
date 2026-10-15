@@ -8,6 +8,7 @@ import (
 
 	"github.com/gomaja/go-asn1/runtime/ber"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-gad"
 )
 
 func lcsRulePSLArg(t *testing.T) *gsm_map.ProvideSubscriberLocationArg {
@@ -356,16 +357,18 @@ func TestReceiverGeographicalShapes(t *testing.T) {
 					if !valid {
 						return
 					}
+					// go-gad requires the spare bits of the type of shape
+					// octet to be zero; a polygon codes its points there.
+					if shape != 5 {
+						d := bytes.Clone(v)
+						d[0] |= 0x0f
+						if err := parse(d); !errors.Is(err, wantErr) || !errors.Is(err, gad.ErrSpareBit) {
+							t.Errorf("spare bits of the type of shape: %v", err)
+						}
+					}
 					for _, d := range [][]byte{v[:len(v)-1], append(bytes.Clone(v), 0)} {
 						if err := parse(d); !errors.Is(err, wantErr) {
 							t.Errorf("wrong length %d: %v", len(d), err)
-						}
-					}
-					if shape != 5 {
-						d := bytes.Clone(v)
-						d[0] |= 0xf
-						if err := parse(d); err != nil {
-							t.Errorf("unspecified header spare bits: %v", err)
 						}
 					}
 					var zeroBits []int
@@ -542,6 +545,16 @@ func TestReceiverVelocityType(t *testing.T) {
 			}
 		}
 	}
+	// Only the type is a receiver rule: a spare bit, a bearing above 359
+	// or a length other than the type's is kept, and Marshal does not send
+	// it (ErrVelocityEstimateInvalid).
+	for _, v := range [][]byte{{0x02, 0, 0, 0}, {0x01, 0x90, 0, 0}, {0x00, 0, 0, 0, 0, 0, 0}} {
+		for _, slr := range []bool{false, true} {
+			if _, _, err := lcsRuleParseGeography(t, slr, []byte{0, 0, 0, 0, 0, 0, 0}, nil, v, false); err != nil {
+				t.Errorf("velocity %x slr=%v: %v", v, slr, err)
+			}
+		}
+	}
 }
 
 // TS 29.002 V19.1.0 §17.7.13: both routing identifiers make the response unsuccessful.
@@ -652,8 +665,8 @@ func FuzzReceiverGeographicalInformation(f *testing.F) {
 			add = nil
 		}
 		gotExt, gotAdd, err := lcsRuleParseGeography(t, slr, ext, add, nil, deferred)
-		extValid := len(ext) > 1 && validGeographicalInformation(ext, false)
-		addValid := add != nil && validGeographicalInformation(add, true)
+		extValid := len(ext) > 1 && checkGeographicalInformation(ext, false) == nil
+		addValid := add != nil && checkGeographicalInformation(add, true) == nil
 		switch {
 		case errors.Is(err, ErrExtGeographicalInformationInvalidData):
 			if extValid || deferred || len(ext) == 1 && add != nil {

@@ -13,11 +13,12 @@ import (
 	"errors"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-tbcd"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 )
 
 // semDigits returns n digits. The 15th is 0, the spare digit a 15-digit
@@ -314,9 +315,9 @@ func TestMarshalIdentityDigitCount(t *testing.T) {
 		bad   []int
 		want  error
 	}{
-		{"IMSI", semIMSICases(), []int{6, 15}, []int{5, 16}, ErrIMSIInvalidLength},
-		{"IMEI", semIMEICases(), []int{15, 16}, []int{14, 17}, ErrIMEIInvalidLength},
-		{"IMEISV", semIMEISVCases(), []int{16}, []int{15, 17}, ErrIMEISVInvalidLength},
+		{"IMSI", semIMSICases(), []int{6, 15}, []int{5, 16}, identity.ErrIMSILength},
+		{"IMEI", semIMEICases(), []int{15, 16}, []int{14, 17}, identity.ErrIMEILength},
+		{"IMEISV", semIMEISVCases(), []int{16}, []int{15, 17}, identity.ErrIMEISVLength},
 	} {
 		for _, c := range kind.cases {
 			for _, n := range kind.ok {
@@ -350,8 +351,8 @@ func TestMarshalIdentityDigitCount(t *testing.T) {
 // The IMSI 00 f1 ff fits IMSI SIZE (3..8) but holds the three digits "001".
 func TestParseSendAuthenticationInfoShortIMSI(t *testing.T) {
 	data, _ := hex.DecodeString("3008800300f1ff020101")
-	if _, err := ParseSendAuthenticationInfo(data); !errors.Is(err, ErrIMSIInvalidLength) {
-		t.Errorf("ParseSendAuthenticationInfo: err = %v, want ErrIMSIInvalidLength", err)
+	if _, err := ParseSendAuthenticationInfo(data); !errors.Is(err, identity.ErrIMSILength) {
+		t.Errorf("ParseSendAuthenticationInfo: err = %v, want identity.ErrIMSILength", err)
 	}
 }
 
@@ -428,10 +429,10 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			digits string
 			want   error
 		}{
-			{semDigits(5), ErrIMSIInvalidLength},
+			{semDigits(5), identity.ErrIMSILength},
 			{semDigits(6), nil},
 			{semDigits(15), nil},
-			{semDigits(16), ErrIMSIInvalidLength},
+			{semDigits(16), identity.ErrIMSILength},
 		} {
 			t.Run("IMSI/"+c.name+"/"+tc.digits, func(t *testing.T) {
 				data, err := c.build(t, semTBCD(t, tc.digits)).MarshalBER()
@@ -455,7 +456,7 @@ func TestParseIdentityDigitCount(t *testing.T) {
 		{"AnyTimeInterrogationRes imei", func(_ *testing.T, imei gsm_map.IMEI) wire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{Imei: &imei}}
 		}, func(d []byte) error { _, err := ParseAnyTimeInterrogationRes(d); return err },
-			map[int]error{14: ErrIMEIInvalidLength, 15: nil, 16: nil}},
+			map[int]error{14: identity.ErrIMEILength, 15: nil, 16: nil}},
 		{"ProvideSubscriberLocation imei", func(t *testing.T, imei gsm_map.IMEI) wire {
 			w, err := convertProvideSubscriberLocationArgToWire(semPSLArg())
 			if err != nil {
@@ -464,7 +465,7 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			w.Imei = &imei
 			return w
 		}, func(d []byte) error { _, err := ParseProvideSubscriberLocation(d); return err },
-			map[int]error{14: ErrIMEIInvalidLength, 15: nil, 16: nil}},
+			map[int]error{14: identity.ErrIMEILength, 15: nil, 16: nil}},
 		{"SubscriberLocationReport imei", func(t *testing.T, imei gsm_map.IMEI) wire {
 			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
 			if err != nil {
@@ -473,14 +474,14 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			w.Imei = &imei
 			return w
 		}, func(d []byte) error { _, err := ParseSubscriberLocationReport(d); return err },
-			map[int]error{14: ErrIMEIInvalidLength, 15: nil, 16: nil}},
+			map[int]error{14: identity.ErrIMEILength, 15: nil, 16: nil}},
 		{"UpdateLocation add-Info imeisv", func(t *testing.T, imei gsm_map.IMEI) wire {
 			return &gsm_map.UpdateLocationArg{
 				Imsi: semTBCD(t, "001010123456789"), MscNumber: isdn(t), VlrNumber: isdn(t),
 				AddInfo: &gsm_map.ADDInfo{Imeisv: imei},
 			}
 		}, func(d []byte) error { _, err := ParseUpdateLocation(d); return err },
-			map[int]error{14: ErrIMEISVInvalidLength, 15: ErrIMEISVInvalidLength, 16: nil}},
+			map[int]error{14: identity.ErrIMEISVLength, 15: identity.ErrIMEISVLength, 16: nil}},
 	}
 	for _, c := range imeiCases {
 		for _, n := range []int{14, 15, 16} {

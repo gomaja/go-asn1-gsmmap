@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -196,13 +197,13 @@ func TestProvideSubscriberLocationArgIMSIDigitCountValidation(t *testing.T) {
 	}
 	a := base()
 	a.IMSI = "12345" // 5 digits — under the 6-digit minimum
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrIMSIInvalidLength) {
-		t.Errorf("IMSI=5 digits: want ErrIMSIInvalidLength, got %v", err)
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, identity.ErrIMSILength) {
+		t.Errorf("IMSI=5 digits: want identity.ErrIMSILength, got %v", err)
 	}
 	a = base()
 	a.IMSI = "1234567890123456" // 16 digits — over the 15-digit maximum
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrIMSIInvalidLength) {
-		t.Errorf("IMSI=16 digits: want ErrIMSIInvalidLength, got %v", err)
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, identity.ErrIMSILength) {
+		t.Errorf("IMSI=16 digits: want identity.ErrIMSILength, got %v", err)
 	}
 }
 
@@ -217,13 +218,13 @@ func TestProvideSubscriberLocationArgIMEIDigitCountValidation(t *testing.T) {
 	}
 	a := base()
 	a.IMEI = "12345678901234" // 14 digits
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrIMEIInvalidLength) {
-		t.Errorf("IMEI=14 digits: want ErrIMEIInvalidLength, got %v", err)
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, identity.ErrIMEILength) {
+		t.Errorf("IMEI=14 digits: want identity.ErrIMEILength, got %v", err)
 	}
 	a = base()
 	a.IMEI = "12345678901234567" // 17 digits
-	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, ErrIMEIInvalidLength) {
-		t.Errorf("IMEI=17 digits: want ErrIMEIInvalidLength, got %v", err)
+	if _, err := convertProvideSubscriberLocationArgToWire(a); !errors.Is(err, identity.ErrIMEILength) {
+		t.Errorf("IMEI=17 digits: want identity.ErrIMEILength, got %v", err)
 	}
 }
 
@@ -363,8 +364,8 @@ func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {
 		imsi := gsm_map.IMSI{0x21, 0x43, 0x65, 0x87, 0x09, 0x21, 0x43, 0x65}
 		w.Imsi = &imsi
 		_, err := convertWireToProvideSubscriberLocationArg(w)
-		if !errors.Is(err, ErrIMSIInvalidLength) {
-			t.Errorf("want ErrIMSIInvalidLength, got %v", err)
+		if !errors.Is(err, identity.ErrIMSILength) {
+			t.Errorf("want identity.ErrIMSILength, got %v", err)
 		}
 	})
 
@@ -375,8 +376,8 @@ func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {
 		imei := gsm_map.IMEI{0x21, 0x43, 0x65, 0x87, 0x09, 0x21, 0x43} // 14 digits, no filler
 		w.Imei = &imei
 		_, err := convertWireToProvideSubscriberLocationArg(w)
-		if !errors.Is(err, ErrIMEIInvalidLength) {
-			t.Errorf("want ErrIMEIInvalidLength, got %v", err)
+		if !errors.Is(err, identity.ErrIMEILength) {
+			t.Errorf("want identity.ErrIMEILength, got %v", err)
 		}
 	})
 

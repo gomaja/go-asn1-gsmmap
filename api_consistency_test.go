@@ -6,6 +6,7 @@ import (
 	"math"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
@@ -227,7 +228,7 @@ func TestISDIstAlertTimerUsesInt(t *testing.T) {
 }
 
 func TestSAIMissingIMSISentinelPublic(t *testing.T) {
-	if _, err := (&SendAuthenticationInfo{}).Marshal(); !errors.Is(err, ErrIdentityEmpty) {
+	if _, err := (&SendAuthenticationInfo{}).Marshal(); !errors.Is(err, identity.ErrEmpty) {
 		t.Errorf("Marshal: %v", err)
 	}
 	w := &gsm_map.SendAuthenticationInfoArg{Imsi: gsm_map.IMSI{0xff, 0xff, 0xff}, NumberOfRequestedVectors: 1}
@@ -235,15 +236,15 @@ func TestSAIMissingIMSISentinelPublic(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ParseSendAuthenticationInfo(data); !errors.Is(err, ErrIdentityEmpty) {
+	if _, err := ParseSendAuthenticationInfo(data); !errors.Is(err, identity.ErrEmpty) {
 		t.Errorf("Parse: %v", err)
 	}
 }
 
 func TestUpdateGprsLocationMissingIMSI(t *testing.T) {
 	_, err := (&UpdateGprsLocation{SgsnNumber: "12", SGSNAddress: "192.0.2.1"}).Marshal()
-	if !errors.Is(err, ErrIdentityEmpty) {
-		t.Fatalf("Marshal: err = %v, want ErrIdentityEmpty", err)
+	if !errors.Is(err, identity.ErrEmpty) {
+		t.Fatalf("Marshal: err = %v, want identity.ErrEmpty", err)
 	}
 }
 

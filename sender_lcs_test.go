@@ -9,6 +9,7 @@ import (
 
 	"github.com/gomaja/go-asn1/runtime"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-gad"
 )
 
 func senderLCSCheck(t *testing.T, in marshaler, parse func([]byte) (marshaler, error), want error) {
@@ -440,12 +441,20 @@ func TestSenderLCSGeographicalCoding(t *testing.T) {
 			senderLCSGeography(t, d, true, want)
 		}
 	}
-	// §6.5 confidence 101..127 is not a mandatory prohibition; header spare nibble has no explicit zero.
+	// §6.5 confidence 101..127 is not a mandatory prohibition.
 	d := make(HexBytes, 11)
-	d[0] = 0x3f
+	d[0] = 0x30
 	d[10] = 127
 	senderLCSGeography(t, d, false, nil)
 	senderLCSGeography(t, d, true, nil)
+	// go-gad requires the spare bits of the type of shape octet to be zero.
+	d[0] = 0x3f
+	for _, want := range []error{ErrExtGeographicalInformationInvalid, gad.ErrSpareBit} {
+		senderLCSGeography(t, d, false, want)
+	}
+	for _, want := range []error{ErrAddGeographicalInformationInvalid, gad.ErrSpareBit} {
+		senderLCSGeography(t, d, true, want)
+	}
 }
 
 // TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §8.6 velocity type is the high nibble.
@@ -455,19 +464,61 @@ func TestSenderLCSVelocityTypes(t *testing.T) {
 	for typ := byte(0); typ < 16; typ++ {
 		for n := 4; n <= 7; n++ {
 			v := make(HexBytes, n)
-			v[0] = typ<<4 | 3
-			r := &ProvideSubscriberLocationRes{LocationEstimate: make(HexBytes, 7), VelocityEstimate: v}
-			s := minimalSLRArg()
-			s.VelocityEstimate = v
-			var want error
+			v[0] = typ<<4 | 1 // bearing 256
+			var want, cause error
 			switch {
 			case typ > 3:
-				want = ErrVelocityEstimateTypeInvalid
+				want, cause = ErrVelocityEstimateInvalid, gad.ErrVelocityTypeInvalid
 			case n != lengths[typ]:
-				want = ErrVelocityEstimateLengthInvalid
+				want, cause = ErrVelocityEstimateInvalid, gad.ErrLength
 			}
-			senderLCSCheck(t, r, asParser(ParseProvideSubscriberLocationRes), want)
-			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
+			senderLCSVelocity(t, v, want, cause)
+		}
+	}
+	// TS 23.032 V19.0.0 §§8.8, 8.12-8.15: the bearing is 0..359 and the
+	// bits of octet 1 that hold neither the type, the direction of vertical
+	// speed nor the bearing are spare.
+	for _, tc := range []struct {
+		v     HexBytes
+		cause error
+	}{
+		{HexBytes{0x01, 0x67, 0, 0}, nil},
+		{HexBytes{0x01, 0x68, 0, 0}, gad.ErrOutOfRange},
+		{HexBytes{0x01, 0xff, 0, 0}, gad.ErrOutOfRange},
+		{HexBytes{0x02, 0, 0, 0}, gad.ErrSpareBit},
+		{HexBytes{0x08, 0, 0, 0}, gad.ErrSpareBit},
+		{HexBytes{0x12, 0, 0, 0, 0}, nil},
+		{HexBytes{0x14, 0, 0, 0, 0}, gad.ErrSpareBit},
+		{HexBytes{0x22, 0, 0, 0, 0xff}, gad.ErrSpareBit},
+		{HexBytes{0x32, 0, 0, 0, 0, 0, 0}, nil},
+		{HexBytes{0x38, 0, 0, 0, 0, 0, 0}, gad.ErrSpareBit},
+	} {
+		var want error
+		if tc.cause != nil {
+			want = ErrVelocityEstimateInvalid
+		}
+		senderLCSVelocity(t, tc.v, want, tc.cause)
+	}
+}
+
+// senderLCSVelocity sends v in a PSL result and in an SLR argument.
+func senderLCSVelocity(t *testing.T, v HexBytes, want, cause error) {
+	t.Helper()
+	r := &ProvideSubscriberLocationRes{LocationEstimate: make(HexBytes, 7), VelocityEstimate: v}
+	s := minimalSLRArg()
+	s.VelocityEstimate = v
+	for _, m := range []struct {
+		in    marshaler
+		parse func([]byte) (marshaler, error)
+	}{
+		{r, asParser(ParseProvideSubscriberLocationRes)},
+		{s, asParser(ParseSubscriberLocationReport)},
+	} {
+		senderLCSCheck(t, m.in, m.parse, want)
+		if cause != nil {
+			if _, err := m.in.Marshal(); !errors.Is(err, cause) {
+				t.Fatalf("VelocityEstimate %x: %v, want %v", v, err, cause)
+			}
 		}
 	}
 }
@@ -489,7 +540,7 @@ func TestSenderLCSNameParsePreservesDCS(t *testing.T) {
 // TS 29.002 V19.1.0 §§17.7.6,17.7.13: these sender violations remain received values.
 func senderLCSSemLenientCases() []semLenientCase {
 	return []semLenientCase{
-		{ErrVelocityEstimateLengthInvalid, asParser(ParseProvideSubscriberLocationRes), func(*testing.T) semWire {
+		{ErrVelocityEstimateInvalid, asParser(ParseProvideSubscriberLocationRes), func(*testing.T) semWire {
 			v := gsm_map.VelocityEstimate{0x03, 0, 0, 0, 0, 0, 0} // type 0 in seven octets
 			return &gsm_map.ProvideSubscriberLocationRes{LocationEstimate: make(gsm_map.ExtGeographicalInformation, 7), VelocityEstimate: &v}
 		}},

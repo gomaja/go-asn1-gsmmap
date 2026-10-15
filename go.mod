@@ -3,8 +3,11 @@ module github.com/gomaja/go-asn1-gsmmap
 go 1.26.9
 
 require (
+	github.com/gomaja/go-3gpp-identity v0.0.0-20261015070659-866133e946dc
 	github.com/gomaja/go-asn1 v0.0.0-20261011084734-d77484b8fa99
-	github.com/gomaja/go-sms v0.0.0-20261011125057-35a9a0e55b2a
+	github.com/gomaja/go-gad v0.0.0-20261015090110-463e9e2108fc
+	github.com/gomaja/go-sms v0.0.0-20261015104136-a2f176ab9ef6
+	github.com/gomaja/go-tbcd v0.0.0-20261015073026-64bd86dfe62e
 	github.com/google/go-cmp v0.7.0
 )
 

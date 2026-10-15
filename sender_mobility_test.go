@@ -1,6 +1,7 @@
 package gsmmap
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-gad"
 )
 
 func senderMobilityGPRS() *UpdateGprsLocation {
@@ -452,6 +454,58 @@ func TestSenderGeodeticInformationShape(t *testing.T) {
 	}
 }
 
+// TS 29.002 V19.1.0 §17.7.1 GeographicalInformation: only an ellipsoid point
+// with uncertainty circle, coded per TS 23.032 V19.0.0 §7.3.2. Parse keeps
+// the received octets.
+func TestSenderGeographicalInformation(t *testing.T) {
+	valid := HexBytes{0x10, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0x7f}
+	for _, tc := range []struct {
+		name  string
+		b     HexBytes
+		cause error
+	}{
+		{"uncertainty circle", valid, nil},
+		{"ellipsoid point", HexBytes{0x00, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0x7f}, nil},
+		{"reserved shape", HexBytes{0x20, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0x7f}, nil},
+		{"spare bits of the type of shape", HexBytes{0x1f, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0x7f}, gad.ErrSpareBit},
+		{"spare bit of the uncertainty code", HexBytes{0x10, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xff}, gad.ErrSpareBit},
+	} {
+		for _, family := range []string{"CS", "EPS", "GPRS", "5GS"} {
+			for _, api := range []string{"ATI", "PSI", "SRI"} {
+				t.Run(fmt.Sprintf("%s/%s/%s", api, family, tc.name), func(t *testing.T) {
+					si := SubscriberInfo{}
+					raw := bytes.Clone(tc.b)
+					w := gsm_map.SubscriberInfo{}
+					switch family {
+					case "CS":
+						si.LocationInformation = &CSLocationInformation{GeographicalInformation: tc.b}
+						w.LocationInformation = &gsm_map.LocationInformation{GeographicalInformation: &raw}
+					case "EPS":
+						si.LocationInformationEPS = &EPSLocationInformation{GeographicalInformation: tc.b}
+						w.LocationInformationEPS = &gsm_map.LocationInformationEPS{GeographicalInformation: &raw}
+					case "GPRS":
+						si.LocationInformationGPRS = &GPRSLocationInformation{GeographicalInformation: tc.b}
+						w.LocationInformationGPRS = &gsm_map.LocationInformationGPRS{GeographicalInformation: &raw}
+					case "5GS":
+						si.LocationInformation5GS = &LocationInformation5GS{GeographicalInformation: tc.b}
+						w.LocationInformation5GS = &gsm_map.LocationInformation5GS{GeographicalInformation: &raw}
+					}
+					in, parse := senderMobilityCarrier(api, si)
+					if bytes.Equal(tc.b, valid) {
+						senderMobilityRoundTrip(t, in, parse)
+						return
+					}
+					_, err := in.Marshal()
+					if !errors.Is(err, ErrGeographicalInformationInvalid) || tc.cause != nil && !errors.Is(err, tc.cause) {
+						t.Fatalf("Marshal: %v, want %v", err, ErrGeographicalInformationInvalid)
+					}
+					senderMobilityReceivedSubscriber(t, api, w, in, ErrGeographicalInformationInvalid)
+				})
+			}
+		}
+	}
+}
+
 // TS 29.002 V19.1.0 §17.7.8 TBCD-STRING permits filler only after the final odd digit.
 func TestSenderRouteingNumberTBCD(t *testing.T) {
 	for _, v := range []HexBytes{nil, {0x21}, {0xf1}, {0xba, 0xdc, 0xfe}, {0x1f}, {0xff}, {0x21, 0xff}, {0xf1, 0x21}} {
@@ -567,6 +621,9 @@ func senderMobilityLenientCases() []semLenientCase {
 		}},
 		{ErrRequestedInfoServingNodeWithoutLocationInformation, asParser(ParseProvideSubscriberInfo), requested(gsm_map.RequestedInfo{ServingNodeIndication: &struct{}{}})},
 		{ErrRequestedInfoServingNodeWithCurrentLocation, asParser(ParseProvideSubscriberInfo), requested(gsm_map.RequestedInfo{LocationInformation: &struct{}{}, CurrentLocation: &struct{}{}, ServingNodeIndication: &struct{}{}})},
+		{ErrGeographicalInformationInvalid, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
+			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{LocationInformation: &gsm_map.LocationInformation{GeographicalInformation: new(make([]byte, 8))}}}
+		}},
 		{ErrGeodeticInformationShapeInvalid, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{LocationInformation: &gsm_map.LocationInformation{GeodeticInformation: new(make([]byte, 10))}}}
 		}},

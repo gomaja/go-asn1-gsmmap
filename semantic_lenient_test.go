@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
@@ -90,7 +91,7 @@ func semLenientCases() []semLenientCase {
 			w.AlertingPattern = &gsm_map.AlertingPattern{0x03}
 			return w
 		}},
-		{ErrIMEISpareDigitNotZero, asParser(ParseAnyTimeInterrogationRes), func(t *testing.T) semWire {
+		{identity.ErrIMEISpareDigitNotZero, asParser(ParseAnyTimeInterrogationRes), func(t *testing.T) semWire {
 			imei := semTBCD(t, "490154203237518")
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{Imei: &imei}}
 		}},
@@ -309,8 +310,8 @@ func TestStrictEncodeErrorsAreReachable(t *testing.T) {
 // field name the list mentions.
 func TestIsStrictEncodeErrorIsExact(t *testing.T) {
 	for _, err := range []error{
-		ErrIMSIInvalidLength,
-		ErrIMEIInvalidLength,
+		identity.ErrIMSILength,
+		identity.ErrIMEILength,
 		ErrAscMissingMSISDN,
 		errors.New("cancelLocation: CancellationType must be one of updateProcedure(0)"),
 	} {
@@ -331,7 +332,7 @@ func TestCheckParseRoundTripMarshalErrors(t *testing.T) {
 		err  error
 		pass bool
 	}{
-		{ErrIMSIInvalidLength, false},
+		{identity.ErrIMSILength, false},
 		{fmt.Errorf("wrapped: %w", ErrAscMissingMSISDN), false},
 		{ErrAlertingPatternReserved, true},
 		{fmt.Errorf("CancellationType: %w", ErrCancelLocInvalidCancellationType), true},

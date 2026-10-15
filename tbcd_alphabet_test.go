@@ -10,10 +10,11 @@ import (
 	"errors"
 	"testing"
 
+	identity "github.com/gomaja/go-3gpp-identity"
 	"github.com/gomaja/go-asn1-gsmmap/address"
-	"github.com/gomaja/go-asn1-gsmmap/tbcd"
 	"github.com/gomaja/go-asn1/runtime/ber"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-tbcd"
 )
 
 func TestSriSmMSISDNStarHashRoundTrip(t *testing.T) {
@@ -135,8 +136,8 @@ func TestParseMalformedTBCDFiller(t *testing.T) {
 // are valid TBCD but not valid identities.
 func TestIdentityDigitsOnly(t *testing.T) {
 	in := &SriSm{MSISDN: "1234", ServiceCentreAddress: "1", IMSI: "2040*0123"}
-	if _, err := in.Marshal(); !errors.Is(err, ErrIdentityNotDigits) {
-		t.Errorf("Marshal IMSI with '*': err = %v, want ErrIdentityNotDigits", err)
+	if _, err := in.Marshal(); !errors.Is(err, identity.ErrNotDigits) {
+		t.Errorf("Marshal IMSI with '*': err = %v, want identity.ErrNotDigits", err)
 	}
 	in.IMSI = "204080012345678"
 	if _, err := in.Marshal(); err != nil {
@@ -144,8 +145,8 @@ func TestIdentityDigitsOnly(t *testing.T) {
 	}
 	// Wire IMSI 2 0 4 0 # 0 ...: nibble 1011 is '#'.
 	wire := sriSmArgWithAddresses(t, []byte{0x91, 0x21}, []byte{0x02, 0xb0, 0x21})
-	if _, err := ParseSriSm(wire); !errors.Is(err, ErrIdentityNotDigits) {
-		t.Errorf("Parse IMSI with '#': err = %v, want ErrIdentityNotDigits", err)
+	if _, err := ParseSriSm(wire); !errors.Is(err, identity.ErrNotDigits) {
+		t.Errorf("Parse IMSI with '#': err = %v, want identity.ErrNotDigits", err)
 	}
 	// A wire IMSI that is not valid TBCD at all fails with the TBCD sentinel.
 	wire = sriSmArgWithAddresses(t, []byte{0x91, 0x21}, []byte{0x02, 0xff, 0x21})
