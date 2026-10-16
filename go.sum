@@ -4,8 +4,8 @@ github.com/gomaja/go-asn1 v0.0.0-20261011084734-d77484b8fa99 h1:5hD2w+yWFrBpRB3Z
 github.com/gomaja/go-asn1 v0.0.0-20261011084734-d77484b8fa99/go.mod h1:KRznJ08GIF3SHIZS8QWEUJ7QDhCCuLrN94EbeQc0grQ=
 github.com/gomaja/go-gad v0.0.0-20261015090110-463e9e2108fc h1:6YMgs79fF9rxnRbJgBMTpPNzdJ+lI/cVH55REQgOX7c=
 github.com/gomaja/go-gad v0.0.0-20261015090110-463e9e2108fc/go.mod h1:UI/omF20jQtd1V+rqF8syB3byQhHFkdGPvY5T7z+pt4=
-github.com/gomaja/go-sms v0.0.0-20261015104136-a2f176ab9ef6 h1:19d7MLDU9Qfpqf/PGDQvaokrScyQFbtxkNcGp7sQAYs=
-github.com/gomaja/go-sms v0.0.0-20261015104136-a2f176ab9ef6/go.mod h1:nmWk00DAPX0Jkg+l8TvEEPg5DqDgoheohi1ZasxN+N8=
+github.com/gomaja/go-sms v0.0.0-20261016094937-0e8b7b4d2388 h1:l9I2/jfU6vGI73heEhMJ6eUJtfgWzQ7T7iS1FIQpW5g=
+github.com/gomaja/go-sms v0.0.0-20261016094937-0e8b7b4d2388/go.mod h1:nmWk00DAPX0Jkg+l8TvEEPg5DqDgoheohi1ZasxN+N8=
 github.com/gomaja/go-tbcd v0.0.0-20261015073026-64bd86dfe62e h1:GnRfz+iePQvfaWg6QULw0003C/FwV7vd7AB6PIcWqSc=
 github.com/gomaja/go-tbcd v0.0.0-20261015073026-64bd86dfe62e/go.mod h1:FW74o99++4Y9bVdQinVCVo2eX6dHp2tUgnPhERWPVu0=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
