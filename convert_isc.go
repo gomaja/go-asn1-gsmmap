@@ -14,43 +14,43 @@ import (
 func convertMwStatusToBitString(m *MwStatusFlags) runtime.BitString {
 	var b byte
 	if m.SCAddressNotIncluded {
-		b |= 1 << 7
+		b |= 1 << (7 - gsm_map.MWStatusScAddressNotIncluded)
 	}
 	if m.MnrfSet {
-		b |= 1 << 6
+		b |= 1 << (7 - gsm_map.MWStatusMnrfSet)
 	}
 	if m.McefSet {
-		b |= 1 << 5
+		b |= 1 << (7 - gsm_map.MWStatusMcefSet)
 	}
 	if m.MnrgSet {
-		b |= 1 << 4
+		b |= 1 << (7 - gsm_map.MWStatusMnrgSet)
 	}
 	if m.Mnr5gSet {
-		b |= 1 << 3
+		b |= 1 << (7 - gsm_map.MWStatusMnr5gSet)
 	}
 	if m.Mnr5gn3gSet {
-		b |= 1 << 2
+		b |= 1 << (7 - gsm_map.MWStatusMnr5gn3gSet)
 	}
 	return runtime.BitString{Bytes: []byte{b}, BitLength: 6}
 }
 
 func convertBitStringToMwStatus(bs runtime.BitString) *MwStatusFlags {
 	m := &MwStatusFlags{}
-	m.SCAddressNotIncluded = bs.Has(0)
-	if bs.BitLength > 1 {
-		m.MnrfSet = bs.Has(1)
+	m.SCAddressNotIncluded = bs.Has(gsm_map.MWStatusScAddressNotIncluded)
+	if bs.BitLength > gsm_map.MWStatusMnrfSet {
+		m.MnrfSet = bs.Has(gsm_map.MWStatusMnrfSet)
 	}
-	if bs.BitLength > 2 {
-		m.McefSet = bs.Has(2)
+	if bs.BitLength > gsm_map.MWStatusMcefSet {
+		m.McefSet = bs.Has(gsm_map.MWStatusMcefSet)
 	}
-	if bs.BitLength > 3 {
-		m.MnrgSet = bs.Has(3)
+	if bs.BitLength > gsm_map.MWStatusMnrgSet {
+		m.MnrgSet = bs.Has(gsm_map.MWStatusMnrgSet)
 	}
-	if bs.BitLength > 4 {
-		m.Mnr5gSet = bs.Has(4)
+	if bs.BitLength > gsm_map.MWStatusMnr5gSet {
+		m.Mnr5gSet = bs.Has(gsm_map.MWStatusMnr5gSet)
 	}
-	if bs.BitLength > 5 {
-		m.Mnr5gn3gSet = bs.Has(5)
+	if bs.BitLength > gsm_map.MWStatusMnr5gn3gSet {
+		m.Mnr5gn3gSet = bs.Has(gsm_map.MWStatusMnr5gn3gSet)
 	}
 	return m
 }

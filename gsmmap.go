@@ -1887,9 +1887,9 @@ type AccessRestrictionData struct {
 	EnhancedCoverageNotAllowed  bool // bit 7
 }
 
-// ExtAccessRestrictionData (BIT STRING SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1. Additional access-type restrictions that
-// don't fit in the 8-bit AccessRestrictionData. BitLength and UnknownBits
-// preserve unnamed bits and trailing zero bits on Parse/Marshal (§17.7.1).
+// ExtAccessRestrictionData (BIT STRING SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
+// UnknownBits retains unnamed set bits. BitLength requests outgoing padding;
+// Parse normalizes trailing zeros per ITU-T X.680 (02/2021) §22.7.
 type ExtAccessRestrictionData struct {
 	NrAsSecondaryRATNotAllowed                 bool     // bit 0
 	UnlicensedSpectrumAsSecondaryRATNotAllowed bool     // bit 1
@@ -1897,10 +1897,10 @@ type ExtAccessRestrictionData struct {
 	UnknownBits                                HexBytes // positions 2..31, MSB first, without trailing zero octets; bits 0..1 are ignored
 }
 
-// SupportedFeatures (BIT STRING SIZE 26..40) per 3GPP TS 29.002 V19.1.0
-// §17.7.1. The 40 named bits cover every allowed bit position. BitLength
-// retains trailing zero bits beyond the shortest valid encoding;
-// see 3GPP TS 29.272 for each bit's meaning.
+// SupportedFeatures (BIT STRING SIZE 26..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
+// The 40 named bits cover every allowed position. BitLength requests outgoing
+// padding; Parse normalizes trailing zeros per ITU-T X.680 (02/2021) §22.7.
+// See 3GPP TS 29.272 for each bit's meaning.
 type SupportedFeatures struct {
 	OdbAllApn                                        bool // bit 0
 	OdbHPLMNApn                                      bool // bit 1
@@ -1945,10 +1945,10 @@ type SupportedFeatures struct {
 	BitLength                                        int  // 0 selects the shortest valid length (at least 26)
 }
 
-// ExtSupportedFeatures (BIT STRING SIZE 1..40) per 3GPP TS 29.002 V19.1.0 §17.7.1. Extension to SupportedFeatures for newer
-// feature bits; only bit 0 is named. BitLength and UnknownBits
-// retain unnamed bits 1..39 and trailing zero bits on Parse/Marshal
-// (3GPP TS 29.002 V19.1.0 §17.7.1, SIZE (1..40)).
+// ExtSupportedFeatures (BIT STRING SIZE 1..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
+// Only bit 0 is named. UnknownBits retains unnamed set bits 1..39.
+// BitLength requests outgoing padding; Parse normalizes trailing zeros
+// per ITU-T X.680 (02/2021) §22.7.
 type ExtSupportedFeatures struct {
 	UnlicensedSpectrumAsSecondaryRAT bool     // bit 0
 	BitLength                        int      // 0 selects the shortest valid length
@@ -3090,40 +3090,31 @@ type ProvideSubscriberLocationRes struct {
 // gsm_map.* directly.
 
 // MapErrorCode is a MAP ReturnError local error code: the CODE local
-// value of an ERROR in the MAP-Errors module of TS 29.002 §17.6.
-type MapErrorCode int64
+// value of an ERROR in 3GPP TS 29.002 V19.1.0 §17.6.
+type MapErrorCode = gsm_map.MAPErrorCode
 
-// MAP local error codes per TS 29.002 §17.6.
+// MAP local error codes per 3GPP TS 29.002 V19.1.0 §17.6.
 //
-// The USSD operations of TS 29.002 §17.6.4 return systemFailure, dataMissing,
+// The USSD operations of 3GPP TS 29.002 V19.1.0 §17.6.4 return systemFailure, dataMissing,
 // unexpectedDataValue, absentSubscriber, illegalSubscriber, illegalEquipment,
 // callBarred, unknownAlphabet and ussd-Busy.
 const (
-	MapErrorUnknownSubscriber             MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUnknownSubscriber
-	MapErrorAbsentSubscriberSM            MapErrorCode = gsm_map.GSMMAPLocalErrorcodeAbsentSubscriberSM
-	MapErrorRoamingNotAllowed             MapErrorCode = gsm_map.GSMMAPLocalErrorcodeRoamingNotAllowed
-	MapErrorIllegalSubscriber             MapErrorCode = gsm_map.GSMMAPLocalErrorcodeIllegalSubscriber
-	MapErrorTeleserviceNotProvisioned     MapErrorCode = gsm_map.GSMMAPLocalErrorcodeTeleserviceNotProvisioned
-	MapErrorIllegalEquipment              MapErrorCode = gsm_map.GSMMAPLocalErrorcodeIllegalEquipment
-	MapErrorCallBarred                    MapErrorCode = gsm_map.GSMMAPLocalErrorcodeCallBarred
-	MapErrorFacilityNotSupported          MapErrorCode = gsm_map.GSMMAPLocalErrorcodeFacilityNotSupported
-	MapErrorAbsentSubscriber              MapErrorCode = gsm_map.GSMMAPLocalErrorcodeAbsentSubscriber
-	MapErrorSystemFailure                 MapErrorCode = gsm_map.GSMMAPLocalErrorcodeSystemFailure
-	MapErrorDataMissing                   MapErrorCode = gsm_map.GSMMAPLocalErrorcodeDataMissing
-	MapErrorUnexpectedDataValue           MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUnexpectedDataValue
-	MapErrorUnauthorizedRequestingNetwork MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUnauthorizedRequestingNetwork
-	MapErrorUnknownAlphabet               MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUnknownAlphabet
-	MapErrorUSSDBusy                      MapErrorCode = gsm_map.GSMMAPLocalErrorcodeUssdBusy
+	MapErrorUnknownSubscriber             MapErrorCode = gsm_map.UnknownSubscriber
+	MapErrorAbsentSubscriberSM            MapErrorCode = gsm_map.AbsentSubscriberSM
+	MapErrorRoamingNotAllowed             MapErrorCode = gsm_map.RoamingNotAllowed
+	MapErrorIllegalSubscriber             MapErrorCode = gsm_map.IllegalSubscriber
+	MapErrorTeleserviceNotProvisioned     MapErrorCode = gsm_map.TeleserviceNotProvisioned
+	MapErrorIllegalEquipment              MapErrorCode = gsm_map.IllegalEquipment
+	MapErrorCallBarred                    MapErrorCode = gsm_map.CallBarred
+	MapErrorFacilityNotSupported          MapErrorCode = gsm_map.FacilityNotSupported
+	MapErrorAbsentSubscriber              MapErrorCode = gsm_map.AbsentSubscriber
+	MapErrorSystemFailure                 MapErrorCode = gsm_map.SystemFailure
+	MapErrorDataMissing                   MapErrorCode = gsm_map.DataMissing
+	MapErrorUnexpectedDataValue           MapErrorCode = gsm_map.UnexpectedDataValue
+	MapErrorUnauthorizedRequestingNetwork MapErrorCode = gsm_map.UnauthorizedRequestingNetwork
+	MapErrorUnknownAlphabet               MapErrorCode = gsm_map.UnknownAlphabet
+	MapErrorUSSDBusy                      MapErrorCode = gsm_map.UssdBusy
 )
-
-// String returns the ASN.1 name of the error (e.g. "absentSubscriberSM"),
-// or the decimal code for a code without a name. The names come from
-// go-asn1's error code list, which also names code 4 secureTransportError,
-// although 3GPP TS 29.002 V19.1.0 §17.6.6 defines no error with code 4
-// (https://github.com/gomaja/go-asn1/issues/135).
-func (c MapErrorCode) String() string {
-	return gsm_map.NewGSMMAPLocalErrorcodeInt64(int64(c)).String()
-}
 
 // AbsentSubscriberDiagnosticSM is the wrapper-level named type for
 // the AbsentSubscriberDiagnosticSM diagnostic carried by SRI-SM and

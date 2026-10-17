@@ -29,30 +29,30 @@ func convertDeferredLocationEventTypeToBitString(d *DeferredLocationEventType) r
 	var b byte
 	bitLen := 1
 	if d.MsAvailable {
-		b |= 0x80
+		b |= 1 << (7 - gsm_map.DeferredLocationEventTypeMsAvailable)
 	}
 	if d.EnteringIntoArea {
-		b |= 0x40
-		if bitLen < 2 {
-			bitLen = 2
+		b |= 1 << (7 - gsm_map.DeferredLocationEventTypeEnteringIntoArea)
+		if bitLen < gsm_map.DeferredLocationEventTypeEnteringIntoArea+1 {
+			bitLen = gsm_map.DeferredLocationEventTypeEnteringIntoArea + 1
 		}
 	}
 	if d.LeavingFromArea {
-		b |= 0x20
-		if bitLen < 3 {
-			bitLen = 3
+		b |= 1 << (7 - gsm_map.DeferredLocationEventTypeLeavingFromArea)
+		if bitLen < gsm_map.DeferredLocationEventTypeLeavingFromArea+1 {
+			bitLen = gsm_map.DeferredLocationEventTypeLeavingFromArea + 1
 		}
 	}
 	if d.BeingInsideArea {
-		b |= 0x10
-		if bitLen < 4 {
-			bitLen = 4
+		b |= 1 << (7 - gsm_map.DeferredLocationEventTypeBeingInsideArea)
+		if bitLen < gsm_map.DeferredLocationEventTypeBeingInsideArea+1 {
+			bitLen = gsm_map.DeferredLocationEventTypeBeingInsideArea + 1
 		}
 	}
 	if d.PeriodicLDR {
-		b |= 0x08
-		if bitLen < 5 {
-			bitLen = 5
+		b |= 1 << (7 - gsm_map.DeferredLocationEventTypePeriodicLDR)
+		if bitLen < gsm_map.DeferredLocationEventTypePeriodicLDR+1 {
+			bitLen = gsm_map.DeferredLocationEventTypePeriodicLDR + 1
 		}
 	}
 	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
@@ -63,11 +63,11 @@ func convertDeferredLocationEventTypeToBitString(d *DeferredLocationEventType) r
 // rejected first (hasUnlistedDeferredLocationEvent).
 func convertBitStringToDeferredLocationEventType(bs runtime.BitString) *DeferredLocationEventType {
 	return &DeferredLocationEventType{
-		MsAvailable:      bs.Has(0),
-		EnteringIntoArea: bs.Has(1),
-		LeavingFromArea:  bs.Has(2),
-		BeingInsideArea:  bs.Has(3),
-		PeriodicLDR:      bs.Has(4),
+		MsAvailable:      bs.Has(gsm_map.DeferredLocationEventTypeMsAvailable),
+		EnteringIntoArea: bs.Has(gsm_map.DeferredLocationEventTypeEnteringIntoArea),
+		LeavingFromArea:  bs.Has(gsm_map.DeferredLocationEventTypeLeavingFromArea),
+		BeingInsideArea:  bs.Has(gsm_map.DeferredLocationEventTypeBeingInsideArea),
+		PeriodicLDR:      bs.Has(gsm_map.DeferredLocationEventTypePeriodicLDR),
 	}
 }
 
@@ -75,7 +75,7 @@ func convertBitStringToDeferredLocationEventType(bs runtime.BitString) *Deferred
 // periodicLDR(4), the last value 3GPP TS 29.002 V19.1.0 §17.7.13
 // DeferredLocationEventType lists.
 func hasUnlistedDeferredLocationEvent(bs runtime.BitString) bool {
-	for bit := 5; bit < bs.BitLength; bit++ {
+	for bit := gsm_map.DeferredLocationEventTypePeriodicLDR + 1; bit < bs.BitLength; bit++ {
 		if bs.Has(bit) {
 			return true
 		}
@@ -90,25 +90,25 @@ func hasUnlistedDeferredLocationEvent(bs runtime.BitString) bool {
 func convertSupportedGADShapesToBitString(g *SupportedGADShapes) runtime.BitString {
 	var b byte
 	if g.EllipsoidPoint {
-		b |= 0x80
+		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPoint)
 	}
 	if g.EllipsoidPointWithUncertaintyCircle {
-		b |= 0x40
+		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPointWithUncertaintyCircle)
 	}
 	if g.EllipsoidPointWithUncertaintyEllipse {
-		b |= 0x20
+		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPointWithUncertaintyEllipse)
 	}
 	if g.Polygon {
-		b |= 0x10
+		b |= 1 << (7 - gsm_map.SupportedGADShapesPolygon)
 	}
 	if g.EllipsoidPointWithAltitude {
-		b |= 0x08
+		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPointWithAltitude)
 	}
 	if g.EllipsoidPointWithAltitudeAndUncertaintyEllipsoid {
-		b |= 0x04
+		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPointWithAltitudeAndUncertaintyElipsoid)
 	}
 	if g.EllipsoidArc {
-		b |= 0x02
+		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidArc)
 	}
 	return runtime.BitString{Bytes: []byte{b}, BitLength: 7}
 }
@@ -117,13 +117,13 @@ func convertSupportedGADShapesToBitString(g *SupportedGADShapes) runtime.BitStri
 // Bits past them are tolerated and ignored on decode.
 func convertBitStringToSupportedGADShapes(bs runtime.BitString) *SupportedGADShapes {
 	g := &SupportedGADShapes{}
-	g.EllipsoidPoint = bs.Has(0)
-	g.EllipsoidPointWithUncertaintyCircle = bs.Has(1)
-	g.EllipsoidPointWithUncertaintyEllipse = bs.Has(2)
-	g.Polygon = bs.Has(3)
-	g.EllipsoidPointWithAltitude = bs.Has(4)
-	g.EllipsoidPointWithAltitudeAndUncertaintyEllipsoid = bs.Has(5)
-	g.EllipsoidArc = bs.Has(6)
+	g.EllipsoidPoint = bs.Has(gsm_map.SupportedGADShapesEllipsoidPoint)
+	g.EllipsoidPointWithUncertaintyCircle = bs.Has(gsm_map.SupportedGADShapesEllipsoidPointWithUncertaintyCircle)
+	g.EllipsoidPointWithUncertaintyEllipse = bs.Has(gsm_map.SupportedGADShapesEllipsoidPointWithUncertaintyEllipse)
+	g.Polygon = bs.Has(gsm_map.SupportedGADShapesPolygon)
+	g.EllipsoidPointWithAltitude = bs.Has(gsm_map.SupportedGADShapesEllipsoidPointWithAltitude)
+	g.EllipsoidPointWithAltitudeAndUncertaintyEllipsoid = bs.Has(gsm_map.SupportedGADShapesEllipsoidPointWithAltitudeAndUncertaintyElipsoid)
+	g.EllipsoidArc = bs.Has(gsm_map.SupportedGADShapesEllipsoidArc)
 	return g
 }
 
