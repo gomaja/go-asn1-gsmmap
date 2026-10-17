@@ -225,9 +225,11 @@ func convertBitStringToOfferedCamel4CSIs(bs runtime.BitString) *OfferedCamel4CSI
 	return o
 }
 
-// SupportedRATTypes: bit 0=utran, 1=geran, 2=gan, 3=i-hspa-evolution, 4=e-utran.
+// SupportedRATTypes: bit 0=utran, 1=geran, 2=gan, 3=i-hspa-evolution,
+// 4=e-utran, 5=nb-iot.
 func convertSupportedRATTypesToBitString(r *SupportedRATTypes) runtime.BitString {
 	var b byte
+	bitLen := 5
 	if r.UTRAN {
 		b |= 1 << (7 - gsm_map.SupportedRATTypesUtran)
 	}
@@ -243,7 +245,11 @@ func convertSupportedRATTypesToBitString(r *SupportedRATTypes) runtime.BitString
 	if r.EUTRAN {
 		b |= 1 << (7 - gsm_map.SupportedRATTypesEUtran)
 	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: 5}
+	if r.NBIoT {
+		b |= 1 << (7 - gsm_map.SupportedRATTypesNbIot)
+		bitLen = gsm_map.SupportedRATTypesNbIot + 1
+	}
+	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
 }
 
 func convertBitStringToSupportedRATTypes(bs runtime.BitString) *SupportedRATTypes {
@@ -260,6 +266,9 @@ func convertBitStringToSupportedRATTypes(bs runtime.BitString) *SupportedRATType
 	}
 	if bs.BitLength > gsm_map.SupportedRATTypesEUtran {
 		r.EUTRAN = bs.Has(gsm_map.SupportedRATTypesEUtran)
+	}
+	if bs.BitLength > gsm_map.SupportedRATTypesNbIot {
+		r.NBIoT = bs.Has(gsm_map.SupportedRATTypesNbIot)
 	}
 	return r
 }

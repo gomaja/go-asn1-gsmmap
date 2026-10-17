@@ -2205,14 +2205,15 @@ func TestSuperChargerInfoRoundTrip(t *testing.T) {
 }
 
 func TestSupportedRATTypesRoundTrip(t *testing.T) {
-	// Exhaustive 32-case coverage for 5 bits.
-	for mask := 0; mask < 32; mask++ {
+	// Exhaustive 64-case coverage for the 6 named bits.
+	for mask := 0; mask < 64; mask++ {
 		rats := &SupportedRATTypes{
 			UTRAN:          mask&1 != 0,
 			GERAN:          mask&2 != 0,
 			GAN:            mask&4 != 0,
 			IHSPAEvolution: mask&8 != 0,
 			EUTRAN:         mask&16 != 0,
+			NBIoT:          mask&32 != 0,
 		}
 
 		// Skip the all-zero case since SupportedRATTypesIndicator would be nil on parse.
@@ -2254,6 +2255,9 @@ func TestSupportedRATTypesRoundTrip(t *testing.T) {
 		}
 		if r.EUTRAN != rats.EUTRAN {
 			t.Errorf("mask=%d EUTRAN: got %v, want %v", mask, r.EUTRAN, rats.EUTRAN)
+		}
+		if r.NBIoT != rats.NBIoT {
+			t.Errorf("mask=%d NBIoT: got %v, want %v", mask, r.NBIoT, rats.NBIoT)
 		}
 	}
 }

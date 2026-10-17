@@ -235,13 +235,17 @@ type SuperChargerInfo struct {
 	SubscriberDataStored HexBytes // AgeIndicator; nil if not this alternative
 }
 
-// SupportedRATTypes BIT STRING (5 bits defined) (opCode 2).
+// SupportedRATTypes is SupportedRAT-Types (BIT STRING SIZE (2..8)) per
+// 3GPP TS 29.002 V19.1.0 §17.7.1, in VLR-Capability (opCode 2) and
+// SGSN-Capability (opCode 23). Parse ignores bits 6 and 7, as §17.7.1
+// requires of a receiver that does not understand them.
 type SupportedRATTypes struct {
 	UTRAN          bool // bit 0
 	GERAN          bool // bit 1
 	GAN            bool // bit 2
 	IHSPAEvolution bool // bit 3
 	EUTRAN         bool // bit 4
+	NBIoT          bool // bit 5
 }
 
 // UpdateLocation represents an UpdateLocation request (opCode 2).

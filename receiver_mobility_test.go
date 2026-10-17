@@ -178,6 +178,49 @@ func TestReceiverExtAccessRestrictionUnknownBits(t *testing.T) {
 	}
 }
 
+// TS 29.002 V19.1.0 §17.7.1 SupportedRAT-Types names bits 0 to 5, nb-iot
+// being bit 5: "bits 6 to 7 shall be ignored if received and not
+// understood". The decoder removes trailing 0 bits (ITU-T X.680 (02/2021)
+// §22.7), down to the SIZE (2..8) lower bound.
+func TestReceiverSupportedRATTypesNBIoT(t *testing.T) {
+	for _, tc := range []struct {
+		raw  byte
+		bits int
+		want SupportedRATTypes
+		sent runtime.BitString
+	}{
+		{0x04, 6, SupportedRATTypes{NBIoT: true}, runtime.BitString{Bytes: []byte{0x04}, BitLength: 6}},
+		{0x0C, 6, SupportedRATTypes{EUTRAN: true, NBIoT: true}, runtime.BitString{Bytes: []byte{0x0C}, BitLength: 6}},
+		{0x07, 8, SupportedRATTypes{NBIoT: true}, runtime.BitString{Bytes: []byte{0x04}, BitLength: 6}},
+		{0x83, 8, SupportedRATTypes{UTRAN: true}, runtime.BitString{Bytes: []byte{0x80}, BitLength: 2}},
+	} {
+		t.Run(fmt.Sprintf("%02x/%d", tc.raw, tc.bits), func(t *testing.T) {
+			w := mobilityGprsWire(t)
+			w.SgsnCapability = &gsm_map.SGSNCapability{SupportedRATTypesIndicator: &runtime.BitString{Bytes: []byte{tc.raw}, BitLength: tc.bits}}
+			got, err := ParseUpdateGprsLocation(strictBER(t, w))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.SGSNCapability == nil {
+				t.Fatal("missing SGSNCapability")
+			}
+			wantEqual(t, "SupportedRATTypesIndicator", &tc.want, got.SGSNCapability.SupportedRATTypesIndicator)
+			data, err := got.Marshal()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var sent gsm_map.UpdateGprsLocationArg
+			if err := sent.UnmarshalBER(data); err != nil {
+				t.Fatal(err)
+			}
+			if sent.SgsnCapability == nil {
+				t.Fatal("missing sgsn-Capability")
+			}
+			wantEqual(t, "sent supportedRAT-TypesIndicator", &tc.sent, sent.SgsnCapability.SupportedRATTypesIndicator)
+		})
+	}
+}
+
 // TS 29.002 V19.1.0 §17.7.1 PDP-Context QoS predecessor and extended
 // address requirements restrict sending; independent received fields remain inspectable.
 func TestReceiverPDPContextSenderDependencies(t *testing.T) {
