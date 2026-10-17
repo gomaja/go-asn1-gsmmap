@@ -73,7 +73,7 @@ What that means for a consumer:
 
 **Dependencies and errors**
 
-- The main branch requires the current `go-asn1`, `go-sms`, `go-tbcd`, `go-gad` and `go-3gpp-identity` modules. Codec-enforced ASN.1 sizes (including SEQUENCE OF elements), integer ranges and non-extensible ENUMERATED sets return `*ber.ConstraintError` (`errors.As`). A BIT STRING whose octet count disagrees with its bit length returns an error wrapping `ber.ErrInvalidValue` (`errors.Is`); when the bit length also breaks the SIZE, the error can be that SIZE's `*ber.ConstraintError` instead ([go-asn1#137](https://github.com/gomaja/go-asn1/issues/137)). Package semantic checks return named `Err*` sentinels (`errors.Is`).
+- The main branch requires the current `go-asn1`, `go-sms`, `go-tbcd`, `go-gad` and `go-3gpp-identity` modules. Codec-enforced ASN.1 sizes (including SEQUENCE OF elements), integer ranges and non-extensible ENUMERATED sets return `*ber.ConstraintError` (`errors.As`). A BIT STRING whose octet count disagrees with its bit length returns an error wrapping `ber.ErrInvalidValue` (`errors.Is`); this representation error takes precedence over SIZE violations for both SEQUENCE components and CHOICE alternatives. Package semantic checks return named `Err*` sentinels (`errors.Is`).
 - Removed constraint and bounds sentinels include `ErrSaiInvalidPLMNId`, `ErrIntervalTimeOutOfRange`, `ErrGPRSDataListSize`, and `ErrUtranBaroPressureMeasOutOfRange`. Sender rules retain dedicated sentinels for restrictions narrower than the ASN.1 constraints.
 - Element-size sentinels from v1.0.2 replaced by `*ber.ConstraintError`: `ErrCamelInvalidCauseValueOctetLength`, `ErrZoneCodeInvalidSize`, `ErrAPNInvalidSize`, `ErrResetIdInvalidSize`, `ErrIsdBearerServiceCodeSize`, `ErrIsdTeleserviceCodeSize`, `ErrIsdResSsListSize`, `ErrMMCodeInvalidSize`.
 - Non-extensible ENUMERATED sentinels from v1.0.2 replaced by `*ber.ConstraintError`: `ErrSriInvalidInterrogationType`, `ErrAscInvalidSmsGmscAlertEvent`, `ErrCamelInvalidCallTypeCriteria`, `ErrCamelInvalidMatchType`, `ErrIntraCUGOptionsInvalidValue`, `ErrCliRestrictionOptionInvalidValue`, `ErrOverrideCategoryInvalidValue`, `ErrSIPTOPermissionInvalid`, `ErrSIPTOLocalNetworkPermissionInvalid`, `ErrLIPAPermissionInvalid`, `ErrNIDDMechanismInvalid`, `ErrLSAOnlyAccessIndicatorInvalid`, `ErrPDNGWAllocationTypeInvalid`, `ErrPDNConnectionContinuityInvalid`, `ErrWLANOffloadabilityIndicationInvalid`, `ErrReportSMDeliveryStatusOutcomeInvalid`.
@@ -132,8 +132,8 @@ What that means for a consumer:
 - `Sri.IstSupportIndicator` changes from `*int` to `*ISTSupportIndicator`.
 - `ExternalSignalInfo.ProtocolID` changes from `int` to `ProtocolID`, an alias of `gsm_map.ProtocolId`, with `ProtocolIDGsm0408`, `ProtocolIDGsm0806`, `ProtocolIDGsmBSSMAP`, and `ProtocolIDEts3001021` constants. The reserved `gsm-BSSMAP` sender rule still applies.
 - `ExtExternalSignalInfo.ExtProtocolID` changes from `int` to `ExtProtocolID`, an alias of `gsm_map.ExtProtocolId`, with the `ExtProtocolIDEts300356` constant.
-- `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`; set `CsgIDBits` to 27, the CSG-Id SIZE (27), since zero is rejected. `VoiceGroupCallData.AdditionalInfo` gains `AdditionalInfoBits` and keeps values that are not byte-aligned. `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` become pointers to named feature structs; `ExtSupportedFeatures` gains `UnknownBits`, making it non-comparable, and both feature structs preserve bit lengths. `SupportedFeaturesBits` and `ExtSupportedFeaturesBits` are removed.
-- `ExtAccessRestrictionData` gains `BitLength` and `UnknownBits`, preserving unnamed bits 2..31 and trailing zero bits on Parse/Marshal. It is no longer comparable; use keyed struct literals. `UnknownBits` uses MSB-first positions with bits 0..1 ignored, following `ExtSupportedFeatures.UnknownBits`.
+- `CSGSubscriptionData.CsgId/CsgIdBitLength` → `CsgID/CsgIDBits`; set `CsgIDBits` to 27, the CSG-Id SIZE (27), since zero is rejected. `VoiceGroupCallData.AdditionalInfo` gains `AdditionalInfoBits` and keeps values that are not byte-aligned. `SGSNCapability.SupportedFeatures/ExtSupportedFeatures` become pointers to named feature structs; `ExtSupportedFeatures` gains `UnknownBits`, making it non-comparable, and both feature structs accept an outgoing `BitLength` for zero padding. `Parse` uses the codec-normalized length (ITU-T X.680 (02/2021) §22.7). `SupportedFeaturesBits` and `ExtSupportedFeaturesBits` are removed.
+- `ExtAccessRestrictionData` gains `BitLength` and `UnknownBits`, preserving unnamed set bits 2..31. `BitLength` requests outgoing zero padding; `Parse` uses the codec-normalized length (ITU-T X.680 (02/2021) §22.7). It is no longer comparable; use keyed struct literals. `UnknownBits` uses MSB-first positions with bits 0..1 ignored, following `ExtSupportedFeatures.UnknownBits`.
 - `ProvideSubscriberLocationRes.AgeOfLocationEstimate` and `SubscriberLocationReportArg.AgeOfLocationEstimate` change from `*int64` to `*int`; so does `InsertSubscriberDataArg.IstAlertTimer`. `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` become `[]MMCode`.
 - `GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan` in ATI and CAMEL structs. `SCANature/Plan` → `ServiceCentreAddressNature/Plan` in SRI-SM, AlertServiceCentre, and ReportSMDeliveryStatus; `SCADANature/Plan` and `SCAOANature/Plan` follow their full ServiceCentreAddress field names.
 - `UpdateLocation.MSCNumber/VLRNumber` → `MscNumber/VlrNumber`; `UpdateGprsLocation.SGSNNumber` → `SgsnNumber`; `PurgeMS.VLRNumber/SGSNNumber` → `VlrNumber/SgsnNumber`; `UpdateLocationRes.HLRNumber` and `UpdateGprsLocationRes.HLRNumber` → `HlrNumber`. Each associated nature/plan field follows the new base name.
@@ -568,8 +568,8 @@ type ([§17.7.4](https://www.3gpp.org/ftp/Specs/archive/29_series/29.002/)):
 - **unstructuredSS-Notify** (61, §11.11): network-initiated notification. Argument `USSDArg`; the result has no parameter.
 
 All three use the application context networkUnstructuredSsContext-v2
-(0.4.0.0.1.0.19.2, §17.3.2.20), returned by `NetworkUnstructuredSsContextV2()`
-as a `[]uint64`.
+(0.4.0.0.1.0.19.2, §17.3.2.20), returned by `gsm_map.NetworkUnstructuredSsContextV2()`
+as an immutable `runtime.ObjectIdentifier`.
 
 ```go
 // A USSD gateway receiving processUnstructuredSS-Request (opCode 59)
@@ -617,8 +617,9 @@ The 7 bit packing and the character tables come from go-sms
 
 ### MAP errors
 
-`MapErrorCode` names the MAP local error codes (`String()` gives the ASN.1
-name, e.g. `"ussd-Busy"`), and `ParseReturnErrorParameter` decodes the
+`MapErrorCode` aliases `gsm_map.MAPErrorCode`, the TS 29.002 §17.6 local
+error catalogue (`String()` gives the ASN.1 name, e.g. `"ussd-Busy"`, or
+`"MAPErrorCode(n)"` for an unnamed code, including code 4), and `ParseReturnErrorParameter` decodes the
 parameter of a TCAP ReturnError into the error's parameter type:
 
 ```go
@@ -645,9 +646,9 @@ This library provides a **layered API**:
 
 - **Public types** (`SriSm`, `MtFsm`, etc.) use plain Go types — strings for phone numbers, bools for flags, `tpdu.TPDU` for SMS data.
 - **Internally**, these are converted to/from [go-asn1](https://github.com/gomaja/go-asn1)'s generated `gsm_map.*` structs for BER encoding.
-- **OpCode constants** can be imported directly from `github.com/gomaja/go-asn1/telecom/ss7/gsm_map` if needed for TCAP integration.
+- **Operation codes** use `gsm_map.MAPOperationCode` and its constants from `github.com/gomaja/go-asn1/telecom/ss7/gsm_map` for TCAP integration.
 - **Validation** of ASN.1 constraints (sizes, including SEQUENCE OF elements, integer ranges, and non-extensible ENUMERATED values) and BIT STRING length consistency is done by go-asn1's strict BER codec on encode and decode. TS 23.003 identities are checked by [go-3gpp-identity](https://github.com/gomaja/go-3gpp-identity), TBCD digit strings coded by [go-tbcd](https://github.com/gomaja/go-tbcd), and TS 23.032 geography checked by [go-gad](https://github.com/gomaja/go-gad). This package checks TS 29.002 semantics: presence rules, sender rules, receiver mappings, and which identities and shapes each field carries.
-- **Encoding.** `Parse` accepts any BER of ITU-T X.690, including constructed strings and indefinite or long-form lengths. `Marshal` follows TS 29.002 §17.1.1: OCTET and BIT STRINGs in the primitive form, and lengths in the definite form, short below 128 octets and otherwise in the fewest octets. The opaque PDP-ContextInfo and PagingArea entries are returned by `Parse` and sent by `Marshal` in DER, whatever BER they arrive in. X.680 §22.7 lets encoding rules add or remove trailing 0 bits of a named BIT STRING: go-asn1 pads a received one shorter than its SIZE lower bound with 0 bits, so `Parse` accepts it and `Marshal` sends it at that bound, but it rejects one padded with 0 bits beyond its SIZE upper bound ([go-asn1#129](https://github.com/gomaja/go-asn1/issues/129)).
+- **Encoding.** `Parse` accepts any BER of ITU-T X.690, including constructed strings and indefinite or long-form lengths. `Marshal` follows TS 29.002 §17.1.1: OCTET and BIT STRINGs in the primitive form, and lengths in the definite form, short below 128 octets and otherwise in the fewest octets. The opaque PDP-ContextInfo and PagingArea entries are returned by `Parse` and sent by `Marshal` in DER, whatever BER they arrive in. ITU-T X.680 (02/2021) §22.7 permits adding or removing trailing zero bits of a named BIT STRING: go-asn1 decodes it at the shortest length carrying its set bits within SIZE, padding to the lower bound or trimming zero padding, including padding beyond the upper bound. `Marshal` sends that normalized value.
 
 ### Address handling
 

@@ -3,8 +3,10 @@ package gsmmap
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"testing"
 
+	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
@@ -106,20 +108,23 @@ func TestOpaquePagingAreaInDER(t *testing.T) {
 	}
 }
 
-// https://github.com/gomaja/go-asn1/issues/132: MarshalBER sends a decoded
-// value that has not changed in the form it was received in, so
-// unmarshalAsDER decodes opaque entries again from their DER encoding. This
-// pins today's behaviour; when it fails, MarshalBER no longer replays the
-// received form and unmarshalAsDER can decode the entry once.
-func TestGoASN1Issue132MarshalBERReplaysReceivedForm(t *testing.T) {
-	const longForm = "3008808101018202f121"
+// https://github.com/gomaja/go-asn1/issues/156: ber.WithoutBERReplay refuses
+// an unknown extension addition that MarshalDER encodes, so unmarshalAsDER
+// still decodes opaque entries again from their DER encoding. This pins
+// today's behaviour; when it fails, Marshal can encode with
+// WithoutBERReplay and unmarshalAsDER can be removed.
+func TestGoASN1Issue156WithoutBERReplayRejectsUnknownExtension(t *testing.T) {
+	const encoded = "300a8001018202f1219e01ff"
 	var ctx gsm_map.PDPContextInfo
-	if err := ctx.UnmarshalBER(mustHex(t, longForm)); err != nil {
+	if err := ctx.UnmarshalBER(mustHex(t, encoded)); err != nil {
 		t.Fatal(err)
 	}
-	out, err := ctx.MarshalBER()
+	if _, err := ctx.MarshalBER(ber.WithoutBERReplay()); !errors.Is(err, ber.ErrInvalidValue) {
+		t.Fatalf("MarshalBER(WithoutBERReplay): %v, want ber.ErrInvalidValue", err)
+	}
+	out, err := ctx.MarshalDER()
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantEqual(t, "MarshalBER", mustHex(t, longForm), out)
+	wantEqual(t, "MarshalDER", mustHex(t, encoded), out)
 }

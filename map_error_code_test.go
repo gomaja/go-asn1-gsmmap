@@ -38,7 +38,7 @@ func TestMapErrorCodeSpecValues(t *testing.T) {
 }
 
 // String returns the ASN.1 name of each MapErrorCode constant, and the
-// decimal code for a code without a name.
+// MAPErrorCode(n) for a code without a name.
 func TestMapErrorCodeNames(t *testing.T) {
 	cases := []struct {
 		got  MapErrorCode
@@ -65,18 +65,14 @@ func TestMapErrorCodeNames(t *testing.T) {
 			t.Errorf("MapErrorCode(%d).String() = %q, want %q", int64(tc.got), s, tc.name)
 		}
 	}
-	if s := MapErrorCode(250).String(); s != "250" {
-		t.Errorf("MapErrorCode(250).String() = %q, want \"250\"", s)
+	if s := MapErrorCode(250).String(); s != "MAPErrorCode(250)" {
+		t.Errorf("MapErrorCode(250).String() = %q, want \"MAPErrorCode(250)\"", s)
 	}
 }
 
-// https://github.com/gomaja/go-asn1/issues/135: go-asn1's error code list
-// names code 4 secureTransportError, which 3GPP TS 29.002 V19.1.0 §17.6.6
-// does not define. This pins today's behaviour; when it fails, go-asn1 has
-// dropped the name and String returns "4", the decimal code, as for any code
-// without a name.
-func TestGoASN1Issue135ErrorCode4(t *testing.T) {
-	if s := MapErrorCode(4).String(); s != "secureTransportError" {
-		t.Errorf("MapErrorCode(4).String() = %q, want \"secureTransportError\"", s)
+// 3GPP TS 29.002 V19.1.0 §17.6 defines no error with local code 4.
+func TestMapErrorCode4HasNoName(t *testing.T) {
+	if s := MapErrorCode(4).String(); s != "MAPErrorCode(4)" {
+		t.Errorf("MapErrorCode(4).String() = %q, want %q", s, "MAPErrorCode(4)")
 	}
 }

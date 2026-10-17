@@ -312,12 +312,3 @@ type USSDRes struct {
 	// DataCodingScheme.
 	USSDString HexBytes
 }
-
-// NetworkUnstructuredSsContextV2 returns the OBJECT IDENTIFIER arcs of
-// networkUnstructuredSsContext-v2, {map-ac networkUnstructuredSs(19)
-// version2(2)} = 0.4.0.0.1.0.19.2 (3GPP TS 29.002 V19.1.0 §17.3.2.20), the
-// application context of all three USSD operations. Each call returns a new
-// slice.
-func NetworkUnstructuredSsContextV2() []uint64 {
-	return append([]uint64(nil), gsm_map.NetworkUnstructuredSsContextV2()...)
-}

@@ -2298,7 +2298,8 @@ func TestUpdateGprsLocationFullStressRoundTrip(t *testing.T) {
 			MsisdnLessOperationSupported:                       true,
 			UpdateofHomogeneousSupportOfIMSVoiceOverPSSessions: true,
 			ResetIdsSupported:                                  true,
-			ExtSupportedFeatures:                               &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true, BitLength: 2},
+			// ITU-T X.680 (02/2021) §22.7: trailing zero bits carry no value.
+			ExtSupportedFeatures: &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true},
 		},
 
 		InformPreviousNetworkEntity: true,

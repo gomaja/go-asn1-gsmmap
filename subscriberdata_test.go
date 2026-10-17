@@ -301,7 +301,7 @@ func TestVoiceGroupCallDataValidation(t *testing.T) {
 }
 
 // AdditionalInfo keeps every bit, including a value that is not
-// byte-aligned, and drops the padding bits of the last octet.
+// byte-aligned; the codec clears unused bits (ITU-T X.690 (02/2021) §8.6.2.2).
 func TestVoiceGroupCallDataAdditionalInfoBitExact(t *testing.T) {
 	// 9 bits, 1010 1011 1, with the seven padding bits set.
 	bs := runtime.BitString{Bytes: []byte{0xAB, 0xFF}, BitLength: 9}
@@ -309,7 +309,11 @@ func TestVoiceGroupCallDataAdditionalInfoBitExact(t *testing.T) {
 		GroupId:        []byte{0x21, 0x43, 0x65}, // TBCD of "123456"
 		AdditionalInfo: &bs,
 	}
-	got, err := convertWireToVoiceGroupCallData(w)
+	var decoded gsm_map.VoiceGroupCallData
+	if err := decoded.UnmarshalBER(strictBER(t, w)); err != nil {
+		t.Fatal(err)
+	}
+	got, err := convertWireToVoiceGroupCallData(&decoded)
 	if err != nil {
 		t.Fatalf("decode: %v", err)
 	}

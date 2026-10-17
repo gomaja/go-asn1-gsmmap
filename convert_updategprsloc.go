@@ -433,6 +433,12 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 
 // --- EpsInfo CHOICE ---
 
+// isrInformationKnownBits masks the first octet of ISR-Information to the
+// bits 3GPP TS 29.002 V19.1.0 §17.7.1 assigns.
+const isrInformationKnownBits = 1<<(7-gsm_map.ISRInformationUpdateLocation) |
+	1<<(7-gsm_map.ISRInformationCancelSGSN) |
+	1<<(7-gsm_map.ISRInformationInitialAttachIndicator)
+
 func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 	hasPdn := e.PdnGwUpdate != nil
 	hasIsr := e.IsrInformationBits != 0 || len(e.IsrInformation) > 0
@@ -452,7 +458,7 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 	}
 	// IsrInformation is BIT STRING (SIZE(3..8)) per TS 29.002 §17.7.1.
 	bs := bitStringToWire(e.IsrInformation, e.IsrInformationBits)
-	if bs.BitLength >= 3 && bs.BitLength <= 8 && len(bs.Bytes) == 1 && bs.Bytes[0]&0x1f != 0 {
+	if bs.BitLength >= 3 && bs.BitLength <= 8 && len(bs.Bytes) == 1 && bs.Bytes[0]&^isrInformationKnownBits != 0 {
 		return nil, ErrISRInformationUnknownBits
 	}
 	v := gsm_map.NewEPSInfoIsrInformation(bs)
@@ -475,10 +481,10 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 	case gsm_map.EPSInfoChoiceIsrInformation:
 		bits := w.IsrInformation.BitLength
 		data := bitStringFromWire(*w.IsrInformation)
-		// TS 29.002 V19.1.0 §17.7.1 ISR-Information: discard unknown
-		// assignments, retaining the CHOICE and its received bit length.
+		// 3GPP TS 29.002 V19.1.0 §17.7.1 ISR-Information: discard unknown
+		// assignments, retaining the CHOICE and its decoded bit length.
 		if len(data) > 0 {
-			data[0] &= 0xE0
+			data[0] &= isrInformationKnownBits
 		}
 		return &EpsInfo{
 			IsrInformation:     data,

@@ -11,7 +11,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"testing"
 
@@ -59,21 +58,6 @@ func TestAlertingPatternValues(t *testing.T) {
 	}
 	if USSDDataCodingSchemeGSM7 != 0x0F || USSDDataCodingSchemeUCS2 != 0x48 {
 		t.Errorf("DCS constants = 0x%02X, 0x%02X; want 0x0F, 0x48", uint8(USSDDataCodingSchemeGSM7), uint8(USSDDataCodingSchemeUCS2))
-	}
-}
-
-func TestNetworkUnstructuredSsContextV2(t *testing.T) {
-	want := []uint64{0, 4, 0, 0, 1, 0, 19, 2}
-	got := NetworkUnstructuredSsContextV2()
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("mismatch (-want +got):\n%s", diff)
-	}
-	got[7] = 99
-	if again := NetworkUnstructuredSsContextV2(); !slices.Equal(again, want) {
-		t.Errorf("mutating a returned slice changed the next result: %v", again)
-	}
-	if !slices.Equal(want, []uint64(gsm_map.NetworkUnstructuredSsContextV2())) {
-		t.Error("differs from gsm_map.NetworkUnstructuredSsContextV2()")
 	}
 }
 

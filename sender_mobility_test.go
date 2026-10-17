@@ -73,7 +73,8 @@ func TestSenderPdnGwUpdateRequiredFields(t *testing.T) {
 	}
 }
 
-// TS 29.002 V19.1.0 §17.7.1 ISR-Information assigns only bits0..2.
+// 3GPP TS 29.002 V19.1.0 §17.7.1 ISR-Information assigns only bits0..2.
+// ITU-T X.680 (02/2021) §22.7 permits trimming zero padding to SIZE (3..8).
 func TestSenderISRInformationBits(t *testing.T) {
 	for bits := 3; bits <= 8; bits++ {
 		for _, b := range []byte{0, 0x80, 0x40, 0x20, 0xe0, 0x10, 0x08, 0x04, 0x02, 0x01} {
@@ -94,7 +95,7 @@ func TestSenderISRInformationBits(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.EpsInfo == nil || got.EpsInfo.IsrInformationBits != bits || !reflect.DeepEqual(got.EpsInfo.IsrInformation, HexBytes{effective}) {
+			if got.EpsInfo == nil || got.EpsInfo.IsrInformationBits != 3 || !reflect.DeepEqual(got.EpsInfo.IsrInformation, HexBytes{effective}) {
 				t.Fatalf("%02x/%d: %+v", b, bits, got.EpsInfo)
 			}
 		}

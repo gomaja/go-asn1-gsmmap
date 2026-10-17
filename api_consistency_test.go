@@ -59,12 +59,14 @@ func TestForwardingDataLongFTNAddress(t *testing.T) {
 	}
 }
 
+// ITU-T X.680 (02/2021) §22.7 permits trimming named-bit zero padding.
 func TestFeatureBitsAcrossMessages(t *testing.T) {
 	ext := &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true, UnknownBits: HexBytes{0x40}, BitLength: 40}
 	for _, tc := range []struct {
-		name    string
-		marshal func() ([]byte, error)
-		parse   func([]byte) (*ExtSupportedFeatures, []byte, error)
+		name      string
+		marshal   func() ([]byte, error)
+		parse     func([]byte) (*ExtSupportedFeatures, []byte, error)
+		canonical string
 	}{
 		{"SGSNCapability", func() ([]byte, error) {
 			return (&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "12", SGSNAddress: "192.0.2.1", SGSNCapability: &SGSNCapability{SupportedFeatures: &SupportedFeatures{OdbAllApn: true, NrAsSecondaryRAT: true}, ExtSupportedFeatures: ext}}).Marshal()
@@ -75,7 +77,7 @@ func TestFeatureBitsAcrossMessages(t *testing.T) {
 			}
 			out, e := x.Marshal()
 			return x.SGSNCapability.ExtSupportedFeatures, out, e
-		}},
+		}, "3023040800010121436587f904028021040504c0000201a00c8906008000000001910206c0"},
 		{"InsertSubscriberDataRes", func() ([]byte, error) { return (&InsertSubscriberDataRes{ExtSupportedFeatures: ext}).Marshal() }, func(b []byte) (*ExtSupportedFeatures, []byte, error) {
 			x, e := ParseInsertSubscriberDataRes(b)
 			if e != nil {
@@ -83,7 +85,7 @@ func TestFeatureBitsAcrossMessages(t *testing.T) {
 			}
 			out, e := x.Marshal()
 			return x.ExtSupportedFeatures, out, e
-		}},
+		}, "30048a0206c0"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			data, err := tc.marshal()
@@ -94,16 +96,24 @@ func TestFeatureBitsAcrossMessages(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.BitLength != 40 || len(got.UnknownBits) != 1 || got.UnknownBits[0] != 0x40 || !got.UnlicensedSpectrumAsSecondaryRAT {
+			if got.BitLength != 0 || len(got.UnknownBits) != 1 || got.UnknownBits[0] != 0x40 || !got.UnlicensedSpectrumAsSecondaryRAT {
 				t.Errorf("ExtSupportedFeatures = %+v", got)
 			}
-			if !bytes.Equal(encoded, data) {
-				t.Errorf("feature bits changed: got %x, want %x", encoded, data)
+			wantEqual(t, "canonical feature encoding", mustHex(t, tc.canonical), encoded)
+			normalized, stable, err := tc.parse(encoded)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantEqual(t, "normalized feature bits", got, normalized)
+			wantEqual(t, "normalized encoding", encoded, stable)
+			if bytes.Equal(encoded, data) {
+				t.Error("named-bit zero padding retained")
 			}
 		})
 	}
 }
 
+// ITU-T X.680 (02/2021) §22.7 permits trimming to SIZE (26..40).
 func TestSupportedFeaturesTrailingZeroBits(t *testing.T) {
 	w, err := convertUpdateGprsLocationToArg(&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "12", SGSNAddress: "192.0.2.1", SGSNCapability: &SGSNCapability{SupportedFeatures: &SupportedFeatures{}}})
 	if err != nil {
@@ -122,9 +132,12 @@ func TestSupportedFeaturesTrailingZeroBits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(encoded, data) {
-		t.Errorf("SupportedFeatures length changed: got %x, want %x", encoded, data)
+	wantEqual(t, "normalized encoding", mustHex(t, "301e040800010121436587f904028021040504c0000201a00789050600000000"), encoded)
+	var normalized gsm_map.UpdateGprsLocationArg
+	if err := normalized.UnmarshalBER(encoded); err != nil {
+		t.Fatal(err)
 	}
+	wantEqual(t, "SupportedFeatures", &runtime.BitString{Bytes: []byte{0, 0, 0, 0}, BitLength: 26}, normalized.SgsnCapability.SupportedFeatures)
 	r, err := convertInsertSubscriberDataResToWire(&InsertSubscriberDataRes{SupportedFeatures: &SupportedFeatures{}})
 	if err != nil {
 		t.Fatal(err)
@@ -142,9 +155,12 @@ func TestSupportedFeaturesTrailingZeroBits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(encoded, data) {
-		t.Errorf("ISD SupportedFeatures length changed: got %x, want %x", encoded, data)
+	wantEqual(t, "normalized ISD encoding", mustHex(t, "300789050600000000"), encoded)
+	var normalizedRes gsm_map.InsertSubscriberDataRes
+	if err := normalizedRes.UnmarshalBER(encoded); err != nil {
+		t.Fatal(err)
 	}
+	wantEqual(t, "ISD SupportedFeatures", &runtime.BitString{Bytes: []byte{0, 0, 0, 0}, BitLength: 26}, normalizedRes.SupportedFeatures)
 }
 
 func TestGroupIdMissingSentinelPublic(t *testing.T) {
@@ -280,19 +296,31 @@ func TestBitStringPaddingBitsCleared(t *testing.T) {
 	padded := runtime.BitString{Bytes: []byte{0x12, 0x34, 0x56, 0x3F}, BitLength: 27}
 	want := HexBytes{0x12, 0x34, 0x56, 0x20}
 
-	csg := convertWireToCSGSubscriptionData(&gsm_map.CSGSubscriptionData{CsgId: padded})
+	var decodedCSG gsm_map.CSGSubscriptionData
+	if err := decodedCSG.UnmarshalBER(strictBER(t, &gsm_map.CSGSubscriptionData{CsgId: padded})); err != nil {
+		t.Fatal(err)
+	}
+	csg := convertWireToCSGSubscriptionData(&decodedCSG)
 	if !bytes.Equal(csg.CsgID, want) || csg.CsgIDBits != 27 {
 		t.Errorf("CSGSubscriptionData.CsgID = %x (%d bits), want %x (27 bits)", csg.CsgID, csg.CsgIDBits, want)
 	}
 
-	user := convertWireToUserCSGInformation(&gsm_map.UserCSGInformation{CsgId: padded})
+	var decodedUser gsm_map.UserCSGInformation
+	if err := decodedUser.UnmarshalBER(strictBER(t, &gsm_map.UserCSGInformation{CsgId: padded})); err != nil {
+		t.Fatal(err)
+	}
+	user := convertWireToUserCSGInformation(&decodedUser)
 	if !bytes.Equal(user.CsgID, want) || user.CsgIDBits != 27 {
 		t.Errorf("UserCSGInformation.CsgID = %x (%d bits), want %x (27 bits)", user.CsgID, user.CsgIDBits, want)
 	}
 
 	// ISR-Information, 3 bits '101'B with the five padding bits set.
 	isr := runtime.BitString{Bytes: []byte{0xBF}, BitLength: 3}
-	eps, err := convertWireToEpsInfo(&gsm_map.EPSInfo{Choice: gsm_map.EPSInfoChoiceIsrInformation, IsrInformation: &isr})
+	var decodedEPS gsm_map.EPSInfo
+	if err := decodedEPS.UnmarshalBER(strictBER(t, &gsm_map.EPSInfo{Choice: gsm_map.EPSInfoChoiceIsrInformation, IsrInformation: &isr})); err != nil {
+		t.Fatal(err)
+	}
+	eps, err := convertWireToEpsInfo(&decodedEPS)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,6 +384,7 @@ func TestFeatureBitLengthOutOfRange(t *testing.T) {
 		path string
 		size string
 	}{
+		{"SupportedFeatures 41", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: 41}}, "sgsn-Capability.supportedFeatures", "SIZE (26..40)"},
 		{"SupportedFeatures 2^30", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: 1 << 30}}, "sgsn-Capability.supportedFeatures", "SIZE (26..40)"},
 		{"SupportedFeatures MaxInt", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: math.MaxInt}}, "sgsn-Capability.supportedFeatures", "SIZE (26..40)"},
 		{"ExtSupportedFeatures 41", &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{BitLength: 41}}, "sgsn-Capability.ext-SupportedFeatures", "SIZE (1..40)"},
@@ -368,6 +397,22 @@ func TestFeatureBitLengthOutOfRange(t *testing.T) {
 			}
 		})
 	}
+}
+
+// bitStringFromWire copies the codec's normalized octets without aliasing.
+func TestBitStringFromWireCopiesDecodedOctets(t *testing.T) {
+	var vlr gsm_map.VLRCapability
+	if err := vlr.UnmarshalBER(mustHex(t, "30048002041f")); err != nil {
+		t.Fatal(err)
+	}
+	bs := *vlr.SupportedCamelPhases
+	wantEqual(t, "decoded supportedCamelPhases", runtime.BitString{Bytes: []byte{0x10}, BitLength: 4}, bs)
+	out := bitStringFromWire(bs)
+	wantEqual(t, "copied octets", HexBytes{0x10}, out)
+	out[0] = 0
+	wantEqual(t, "source octets", []byte{0x10}, bs.Bytes)
+	bs.Bytes[0] = 0x80
+	wantEqual(t, "independent copy", HexBytes{0}, out)
 }
 
 // A nil optional list is absent; a non-nil empty list is present, and the

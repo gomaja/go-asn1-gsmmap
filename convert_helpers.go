@@ -247,11 +247,13 @@ type derCodec[T any] interface {
 
 // unmarshalAsDER decodes the BER in raw, then decodes the value again from
 // its DER encoding. MarshalBER sends a decoded value that has not changed in
-// the form it was received in (https://github.com/gomaja/go-asn1/issues/132),
-// which may have long-form or indefinite lengths or constructed strings; a
-// value decoded from DER is sent in DER, which meets the transfer syntax of
-// 3GPP TS 29.002 V19.1.0 §17.1.1. The types it is used for contain no named
-// BIT STRING, whose trailing 0 bits DER would remove.
+// the form it was received in, which may have long-form or indefinite
+// lengths or constructed strings; a value decoded from DER is sent in DER,
+// which meets the transfer syntax of 3GPP TS 29.002 V19.1.0 §17.1.1.
+// ber.WithoutBERReplay encodes the typed value instead, but it refuses the
+// unknown extension additions and open-type values that DER keeps
+// (https://github.com/gomaja/go-asn1/issues/156). The types it is used for
+// contain no named BIT STRING, whose trailing 0 bits DER would remove.
 func unmarshalAsDER[T any, P derCodec[T]](raw []byte) (T, error) {
 	var v T
 	if err := P(&v).UnmarshalBER(raw); err != nil {

@@ -126,7 +126,7 @@ func TestCSGSubscriptionData_BadCsgID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := (&InsertSubscriberDataArg{CsgSubscriptionDataList: CSGSubscriptionDataList{tc.in}}).Marshal()
 			if tc.name == "wrong octets" {
-				wantBitStringLengthError(t, err, "csg-Id", 27, 2)
+				wantBitStringLengthError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", 27, 2)
 			} else {
 				wantConstraintError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", "SIZE (27)")
 			}

@@ -260,7 +260,7 @@ func TestOpaquePDPContextKeepsExtensions(t *testing.T) {
 	ctx := gsm_map.PDPContextInfo{
 		PdpContextIdentifier: 1, PdpType: gsm_map.PDPType{0xf1, 0x21},
 		ExtensionContainer: &gsm_map.ExtensionContainer{
-			PrivateExtensionList: &gsm_map.PrivateExtensionList{Values: []gsm_map.PrivateExtension{{ExtId: runtime.ObjectIdentifier{1, 2, 3}}}},
+			PrivateExtensionList: &gsm_map.PrivateExtensionList{Values: []gsm_map.PrivateExtension{{ExtId: runtime.MustObjectIdentifierFromArcs(1, 2, 3)}}},
 			PcsExtensions:        &gsm_map.PCSExtensions{ExtCount_: 1, ExtPresent_: []bool{true}, ExtData_: [][]byte{{0x85, 1, 0xaa}}},
 			ExtCount_:            1, ExtPresent_: []bool{true}, ExtData_: [][]byte{{0x86, 1, 0xbb}},
 		},

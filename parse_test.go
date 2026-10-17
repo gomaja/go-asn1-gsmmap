@@ -221,7 +221,7 @@ func TestParseMoFsmRejectsCapturedMtForwardSMV2(t *testing.T) {
 	// TCAP forwardSM(46) in shortMsgMT-RelayContext-v2 carries
 	// MT-ForwardSM-Arg with an SMS-DELIVER TPDU. Per 3GPP TS 29.002
 	// V19.1.0 §17.7.6, MO-ForwardSM-Arg and MT-ForwardSM-Arg
-	// share the same leading fields; TS 23.040 v19.0.0 clause 9.2.2
+	// share the same leading fields; TS 23.040 V20.0.0 clause 9.2.2
 	// makes the TPDU direction the discriminator here.
 	data, err := hex.DecodeString("3056800822589172230006f7840891328490000033f00440040d91328471112898f3000062805011948422324f2228e90c42a153500c34a3e1643010cd06a2c570391cc8268bd960a0a213548bc16020015990a6cb62b61a")
 	if err != nil {
@@ -251,7 +251,7 @@ func TestParseMtFsmAcceptsNoSmRpDaNoSmRpOaFromIssue3(t *testing.T) {
 	// TPDU. These RP address CHOICEs are defined by 3GPP TS 29.002 v19.1.0
 	// clause 17.7.6 and used for subsequent MT transfers per clause 12.9.3;
 	// they must not make the wrapper reject the message before TPDU direction
-	// validation per 3GPP TS 23.040 v19.0.0 clause 9.2.2.
+	// validation per 3GPP TS 23.040 V20.0.0 clause 9.2.2.
 	data, err := hex.DecodeString("3067850085000461040b916971101911f900006280517153902159d2e2b1252d467ff6de6c47efd18c38980d27ac1589b9a1d02814d26cb1d92d17a40983311aee560bde6ec39b8d4623da8a4623cd188bc18a441b4c981b0e6d4259ac3814eee4bd5b4d26c3cd6c36")
 	if err != nil {
 		t.Fatalf("hex decode: %v", err)

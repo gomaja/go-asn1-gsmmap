@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/bits"
 	"testing"
 
 	"github.com/gomaja/go-asn1/runtime"
@@ -110,21 +111,22 @@ func TestReceiverEPSInfoMissingPDNIdentity(t *testing.T) {
 	}
 }
 
-// TS 29.002 V19.1.0 §17.7.1 ISR-Information discards unknown bit assignments.
+// 3GPP TS 29.002 V19.1.0 §17.7.1 discards unknown ISR bit assignments.
+// ITU-T X.680 (02/2021) §22.7 permits trimming named-bit zero padding.
 func TestReceiverISRUnknownBits(t *testing.T) {
-	for bits := 3; bits <= 8; bits++ {
+	for bitLen := 3; bitLen <= 8; bitLen++ {
 		for _, b := range []byte{0, 0xE0, 0xFF, 0x10, 0x08, 0x04, 0x02, 0x01} {
-			mask := byte(0xFF << uint(8-bits))
+			mask := byte(0xFF << uint(8-bitLen))
 			raw := b & mask
-			t.Run(fmt.Sprintf("%d/%02x", bits, raw), func(t *testing.T) {
+			t.Run(fmt.Sprintf("%d/%02x", bitLen, raw), func(t *testing.T) {
 				w := mobilityGprsWire(t)
-				e := gsm_map.NewEPSInfoIsrInformation(runtime.BitString{Bytes: []byte{raw}, BitLength: bits})
+				e := gsm_map.NewEPSInfoIsrInformation(runtime.BitString{Bytes: []byte{raw}, BitLength: bitLen})
 				w.EpsInfo = &e
 				got, err := ParseUpdateGprsLocation(strictBER(t, w))
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got.EpsInfo == nil || got.EpsInfo.PdnGwUpdate != nil || got.EpsInfo.IsrInformationBits != bits || !bytes.Equal(got.EpsInfo.IsrInformation, []byte{raw & 0xE0}) {
+				if got.EpsInfo == nil || got.EpsInfo.PdnGwUpdate != nil || got.EpsInfo.IsrInformationBits != max(3, 8-bits.TrailingZeros8(raw)) || !bytes.Equal(got.EpsInfo.IsrInformation, []byte{raw & 0xE0}) {
 					t.Fatalf("ISR corrected incorrectly: %+v", got.EpsInfo)
 				}
 			})
@@ -133,19 +135,22 @@ func TestReceiverISRUnknownBits(t *testing.T) {
 }
 
 // TS 29.002 V19.1.0 §17.7.1 Ext-AccessRestrictionData permits 1..32
-// bits without a receiver rule discarding its unnamed positions.
+// bits without a receiver rule discarding its unnamed positions. The
+// decoder removes trailing 0 bits of the named BIT STRING (ITU-T X.680
+// (02/2021) §22.7), so Parse reports no BitLength and Marshal sends the
+// value without them.
 func TestReceiverExtAccessRestrictionUnknownBits(t *testing.T) {
 	for _, tc := range []struct {
 		raw     []byte
 		bits    int
 		unknown HexBytes
-		extra   int
+		sent    runtime.BitString
 	}{
-		{[]byte{0x20}, 3, HexBytes{0x20}, 0},
-		{[]byte{0, 0, 0, 1}, 32, HexBytes{0, 0, 0, 1}, 0},
-		{[]byte{0xE0}, 3, HexBytes{0x20}, 0},
-		{[]byte{0xC0, 0, 0, 0}, 32, nil, 32},
-		{[]byte{0}, 1, nil, 0},
+		{[]byte{0x20}, 3, HexBytes{0x20}, runtime.BitString{Bytes: []byte{0x20}, BitLength: 3}},
+		{[]byte{0, 0, 0, 1}, 32, HexBytes{0, 0, 0, 1}, runtime.BitString{Bytes: []byte{0, 0, 0, 1}, BitLength: 32}},
+		{[]byte{0xE0}, 3, HexBytes{0x20}, runtime.BitString{Bytes: []byte{0xE0}, BitLength: 3}},
+		{[]byte{0xC0, 0, 0, 0}, 32, nil, runtime.BitString{Bytes: []byte{0xC0}, BitLength: 2}},
+		{[]byte{0}, 1, nil, runtime.BitString{Bytes: []byte{0}, BitLength: 1}},
 	} {
 		t.Run(fmt.Sprintf("%x/%d", tc.raw, tc.bits), func(t *testing.T) {
 			bs := runtime.BitString{Bytes: tc.raw, BitLength: tc.bits}
@@ -157,7 +162,7 @@ func TestReceiverExtAccessRestrictionUnknownBits(t *testing.T) {
 			if r == nil {
 				t.Fatal("missing restrictions")
 			}
-			if r.NrAsSecondaryRATNotAllowed != (tc.raw[0]&0x80 != 0) || r.UnlicensedSpectrumAsSecondaryRATNotAllowed != (tc.raw[0]&0x40 != 0) || !bytes.Equal(r.UnknownBits, tc.unknown) || r.BitLength != tc.extra {
+			if r.NrAsSecondaryRATNotAllowed != (tc.raw[0]&0x80 != 0) || r.UnlicensedSpectrumAsSecondaryRATNotAllowed != (tc.raw[0]&0x40 != 0) || !bytes.Equal(r.UnknownBits, tc.unknown) || r.BitLength != 0 {
 				t.Fatalf("restrictions = %+v", r)
 			}
 			data, err := got.Marshal()
@@ -168,7 +173,7 @@ func TestReceiverExtAccessRestrictionUnknownBits(t *testing.T) {
 			if err = w.UnmarshalBER(data); err != nil {
 				t.Fatal(err)
 			}
-			wantEqual(t, "wire restrictions", &bs, w.ExtAccessRestrictionData)
+			wantEqual(t, "wire restrictions", &tc.sent, w.ExtAccessRestrictionData)
 		})
 	}
 }
