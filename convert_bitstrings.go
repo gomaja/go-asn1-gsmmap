@@ -3,8 +3,8 @@
 package gsmmap
 
 import (
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
 )
 
 // bitStringToWire builds the BIT STRING of a field the public type carries
@@ -31,280 +31,158 @@ func clearPaddingBits(octets []byte, bits int) HexBytes {
 	return out
 }
 
-func convertCamelPhasesToBitString(cp *SupportedCamelPhases) runtime.BitString {
-	var b byte
-	bitLen := 1
-	if cp.Phase1 {
-		b |= 1 << (7 - gsm_map.SupportedCamelPhasesPhase1)
+func convertCamelPhasesToBitString(cp *SupportedCamelPhases) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.SupportedCamelPhasesPhase1: cp.Phase1,
+		gsm_map.SupportedCamelPhasesPhase2: cp.Phase2,
+		gsm_map.SupportedCamelPhasesPhase3: cp.Phase3,
+		gsm_map.SupportedCamelPhasesPhase4: cp.Phase4,
 	}
-	if cp.Phase2 {
-		b |= 1 << (7 - gsm_map.SupportedCamelPhasesPhase2)
-		bitLen = gsm_map.SupportedCamelPhasesPhase2 + 1
-	}
-	if cp.Phase3 {
-		b |= 1 << (7 - gsm_map.SupportedCamelPhasesPhase3)
-		bitLen = gsm_map.SupportedCamelPhasesPhase3 + 1
-	}
-	if cp.Phase4 {
-		b |= 1 << (7 - gsm_map.SupportedCamelPhasesPhase4)
-		bitLen = gsm_map.SupportedCamelPhasesPhase4 + 1
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
+	return gsm_map.NewSupportedCamelPhases(namedBitPositions(bits)...)
 }
 
 func convertBitStringToCamelPhases(bs runtime.BitString) *SupportedCamelPhases {
 	cp := &SupportedCamelPhases{}
 	cp.Phase1 = bs.Has(gsm_map.SupportedCamelPhasesPhase1)
-	if bs.BitLength > gsm_map.SupportedCamelPhasesPhase2 {
-		cp.Phase2 = bs.Has(gsm_map.SupportedCamelPhasesPhase2)
-	}
-	if bs.BitLength > gsm_map.SupportedCamelPhasesPhase3 {
-		cp.Phase3 = bs.Has(gsm_map.SupportedCamelPhasesPhase3)
-	}
-	if bs.BitLength > gsm_map.SupportedCamelPhasesPhase4 {
-		cp.Phase4 = bs.Has(gsm_map.SupportedCamelPhasesPhase4)
-	}
+	cp.Phase2 = bs.Has(gsm_map.SupportedCamelPhasesPhase2)
+	cp.Phase3 = bs.Has(gsm_map.SupportedCamelPhasesPhase3)
+	cp.Phase4 = bs.Has(gsm_map.SupportedCamelPhasesPhase4)
 	return cp
 }
 
-func convertLCSCapsToBitString(lcs *SupportedLCSCapabilitySets) runtime.BitString {
-	var b byte
-	bitLen := 2 // minimum per spec
-	if lcs.LcsCapabilitySet1 {
-		b |= 1 << (7 - gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet1)
+func convertLCSCapsToBitString(lcs *SupportedLCSCapabilitySets) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet1: lcs.LcsCapabilitySet1,
+		gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet2: lcs.LcsCapabilitySet2,
+		gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet3: lcs.LcsCapabilitySet3,
+		gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet4: lcs.LcsCapabilitySet4,
+		gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet5: lcs.LcsCapabilitySet5,
 	}
-	if lcs.LcsCapabilitySet2 {
-		b |= 1 << (7 - gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet2)
-	}
-	if lcs.LcsCapabilitySet3 {
-		b |= 1 << (7 - gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet3)
-		bitLen = gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet3 + 1
-	}
-	if lcs.LcsCapabilitySet4 {
-		b |= 1 << (7 - gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet4)
-		bitLen = gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet4 + 1
-	}
-	if lcs.LcsCapabilitySet5 {
-		b |= 1 << (7 - gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet5)
-		bitLen = gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet5 + 1
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
+	return gsm_map.NewSupportedLCSCapabilitySets(namedBitPositions(bits)...)
 }
 
 func convertBitStringToLCSCaps(bs runtime.BitString) *SupportedLCSCapabilitySets {
 	lcs := &SupportedLCSCapabilitySets{}
 	lcs.LcsCapabilitySet1 = bs.Has(gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet1)
-	if bs.BitLength > gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet2 {
-		lcs.LcsCapabilitySet2 = bs.Has(gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet2)
-	}
-	if bs.BitLength > gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet3 {
-		lcs.LcsCapabilitySet3 = bs.Has(gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet3)
-	}
-	if bs.BitLength > gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet4 {
-		lcs.LcsCapabilitySet4 = bs.Has(gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet4)
-	}
-	if bs.BitLength > gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet5 {
-		lcs.LcsCapabilitySet5 = bs.Has(gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet5)
-	}
+	lcs.LcsCapabilitySet2 = bs.Has(gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet2)
+	lcs.LcsCapabilitySet3 = bs.Has(gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet3)
+	lcs.LcsCapabilitySet4 = bs.Has(gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet4)
+	lcs.LcsCapabilitySet5 = bs.Has(gsm_map.SupportedLCSCapabilitySetsLcsCapabilitySet5)
 	return lcs
 }
 
-func convertRequestedNodesToBitString(rn *RequestedNodes) runtime.BitString {
-	var b byte
-	bitLen := 1
-	if rn.MME {
-		b |= 1 << (7 - gsm_map.RequestedNodesMme)
+func convertRequestedNodesToBitString(rn *RequestedNodes) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.RequestedNodesMme:  rn.MME,
+		gsm_map.RequestedNodesSgsn: rn.SGSN,
 	}
-	if rn.SGSN {
-		b |= 1 << (7 - gsm_map.RequestedNodesSgsn)
-		bitLen = gsm_map.RequestedNodesSgsn + 1
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
+	return gsm_map.NewRequestedNodes(namedBitPositions(bits)...)
 }
 
 func convertBitStringToRequestedNodes(bs runtime.BitString) *RequestedNodes {
 	rn := &RequestedNodes{}
 	rn.MME = bs.Has(gsm_map.RequestedNodesMme)
-	if bs.BitLength > gsm_map.RequestedNodesSgsn {
-		rn.SGSN = bs.Has(gsm_map.RequestedNodesSgsn)
-	}
+	rn.SGSN = bs.Has(gsm_map.RequestedNodesSgsn)
 	return rn
 }
 
 // AllowedServices: 2 bits (bit 0 = first, bit 1 = second).
-func convertAllowedServicesToBitString(a *AllowedServicesFlags) runtime.BitString {
-	var b byte
-	if a.FirstServiceAllowed {
-		b |= 1 << (7 - gsm_map.AllowedServicesFirstServiceAllowed)
+func convertAllowedServicesToBitString(a *AllowedServicesFlags) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.AllowedServicesFirstServiceAllowed:  a.FirstServiceAllowed,
+		gsm_map.AllowedServicesSecondServiceAllowed: a.SecondServiceAllowed,
 	}
-	if a.SecondServiceAllowed {
-		b |= 1 << (7 - gsm_map.AllowedServicesSecondServiceAllowed)
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: 2}
+	return gsm_map.NewAllowedServices(namedBitPositions(bits)...)
 }
 
 func convertBitStringToAllowedServices(bs runtime.BitString) *AllowedServicesFlags {
 	a := &AllowedServicesFlags{}
 	a.FirstServiceAllowed = bs.Has(gsm_map.AllowedServicesFirstServiceAllowed)
-	if bs.BitLength > gsm_map.AllowedServicesSecondServiceAllowed {
-		a.SecondServiceAllowed = bs.Has(gsm_map.AllowedServicesSecondServiceAllowed)
-	}
+	a.SecondServiceAllowed = bs.Has(gsm_map.AllowedServicesSecondServiceAllowed)
 	return a
 }
 
 // SuppressMTSS: 2 bits (bit 0 = suppressCUG, bit 1 = suppressCCBS), min size 2.
-func convertSuppressMTSSToBitString(s *SuppressMTSSFlags) runtime.BitString {
-	var b byte
-	if s.SuppressCUG {
-		b |= 1 << (7 - gsm_map.SuppressMTSSSuppressCUG)
+func convertSuppressMTSSToBitString(s *SuppressMTSSFlags) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.SuppressMTSSSuppressCUG:  s.SuppressCUG,
+		gsm_map.SuppressMTSSSuppressCCBS: s.SuppressCCBS,
 	}
-	if s.SuppressCCBS {
-		b |= 1 << (7 - gsm_map.SuppressMTSSSuppressCCBS)
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: 2}
+	return gsm_map.NewSuppressMTSS(namedBitPositions(bits)...)
 }
 
 func convertBitStringToSuppressMTSS(bs runtime.BitString) *SuppressMTSSFlags {
 	s := &SuppressMTSSFlags{}
 	s.SuppressCUG = bs.Has(gsm_map.SuppressMTSSSuppressCUG)
-	if bs.BitLength > gsm_map.SuppressMTSSSuppressCCBS {
-		s.SuppressCCBS = bs.Has(gsm_map.SuppressMTSSSuppressCCBS)
-	}
+	s.SuppressCCBS = bs.Has(gsm_map.SuppressMTSSSuppressCCBS)
 	return s
 }
 
 // OfferedCamel4CSIs: 7 bits per 3GPP TS 29.002.
 // Bit order: 0=o-CSI, 1=d-CSI, 2=vt-CSI, 3=t-CSI, 4=mt-sms-CSI, 5=mg-CSI, 6=psi-enhancements.
-func convertOfferedCamel4CSIsToBitString(o *OfferedCamel4CSIs) runtime.BitString {
-	var b byte
-	if o.OCSI {
-		b |= 1 << (7 - gsm_map.OfferedCamel4CSIsOCsi)
+func convertOfferedCamel4CSIsToBitString(o *OfferedCamel4CSIs) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.OfferedCamel4CSIsOCsi:            o.OCSI,
+		gsm_map.OfferedCamel4CSIsDCsi:            o.DCSI,
+		gsm_map.OfferedCamel4CSIsVtCsi:           o.VTCSI,
+		gsm_map.OfferedCamel4CSIsTCsi:            o.TCSI,
+		gsm_map.OfferedCamel4CSIsMtSmsCsi:        o.MTSMSCSI,
+		gsm_map.OfferedCamel4CSIsMgCsi:           o.MGCSI,
+		gsm_map.OfferedCamel4CSIsPsiEnhancements: o.PsiEnhancements,
 	}
-	if o.DCSI {
-		b |= 1 << (7 - gsm_map.OfferedCamel4CSIsDCsi)
-	}
-	if o.VTCSI {
-		b |= 1 << (7 - gsm_map.OfferedCamel4CSIsVtCsi)
-	}
-	if o.TCSI {
-		b |= 1 << (7 - gsm_map.OfferedCamel4CSIsTCsi)
-	}
-	if o.MTSMSCSI {
-		b |= 1 << (7 - gsm_map.OfferedCamel4CSIsMtSmsCsi)
-	}
-	if o.MGCSI {
-		b |= 1 << (7 - gsm_map.OfferedCamel4CSIsMgCsi)
-	}
-	if o.PsiEnhancements {
-		b |= 1 << (7 - gsm_map.OfferedCamel4CSIsPsiEnhancements)
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: 7}
+	return gsm_map.NewOfferedCamel4CSIs(namedBitPositions(bits)...)
 }
 
 func convertBitStringToOfferedCamel4CSIs(bs runtime.BitString) *OfferedCamel4CSIs {
 	o := &OfferedCamel4CSIs{}
 	o.OCSI = bs.Has(gsm_map.OfferedCamel4CSIsOCsi)
-	if bs.BitLength > gsm_map.OfferedCamel4CSIsDCsi {
-		o.DCSI = bs.Has(gsm_map.OfferedCamel4CSIsDCsi)
-	}
-	if bs.BitLength > gsm_map.OfferedCamel4CSIsVtCsi {
-		o.VTCSI = bs.Has(gsm_map.OfferedCamel4CSIsVtCsi)
-	}
-	if bs.BitLength > gsm_map.OfferedCamel4CSIsTCsi {
-		o.TCSI = bs.Has(gsm_map.OfferedCamel4CSIsTCsi)
-	}
-	if bs.BitLength > gsm_map.OfferedCamel4CSIsMtSmsCsi {
-		o.MTSMSCSI = bs.Has(gsm_map.OfferedCamel4CSIsMtSmsCsi)
-	}
-	if bs.BitLength > gsm_map.OfferedCamel4CSIsMgCsi {
-		o.MGCSI = bs.Has(gsm_map.OfferedCamel4CSIsMgCsi)
-	}
-	if bs.BitLength > gsm_map.OfferedCamel4CSIsPsiEnhancements {
-		o.PsiEnhancements = bs.Has(gsm_map.OfferedCamel4CSIsPsiEnhancements)
-	}
+	o.DCSI = bs.Has(gsm_map.OfferedCamel4CSIsDCsi)
+	o.VTCSI = bs.Has(gsm_map.OfferedCamel4CSIsVtCsi)
+	o.TCSI = bs.Has(gsm_map.OfferedCamel4CSIsTCsi)
+	o.MTSMSCSI = bs.Has(gsm_map.OfferedCamel4CSIsMtSmsCsi)
+	o.MGCSI = bs.Has(gsm_map.OfferedCamel4CSIsMgCsi)
+	o.PsiEnhancements = bs.Has(gsm_map.OfferedCamel4CSIsPsiEnhancements)
 	return o
 }
 
 // SupportedRATTypes: bit 0=utran, 1=geran, 2=gan, 3=i-hspa-evolution,
 // 4=e-utran, 5=nb-iot.
-func convertSupportedRATTypesToBitString(r *SupportedRATTypes) runtime.BitString {
-	var b byte
-	bitLen := 5
-	if r.UTRAN {
-		b |= 1 << (7 - gsm_map.SupportedRATTypesUtran)
+func convertSupportedRATTypesToBitString(r *SupportedRATTypes) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.SupportedRATTypesUtran:          r.UTRAN,
+		gsm_map.SupportedRATTypesGeran:          r.GERAN,
+		gsm_map.SupportedRATTypesGan:            r.GAN,
+		gsm_map.SupportedRATTypesIHspaEvolution: r.IHSPAEvolution,
+		gsm_map.SupportedRATTypesEUtran:         r.EUTRAN,
+		gsm_map.SupportedRATTypesNbIot:          r.NBIoT,
 	}
-	if r.GERAN {
-		b |= 1 << (7 - gsm_map.SupportedRATTypesGeran)
-	}
-	if r.GAN {
-		b |= 1 << (7 - gsm_map.SupportedRATTypesGan)
-	}
-	if r.IHSPAEvolution {
-		b |= 1 << (7 - gsm_map.SupportedRATTypesIHspaEvolution)
-	}
-	if r.EUTRAN {
-		b |= 1 << (7 - gsm_map.SupportedRATTypesEUtran)
-	}
-	if r.NBIoT {
-		b |= 1 << (7 - gsm_map.SupportedRATTypesNbIot)
-		bitLen = gsm_map.SupportedRATTypesNbIot + 1
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
+	return gsm_map.NewSupportedRATTypes(namedBitPositions(bits)...)
 }
 
 func convertBitStringToSupportedRATTypes(bs runtime.BitString) *SupportedRATTypes {
 	r := &SupportedRATTypes{}
 	r.UTRAN = bs.Has(gsm_map.SupportedRATTypesUtran)
-	if bs.BitLength > gsm_map.SupportedRATTypesGeran {
-		r.GERAN = bs.Has(gsm_map.SupportedRATTypesGeran)
-	}
-	if bs.BitLength > gsm_map.SupportedRATTypesGan {
-		r.GAN = bs.Has(gsm_map.SupportedRATTypesGan)
-	}
-	if bs.BitLength > gsm_map.SupportedRATTypesIHspaEvolution {
-		r.IHSPAEvolution = bs.Has(gsm_map.SupportedRATTypesIHspaEvolution)
-	}
-	if bs.BitLength > gsm_map.SupportedRATTypesEUtran {
-		r.EUTRAN = bs.Has(gsm_map.SupportedRATTypesEUtran)
-	}
-	if bs.BitLength > gsm_map.SupportedRATTypesNbIot {
-		r.NBIoT = bs.Has(gsm_map.SupportedRATTypesNbIot)
-	}
+	r.GERAN = bs.Has(gsm_map.SupportedRATTypesGeran)
+	r.GAN = bs.Has(gsm_map.SupportedRATTypesGan)
+	r.IHSPAEvolution = bs.Has(gsm_map.SupportedRATTypesIHspaEvolution)
+	r.EUTRAN = bs.Has(gsm_map.SupportedRATTypesEUtran)
+	r.NBIoT = bs.Has(gsm_map.SupportedRATTypesNbIot)
 	return r
 }
 
-// packBits is a shared helper for wide BIT STRINGs. It walks the set-bit
-// table (in ASN.1 bit-position order), packs each bit into the encoded
-// byte stream MSB-first, and returns Bytes padded to cover minBits plus
-// a BitLength equal to max(minBits, one past the highest set bit). This
-// matches the encoding convention used by go-asn1's BER codec.
-func packBits(set []bool, minBits int) runtime.BitString {
-	// highest-set bit index, or -1 if none set
-	high := -1
-	for i, v := range set {
-		if v {
-			high = i
+// namedBitPositions collects the set positions of a table keyed by named-bit constants.
+func namedBitPositions(bits []bool) []int {
+	var positions []int
+	for bit, set := range bits {
+		if set {
+			positions = append(positions, bit)
 		}
 	}
-	bitLen := minBits
-	if h := high + 1; h > bitLen {
-		bitLen = h
-	}
-	nBytes := (bitLen + 7) / 8
-	if nBytes == 0 {
-		return runtime.BitString{}
-	}
-	out := make([]byte, nBytes)
-	for i, v := range set {
-		if v && i < bitLen {
-			out[i/8] |= 1 << (7 - (i % 8))
-		}
-	}
-	return runtime.BitString{Bytes: out, BitLength: bitLen}
+	return positions
 }
 
 // ODBGeneralData: 29 named bits (SIZE 15..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-func convertODBGeneralDataToBitString(o *ODBGeneralData) runtime.BitString {
+func convertODBGeneralDataToBitString(o *ODBGeneralData) (runtime.BitString, error) {
 	bits := []bool{
 		gsm_map.ODBGeneralDataAllOGCallsBarred:                                                o.AllOGCallsBarred,
 		gsm_map.ODBGeneralDataInternationalOGCallsBarred:                                      o.InternationalOGCallsBarred,
@@ -336,7 +214,7 @@ func convertODBGeneralDataToBitString(o *ODBGeneralData) runtime.BitString {
 		gsm_map.ODBGeneralDataRegistrationInterzonalCFNotToHPLMNBarred:                        o.RegistrationInterzonalCFNotToHPLMNBarred,
 		gsm_map.ODBGeneralDataRegistrationInternationalCFBarred:                               o.RegistrationInternationalCFBarred,
 	}
-	return packBits(bits, 15) // spec min
+	return gsm_map.NewODBGeneralData(namedBitPositions(bits)...)
 }
 
 func convertBitStringToODBGeneralData(bs runtime.BitString) *ODBGeneralData {
@@ -374,14 +252,14 @@ func convertBitStringToODBGeneralData(bs runtime.BitString) *ODBGeneralData {
 }
 
 // ODBHPLMNData: 4 named bits (SIZE 4..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-func convertODBHPLMNDataToBitString(o *ODBHPLMNData) runtime.BitString {
+func convertODBHPLMNDataToBitString(o *ODBHPLMNData) (runtime.BitString, error) {
 	bits := []bool{
 		gsm_map.ODBHPLMNDataPlmnSpecificBarringType1: o.PLMNSpecificBarringType1,
 		gsm_map.ODBHPLMNDataPlmnSpecificBarringType2: o.PLMNSpecificBarringType2,
 		gsm_map.ODBHPLMNDataPlmnSpecificBarringType3: o.PLMNSpecificBarringType3,
 		gsm_map.ODBHPLMNDataPlmnSpecificBarringType4: o.PLMNSpecificBarringType4,
 	}
-	return packBits(bits, 4)
+	return gsm_map.NewODBHPLMNData(namedBitPositions(bits)...)
 }
 
 func convertBitStringToODBHPLMNData(bs runtime.BitString) *ODBHPLMNData {
@@ -394,7 +272,7 @@ func convertBitStringToODBHPLMNData(bs runtime.BitString) *ODBHPLMNData {
 }
 
 // AccessRestrictionData: 8 named bits (SIZE 2..8) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-func convertAccessRestrictionDataToBitString(a *AccessRestrictionData) runtime.BitString {
+func convertAccessRestrictionDataToBitString(a *AccessRestrictionData) (runtime.BitString, error) {
 	bits := []bool{
 		gsm_map.AccessRestrictionDataUtranNotAllowed:             a.UtranNotAllowed,
 		gsm_map.AccessRestrictionDataGeranNotAllowed:             a.GeranNotAllowed,
@@ -405,7 +283,7 @@ func convertAccessRestrictionDataToBitString(a *AccessRestrictionData) runtime.B
 		gsm_map.AccessRestrictionDataNbIotNotAllowed:             a.NBIoTNotAllowed,
 		gsm_map.AccessRestrictionDataEnhancedCoverageNotAllowed:  a.EnhancedCoverageNotAllowed,
 	}
-	return packBits(bits, 2)
+	return gsm_map.NewAccessRestrictionData(namedBitPositions(bits)...)
 }
 
 func convertBitStringToAccessRestrictionData(bs runtime.BitString) *AccessRestrictionData {
@@ -422,15 +300,13 @@ func convertBitStringToAccessRestrictionData(bs runtime.BitString) *AccessRestri
 }
 
 // ExtAccessRestrictionData: 2 named bits (SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-func convertExtAccessRestrictionDataToBitString(e *ExtAccessRestrictionData) runtime.BitString {
+func convertExtAccessRestrictionDataToBitString(e *ExtAccessRestrictionData) (runtime.BitString, error) {
 	bits := make([]bool, max(2, len(e.UnknownBits)*8))
 	bits[gsm_map.ExtAccessRestrictionDataNrAsSecondaryRATNotAllowed], bits[gsm_map.ExtAccessRestrictionDataUnlicensedSpectrumAsSecondaryRATNotAllowed] = e.NrAsSecondaryRATNotAllowed, e.UnlicensedSpectrumAsSecondaryRATNotAllowed
 	for i := gsm_map.ExtAccessRestrictionDataUnlicensedSpectrumAsSecondaryRATNotAllowed + 1; i < len(bits); i++ {
 		bits[i] = e.UnknownBits[i/8]&(0x80>>uint(i%8)) != 0
 	}
-	bs := packBits(bits, 1)
-	extendBitLength(&bs, e.BitLength)
-	return bs
+	return gsm_map.NewExtAccessRestrictionData(namedBitPositions(bits)...)
 }
 
 func convertBitStringToExtAccessRestrictionData(bs runtime.BitString) *ExtAccessRestrictionData {
@@ -450,14 +326,11 @@ func convertBitStringToExtAccessRestrictionData(bs runtime.BitString) *ExtAccess
 			out.UnknownBits = nil
 		}
 	}
-	if bs.BitLength > convertExtAccessRestrictionDataToBitString(out).BitLength {
-		out.BitLength = bs.BitLength
-	}
 	return out
 }
 
 // SupportedFeatures: 40 named bits (SIZE 26..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-func convertSupportedFeaturesToBitString(s *SupportedFeatures) runtime.BitString {
+func convertSupportedFeaturesToBitString(s *SupportedFeatures) (runtime.BitString, error) {
 	bits := []bool{
 		gsm_map.SupportedFeaturesOdbAllApn:                                        s.OdbAllApn,
 		gsm_map.SupportedFeaturesOdbHPLMNAPN:                                      s.OdbHPLMNApn,
@@ -500,9 +373,7 @@ func convertSupportedFeaturesToBitString(s *SupportedFeatures) runtime.BitString
 		gsm_map.SupportedFeaturesNonIPPDPTypeAPNs:                                 s.NonIPPDPTypeAPNs,
 		gsm_map.SupportedFeaturesNrAsSecondaryRAT:                                 s.NrAsSecondaryRAT,
 	}
-	bs := packBits(bits, 26)
-	extendBitLength(&bs, s.BitLength)
-	return bs
+	return gsm_map.NewSupportedFeatures(namedBitPositions(bits)...)
 }
 
 func convertBitStringToSupportedFeatures(bs runtime.BitString) *SupportedFeatures {
@@ -548,15 +419,12 @@ func convertBitStringToSupportedFeatures(bs runtime.BitString) *SupportedFeature
 		NonIPPDPTypeAPNs:                  bs.Has(gsm_map.SupportedFeaturesNonIPPDPTypeAPNs),
 		NrAsSecondaryRAT:                  bs.Has(gsm_map.SupportedFeaturesNrAsSecondaryRAT),
 	}
-	if bs.BitLength > convertSupportedFeaturesToBitString(out).BitLength {
-		out.BitLength = bs.BitLength
-	}
 	return out
 }
 
 // ExtSupportedFeatures: bit 0 is named; positions 1..39 are
 // unnamed but valid (3GPP TS 29.002 V19.1.0 §17.7.1, SIZE (1..40)).
-func convertExtSupportedFeaturesToBitString(e *ExtSupportedFeatures) runtime.BitString {
+func convertExtSupportedFeaturesToBitString(e *ExtSupportedFeatures) (runtime.BitString, error) {
 	bits := make([]bool, len(e.UnknownBits)*8)
 	if len(bits) == 0 {
 		bits = make([]bool, 1)
@@ -565,27 +433,7 @@ func convertExtSupportedFeaturesToBitString(e *ExtSupportedFeatures) runtime.Bit
 	for i := gsm_map.ExtSupportedFeaturesUnlicensedSpectrumAsSecondaryRAT + 1; i < len(bits); i++ {
 		bits[i] = e.UnknownBits[i/8]&(0x80>>uint(i%8)) != 0
 	}
-	bs := packBits(bits, 1)
-	extendBitLength(&bs, e.BitLength)
-	return bs
-}
-
-// maxFeatureBits is the upper SIZE bound of SupportedFeatures and
-// Ext-SupportedFeatures, SIZE (26..40) and SIZE (1..40) (3GPP TS 29.002
-// V19.1.0 §17.7.1).
-const maxFeatureBits = 40
-
-// extendBitLength lengthens bs to bits with trailing zero bits. A length
-// beyond maxFeatureBits, which no SIZE it is used for allows, becomes
-// maxFeatureBits+1 bits, so the codec rejects it with its SIZE
-// ConstraintError without the encoder allocating for the requested length.
-func extendBitLength(bs *runtime.BitString, bits int) {
-	bits = min(bits, maxFeatureBits+1)
-	if bits <= bs.BitLength {
-		return
-	}
-	bs.BitLength = bits
-	bs.Bytes = append(bs.Bytes, make([]byte, (bits+7)/8-len(bs.Bytes))...)
+	return gsm_map.NewExtSupportedFeatures(namedBitPositions(bits)...)
 }
 
 func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedFeatures {
@@ -602,21 +450,18 @@ func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedF
 			out.UnknownBits = nil
 		}
 	}
-	if bs.BitLength > convertExtSupportedFeaturesToBitString(out).BitLength {
-		out.BitLength = bs.BitLength
-	}
 	return out
 }
 
 // AdditionalSubscriptions: 3 named bits (SIZE 3..8) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // "Other bits than listed above shall be discarded" per spec.
-func convertAdditionalSubscriptionsToBitString(a *AdditionalSubscriptions) runtime.BitString {
+func convertAdditionalSubscriptionsToBitString(a *AdditionalSubscriptions) (runtime.BitString, error) {
 	bits := []bool{
 		gsm_map.AdditionalSubscriptionsPrivilegedUplinkRequest: a.PrivilegedUplinkRequest,
 		gsm_map.AdditionalSubscriptionsEmergencyUplinkRequest:  a.EmergencyUplinkRequest,
 		gsm_map.AdditionalSubscriptionsEmergencyReset:          a.EmergencyReset,
 	}
-	return packBits(bits, 3)
+	return gsm_map.NewAdditionalSubscriptions(namedBitPositions(bits)...)
 }
 
 func convertBitStringToAdditionalSubscriptions(bs runtime.BitString) *AdditionalSubscriptions {

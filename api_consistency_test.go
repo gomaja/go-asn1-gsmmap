@@ -3,12 +3,12 @@ package gsmmap
 import (
 	"bytes"
 	"errors"
-	"math"
 	"testing"
 
 	identity "github.com/gomaja/go-3gpp-identity"
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // TS 29.002 V19.1.0 §17.7.8: each FTN-AddressString carries its own
@@ -61,7 +61,7 @@ func TestForwardingDataLongFTNAddress(t *testing.T) {
 
 // ITU-T X.680 (02/2021) §22.7 permits trimming named-bit zero padding.
 func TestFeatureBitsAcrossMessages(t *testing.T) {
-	ext := &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true, UnknownBits: HexBytes{0x40}, BitLength: 40}
+	ext := &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true, UnknownBits: HexBytes{0x40}}
 	for _, tc := range []struct {
 		name      string
 		marshal   func() ([]byte, error)
@@ -96,7 +96,7 @@ func TestFeatureBitsAcrossMessages(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.BitLength != 0 || len(got.UnknownBits) != 1 || got.UnknownBits[0] != 0x40 || !got.UnlicensedSpectrumAsSecondaryRAT {
+			if len(got.UnknownBits) != 1 || got.UnknownBits[0] != 0x40 || !got.UnlicensedSpectrumAsSecondaryRAT {
 				t.Errorf("ExtSupportedFeatures = %+v", got)
 			}
 			wantEqual(t, "canonical feature encoding", mustHex(t, tc.canonical), encoded)
@@ -106,8 +106,8 @@ func TestFeatureBitsAcrossMessages(t *testing.T) {
 			}
 			wantEqual(t, "normalized feature bits", got, normalized)
 			wantEqual(t, "normalized encoding", encoded, stable)
-			if bytes.Equal(encoded, data) {
-				t.Error("named-bit zero padding retained")
+			if !bytes.Equal(encoded, data) {
+				t.Error("fresh named-bit encoding changed after Parse")
 			}
 		})
 	}
@@ -219,13 +219,13 @@ func TestCSGIdPublicConstraint(t *testing.T) {
 			}
 			continue
 		}
-		wantConstraintError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", "SIZE (27)")
+		wantValidationError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", "SIZE (27)")
 	}
 	user := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{LocationInformation: &CSLocationInformation{
 		VlrNumber: "12", UserCSGInformation: &UserCSGInformation{CsgID: HexBytes{0x12, 0x34, 0x56, 0x60}, CsgIDBits: 26},
 	}}}
 	_, err := user.Marshal()
-	wantConstraintError(t, err, "subscriberInfo.locationInformation.userCSGInformation.csg-Id", "SIZE (27)")
+	wantValidationError(t, err, "subscriberInfo.locationInformation.userCSGInformation.csg-Id", "SIZE (27)")
 }
 
 func TestISDIstAlertTimerUsesInt(t *testing.T) {
@@ -324,9 +324,7 @@ func TestBitStringPaddingBitsCleared(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Equal(eps.IsrInformation, HexBytes{0xA0}) || eps.IsrInformationBits != 3 {
-		t.Errorf("EpsInfo.IsrInformation = %x (%d bits), want a0 (3 bits)", eps.IsrInformation, eps.IsrInformationBits)
-	}
+	wantEqual(t, "EpsInfo.IsrInformation", &IsrInformation{UpdateLocation: true, InitialAttachIndicator: true}, eps.IsrInformation)
 }
 
 // CellGlobalIdOrServiceAreaIdOrLAI is a CHOICE: a location with both a cell
@@ -375,25 +373,36 @@ func TestBitStringToWireClearsPaddingBits(t *testing.T) {
 	}
 }
 
-// A feature bit length above SIZE (..40) is rejected by the codec as a
-// constraint error; Marshal neither panics nor allocates for it.
-func TestFeatureBitLengthOutOfRange(t *testing.T) {
+// Unnamed set bits beyond SIZE fail in the generated builders. Until
+// https://github.com/gomaja/go-asn1/issues/183 is fixed, these errors wrap
+// ber.ErrInvalidValue without a *ber.ValidationError.
+func TestFeatureUnknownBitsOutOfRange(t *testing.T) {
 	for _, tc := range []struct {
-		name string
-		caps *SGSNCapability
-		path string
-		size string
+		name    string
+		marshal func() ([]byte, error)
 	}{
-		{"SupportedFeatures 41", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: 41}}, "sgsn-Capability.supportedFeatures", "SIZE (26..40)"},
-		{"SupportedFeatures 2^30", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: 1 << 30}}, "sgsn-Capability.supportedFeatures", "SIZE (26..40)"},
-		{"SupportedFeatures MaxInt", &SGSNCapability{SupportedFeatures: &SupportedFeatures{BitLength: math.MaxInt}}, "sgsn-Capability.supportedFeatures", "SIZE (26..40)"},
-		{"ExtSupportedFeatures 41", &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{BitLength: 41}}, "sgsn-Capability.ext-SupportedFeatures", "SIZE (1..40)"},
-		{"ExtSupportedFeatures MaxInt", &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{BitLength: math.MaxInt}}, "sgsn-Capability.ext-SupportedFeatures", "SIZE (1..40)"},
+		{"ExtAccessRestrictionData bit 32", func() ([]byte, error) {
+			return (&InsertSubscriberDataArg{ExtAccessRestrictionData: &ExtAccessRestrictionData{UnknownBits: HexBytes{0, 0, 0, 0, 0x80}}}).Marshal()
+		}},
+		{"ExtSupportedFeatures bit 40", func() ([]byte, error) {
+			in := senderMobilityGPRS()
+			in.SGSNCapability = &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnknownBits: HexBytes{0, 0, 0, 0, 0, 0x80}}}
+			return in.Marshal()
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := (&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "12", SGSNAddress: "192.0.2.1", SGSNCapability: tc.caps}).Marshal()
-			if !matchesConstraint(err, tc.path, tc.size) {
-				t.Fatalf("Marshal: err = %v, want %s %s", err, tc.path, tc.size)
+			defer func() {
+				if r := recover(); r != nil {
+					t.Fatalf("Marshal panicked: %v", r)
+				}
+			}()
+			out, err := tc.marshal()
+			var validation *ber.ValidationError
+			if !errors.Is(err, ber.ErrInvalidValue) || errors.As(err, &validation) {
+				t.Fatalf("Marshal: %v, want ErrInvalidValue without ValidationError (#183)", err)
+			}
+			if out != nil {
+				t.Fatalf("Marshal returned %x with an error", out)
 			}
 		})
 	}

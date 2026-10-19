@@ -206,7 +206,10 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.ChargingCharacteristics = &v
 	}
 	if a.AccessRestrictionData != nil {
-		bs := convertAccessRestrictionDataToBitString(a.AccessRestrictionData)
+		bs, err := convertAccessRestrictionDataToBitString(a.AccessRestrictionData)
+		if err != nil {
+			return nil, fmt.Errorf("encoding AccessRestrictionData: %w", err)
+		}
 		out.AccessRestrictionData = &bs
 	}
 	if a.IcsIndicator != nil {
@@ -303,7 +306,10 @@ func convertInsertSubscriberDataArgToWire(a *InsertSubscriberDataArg) (*gsm_map.
 		out.EDRXCycleLengthList = l
 	}
 	if a.ExtAccessRestrictionData != nil {
-		bs := convertExtAccessRestrictionDataToBitString(a.ExtAccessRestrictionData)
+		bs, err := convertExtAccessRestrictionDataToBitString(a.ExtAccessRestrictionData)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ExtAccessRestrictionData: %w", err)
+		}
 		out.ExtAccessRestrictionData = &bs
 	}
 	return out, nil
@@ -584,7 +590,10 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 		}
 	}
 	if r.OdbGeneralData != nil {
-		bs := convertODBGeneralDataToBitString(r.OdbGeneralData)
+		bs, err := convertODBGeneralDataToBitString(r.OdbGeneralData)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ODBGeneralData: %w", err)
+		}
 		out.OdbGeneralData = &bs
 	}
 	if r.RegionalSubscriptionResponse != nil {
@@ -592,19 +601,31 @@ func convertInsertSubscriberDataResToWire(r *InsertSubscriberDataRes) (*gsm_map.
 		out.RegionalSubscriptionResponse = &v
 	}
 	if r.SupportedCamelPhases != nil {
-		bs := convertCamelPhasesToBitString(r.SupportedCamelPhases)
+		bs, err := convertCamelPhasesToBitString(r.SupportedCamelPhases)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedCamelPhases: %w", err)
+		}
 		out.SupportedCamelPhases = &bs
 	}
 	if r.OfferedCamel4CSIs != nil {
-		bs := convertOfferedCamel4CSIsToBitString(r.OfferedCamel4CSIs)
+		bs, err := convertOfferedCamel4CSIsToBitString(r.OfferedCamel4CSIs)
+		if err != nil {
+			return nil, fmt.Errorf("encoding OfferedCamel4CSIs: %w", err)
+		}
 		out.OfferedCamel4CSIs = &bs
 	}
 	if r.SupportedFeatures != nil {
-		bs := convertSupportedFeaturesToBitString(r.SupportedFeatures)
+		bs, err := convertSupportedFeaturesToBitString(r.SupportedFeatures)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedFeatures: %w", err)
+		}
 		out.SupportedFeatures = &bs
 	}
 	if r.ExtSupportedFeatures != nil {
-		bs := convertExtSupportedFeaturesToBitString(r.ExtSupportedFeatures)
+		bs, err := convertExtSupportedFeaturesToBitString(r.ExtSupportedFeatures)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ExtSupportedFeatures: %w", err)
+		}
 		out.ExtSupportedFeatures = &bs
 	}
 	return out, nil

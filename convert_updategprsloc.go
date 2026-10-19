@@ -325,7 +325,10 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	out.GprsEnhancementsSupportIndicator = boolToNullPtr(s.GprsEnhancementsSupportIndicator)
 
 	if s.SupportedCamelPhases != nil {
-		bs := convertCamelPhasesToBitString(s.SupportedCamelPhases)
+		bs, err := convertCamelPhasesToBitString(s.SupportedCamelPhases)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedCamelPhases: %w", err)
+		}
 		out.SupportedCamelPhases = &bs
 	}
 
@@ -334,24 +337,36 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 		if s.SupportedLCSCapabilitySets.LcsCapabilitySet1 {
 			return nil, ErrSGSNCapabilityLCSSet1NotAllowed
 		}
-		bs := convertLCSCapsToBitString(s.SupportedLCSCapabilitySets)
+		bs, err := convertLCSCapsToBitString(s.SupportedLCSCapabilitySets)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedLCSCapabilitySets: %w", err)
+		}
 		out.SupportedLCSCapabilitySets = &bs
 	}
 
 	if s.OfferedCamel4CSIs != nil {
-		bs := convertOfferedCamel4CSIsToBitString(s.OfferedCamel4CSIs)
+		bs, err := convertOfferedCamel4CSIsToBitString(s.OfferedCamel4CSIs)
+		if err != nil {
+			return nil, fmt.Errorf("encoding OfferedCamel4CSIs: %w", err)
+		}
 		out.OfferedCamel4CSIs = &bs
 	}
 
 	out.SmsCallBarringSupportIndicator = boolToNullPtr(s.SmsCallBarringSupportIndicator)
 
 	if s.SupportedRATTypesIndicator != nil {
-		bs := convertSupportedRATTypesToBitString(s.SupportedRATTypesIndicator)
+		bs, err := convertSupportedRATTypesToBitString(s.SupportedRATTypesIndicator)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedRATTypes: %w", err)
+		}
 		out.SupportedRATTypesIndicator = &bs
 	}
 
 	if s.SupportedFeatures != nil {
-		bs := convertSupportedFeaturesToBitString(s.SupportedFeatures)
+		bs, err := convertSupportedFeaturesToBitString(s.SupportedFeatures)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedFeatures: %w", err)
+		}
 		out.SupportedFeatures = &bs
 	}
 
@@ -368,7 +383,10 @@ func convertSGSNCapabilityToWire(s *SGSNCapability) (*gsm_map.SGSNCapability, er
 	out.ResetIdsSupported = boolToNullPtr(s.ResetIdsSupported)
 
 	if s.ExtSupportedFeatures != nil {
-		bs := convertExtSupportedFeaturesToBitString(s.ExtSupportedFeatures)
+		bs, err := convertExtSupportedFeaturesToBitString(s.ExtSupportedFeatures)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ExtSupportedFeatures: %w", err)
+		}
 		out.ExtSupportedFeatures = &bs
 	}
 
@@ -433,15 +451,9 @@ func convertWireToSGSNCapability(w *gsm_map.SGSNCapability) (*SGSNCapability, er
 
 // --- EpsInfo CHOICE ---
 
-// isrInformationKnownBits masks the first octet of ISR-Information to the
-// bits 3GPP TS 29.002 V19.1.0 §17.7.1 assigns.
-const isrInformationKnownBits = 1<<(7-gsm_map.ISRInformationUpdateLocation) |
-	1<<(7-gsm_map.ISRInformationCancelSGSN) |
-	1<<(7-gsm_map.ISRInformationInitialAttachIndicator)
-
 func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 	hasPdn := e.PdnGwUpdate != nil
-	hasIsr := e.IsrInformationBits != 0 || len(e.IsrInformation) > 0
+	hasIsr := e.IsrInformation != nil
 	if hasPdn && hasIsr {
 		return nil, ErrEpsInfoMultipleAlternatives
 	}
@@ -456,10 +468,14 @@ func convertEpsInfoToWire(e *EpsInfo) (*gsm_map.EPSInfo, error) {
 		v := gsm_map.NewEPSInfoPdnGwUpdate(*pgu)
 		return &v, nil
 	}
-	// IsrInformation is BIT STRING (SIZE(3..8)) per TS 29.002 §17.7.1.
-	bs := bitStringToWire(e.IsrInformation, e.IsrInformationBits)
-	if bs.BitLength >= 3 && bs.BitLength <= 8 && len(bs.Bytes) == 1 && bs.Bytes[0]&^isrInformationKnownBits != 0 {
-		return nil, ErrISRInformationUnknownBits
+	bits := []bool{
+		gsm_map.ISRInformationUpdateLocation:         e.IsrInformation.UpdateLocation,
+		gsm_map.ISRInformationCancelSGSN:             e.IsrInformation.CancelSGSN,
+		gsm_map.ISRInformationInitialAttachIndicator: e.IsrInformation.InitialAttachIndicator,
+	}
+	bs, err := gsm_map.NewISRInformation(namedBitPositions(bits)...)
+	if err != nil {
+		return nil, fmt.Errorf("encoding IsrInformation: %w", err)
 	}
 	v := gsm_map.NewEPSInfoIsrInformation(bs)
 	return &v, nil
@@ -479,17 +495,12 @@ func convertWireToEpsInfo(w *gsm_map.EPSInfo) (*EpsInfo, error) {
 		}
 		return &EpsInfo{PdnGwUpdate: pgw}, nil
 	case gsm_map.EPSInfoChoiceIsrInformation:
-		bits := w.IsrInformation.BitLength
-		data := bitStringFromWire(*w.IsrInformation)
-		// 3GPP TS 29.002 V19.1.0 §17.7.1 ISR-Information: discard unknown
-		// assignments, retaining the CHOICE and its decoded bit length.
-		if len(data) > 0 {
-			data[0] &= isrInformationKnownBits
-		}
-		return &EpsInfo{
-			IsrInformation:     data,
-			IsrInformationBits: bits,
-		}, nil
+		// 3GPP TS 29.002 V19.1.0 §17.7.1: discard unknown ISR assignments.
+		return &EpsInfo{IsrInformation: &IsrInformation{
+			UpdateLocation:         w.IsrInformation.Has(gsm_map.ISRInformationUpdateLocation),
+			CancelSGSN:             w.IsrInformation.Has(gsm_map.ISRInformationCancelSGSN),
+			InitialAttachIndicator: w.IsrInformation.Has(gsm_map.ISRInformationInitialAttachIndicator),
+		}}, nil
 	default:
 		return nil, ErrEpsInfoUnknownAlternative
 	}

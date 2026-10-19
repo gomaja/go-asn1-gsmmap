@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
 )
 
 // Compile-smoke: every new public type must be referenceable.
@@ -114,7 +114,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "ODBGeneralData/empty",
 			encode: func() (runtime.BitString, any) {
 				in := &ODBGeneralData{}
-				return convertODBGeneralDataToBitString(in), in
+				bs, err := convertODBGeneralDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToODBGeneralData(bs) },
 		},
@@ -122,7 +126,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "ODBGeneralData/allSet",
 			encode: func() (runtime.BitString, any) {
 				in := odbGeneralDataAllSet()
-				return convertODBGeneralDataToBitString(in), in
+				bs, err := convertODBGeneralDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToODBGeneralData(bs) },
 		},
@@ -130,7 +138,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "ODBGeneralData/onlyHighBit",
 			encode: func() (runtime.BitString, any) {
 				in := &ODBGeneralData{RegistrationInternationalCFBarred: true}
-				return convertODBGeneralDataToBitString(in), in
+				bs, err := convertODBGeneralDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToODBGeneralData(bs) },
 		},
@@ -138,7 +150,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "ODBHPLMNData/empty",
 			encode: func() (runtime.BitString, any) {
 				in := &ODBHPLMNData{}
-				return convertODBHPLMNDataToBitString(in), in
+				bs, err := convertODBHPLMNDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToODBHPLMNData(bs) },
 		},
@@ -146,7 +162,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "ODBHPLMNData/allSet",
 			encode: func() (runtime.BitString, any) {
 				in := &ODBHPLMNData{true, true, true, true}
-				return convertODBHPLMNDataToBitString(in), in
+				bs, err := convertODBHPLMNDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToODBHPLMNData(bs) },
 		},
@@ -154,7 +174,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "AccessRestrictionData/empty",
 			encode: func() (runtime.BitString, any) {
 				in := &AccessRestrictionData{}
-				return convertAccessRestrictionDataToBitString(in), in
+				bs, err := convertAccessRestrictionDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToAccessRestrictionData(bs) },
 		},
@@ -162,7 +186,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "AccessRestrictionData/allSet",
 			encode: func() (runtime.BitString, any) {
 				in := &AccessRestrictionData{true, true, true, true, true, true, true, true}
-				return convertAccessRestrictionDataToBitString(in), in
+				bs, err := convertAccessRestrictionDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToAccessRestrictionData(bs) },
 		},
@@ -170,7 +198,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "AccessRestrictionData/onlyUtran",
 			encode: func() (runtime.BitString, any) {
 				in := &AccessRestrictionData{UtranNotAllowed: true}
-				return convertAccessRestrictionDataToBitString(in), in
+				bs, err := convertAccessRestrictionDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToAccessRestrictionData(bs) },
 		},
@@ -178,7 +210,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "ExtAccessRestrictionData/empty",
 			encode: func() (runtime.BitString, any) {
 				in := &ExtAccessRestrictionData{}
-				return convertExtAccessRestrictionDataToBitString(in), in
+				bs, err := convertExtAccessRestrictionDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToExtAccessRestrictionData(bs) },
 		},
@@ -186,7 +222,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "ExtAccessRestrictionData/bothSet",
 			encode: func() (runtime.BitString, any) {
 				in := &ExtAccessRestrictionData{NrAsSecondaryRATNotAllowed: true, UnlicensedSpectrumAsSecondaryRATNotAllowed: true}
-				return convertExtAccessRestrictionDataToBitString(in), in
+				bs, err := convertExtAccessRestrictionDataToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToExtAccessRestrictionData(bs) },
 		},
@@ -194,7 +234,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "SupportedFeatures/empty",
 			encode: func() (runtime.BitString, any) {
 				in := &SupportedFeatures{}
-				return convertSupportedFeaturesToBitString(in), in
+				bs, err := convertSupportedFeaturesToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToSupportedFeatures(bs) },
 		},
@@ -202,7 +246,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "SupportedFeatures/allSet",
 			encode: func() (runtime.BitString, any) {
 				in := supportedFeaturesAllSet()
-				return convertSupportedFeaturesToBitString(in), in
+				bs, err := convertSupportedFeaturesToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToSupportedFeatures(bs) },
 		},
@@ -210,7 +258,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "SupportedFeatures/highBit",
 			encode: func() (runtime.BitString, any) {
 				in := &SupportedFeatures{NrAsSecondaryRAT: true}
-				return convertSupportedFeaturesToBitString(in), in
+				bs, err := convertSupportedFeaturesToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToSupportedFeatures(bs) },
 		},
@@ -218,7 +270,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "ExtSupportedFeatures/empty",
 			encode: func() (runtime.BitString, any) {
 				in := &ExtSupportedFeatures{}
-				return convertExtSupportedFeaturesToBitString(in), in
+				bs, err := convertExtSupportedFeaturesToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToExtSupportedFeatures(bs) },
 		},
@@ -226,7 +282,11 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 			name: "ExtSupportedFeatures/bitSet",
 			encode: func() (runtime.BitString, any) {
 				in := &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true}
-				return convertExtSupportedFeaturesToBitString(in), in
+				bs, err := convertExtSupportedFeaturesToBitString(in)
+				if err != nil {
+					t.Fatal(err)
+				}
+				return bs, in
 			},
 			decode: func(bs runtime.BitString) any { return convertBitStringToExtSupportedFeatures(bs) },
 		},
@@ -345,20 +405,30 @@ func TestISDBitStrings_DecodesShortInput(t *testing.T) {
 func TestISDBitStrings_MinLength(t *testing.T) {
 	cases := []struct {
 		name   string
-		bs     runtime.BitString
+		encode func() (runtime.BitString, error)
 		minLen int
 	}{
-		{"ODBGeneralData", convertODBGeneralDataToBitString(&ODBGeneralData{}), 15},
-		{"ODBHPLMNData", convertODBHPLMNDataToBitString(&ODBHPLMNData{}), 4},
-		{"AccessRestrictionData", convertAccessRestrictionDataToBitString(&AccessRestrictionData{}), 2},
-		{"ExtAccessRestrictionData", convertExtAccessRestrictionDataToBitString(&ExtAccessRestrictionData{}), 1},
-		{"SupportedFeatures", convertSupportedFeaturesToBitString(&SupportedFeatures{}), 26},
-		{"ExtSupportedFeatures", convertExtSupportedFeaturesToBitString(&ExtSupportedFeatures{}), 1},
+		{"ODBGeneralData", func() (runtime.BitString, error) { return convertODBGeneralDataToBitString(&ODBGeneralData{}) }, 15},
+		{"ODBHPLMNData", func() (runtime.BitString, error) { return convertODBHPLMNDataToBitString(&ODBHPLMNData{}) }, 4},
+		{"AccessRestrictionData", func() (runtime.BitString, error) {
+			return convertAccessRestrictionDataToBitString(&AccessRestrictionData{})
+		}, 2},
+		{"ExtAccessRestrictionData", func() (runtime.BitString, error) {
+			return convertExtAccessRestrictionDataToBitString(&ExtAccessRestrictionData{})
+		}, 1},
+		{"SupportedFeatures", func() (runtime.BitString, error) { return convertSupportedFeaturesToBitString(&SupportedFeatures{}) }, 26},
+		{"ExtSupportedFeatures", func() (runtime.BitString, error) {
+			return convertExtSupportedFeaturesToBitString(&ExtSupportedFeatures{})
+		}, 1},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.bs.BitLength < tc.minLen {
-				t.Errorf("BitLength=%d, want >=%d", tc.bs.BitLength, tc.minLen)
+			bs, err := tc.encode()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if bs.BitLength < tc.minLen {
+				t.Errorf("BitLength=%d, want >=%d", bs.BitLength, tc.minLen)
 			}
 		})
 	}

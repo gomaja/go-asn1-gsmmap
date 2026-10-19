@@ -112,7 +112,10 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		out.LcsQoS = v
 	}
 	if a.SupportedGADShapes != nil {
-		bs := convertSupportedGADShapesToBitString(a.SupportedGADShapes)
+		bs, err := convertSupportedGADShapesToBitString(a.SupportedGADShapes)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedGADShapes: %w", err)
+		}
 		out.SupportedGADShapes = &bs
 	}
 	if len(a.LcsReferenceNumber) > 0 {

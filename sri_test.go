@@ -48,7 +48,7 @@ func TestSriSentinelErrorsExist(t *testing.T) {
 		}
 	}
 	_, err := (&Sri{MSISDN: "1", GmscOrGsmSCFAddress: "1", InterrogationType: 7}).Marshal()
-	wantConstraintError(t, err, "interrogationType", "ENUMERATED {0, 1}")
+	wantValidationError(t, err, "interrogationType", "ENUMERATED {0, 1}")
 }
 
 func TestAllowedServicesBitStringRoundTrip(t *testing.T) {
@@ -63,7 +63,10 @@ func TestAllowedServicesBitStringRoundTrip(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			bs := convertAllowedServicesToBitString(&tc.in)
+			bs, err := convertAllowedServicesToBitString(&tc.in)
+			if err != nil {
+				t.Fatal(err)
+			}
 			got := convertBitStringToAllowedServices(bs)
 			if got.FirstServiceAllowed != tc.in.FirstServiceAllowed ||
 				got.SecondServiceAllowed != tc.in.SecondServiceAllowed {
@@ -85,7 +88,10 @@ func TestSuppressMTSSBitStringRoundTrip(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			bs := convertSuppressMTSSToBitString(&tc.in)
+			bs, err := convertSuppressMTSSToBitString(&tc.in)
+			if err != nil {
+				t.Fatal(err)
+			}
 			got := convertBitStringToSuppressMTSS(bs)
 			if got.SuppressCUG != tc.in.SuppressCUG || got.SuppressCCBS != tc.in.SuppressCCBS {
 				t.Errorf("got %+v, want %+v (via %+v)", got, tc.in, bs)
@@ -105,7 +111,10 @@ func TestOfferedCamel4CSIsBitStringRoundTrip(t *testing.T) {
 			MGCSI:           input&(1<<1) != 0,
 			PsiEnhancements: input&(1<<0) != 0,
 		}
-		bs := convertOfferedCamel4CSIsToBitString(in)
+		bs, err := convertOfferedCamel4CSIsToBitString(in)
+		if err != nil {
+			t.Fatal(err)
+		}
 		got := convertBitStringToOfferedCamel4CSIs(bs)
 		if *got != *in {
 			t.Errorf("input=%07b: got %+v, want %+v (via %+v)", input, got, in, bs)
@@ -243,7 +252,10 @@ func TestSriCamelInfoRoundTrip(t *testing.T) {
 		SupportedCamelPhases: SupportedCamelPhases{Phase1: true, Phase2: true, Phase3: true, Phase4: true},
 		SuppressTCSI:         true,
 	}
-	w := convertSriCamelInfoToWire(in)
+	w, err := convertSriCamelInfoToWire(in)
+	if err != nil {
+		t.Fatal(err)
+	}
 	got := convertWireToSriCamelInfo(w)
 	if got.SuppressTCSI != in.SuppressTCSI {
 		t.Errorf("SuppressTCSI: got %v want %v", got.SuppressTCSI, in.SuppressTCSI)

@@ -3,55 +3,34 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
 )
 
 // --- InformServiceCentre (opCode 63) ---
 
 // MwStatus: 6 bits per 3GPP TS 29.002.
 // Bit 0=scAddressNotIncluded, 1=mnrfSet, 2=mcefSet, 3=mnrgSet, 4=mnr5gSet, 5=mnr5gn3gSet.
-func convertMwStatusToBitString(m *MwStatusFlags) runtime.BitString {
-	var b byte
-	if m.SCAddressNotIncluded {
-		b |= 1 << (7 - gsm_map.MWStatusScAddressNotIncluded)
+func convertMwStatusToBitString(m *MwStatusFlags) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.MWStatusScAddressNotIncluded: m.SCAddressNotIncluded,
+		gsm_map.MWStatusMnrfSet:              m.MnrfSet,
+		gsm_map.MWStatusMcefSet:              m.McefSet,
+		gsm_map.MWStatusMnrgSet:              m.MnrgSet,
+		gsm_map.MWStatusMnr5gSet:             m.Mnr5gSet,
+		gsm_map.MWStatusMnr5gn3gSet:          m.Mnr5gn3gSet,
 	}
-	if m.MnrfSet {
-		b |= 1 << (7 - gsm_map.MWStatusMnrfSet)
-	}
-	if m.McefSet {
-		b |= 1 << (7 - gsm_map.MWStatusMcefSet)
-	}
-	if m.MnrgSet {
-		b |= 1 << (7 - gsm_map.MWStatusMnrgSet)
-	}
-	if m.Mnr5gSet {
-		b |= 1 << (7 - gsm_map.MWStatusMnr5gSet)
-	}
-	if m.Mnr5gn3gSet {
-		b |= 1 << (7 - gsm_map.MWStatusMnr5gn3gSet)
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: 6}
+	return gsm_map.NewMWStatus(namedBitPositions(bits)...)
 }
 
 func convertBitStringToMwStatus(bs runtime.BitString) *MwStatusFlags {
 	m := &MwStatusFlags{}
 	m.SCAddressNotIncluded = bs.Has(gsm_map.MWStatusScAddressNotIncluded)
-	if bs.BitLength > gsm_map.MWStatusMnrfSet {
-		m.MnrfSet = bs.Has(gsm_map.MWStatusMnrfSet)
-	}
-	if bs.BitLength > gsm_map.MWStatusMcefSet {
-		m.McefSet = bs.Has(gsm_map.MWStatusMcefSet)
-	}
-	if bs.BitLength > gsm_map.MWStatusMnrgSet {
-		m.MnrgSet = bs.Has(gsm_map.MWStatusMnrgSet)
-	}
-	if bs.BitLength > gsm_map.MWStatusMnr5gSet {
-		m.Mnr5gSet = bs.Has(gsm_map.MWStatusMnr5gSet)
-	}
-	if bs.BitLength > gsm_map.MWStatusMnr5gn3gSet {
-		m.Mnr5gn3gSet = bs.Has(gsm_map.MWStatusMnr5gn3gSet)
-	}
+	m.MnrfSet = bs.Has(gsm_map.MWStatusMnrfSet)
+	m.McefSet = bs.Has(gsm_map.MWStatusMcefSet)
+	m.MnrgSet = bs.Has(gsm_map.MWStatusMnrgSet)
+	m.Mnr5gSet = bs.Has(gsm_map.MWStatusMnr5gSet)
+	m.Mnr5gn3gSet = bs.Has(gsm_map.MWStatusMnr5gn3gSet)
 	return m
 }
 
@@ -90,7 +69,10 @@ func convertInformServiceCentreToArg(i *InformServiceCentre) (*gsm_map.InformSer
 	}
 
 	if i.MwStatus != nil {
-		bs := convertMwStatusToBitString(i.MwStatus)
+		bs, err := convertMwStatusToBitString(i.MwStatus)
+		if err != nil {
+			return nil, fmt.Errorf("encoding MwStatus: %w", err)
+		}
 		arg.MwStatus = &bs
 	}
 

@@ -242,7 +242,7 @@ func TestPeriodicLDRInfoOutOfRangeRejected(t *testing.T) {
 			wire.ReportingAmount = tc.in.ReportingAmount
 			wire.ReportingInterval = tc.in.ReportingInterval
 			_, err = strictWire(wire, nil)
-			wantConstraintError(t, err, tc.path, "(1..8639999)")
+			wantValidationError(t, err, tc.path, "(1..8639999)")
 		})
 	}
 }

@@ -374,12 +374,13 @@ func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, err
 }
 
 // decodePDPContextInfoList decodes each opaque PDPContextInfo entry, given
-// in any BER, so that Marshal sends it in DER. The list size is checked
+// in any BER, for fresh MAP-profile encoding on Marshal. The list size is checked
 // when its containing value is marshalled.
 func decodePDPContextInfoList(list []HexBytes) (*gsm_map.PDPContextInfoList, error) {
 	out := gsm_map.PDPContextInfoList{Values: make([]gsm_map.PDPContextInfo, len(list))}
 	for i, b := range list {
-		ctx, err := unmarshalAsDER[gsm_map.PDPContextInfo](b)
+		var ctx gsm_map.PDPContextInfo
+		err := ctx.UnmarshalBER(b)
 		if err != nil {
 			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
 		}

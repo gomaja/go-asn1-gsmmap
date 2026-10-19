@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
 	"github.com/gomaja/go-gad"
 )
 

@@ -114,7 +114,11 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// CamelInfo
 	if s.CamelInfo != nil {
-		arg.CamelInfo = convertSriCamelInfoToWire(s.CamelInfo)
+		camel, err := convertSriCamelInfoToWire(s.CamelInfo)
+		if err != nil {
+			return nil, fmt.Errorf("encoding CamelInfo: %w", err)
+		}
+		arg.CamelInfo = camel
 	}
 
 	// SuppressionOfAnnouncement
@@ -185,7 +189,10 @@ func convertSriToArg(s *Sri) (*gsm_map.SendRoutingInfoArg, error) {
 
 	// SuppressMTSS
 	if s.SuppressMTSS != nil {
-		v := convertSuppressMTSSToBitString(s.SuppressMTSS)
+		v, err := convertSuppressMTSSToBitString(s.SuppressMTSS)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SuppressMTSS: %w", err)
+		}
 		arg.SuppressMTSS = &v
 	}
 
@@ -477,13 +484,19 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// SupportedCamelPhasesInVMSC
 	if s.SupportedCamelPhasesInVMSC != nil {
-		bs := convertCamelPhasesToBitString(s.SupportedCamelPhasesInVMSC)
+		bs, err := convertCamelPhasesToBitString(s.SupportedCamelPhasesInVMSC)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedCamelPhases: %w", err)
+		}
 		out.SupportedCamelPhasesInVMSC = &bs
 	}
 
 	// OfferedCamel4CSIsInVMSC
 	if s.OfferedCamel4CSIsInVMSC != nil {
-		bs := convertOfferedCamel4CSIsToBitString(s.OfferedCamel4CSIsInVMSC)
+		bs, err := convertOfferedCamel4CSIsToBitString(s.OfferedCamel4CSIsInVMSC)
+		if err != nil {
+			return nil, fmt.Errorf("encoding OfferedCamel4CSIs: %w", err)
+		}
 		out.OfferedCamel4CSIsInVMSC = &bs
 	}
 
@@ -518,7 +531,10 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 
 	// AllowedServices
 	if s.AllowedServices != nil {
-		bs := convertAllowedServicesToBitString(s.AllowedServices)
+		bs, err := convertAllowedServicesToBitString(s.AllowedServices)
+		if err != nil {
+			return nil, fmt.Errorf("encoding AllowedServices: %w", err)
+		}
 		out.AllowedServices = &bs
 	}
 

@@ -214,7 +214,7 @@ type MoFsm struct {
 	// Optional fields (post-extension marker).
 	IMSI              string              // optional IMSI
 	CorrelationID     *SriSmCorrelationID // [0] reuse SRI-SM type
-	SmDeliveryOutcome *SmDeliveryOutcome  // [1] 0..2, not extensible (codec *ber.ConstraintError)
+	SmDeliveryOutcome *SmDeliveryOutcome  // [1] 0..2, not extensible (codec *ber.ValidationError)
 }
 
 // MoFsmResp represents a Mobile Originated Forward Short Message response.
@@ -356,17 +356,22 @@ const (
 	SmsRegistrationNoPreference = gsm_map.SMSRegisterRequestNoPreference
 )
 
-// EpsInfo is the EPS-Info CHOICE (opCode 23).
-// Marshal rejects ISR bits outside 0..2 (TS 29.002 V19.1.0 §17.7.1).
-// Set exactly one alternative: either PdnGwUpdate (non-nil) or
-// IsrInformation, whose IsrInformationBits bits fill exactly
-// (IsrInformationBits+7)/8 octets. Parse ignores a PdnGwUpdate without
-// PdnGwIdentity and clears unknown ISR bits 3..7, retaining its bit length
-// (3GPP TS 29.002 V19.1.0 §17.7.1).
+// EpsInfo is the EPS-Info CHOICE (opCode 23). Set exactly one of PdnGwUpdate
+// and IsrInformation.
+// Parse ignores a PdnGwUpdate without PdnGwIdentity and discards unknown
+// ISR bit assignments (3GPP TS 29.002 V19.1.0 §17.7.1).
 type EpsInfo struct {
-	PdnGwUpdate        *PdnGwUpdate
-	IsrInformation     HexBytes // BIT STRING content
-	IsrInformationBits int      // BitLength; 0 with no octets means unset
+	PdnGwUpdate    *PdnGwUpdate
+	IsrInformation *IsrInformation
+}
+
+// IsrInformation carries the named ISR-Information bits (3GPP TS 29.002
+// V19.1.0 §17.7.1). go-asn1 chooses the shortest length SIZE permits
+// (ITU-T X.680 (02/2021) §22.7).
+type IsrInformation struct {
+	UpdateLocation         bool
+	CancelSGSN             bool
+	InitialAttachIndicator bool
 }
 
 // PdnGwUpdate SEQUENCE (opCode 23).
@@ -717,7 +722,7 @@ type GPRSLocationInformation struct {
 
 // InterrogationType per 3GPP TS 29.002 V19.1.0 §17.7.3. It is not
 // extensible: Marshal and Parse reject any other value with the codec's
-// *ber.ConstraintError.
+// *ber.ValidationError.
 type InterrogationType = gsm_map.InterrogationType
 
 const (
@@ -727,7 +732,7 @@ const (
 
 // ForwardingReason per 3GPP TS 29.002 V19.1.0 §17.7.3. It is not
 // extensible: Marshal and Parse reject any other value with the codec's
-// *ber.ConstraintError.
+// *ber.ValidationError.
 type ForwardingReason = gsm_map.ForwardingReason
 
 const (
@@ -786,7 +791,7 @@ type ExtBasicServiceCode struct {
 
 // ExternalSignalInfo per ASN.1 SEQUENCE. ProtocolId is not extensible:
 // Marshal and Parse reject a ProtocolID outside 1..4 with the codec's
-// *ber.ConstraintError.
+// *ber.ValidationError.
 // 3GPP TS 29.002 V19.1.0 §17.7.8: "Value 3 is reserved and must not be
 // used", so Marshal also rejects gsm-BSSMAP (ErrProtocolIDReserved), while
 // Parse keeps a received 3, a listed value.
@@ -917,7 +922,7 @@ const (
 // be present when sending this criteria SEQUENCE. Parse preserves list absence
 // (3GPP TS 29.002 V19.1.0 §17.7.1). Each DestinationNumberList
 // entry is an ISDN-AddressString of 1..9 octets, at most 16 digits; Marshal
-// and Parse reject a longer one with the codec's *ber.ConstraintError.
+// and Parse reject a longer one with the codec's *ber.ValidationError.
 type DestinationNumberCriteria struct {
 	MatchType                   MatchType    // mandatory
 	DestinationNumberList       []ISDNNumber // [1] list of destination numbers
@@ -1797,7 +1802,7 @@ type CancelLocation struct {
 // SubscriberStatus per 3GPP TS 29.002 (3GPP TS 29.002 V19.1.0 §17.7.1).
 // ENUMERATED { serviceGranted(0), operatorDeterminedBarring(1) }, not
 // extensible: Marshal and Parse reject any other value with the codec's
-// *ber.ConstraintError.
+// *ber.ValidationError.
 type SubscriberStatus = gsm_map.SubscriberStatus
 
 const (
@@ -1819,7 +1824,7 @@ const (
 // ENUMERATED { networkNode-AreaRestricted(0), tooManyZoneCodes(1),
 // zoneCodesConflict(2), regionalSubscNotSupported(3) }, not extensible:
 // Marshal and Parse reject any other value with the codec's
-// *ber.ConstraintError.
+// *ber.ValidationError.
 type RegionalSubscriptionResponse = gsm_map.RegionalSubscriptionResponse
 
 const (
@@ -1892,18 +1897,17 @@ type AccessRestrictionData struct {
 }
 
 // ExtAccessRestrictionData (BIT STRING SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-// UnknownBits retains unnamed set bits. BitLength requests outgoing padding;
-// Parse normalizes trailing zeros per ITU-T X.680 (02/2021) §22.7.
+// UnknownBits retains unnamed set bits. go-asn1 chooses the shortest encoded
+// length SIZE permits (ITU-T X.680 (02/2021) §22.7).
 type ExtAccessRestrictionData struct {
 	NrAsSecondaryRATNotAllowed                 bool     // bit 0
 	UnlicensedSpectrumAsSecondaryRATNotAllowed bool     // bit 1
-	BitLength                                  int      // 0 selects the shortest valid length
 	UnknownBits                                HexBytes // positions 2..31, MSB first, without trailing zero octets; bits 0..1 are ignored
 }
 
 // SupportedFeatures (BIT STRING SIZE 26..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-// The 40 named bits cover every allowed position. BitLength requests outgoing
-// padding; Parse normalizes trailing zeros per ITU-T X.680 (02/2021) §22.7.
+// The 40 named bits cover every allowed position. go-asn1 chooses the shortest
+// encoded length SIZE permits (ITU-T X.680 (02/2021) §22.7).
 // See 3GPP TS 29.272 for each bit's meaning.
 type SupportedFeatures struct {
 	OdbAllApn                                        bool // bit 0
@@ -1946,16 +1950,14 @@ type SupportedFeatures struct {
 	NonIPPDNTypeAPNs                                 bool // bit 37
 	NonIPPDPTypeAPNs                                 bool // bit 38
 	NrAsSecondaryRAT                                 bool // bit 39
-	BitLength                                        int  // 0 selects the shortest valid length (at least 26)
 }
 
 // ExtSupportedFeatures (BIT STRING SIZE 1..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Only bit 0 is named. UnknownBits retains unnamed set bits 1..39.
-// BitLength requests outgoing padding; Parse normalizes trailing zeros
-// per ITU-T X.680 (02/2021) §22.7.
+// go-asn1 chooses the shortest encoded length SIZE permits
+// (ITU-T X.680 (02/2021) §22.7).
 type ExtSupportedFeatures struct {
 	UnlicensedSpectrumAsSecondaryRAT bool     // bit 0
-	BitLength                        int      // 0 selects the shortest valid length
 	UnknownBits                      HexBytes // positions 1..39, MSB first, without trailing zero octets; bit 0 is ignored
 }
 
@@ -2011,7 +2013,7 @@ type VoiceBroadcastData struct {
 //
 // AdditionalInfo is a BIT STRING (SIZE (1..136)) (3GPP TS 29.002 V19.1.0
 // §17.7.1) of AdditionalInfoBits bits in (AdditionalInfoBits+7)/8 octets,
-// like CsgID and IsrInformation.
+// like CsgID.
 type VoiceGroupCallData struct {
 	GroupId                 string                   // mandatory TBCD digits, at most 6; Marshal permits empty only with LongGroupId
 	AdditionalSubscriptions *AdditionalSubscriptions // optional
@@ -2482,7 +2484,7 @@ type MOLRList []MOLRClass
 // GMLCList (SEQUENCE SIZE 1..5 OF ISDN-AddressString) per 3GPP TS 29.002
 // V19.1.0 §17.7.1. Each entry is an ISDN-AddressString of 1..9 octets, at
 // most 16 digits; Marshal and Parse reject a longer one with the codec's
-// *ber.ConstraintError and one without digits with ErrGMLCListEntryEmpty.
+// *ber.ValidationError and one without digits with ErrGMLCListEntryEmpty.
 // The caller sends the complete GMLCList in one segment when segmentation
 // is used (3GPP TS 29.002 V19.1.0 §17.7.1).
 type GMLCList []ISDNNumber
@@ -3233,7 +3235,7 @@ type ExtensibleCallBarredParam struct {
 // bare NetworkResource and the extensible variant. Decode populates
 // exactly one of NetworkResource or ExtensibleSystemFailureParam.
 // NetworkResource is not extensible: Parse rejects a value other than plmn(0)
-// to rss(7) in either alternative with the codec's *ber.ConstraintError.
+// to rss(7) in either alternative with the codec's *ber.ValidationError.
 type SystemFailureParam struct {
 	NetworkResource              *gsm_map.NetworkResource      // bare alternative
 	ExtensibleSystemFailureParam *ExtensibleSystemFailureParam // extensible alternative
@@ -3797,7 +3799,6 @@ var (
 	ErrSGSNCapabilityLCSSet1NotAllowed                        = errors.New("sgsnCapability: LCS capability set1 is forbidden for SGSNs per 3GPP TS 29.002 V19.1.0 §17.7.1 SupportedLCS-CapabilitySets")
 	ErrPdnGwUpdateMissingIdentity                             = errors.New("pdnGwUpdate: PdnGwIdentity is required per 3GPP TS 29.002 V19.1.0 §17.7.1 PDN-GW-Update")
 	ErrPdnGwUpdateMissingAPNOrContextID                       = errors.New("pdnGwUpdate: APN or ContextID is required per 3GPP TS 29.002 V19.1.0 §17.7.1 PDN-GW-Update")
-	ErrISRInformationUnknownBits                              = errors.New("epsInfo: ISR information may set only bits 0..2 per 3GPP TS 29.002 V19.1.0 §17.7.1 ISR-Information")
 	ErrPDNTypeInvalid                                         = errors.New("apnConfiguration: PDN type must be 01, 02, 03 or 04 per 3GPP TS 29.002 V19.1.0 §17.7.1 PDN-Type")
 	ErrPDPAddressFamilyCombinationInvalid                     = errors.New("pdpAddress: paired addresses must have different IPv4/IPv6 families per 3GPP TS 29.002 V19.1.0 §17.7.1 PDP-Context and PDP-ContextInfo")
 	ErrPDPTypeInvalid                                         = errors.New("pdpType: only PPP, IPv4, IPv6 and Non-IP are allowed per 3GPP TS 29.002 V19.1.0 §17.7.1 PDP-Type and TS 29.060 V19.0.0 §7.7.27")

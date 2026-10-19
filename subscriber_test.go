@@ -71,5 +71,5 @@ func TestSubscriberEmptyMNPIMSI(t *testing.T) {
 	empty := gsm_map.IMSI{}
 	w := &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{MnpInfoRes: &gsm_map.MNPInfoRes{Imsi: &empty}}}
 	_, err := ParseAnyTimeInterrogationRes(tolerantBER(t, w))
-	wantConstraintError(t, err, "subscriberInfo.mnpInfoRes.imsi", "SIZE (3..8)")
+	wantValidationError(t, err, "subscriberInfo.mnpInfoRes.imsi", "SIZE (3..8)")
 }

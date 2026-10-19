@@ -195,7 +195,7 @@ func TestPDPContext_DecoderRejectsContextIdOutOfRange(t *testing.T) {
 			QosSubscribed: gsm_map.QoSSubscribed{0x09, 0x00, 0x00},
 			Apn:           gsm_map.APN{'a', 'p'},
 		}
-		wantConstraintError(t, strictDecodeWire(w), "pdp-ContextId", "(1..50)")
+		wantValidationError(t, strictDecodeWire(w), "pdp-ContextId", "(1..50)")
 	}
 }
 

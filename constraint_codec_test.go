@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // strictWire exercises the generated BER boundary after a converter builds a
@@ -95,7 +95,7 @@ func matchesConstraint(err error, path, constraint string) bool {
 	if path == "" || constraint == "" {
 		return false
 	}
-	var ce *ber.ConstraintError
+	var ce *ber.ValidationError
 	return errors.As(err, &ce) && ce.Path == path && ce.Constraint == constraint
 }
 
@@ -118,7 +118,7 @@ func strictDecodeWire(wire any) error {
 	if !ok {
 		return fmt.Errorf("%T has no BER encoder", wire)
 	}
-	data, err := encoder.MarshalBER(ber.WithConstraintTolerance(&ber.ViolationLog{}))
+	data, err := encoder.MarshalBER(ber.WithTolerance(&ber.ViolationLog{}))
 	if err != nil {
 		return err
 	}

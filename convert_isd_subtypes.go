@@ -173,12 +173,19 @@ func convertAdjacentAccessRestrictionDataToWire(a *AdjacentAccessRestrictionData
 	if err := validatePLMNIdentityDigits(a.PlmnId, "AdjacentAccessRestrictionData.PlmnId"); err != nil {
 		return nil, err
 	}
+	bits, err := convertAccessRestrictionDataToBitString(&a.AccessRestrictionData)
+	if err != nil {
+		return nil, fmt.Errorf("encoding AccessRestrictionData: %w", err)
+	}
 	out := &gsm_map.AdjacentAccessRestrictionData{
 		PlmnId:                gsm_map.PLMNId(a.PlmnId),
-		AccessRestrictionData: convertAccessRestrictionDataToBitString(&a.AccessRestrictionData),
+		AccessRestrictionData: bits,
 	}
 	if a.ExtAccessRestrictionData != nil {
-		bs := convertExtAccessRestrictionDataToBitString(a.ExtAccessRestrictionData)
+		bs, err := convertExtAccessRestrictionDataToBitString(a.ExtAccessRestrictionData)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ExtAccessRestrictionData: %w", err)
+		}
 		out.ExtAccessRestrictionData = &bs
 	}
 	return out, nil

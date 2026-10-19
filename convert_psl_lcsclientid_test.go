@@ -356,7 +356,7 @@ func TestLCSClientIDAPNSizeValidation(t *testing.T) {
 		LcsClientType: LCSClientTypeEmergencyServices,
 		LcsAPN:        HexBytes{0x01},
 	}))
-	wantConstraintError(t, err, "lcsAPN", "SIZE (2..63)")
+	wantValidationError(t, err, "lcsAPN", "SIZE (2..63)")
 
 	// 64-octet APN is too large.
 	tooBig := make(HexBytes, 64)
@@ -364,7 +364,7 @@ func TestLCSClientIDAPNSizeValidation(t *testing.T) {
 		LcsClientType: LCSClientTypeEmergencyServices,
 		LcsAPN:        tooBig,
 	}))
-	wantConstraintError(t, err, "lcsAPN", "SIZE (2..63)")
+	wantValidationError(t, err, "lcsAPN", "SIZE (2..63)")
 
 	// Decode-side parity.
 	tooSmallWire := gsm_map.APN{0x01}
@@ -372,7 +372,7 @@ func TestLCSClientIDAPNSizeValidation(t *testing.T) {
 		LcsClientType: gsm_map.LCSClientTypeEmergencyServices,
 		LcsAPN:        &tooSmallWire,
 	})
-	wantConstraintError(t, err, "lcsAPN", "SIZE (2..63)")
+	wantValidationError(t, err, "lcsAPN", "SIZE (2..63)")
 }
 
 // LcsFormatIndicator (extensible enum, encoder strict, decoder lenient)

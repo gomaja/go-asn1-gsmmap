@@ -83,7 +83,7 @@ func TestMCSSInfo_DecodeRejectsMissingSsCode(t *testing.T) {
 		NbrSB:    2,
 		NbrUser:  1,
 	}
-	wantConstraintError(t, strictDecodeWire(w), "ss-Code", "SIZE (1)")
+	wantValidationError(t, strictDecodeWire(w), "ss-Code", "SIZE (1)")
 }
 
 // ----------------------------------------------------------------------------
@@ -128,7 +128,7 @@ func TestCSGSubscriptionData_BadCsgID(t *testing.T) {
 			if tc.name == "wrong octets" {
 				wantBitStringLengthError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", 27, 2)
 			} else {
-				wantConstraintError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", "SIZE (27)")
+				wantValidationError(t, err, "csg-SubscriptionDataList.element[0].csg-Id", "SIZE (27)")
 			}
 		})
 	}

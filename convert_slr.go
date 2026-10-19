@@ -51,11 +51,17 @@ func convertLCSLocationInfoToWire(l *LCSLocationInfo) (*gsm_map.LCSLocationInfo,
 		out.AdditionalNumber = an
 	}
 	if l.SupportedLCSCapabilitySets != nil {
-		bs := convertLCSCapsToBitString(l.SupportedLCSCapabilitySets)
+		bs, err := convertLCSCapsToBitString(l.SupportedLCSCapabilitySets)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedLCSCapabilitySets: %w", err)
+		}
 		out.SupportedLCSCapabilitySets = &bs
 	}
 	if l.AdditionalLCSCapabilitySets != nil {
-		bs := convertLCSCapsToBitString(l.AdditionalLCSCapabilitySets)
+		bs, err := convertLCSCapsToBitString(l.AdditionalLCSCapabilitySets)
+		if err != nil {
+			return nil, fmt.Errorf("encoding SupportedLCSCapabilitySets: %w", err)
+		}
 		out.AdditionalLCSCapabilitySets = &bs
 	}
 	if len(l.MmeName) > 0 {
@@ -172,7 +178,10 @@ func convertDeferredmtLrDataToWire(d *DeferredmtLrData) (*gsm_map.DeferredmtLrDa
 	if d.LcsLocationInfo != nil && (d.TerminationCause == nil || *d.TerminationCause != TerminationMtLrRestart) {
 		return nil, ErrDeferredmtLrDataLocationInfoRequiresRestart
 	}
-	bs := convertDeferredLocationEventTypeToBitString(&d.DeferredLocationEventType)
+	bs, err := convertDeferredLocationEventTypeToBitString(&d.DeferredLocationEventType)
+	if err != nil {
+		return nil, fmt.Errorf("encoding DeferredLocationEventType: %w", err)
+	}
 	out := &gsm_map.DeferredmtLrData{
 		DeferredLocationEventType: bs,
 	}

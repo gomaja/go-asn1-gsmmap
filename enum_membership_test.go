@@ -382,13 +382,13 @@ func TestATIEnumMembership(t *testing.T) {
 					in := &AnyTimeInterrogationRes{}
 					tc.setPublic(&in.SubscriberInfo, v)
 					_, err := in.Marshal()
-					wantConstraintError(t, err, tc.path, tc.constraint)
+					wantValidationError(t, err, tc.path, tc.constraint)
 				})
 				t.Run(fmt.Sprintf("decode %d", v), func(t *testing.T) {
 					w := &gsm_map.AnyTimeInterrogationRes{}
 					tc.setWire(&w.SubscriberInfo, v)
 					got, err := ParseAnyTimeInterrogationRes(tolerantBER(t, w))
-					wantConstraintError(t, err, tc.path, tc.constraint)
+					wantValidationError(t, err, tc.path, tc.constraint)
 					if got != nil {
 						t.Errorf("Parse = %v, want nil", got)
 					}
@@ -457,7 +457,7 @@ func TestReportSMDeliveryStatusOutcomeMembership(t *testing.T) {
 					o := SmDeliveryOutcome(v)
 					tc.setPublic(in, &o)
 					_, err := in.Marshal()
-					wantConstraintError(t, err, tc.path, "ENUMERATED {0, 1, 2}")
+					wantValidationError(t, err, tc.path, "ENUMERATED {0, 1, 2}")
 				})
 				t.Run(fmt.Sprintf("decode %d", v), func(t *testing.T) {
 					w := &gsm_map.ReportSMDeliveryStatusArg{
@@ -468,7 +468,7 @@ func TestReportSMDeliveryStatusOutcomeMembership(t *testing.T) {
 					o := gsm_map.SMDeliveryOutcome(v)
 					tc.setWire(w, &o)
 					got, err := ParseReportSMDeliveryStatus(tolerantBER(t, w))
-					wantConstraintError(t, err, tc.path, "ENUMERATED {0, 1, 2}")
+					wantValidationError(t, err, tc.path, "ENUMERATED {0, 1, 2}")
 					if got != nil {
 						t.Errorf("Parse = %v, want nil", got)
 					}
@@ -516,7 +516,7 @@ func TestCallBarringCauseMembership(t *testing.T) {
 				t.Run(fmt.Sprintf("decode %d", v), func(t *testing.T) {
 					w := tc.wire(gsm_map.CallBarringCause(v))
 					got, err := ParseReturnErrorParameter(MapErrorCallBarred, tolerantBER(t, &w))
-					wantConstraintError(t, err, tc.path, "ENUMERATED {0, 1}")
+					wantValidationError(t, err, tc.path, "ENUMERATED {0, 1}")
 					if got != nil {
 						t.Errorf("Parse = %v, want nil", got)
 					}

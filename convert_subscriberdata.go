@@ -24,11 +24,18 @@ func convertODBDataToWire(o *ODBData) (*gsm_map.ODBData, error) {
 	if o.OdbGeneralData == nil {
 		return nil, ErrODBDataMissingGeneralData
 	}
+	bits, err := convertODBGeneralDataToBitString(o.OdbGeneralData)
+	if err != nil {
+		return nil, fmt.Errorf("encoding ODBGeneralData: %w", err)
+	}
 	out := &gsm_map.ODBData{
-		OdbGeneralData: convertODBGeneralDataToBitString(o.OdbGeneralData),
+		OdbGeneralData: bits,
 	}
 	if o.OdbHPLMNData != nil {
-		bs := convertODBHPLMNDataToBitString(o.OdbHPLMNData)
+		bs, err := convertODBHPLMNDataToBitString(o.OdbHPLMNData)
+		if err != nil {
+			return nil, fmt.Errorf("encoding ODBHPLMNData: %w", err)
+		}
 		out.OdbHPLMNData = &bs
 	}
 	return out, nil
@@ -143,7 +150,10 @@ func convertVoiceGroupCallDataToWire(v *VoiceGroupCallData) (*gsm_map.VoiceGroup
 	}
 	out := &gsm_map.VoiceGroupCallData{GroupId: gid}
 	if v.AdditionalSubscriptions != nil {
-		bs := convertAdditionalSubscriptionsToBitString(v.AdditionalSubscriptions)
+		bs, err := convertAdditionalSubscriptionsToBitString(v.AdditionalSubscriptions)
+		if err != nil {
+			return nil, fmt.Errorf("encoding AdditionalSubscriptions: %w", err)
+		}
 		out.AdditionalSubscriptions = &bs
 	}
 	if len(v.AdditionalInfo) > 0 || v.AdditionalInfoBits != 0 {

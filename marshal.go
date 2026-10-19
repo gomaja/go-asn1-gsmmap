@@ -2,7 +2,16 @@ package gsmmap
 
 import (
 	"fmt"
+
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
+
+// Every Marshal encodes its current typed value with ber.WithoutBERReplay, so
+// no received form is replayed, including that of an opaque entry the caller
+// supplies in BER. The MAP transfer syntax is this package's responsibility,
+// not go-asn1's: 3GPP TS 29.002 V19.1.0 §17.1.1 requires OCTET STRING and BIT
+// STRING values in the primitive form, a definite length below 128 octets in
+// the short form, and a long-form length in the fewest octets.
 
 // Marshal encodes SriSm into BER-encoded bytes.
 func (s *SriSm) Marshal() ([]byte, error) {
@@ -10,7 +19,7 @@ func (s *SriSm) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting SriSm: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding RoutingInfoForSMArg: %w", err)
 	}
@@ -23,7 +32,7 @@ func (s *SriSmResp) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting SriSmResp: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding RoutingInfoForSMRes: %w", err)
 	}
@@ -36,7 +45,7 @@ func (m *MtFsm) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting MtFsm: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding MTForwardSMArg: %w", err)
 	}
@@ -46,7 +55,7 @@ func (m *MtFsm) Marshal() ([]byte, error) {
 // Marshal encodes MtFsmResp into BER-encoded bytes.
 func (r *MtFsmResp) Marshal() ([]byte, error) {
 	res := convertMtFsmRespToRes(r)
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding MTForwardSMRes: %w", err)
 	}
@@ -59,7 +68,7 @@ func (m *MoFsm) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting MoFsm: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding MOForwardSMArg: %w", err)
 	}
@@ -69,7 +78,7 @@ func (m *MoFsm) Marshal() ([]byte, error) {
 // Marshal encodes MoFsmResp into BER-encoded bytes.
 func (r *MoFsmResp) Marshal() ([]byte, error) {
 	res := convertMoFsmRespToRes(r)
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding MOForwardSMRes: %w", err)
 	}
@@ -82,7 +91,7 @@ func (u *UpdateLocation) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting UpdateLocation: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding UpdateLocationArg: %w", err)
 	}
@@ -95,7 +104,7 @@ func (u *UpdateLocationRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting UpdateLocationRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding UpdateLocationRes: %w", err)
 	}
@@ -108,7 +117,7 @@ func (u *UpdateGprsLocation) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting UpdateGprsLocation: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding UpdateGprsLocationArg: %w", err)
 	}
@@ -121,7 +130,7 @@ func (u *UpdateGprsLocationRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting UpdateGprsLocationRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding UpdateGprsLocationRes: %w", err)
 	}
@@ -134,7 +143,7 @@ func (a *AnyTimeInterrogation) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting AnyTimeInterrogation: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding AnyTimeInterrogationArg: %w", err)
 	}
@@ -147,7 +156,7 @@ func (a *AnyTimeInterrogationRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting AnyTimeInterrogationRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding AnyTimeInterrogationRes: %w", err)
 	}
@@ -160,7 +169,7 @@ func (p *ProvideSubscriberInfo) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting ProvideSubscriberInfo: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding ProvideSubscriberInfoArg: %w", err)
 	}
@@ -173,7 +182,7 @@ func (p *ProvideSubscriberInfoRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting ProvideSubscriberInfoRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding ProvideSubscriberInfoRes: %w", err)
 	}
@@ -186,7 +195,7 @@ func (s *SriResp) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting SriResp: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding SendRoutingInfoRes: %w", err)
 	}
@@ -199,7 +208,7 @@ func (s *Sri) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting Sri: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding SendRoutingInfoArg: %w", err)
 	}
@@ -214,7 +223,7 @@ func (i *InformServiceCentre) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting InformServiceCentre: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding InformServiceCentreArg: %w", err)
 	}
@@ -230,7 +239,7 @@ func (a *AlertServiceCentre) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting AlertServiceCentre: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding AlertServiceCentreArg: %w", err)
 	}
@@ -243,7 +252,7 @@ func (p *PurgeMS) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting PurgeMS: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding PurgeMSArg: %w", err)
 	}
@@ -253,7 +262,7 @@ func (p *PurgeMS) Marshal() ([]byte, error) {
 // Marshal encodes PurgeMSRes (opCode 67) into BER-encoded bytes.
 func (r *PurgeMSRes) Marshal() ([]byte, error) {
 	res := convertPurgeMSResToWire(r)
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding PurgeMSRes: %w", err)
 	}
@@ -266,7 +275,7 @@ func (s *SendAuthenticationInfo) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting SendAuthenticationInfo: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding SendAuthenticationInfoArg: %w", err)
 	}
@@ -279,7 +288,7 @@ func (s *SendAuthenticationInfoRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting SendAuthenticationInfoRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding SendAuthenticationInfoRes: %w", err)
 	}
@@ -292,7 +301,7 @@ func (c *CancelLocation) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting CancelLocation: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding CancelLocationArg: %w", err)
 	}
@@ -302,7 +311,7 @@ func (c *CancelLocation) Marshal() ([]byte, error) {
 // Marshal encodes CancelLocationRes (opCode 3) into BER-encoded bytes.
 func (r *CancelLocationRes) Marshal() ([]byte, error) {
 	res := convertCancelLocationResToWire(r)
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding CancelLocationRes: %w", err)
 	}
@@ -315,7 +324,7 @@ func (a *InsertSubscriberDataArg) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting InsertSubscriberDataArg: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding InsertSubscriberDataArg: %w", err)
 	}
@@ -328,7 +337,7 @@ func (r *InsertSubscriberDataRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting InsertSubscriberDataRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding InsertSubscriberDataRes: %w", err)
 	}
@@ -342,7 +351,7 @@ func (a *ProvideSubscriberLocationArg) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting ProvideSubscriberLocationArg: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg: %w", err)
 	}
@@ -356,7 +365,7 @@ func (r *ProvideSubscriberLocationRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting ProvideSubscriberLocationRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding ProvideSubscriberLocationRes: %w", err)
 	}
@@ -370,7 +379,7 @@ func (a *SubscriberLocationReportArg) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting SubscriberLocationReportArg: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding SubscriberLocationReportArg: %w", err)
 	}
@@ -384,7 +393,7 @@ func (r *SubscriberLocationReportRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting SubscriberLocationReportRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding SubscriberLocationReportRes: %w", err)
 	}
@@ -398,7 +407,7 @@ func (s *SriLcs) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting SriLcs: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding RoutingInfoForLCSArg: %w", err)
 	}
@@ -412,7 +421,7 @@ func (s *SriLcsResp) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting SriLcsResp: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding RoutingInfoForLCSRes: %w", err)
 	}
@@ -426,7 +435,7 @@ func (r *ReportSMDeliveryStatus) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting ReportSMDeliveryStatus: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding ReportSMDeliveryStatusArg: %w", err)
 	}
@@ -440,7 +449,7 @@ func (r *ReportSMDeliveryStatusRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting ReportSMDeliveryStatusRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding ReportSMDeliveryStatusRes: %w", err)
 	}
@@ -453,7 +462,7 @@ func (a *USSDArg) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting USSDArg: %w", err)
 	}
-	data, err := arg.MarshalBER()
+	data, err := arg.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding USSDArg: %w", err)
 	}
@@ -466,7 +475,7 @@ func (r *USSDRes) Marshal() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("converting USSDRes: %w", err)
 	}
-	data, err := res.MarshalBER()
+	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding USSDRes: %w", err)
 	}
