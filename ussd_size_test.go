@@ -11,7 +11,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // ussdTLV encodes a BER TLV with a short or one-octet long-form length.
@@ -22,16 +22,22 @@ func ussdTLV(tag byte, v []byte) []byte {
 	return append([]byte{tag, 0x81, byte(len(v))}, v...)
 }
 
-// wantConstraintError checks that err wraps a go-asn1 constraint violation
+// wantValidationError checks that err wraps a go-asn1 constraint violation
 // of the given field and constraint.
-func wantConstraintError(t *testing.T, err error, path, constraint string) {
+func wantValidationError(t *testing.T, err error, path, constraint string, observedLength ...int) {
 	t.Helper()
-	var ce *ber.ConstraintError
+	var ce *ber.ValidationError
 	if !errors.As(err, &ce) {
-		t.Fatalf("err = %v, want a *ber.ConstraintError", err)
+		t.Fatalf("err = %v, want a *ber.ValidationError", err)
 	}
 	if ce.Path != path || ce.Constraint != constraint {
 		t.Errorf("violation %q %q, want %q %q", ce.Path, ce.Constraint, path, constraint)
+	}
+	if !errors.Is(err, ber.ErrInvalidValue) {
+		t.Errorf("err = %v, want ber.ErrInvalidValue", err)
+	}
+	if len(observedLength) > 0 && (ce.ObservedLength == nil || *ce.ObservedLength != observedLength[0]) {
+		t.Errorf("observed length = %v, want %d", ce.ObservedLength, observedLength[0])
 	}
 }
 
@@ -57,15 +63,15 @@ func TestUSSDStringSize(t *testing.T) {
 	for _, n := range []int{0, 161} {
 		str := bytes.Repeat([]byte{0x41}, n)
 		_, err := (&USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: str}).Marshal()
-		wantConstraintError(t, err, "ussd-String", "SIZE (1..160)")
+		wantValidationError(t, err, "ussd-String", "SIZE (1..160)", n)
 		_, err = (&USSDRes{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: str}).Marshal()
-		wantConstraintError(t, err, "ussd-String", "SIZE (1..160)")
+		wantValidationError(t, err, "ussd-String", "SIZE (1..160)", n)
 
 		wire := ussdTLV(0x30, append(append([]byte{}, dcs...), ussdTLV(0x04, str)...))
 		_, err = ParseUSSDArg(wire)
-		wantConstraintError(t, err, "ussd-String", "SIZE (1..160)")
+		wantValidationError(t, err, "ussd-String", "SIZE (1..160)", n)
 		_, err = ParseUSSDRes(wire)
-		wantConstraintError(t, err, "ussd-String", "SIZE (1..160)")
+		wantValidationError(t, err, "ussd-String", "SIZE (1..160)", n)
 	}
 }
 
@@ -74,13 +80,13 @@ func TestUSSDDataCodingSchemeAndAlertingPatternSize(t *testing.T) {
 	for _, n := range []int{0, 2} {
 		wire := ussdTLV(0x30, append(ussdTLV(0x04, bytes.Repeat([]byte{0x0F}, n)), str...))
 		_, err := ParseUSSDArg(wire)
-		wantConstraintError(t, err, "ussd-DataCodingScheme", "SIZE (1)")
+		wantValidationError(t, err, "ussd-DataCodingScheme", "SIZE (1)")
 		_, err = ParseUSSDRes(wire)
-		wantConstraintError(t, err, "ussd-DataCodingScheme", "SIZE (1)")
+		wantValidationError(t, err, "ussd-DataCodingScheme", "SIZE (1)")
 
 		args := append(append(ussdTLV(0x04, []byte{0x0F}), str...), ussdTLV(0x04, bytes.Repeat([]byte{0x01}, n))...)
 		_, err = ParseUSSDArg(ussdTLV(0x30, args))
-		wantConstraintError(t, err, "alertingPattern", "SIZE (1)")
+		wantValidationError(t, err, "alertingPattern", "SIZE (1)")
 	}
 }
 
@@ -99,14 +105,14 @@ func TestUSSDMSISDNSize(t *testing.T) {
 	// 17 digits: 10 octets.
 	arg.MSISDN = "12345678901234567"
 	_, err = arg.Marshal()
-	wantConstraintError(t, err, "msisdn", "SIZE (1..9)")
+	wantValidationError(t, err, "msisdn", "SIZE (1..9)")
 
 	head := append(ussdTLV(0x04, []byte{0x0F}), ussdTLV(0x04, []byte{0x31})...)
 	wire := ussdTLV(0x30, append(head, ussdTLV(0x80, nil)...))
 	_, err = ParseUSSDArg(wire)
-	wantConstraintError(t, err, "msisdn", "SIZE (1..9)")
+	wantValidationError(t, err, "msisdn", "SIZE (1..9)")
 
 	wire = ussdTLV(0x30, append(head, ussdTLV(0x80, append([]byte{0x91}, bytes.Repeat([]byte{0x21}, 9)...))...))
 	_, err = ParseUSSDArg(wire)
-	wantConstraintError(t, err, "msisdn", "SIZE (1..9)")
+	wantValidationError(t, err, "msisdn", "SIZE (1..9)")
 }

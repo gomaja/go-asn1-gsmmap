@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // wantBitStringLengthError checks the codec's component path and invalid
@@ -22,7 +22,7 @@ func wantBitStringLengthError(t *testing.T, err error, field string, bits, octet
 		detail = fmt.Sprintf("negative bit string length %d", bits)
 	}
 	want := fmt.Sprintf("encoding %s: %v: %s", field, ber.ErrInvalidValue, detail)
-	var ce *ber.ConstraintError
+	var ce *ber.ValidationError
 	if !errors.Is(err, ber.ErrInvalidValue) || errors.As(err, &ce) || !strings.Contains(err.Error(), want) {
 		t.Fatalf("err = %v, want ber.ErrInvalidValue as %q", err, want)
 	}
@@ -53,21 +53,14 @@ func TestMarshalBitStringOctetsMatchBitLength(t *testing.T) {
 		name             string
 		msg              marshaler
 		length           *bitLength // the length error Marshal returns
-		path, constraint string     // the *ber.ConstraintError Marshal returns
+		path, constraint string     // the *ber.ValidationError Marshal returns
 	}{
-		{"isr-Information 3 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}, IsrInformationBits: 3}, nil), nil, "", ""},
-		{"isr-Information 8 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}, IsrInformationBits: 8}, nil), nil, "", ""},
-		{"isr-Information 3 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0, 0x00}, IsrInformationBits: 3}, nil), &bitLength{"eps-info.isr-Information", 3, 2}, "", ""},
-		{"isr-Information 8 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF, 0x00}, IsrInformationBits: 8}, nil), &bitLength{"eps-info.isr-Information", 8, 2}, "", ""},
-		{"isr-Information octets without bits", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}}, nil), &bitLength{"eps-info.isr-Information", 0, 1}, "", ""},
 		// ITU-T X.690 (02/2021) §8.6.2.2: malformed octet counts fail
-		// before SIZE, for a CHOICE alternative and a SEQUENCE component.
-		{"isr-Information 9 bits in 1 octet", gprs(&EpsInfo{IsrInformation: HexBytes{0xE0}, IsrInformationBits: 9}, nil), &bitLength{"eps-info.isr-Information", 9, 1}, "", ""},
+		// before SIZE for a SEQUENCE component.
 		{"supportedFeatures named bit 0", gprs(nil, &SGSNCapability{SupportedFeatures: &SupportedFeatures{OdbAllApn: true}}), nil, "", ""},
 		{"supportedFeatures named bit 39", gprs(nil, &SGSNCapability{SupportedFeatures: &SupportedFeatures{NrAsSecondaryRAT: true}}), nil, "", ""},
 		{"ext-SupportedFeatures named bit", gprs(nil, &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true}}), nil, "", ""},
 		{"ext-SupportedFeatures unnamed bit 39", gprs(nil, &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnknownBits: HexBytes{0, 0, 0, 0, 1}}}), nil, "", ""},
-		{"isr-Information 9 bits in 2 octets", gprs(&EpsInfo{IsrInformation: HexBytes{0xFF, 0x80}, IsrInformationBits: 9}, nil), nil, "eps-info.isr-Information", "SIZE (3..8)"},
 		{"csg-Id 32 bits in 4 octets", csg(HexBytes{0x11, 0x22, 0x33, 0x40}, 32), nil, "subscriberInfo.locationInformation.userCSGInformation.csg-Id", "SIZE (27)"},
 		{"csg-Id 27 bits in 4 octets", csg(HexBytes{0x11, 0x22, 0x33, 0x40}, 27), nil, "", ""},
 		{"csg-Id 27 bits in 10 octets", csg(make(HexBytes, 10), 27), &bitLength{"subscriberInfo.locationInformation.userCSGInformation.csg-Id", 27, 10}, "", ""},
@@ -79,7 +72,7 @@ func TestMarshalBitStringOctetsMatchBitLength(t *testing.T) {
 			data, err := tc.msg.Marshal()
 			switch {
 			case tc.path != "":
-				wantConstraintError(t, err, tc.path, tc.constraint)
+				wantValidationError(t, err, tc.path, tc.constraint)
 			case tc.length != nil:
 				wantBitStringLengthError(t, err, tc.length.field, tc.length.bits, tc.length.octets)
 			case err != nil:
@@ -104,13 +97,11 @@ func TestMarshalBitStringOctetsMatchBitLength(t *testing.T) {
 
 // The SIZE of each BIT STRING stays the codec's check.
 func TestMarshalBitStringSize(t *testing.T) {
-	in := &UpdateGprsLocation{
-		IMSI: "310260311111111", SgsnNumber: "31631000001", SGSNAddress: "192.168.31.1",
-		EpsInfo: &EpsInfo{IsrInformation: HexBytes{0xFF, 0x80}, IsrInformationBits: 9},
-	}
+	in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{
+		LocationInformation: &CSLocationInformation{UserCSGInformation: &UserCSGInformation{
+			CsgID: HexBytes{0, 0, 0, 0}, CsgIDBits: 32,
+		}},
+	}}
 	_, err := in.Marshal()
-	var ce *ber.ConstraintError
-	if !errors.As(err, &ce) || ce.Path != "eps-info.isr-Information" || ce.Constraint != "SIZE (3..8)" {
-		t.Errorf("9 bits: err = %v, want the isr-Information SIZE (3..8) violation", err)
-	}
+	wantValidationError(t, err, "subscriberInfo.locationInformation.userCSGInformation.csg-Id", "SIZE (27)")
 }

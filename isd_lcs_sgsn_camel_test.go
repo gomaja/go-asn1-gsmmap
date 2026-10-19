@@ -444,7 +444,7 @@ func TestLCSPrivacyClass_SsCodeStrictSize(t *testing.T) {
 		SsCode:   gsm_map.SSCode{0x21, 0x42}, // 2 octets — should be 1
 		SsStatus: gsm_map.ExtSSStatus{0x01},
 	}
-	wantConstraintError(t, strictDecodeWire(w), "ss-Code", "SIZE (1)")
+	wantValidationError(t, strictDecodeWire(w), "ss-Code", "SIZE (1)")
 }
 
 func TestMOLRClass_SsCodeStrictSize(t *testing.T) {
@@ -452,7 +452,7 @@ func TestMOLRClass_SsCodeStrictSize(t *testing.T) {
 		SsCode:   gsm_map.SSCode{0x21, 0x42},
 		SsStatus: gsm_map.ExtSSStatus{0x01},
 	}
-	wantConstraintError(t, strictDecodeWire(w), "ss-Code", "SIZE (1)")
+	wantValidationError(t, strictDecodeWire(w), "ss-Code", "SIZE (1)")
 }
 
 func TestGMLCAddress_EmptyRejected(t *testing.T) {

@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	identity "github.com/gomaja/go-3gpp-identity"
-	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 	"github.com/gomaja/go-tbcd"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"

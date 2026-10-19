@@ -163,6 +163,6 @@ func TestSLRResDecodeNegative(t *testing.T) {
 		ref := gsm_map.LCSReferenceNumber{0x01, 0x02}
 		w := &gsm_map.SubscriberLocationReportRes{LcsReferenceNumber: &ref}
 		err := strictDecodeWire(w)
-		wantConstraintError(t, err, "lcs-ReferenceNumber", "SIZE (1)")
+		wantValidationError(t, err, "lcs-ReferenceNumber", "SIZE (1)")
 	})
 }

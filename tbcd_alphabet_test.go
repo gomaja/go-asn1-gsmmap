@@ -12,8 +12,8 @@ import (
 
 	identity "github.com/gomaja/go-3gpp-identity"
 	"github.com/gomaja/go-asn1-gsmmap/address"
-	"github.com/gomaja/go-asn1/runtime/ber"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 	"github.com/gomaja/go-tbcd"
 )
 
@@ -161,7 +161,7 @@ func TestIdentityDigitsOnly(t *testing.T) {
 func TestParseZeroOctetAddressString(t *testing.T) {
 	w := &gsm_map.RoutingInfoForSMArg{Msisdn: []byte{}, ServiceCentreAddress: []byte{0x91, 0x21}}
 	_, err := ParseSriSm(tolerantBER(t, w))
-	var ce *ber.ConstraintError
+	var ce *ber.ValidationError
 	if !errors.As(err, &ce) || ce.Constraint != "SIZE (1..9)" {
 		t.Errorf("err = %v, want the SIZE (1..9) constraint error", err)
 	}

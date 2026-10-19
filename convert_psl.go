@@ -12,8 +12,8 @@ package gsmmap
 import (
 	"fmt"
 
-	"github.com/gomaja/go-asn1/runtime"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
 )
 
 // ============================================================================
@@ -23,39 +23,16 @@ import (
 // DeferredLocationEventType (BIT STRING SIZE 1..16, 5 named bits) per
 // 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
-// Encode rule: BitLength is the position of the highest set bit + 1
-// (minimum 1 to satisfy the SIZE 1..16 lower bound).
-func convertDeferredLocationEventTypeToBitString(d *DeferredLocationEventType) runtime.BitString {
-	var b byte
-	bitLen := 1
-	if d.MsAvailable {
-		b |= 1 << (7 - gsm_map.DeferredLocationEventTypeMsAvailable)
+// go-asn1 chooses the shortest permitted length (ITU-T X.680 (02/2021) §22.7).
+func convertDeferredLocationEventTypeToBitString(d *DeferredLocationEventType) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.DeferredLocationEventTypeMsAvailable:      d.MsAvailable,
+		gsm_map.DeferredLocationEventTypeEnteringIntoArea: d.EnteringIntoArea,
+		gsm_map.DeferredLocationEventTypeLeavingFromArea:  d.LeavingFromArea,
+		gsm_map.DeferredLocationEventTypeBeingInsideArea:  d.BeingInsideArea,
+		gsm_map.DeferredLocationEventTypePeriodicLDR:      d.PeriodicLDR,
 	}
-	if d.EnteringIntoArea {
-		b |= 1 << (7 - gsm_map.DeferredLocationEventTypeEnteringIntoArea)
-		if bitLen < gsm_map.DeferredLocationEventTypeEnteringIntoArea+1 {
-			bitLen = gsm_map.DeferredLocationEventTypeEnteringIntoArea + 1
-		}
-	}
-	if d.LeavingFromArea {
-		b |= 1 << (7 - gsm_map.DeferredLocationEventTypeLeavingFromArea)
-		if bitLen < gsm_map.DeferredLocationEventTypeLeavingFromArea+1 {
-			bitLen = gsm_map.DeferredLocationEventTypeLeavingFromArea + 1
-		}
-	}
-	if d.BeingInsideArea {
-		b |= 1 << (7 - gsm_map.DeferredLocationEventTypeBeingInsideArea)
-		if bitLen < gsm_map.DeferredLocationEventTypeBeingInsideArea+1 {
-			bitLen = gsm_map.DeferredLocationEventTypeBeingInsideArea + 1
-		}
-	}
-	if d.PeriodicLDR {
-		b |= 1 << (7 - gsm_map.DeferredLocationEventTypePeriodicLDR)
-		if bitLen < gsm_map.DeferredLocationEventTypePeriodicLDR+1 {
-			bitLen = gsm_map.DeferredLocationEventTypePeriodicLDR + 1
-		}
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: bitLen}
+	return gsm_map.NewDeferredLocationEventType(namedBitPositions(bits)...)
 }
 
 // convertBitStringToDeferredLocationEventType decodes the 5 named bits and
@@ -85,32 +62,18 @@ func hasUnlistedDeferredLocationEvent(bs runtime.BitString) bool {
 
 // SupportedGADShapes (BIT STRING SIZE 7..16, 7 named bits) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 //
-// Encode rule: always emit 7 bits to satisfy the SIZE 7..16 lower bound,
-// even when no flag is set.
-func convertSupportedGADShapesToBitString(g *SupportedGADShapes) runtime.BitString {
-	var b byte
-	if g.EllipsoidPoint {
-		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPoint)
+// go-asn1 chooses the shortest permitted length (ITU-T X.680 (02/2021) §22.7).
+func convertSupportedGADShapesToBitString(g *SupportedGADShapes) (runtime.BitString, error) {
+	bits := []bool{
+		gsm_map.SupportedGADShapesEllipsoidPoint:                                   g.EllipsoidPoint,
+		gsm_map.SupportedGADShapesEllipsoidPointWithUncertaintyCircle:              g.EllipsoidPointWithUncertaintyCircle,
+		gsm_map.SupportedGADShapesEllipsoidPointWithUncertaintyEllipse:             g.EllipsoidPointWithUncertaintyEllipse,
+		gsm_map.SupportedGADShapesPolygon:                                          g.Polygon,
+		gsm_map.SupportedGADShapesEllipsoidPointWithAltitude:                       g.EllipsoidPointWithAltitude,
+		gsm_map.SupportedGADShapesEllipsoidPointWithAltitudeAndUncertaintyElipsoid: g.EllipsoidPointWithAltitudeAndUncertaintyEllipsoid,
+		gsm_map.SupportedGADShapesEllipsoidArc:                                     g.EllipsoidArc,
 	}
-	if g.EllipsoidPointWithUncertaintyCircle {
-		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPointWithUncertaintyCircle)
-	}
-	if g.EllipsoidPointWithUncertaintyEllipse {
-		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPointWithUncertaintyEllipse)
-	}
-	if g.Polygon {
-		b |= 1 << (7 - gsm_map.SupportedGADShapesPolygon)
-	}
-	if g.EllipsoidPointWithAltitude {
-		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPointWithAltitude)
-	}
-	if g.EllipsoidPointWithAltitudeAndUncertaintyEllipsoid {
-		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidPointWithAltitudeAndUncertaintyElipsoid)
-	}
-	if g.EllipsoidArc {
-		b |= 1 << (7 - gsm_map.SupportedGADShapesEllipsoidArc)
-	}
-	return runtime.BitString{Bytes: []byte{b}, BitLength: 7}
+	return gsm_map.NewSupportedGADShapes(namedBitPositions(bits)...)
 }
 
 // convertBitStringToSupportedGADShapes decodes the 7 named bits.
@@ -149,7 +112,10 @@ func convertLocationTypeToWire(l *LocationType) (*gsm_map.LocationType, error) {
 		return nil, fmt.Errorf("LocationType.LocationEstimateType=%d: %w", l.LocationEstimateType, ErrLocationEstimateTypeInvalid)
 	}
 	if l.DeferredLocationEventType != nil {
-		bs := convertDeferredLocationEventTypeToBitString(l.DeferredLocationEventType)
+		bs, err := convertDeferredLocationEventTypeToBitString(l.DeferredLocationEventType)
+		if err != nil {
+			return nil, fmt.Errorf("encoding DeferredLocationEventType: %w", err)
+		}
 		out.DeferredLocationEventType = &bs
 	}
 	return out, nil

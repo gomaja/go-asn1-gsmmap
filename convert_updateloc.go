@@ -45,12 +45,18 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		vlrCap := &gsm_map.VLRCapability{}
 
 		if u.VlrCapability.SupportedCamelPhases != nil {
-			bs := convertCamelPhasesToBitString(u.VlrCapability.SupportedCamelPhases)
+			bs, err := convertCamelPhasesToBitString(u.VlrCapability.SupportedCamelPhases)
+			if err != nil {
+				return nil, fmt.Errorf("encoding SupportedCamelPhases: %w", err)
+			}
 			vlrCap.SupportedCamelPhases = &bs
 		}
 
 		if u.VlrCapability.SupportedLCSCapabilitySets != nil {
-			bs := convertLCSCapsToBitString(u.VlrCapability.SupportedLCSCapabilitySets)
+			bs, err := convertLCSCapsToBitString(u.VlrCapability.SupportedLCSCapabilitySets)
+			if err != nil {
+				return nil, fmt.Errorf("encoding SupportedLCSCapabilitySets: %w", err)
+			}
 			vlrCap.SupportedLCSCapabilitySets = &bs
 		}
 
@@ -76,12 +82,18 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		vlrCap.LongFTNSupported = boolToNullPtr(u.VlrCapability.LongFTNSupported)
 
 		if u.VlrCapability.OfferedCamel4CSIs != nil {
-			bs := convertOfferedCamel4CSIsToBitString(u.VlrCapability.OfferedCamel4CSIs)
+			bs, err := convertOfferedCamel4CSIsToBitString(u.VlrCapability.OfferedCamel4CSIs)
+			if err != nil {
+				return nil, fmt.Errorf("encoding OfferedCamel4CSIs: %w", err)
+			}
 			vlrCap.OfferedCamel4CSIs = &bs
 		}
 
 		if u.VlrCapability.SupportedRATTypesIndicator != nil {
-			bs := convertSupportedRATTypesToBitString(u.VlrCapability.SupportedRATTypesIndicator)
+			bs, err := convertSupportedRATTypesToBitString(u.VlrCapability.SupportedRATTypesIndicator)
+			if err != nil {
+				return nil, fmt.Errorf("encoding SupportedRATTypes: %w", err)
+			}
 			vlrCap.SupportedRATTypesIndicator = &bs
 		}
 
@@ -123,8 +135,9 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 		pa := gsm_map.PagingArea{Values: make([]gsm_map.LocationArea, len(u.PagingArea))}
 		for i, raw := range u.PagingArea {
 			// Each entry is a LocationArea CHOICE in any BER; Marshal
-			// sends it in DER.
-			la, err := unmarshalAsDER[gsm_map.LocationArea](raw)
+			// encodes its typed value using the MAP transfer-syntax profile.
+			var la gsm_map.LocationArea
+			err := la.UnmarshalBER(raw)
 			if err != nil {
 				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
 			}

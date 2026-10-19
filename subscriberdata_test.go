@@ -11,8 +11,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
 	"github.com/gomaja/go-tbcd"
 	"github.com/google/go-cmp/cmp"
 )
@@ -88,7 +88,7 @@ func TestZoneCodeListDecoderEnforcesBounds(t *testing.T) {
 	})
 	t.Run("emptyNonNil", func(t *testing.T) {
 		wire := &gsm_map.InsertSubscriberDataArg{RegionalSubscriptionData: gsmMapEmptyZoneCodeList()}
-		wantConstraintError(t, strictDecodeWire(wire), "regionalSubscriptionData", "SIZE (1..10)")
+		wantValidationError(t, strictDecodeWire(wire), "regionalSubscriptionData", "SIZE (1..10)")
 	})
 }
 
@@ -491,7 +491,10 @@ func TestAdditionalSubscriptionsRoundTrip(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			bs := convertAdditionalSubscriptionsToBitString(tc.in)
+			bs, err := convertAdditionalSubscriptionsToBitString(tc.in)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if bs.BitLength < 3 {
 				t.Errorf("BitLength=%d, want >=3 (spec min)", bs.BitLength)
 			}

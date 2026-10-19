@@ -438,7 +438,7 @@ func TestVlrCamelSubscriptionInfoCriteriaListBoundaries(t *testing.T) {
 				t.Errorf("%d criteria should be accepted: %v", n, err)
 			}
 		} else {
-			wantConstraintError(t, err, "mt-smsCAMELTDP-CriteriaList", "SIZE (1..10)")
+			wantValidationError(t, err, "mt-smsCAMELTDP-CriteriaList", "SIZE (1..10)")
 		}
 	}
 

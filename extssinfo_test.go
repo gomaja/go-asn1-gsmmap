@@ -287,7 +287,7 @@ func TestExtForwFeatureLenientNoRepCondTime(t *testing.T) {
 			v := tc.wire
 			wire.ForwardingFeatureList.Values[0].NoReplyConditionTime = &v
 			if tc.want < 0 {
-				wantConstraintError(t, strictDecodeWire(wire), "forwardingFeatureList.element[0].noReplyConditionTime", "(1..100)")
+				wantValidationError(t, strictDecodeWire(wire), "forwardingFeatureList.element[0].noReplyConditionTime", "(1..100)")
 				return
 			}
 			got, err := convertWireToExtForwInfo(wire)
@@ -645,7 +645,7 @@ func TestEMLPPInfoLenientDecode(t *testing.T) {
 			}
 			got, err := convertWireToEMLPPInfo(w)
 			if tc.fail {
-				wantConstraintError(t, strictDecodeWire(w), "maximumentitledPriority", "(0..15)")
+				wantValidationError(t, strictDecodeWire(w), "maximumentitledPriority", "(0..15)")
 				return
 			}
 			if err != nil {

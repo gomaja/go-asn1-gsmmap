@@ -17,8 +17,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
@@ -46,7 +46,7 @@ func strictBER(t *testing.T, w berMarshaler) []byte {
 func tolerantBER(t *testing.T, w berMarshaler) []byte {
 	t.Helper()
 	var log ber.ViolationLog
-	data, err := w.MarshalBER(ber.WithConstraintTolerance(&log))
+	data, err := w.MarshalBER(ber.WithTolerance(&log))
 	if err != nil {
 		t.Fatalf("MarshalBER with constraint tolerance: %v", err)
 	}
@@ -300,7 +300,7 @@ func TestParseCamelCapabilityHandlingAbovePhase4(t *testing.T) {
 		v := gsm_map.CamelCapabilityHandling(17)
 		w.VlrCamelSubscriptionInfo.OCSI.CamelCapabilityHandling = &v
 		_, err := ParseInsertSubscriberData(tolerantBER(t, w))
-		wantConstraintError(t, err, "vlrCamelSubscriptionInfo.o-CSI.camelCapabilityHandling", "(1..16)")
+		wantValidationError(t, err, "vlrCamelSubscriptionInfo.o-CSI.camelCapabilityHandling", "(1..16)")
 	})
 }
 
@@ -448,7 +448,7 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 			bad := CallTypeCriteria(99)
 			vlr.OBcsmCamelTDPCriteriaList.Values[1].CallTypeCriteria = &bad
 			parsed, err := ParseInsertSubscriberData(tolerantBER(t, w))
-			wantConstraintError(t, err, "vlrCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[1].callTypeCriteria", "ENUMERATED {0, 1}")
+			wantValidationError(t, err, "vlrCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[1].callTypeCriteria", "ENUMERATED {0, 1}")
 			if parsed != nil {
 				t.Errorf("malformed ignored sequence: got %+v, want nil", parsed)
 			}
@@ -467,7 +467,7 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 			bad := CallTypeCriteria(99)
 			wg.OBcsmCamelTDPCriteriaList.Values[1].CallTypeCriteria = &bad
 			parsed, err := ParseSriResp(tolerantBER(t, w))
-			wantConstraintError(t, err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[1].callTypeCriteria", "ENUMERATED {0, 1}")
+			wantValidationError(t, err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[1].callTypeCriteria", "ENUMERATED {0, 1}")
 			if parsed != nil {
 				t.Errorf("malformed ignored sequence: got %+v, want nil", parsed)
 			}
@@ -982,7 +982,7 @@ func TestParseSupportedCCBSPhaseMapsReservedToOne(t *testing.T) {
 		w := newSriArg()
 		w.SupportedCCBSPhase = &v
 		_, err := ParseSri(tolerantBER(t, w))
-		wantConstraintError(t, err, "supportedCCBS-Phase", "(1..127)")
+		wantValidationError(t, err, "supportedCCBS-Phase", "(1..127)")
 	}
 }
 
@@ -1042,7 +1042,7 @@ func TestParseSmRpMtiDiscardsReserved(t *testing.T) {
 		w := sriSmWire(t)
 		w.SmRPMTI = &v
 		_, err := ParseSriSm(tolerantBER(t, w))
-		wantConstraintError(t, err, "sm-RP-MTI", "(0..10)")
+		wantValidationError(t, err, "sm-RP-MTI", "(0..10)")
 	}
 }
 

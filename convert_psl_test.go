@@ -5,12 +5,14 @@
 package gsmmap
 
 import (
+	"bytes"
 	"errors"
 	"reflect"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // ============================================================================
@@ -35,7 +37,10 @@ func TestDeferredLocationEventTypeRoundTrip(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			bs := convertDeferredLocationEventTypeToBitString(tc.in)
+			bs, err := convertDeferredLocationEventTypeToBitString(tc.in)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if bs.BitLength != tc.bits {
 				t.Errorf("BitLength: want %d, got %d", tc.bits, bs.BitLength)
 			}
@@ -72,28 +77,46 @@ func TestDeferredLocationEventTypeBitMappingFromWire(t *testing.T) {
 	}
 }
 
-func TestDeferredLocationEventTypeOversizedRejected(t *testing.T) {
-	// The public flags only produce valid bit lengths; mutate the converted
-	// wire value to exercise the BER bound.
-	bs := runtime.BitString{Bytes: []byte{0x00, 0x00, 0x00}, BitLength: 17}
-	wire, err := convertLocationTypeToWire(&LocationType{LocationEstimateType: LocationEstimateCurrentLocation})
-	if err != nil {
-		t.Fatal(err)
+// ITU-T X.680 (02/2021) §22.7 permits removing or adding trailing zero bits.
+func TestDeferredLocationEventTypeZeroPaddingNormalized(t *testing.T) {
+	for _, bs := range []runtime.BitString{
+		{Bytes: []byte{0, 0, 0}, BitLength: 17},
+		{Bytes: []byte{}, BitLength: 0},
+	} {
+		wire, err := convertLocationTypeToWire(&LocationType{LocationEstimateType: LocationEstimateCurrentLocation})
+		if err != nil {
+			t.Fatal(err)
+		}
+		wire.DeferredLocationEventType = &bs
+		data, err := wire.MarshalBER()
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Three octets for [0], four for a one-bit [1] with seven unused bits.
+		wantEqual(t, "encoded LocationType", mustHex(t, "300780010081020700"), data)
+		var decoded gsm_map.LocationType
+		if err := decoded.UnmarshalBER(data); err != nil {
+			t.Fatal(err)
+		}
+		wantEqual(t, "deferredLocationEventType", &runtime.BitString{Bytes: []byte{0}, BitLength: 1}, decoded.DeferredLocationEventType)
 	}
-	wire.DeferredLocationEventType = &bs
-	_, err = strictWire(wire, nil)
-	wantConstraintError(t, err, "deferredLocationEventType", "SIZE (1..16)")
 }
 
-func TestDeferredLocationEventTypeZeroBitsRejected(t *testing.T) {
-	bs := runtime.BitString{Bytes: []byte{}, BitLength: 0}
+func TestDeferredLocationEventTypeOversizedRejected(t *testing.T) {
+	// A significant bit beyond SIZE has no equivalent within the bound.
 	wire, err := convertLocationTypeToWire(&LocationType{LocationEstimateType: LocationEstimateCurrentLocation})
 	if err != nil {
 		t.Fatal(err)
 	}
-	wire.DeferredLocationEventType = &bs
-	_, err = strictWire(wire, nil)
-	wantConstraintError(t, err, "deferredLocationEventType", "SIZE (1..16)")
+	wire.DeferredLocationEventType = &runtime.BitString{Bytes: []byte{0, 0, 0x80}, BitLength: 17}
+	// Strict encoding currently hits https://github.com/gomaja/go-asn1/issues/183.
+	_, err = wire.MarshalBER()
+	var validation *ber.ValidationError
+	if !errors.Is(err, ber.ErrInvalidValue) || errors.As(err, &validation) {
+		t.Fatalf("MarshalBER: %v, want ErrInvalidValue without ValidationError (#183)", err)
+	}
+	// Strict decoding still reports SIZE as ValidationError despite encoding #183.
+	wantValidationError(t, strictDecodeWire(wire), "deferredLocationEventType", "SIZE (1..16)")
 }
 
 // ============================================================================
@@ -118,7 +141,10 @@ func TestSupportedGADShapesRoundTrip(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			bs := convertSupportedGADShapesToBitString(tc.in)
+			bs, err := convertSupportedGADShapesToBitString(tc.in)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if bs.BitLength != 7 {
 				t.Errorf("BitLength: want 7 (spec minimum), got %d", bs.BitLength)
 			}
@@ -155,18 +181,27 @@ func TestSupportedGADShapesBitMappingFromWire(t *testing.T) {
 	}
 }
 
-func TestSupportedGADShapesUndersizedRejected(t *testing.T) {
-	bs := runtime.BitString{Bytes: []byte{0x80}, BitLength: 6}
+func TestSupportedGADShapesUndersizedNormalized(t *testing.T) {
 	wire, err := convertProvideSubscriberLocationArgToWire(&ProvideSubscriberLocationArg{
-		IMSI:         "001010123456789",
-		LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation}, MlcNumber: "1",
+		IMSI: "001010123456789", LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation}, MlcNumber: "1",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	wire.SupportedGADShapes = &bs
-	_, err = strictWire(wire, nil)
-	wantConstraintError(t, err, "supportedGADShapes", "SIZE (7..16)")
+	wire.SupportedGADShapes = &runtime.BitString{Bytes: []byte{0x80}, BitLength: 6}
+	data, err := wire.MarshalBER()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// SIZE (7..16) pads to seven bits: one unused bit in the primitive [9].
+	if !bytes.Contains(data, mustHex(t, "89020180")) {
+		t.Fatalf("MarshalBER = %x, want supportedGADShapes 89020180", data)
+	}
+	var decoded gsm_map.ProvideSubscriberLocationArg
+	if err := decoded.UnmarshalBER(data); err != nil {
+		t.Fatal(err)
+	}
+	wantEqual(t, "supportedGADShapes", &runtime.BitString{Bytes: []byte{0x80}, BitLength: 7}, decoded.SupportedGADShapes)
 }
 
 func TestSupportedGADShapesOversizedRejected(t *testing.T) {
@@ -179,8 +214,13 @@ func TestSupportedGADShapesOversizedRejected(t *testing.T) {
 		t.Fatal(err)
 	}
 	wire.SupportedGADShapes = &bs
-	_, err = strictWire(wire, nil)
-	wantConstraintError(t, err, "supportedGADShapes", "SIZE (7..16)")
+	// https://github.com/gomaja/go-asn1/issues/183 affects strict encoding only.
+	_, err = wire.MarshalBER()
+	var validation *ber.ValidationError
+	if !errors.Is(err, ber.ErrInvalidValue) || errors.As(err, &validation) {
+		t.Fatalf("MarshalBER: %v, want ErrInvalidValue without ValidationError (#183)", err)
+	}
+	wantValidationError(t, strictDecodeWire(wire), "supportedGADShapes", "SIZE (7..16)")
 }
 
 // ============================================================================

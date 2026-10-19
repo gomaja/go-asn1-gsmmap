@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 	"github.com/gomaja/go-gad"
 )
 
@@ -76,29 +76,12 @@ func TestSenderPdnGwUpdateRequiredFields(t *testing.T) {
 // 3GPP TS 29.002 V19.1.0 §17.7.1 ISR-Information assigns only bits0..2.
 // ITU-T X.680 (02/2021) §22.7 permits trimming zero padding to SIZE (3..8).
 func TestSenderISRInformationBits(t *testing.T) {
-	for bits := 3; bits <= 8; bits++ {
-		for _, b := range []byte{0, 0x80, 0x40, 0x20, 0xe0, 0x10, 0x08, 0x04, 0x02, 0x01} {
-			in := senderMobilityGPRS()
-			in.EpsInfo = &EpsInfo{IsrInformation: HexBytes{b}, IsrInformationBits: bits}
-			effective := b & byte(0xff<<uint(8-bits))
-			if effective&0x1f != 0 {
-				if _, err := in.Marshal(); !errors.Is(err, ErrISRInformationUnknownBits) {
-					t.Fatalf("%02x/%d: %v", b, bits, err)
-				}
-				continue
-			}
-			data, err := in.Marshal()
-			if err != nil {
-				t.Fatal(err)
-			}
-			got, err := ParseUpdateGprsLocation(data)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.EpsInfo == nil || got.EpsInfo.IsrInformationBits != 3 || !reflect.DeepEqual(got.EpsInfo.IsrInformation, HexBytes{effective}) {
-				t.Fatalf("%02x/%d: %+v", b, bits, got.EpsInfo)
-			}
-		}
+	for set := 0; set < 8; set++ {
+		in := senderMobilityGPRS()
+		in.EpsInfo = &EpsInfo{IsrInformation: &IsrInformation{
+			UpdateLocation: set&1 != 0, CancelSGSN: set&2 != 0, InitialAttachIndicator: set&4 != 0,
+		}}
+		senderMobilityRoundTrip(t, in, asParser(ParseUpdateGprsLocation))
 	}
 }
 
@@ -549,7 +532,7 @@ func TestSenderCallPriority(t *testing.T) {
 						t.Fatal(err)
 					}
 				case v < 0 || v > 15:
-					var c *ber.ConstraintError
+					var c *ber.ValidationError
 					if !errors.As(err, &c) || errors.Is(err, ErrEMLPPPriorityOutOfRange) {
 						t.Fatalf("want codec constraint, got %v", err)
 					}
@@ -580,7 +563,10 @@ func senderMobilityLenientCases() []semLenientCase {
 	return []semLenientCase{
 		{ErrSGSNCapabilityLCSSet1NotAllowed, asParser(ParseUpdateGprsLocation), func(t *testing.T) semWire {
 			w := gprs(t)
-			bs := convertLCSCapsToBitString(&SupportedLCSCapabilitySets{LcsCapabilitySet1: true})
+			bs, err := convertLCSCapsToBitString(&SupportedLCSCapabilitySets{LcsCapabilitySet1: true})
+			if err != nil {
+				t.Fatal(err)
+			}
 			w.SgsnCapability = &gsm_map.SGSNCapability{SupportedLCSCapabilitySets: &bs}
 			return w
 		}},
@@ -616,8 +602,11 @@ func senderMobilityLenientCases() []semLenientCase {
 		}},
 		{ErrRequestedInfoCurrentLocationWithoutLocationInformation, asParser(ParseProvideSubscriberInfo), requested(gsm_map.RequestedInfo{CurrentLocation: &struct{}{}})},
 		{ErrRequestedInfoEPSSupportedWithoutLocationInformation, asParser(ParseProvideSubscriberInfo), requested(gsm_map.RequestedInfo{LocationInformationEPSSupported: &struct{}{}})},
-		{ErrRequestedInfoRequestedNodesInCSDomain, asParser(ParseProvideSubscriberInfo), func(*testing.T) semWire {
-			bs := convertRequestedNodesToBitString(&RequestedNodes{MME: true})
+		{ErrRequestedInfoRequestedNodesInCSDomain, asParser(ParseProvideSubscriberInfo), func(t *testing.T) semWire {
+			bs, err := convertRequestedNodesToBitString(&RequestedNodes{MME: true})
+			if err != nil {
+				t.Fatal(err)
+			}
 			return &gsm_map.ProvideSubscriberInfoArg{Imsi: semAddrIMSI, RequestedInfo: gsm_map.RequestedInfo{RequestedNodes: &bs, RequestedDomain: new(CsDomain)}}
 		}},
 		{ErrRequestedInfoServingNodeWithoutLocationInformation, asParser(ParseProvideSubscriberInfo), requested(gsm_map.RequestedInfo{ServingNodeIndication: &struct{}{}})},

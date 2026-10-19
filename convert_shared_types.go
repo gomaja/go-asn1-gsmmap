@@ -510,16 +510,23 @@ func convertWireToExtExternalSignalInfo(w *gsm_map.ExtExternalSignalInfo) *ExtEx
 	}
 }
 
-func convertSriCamelInfoToWire(c *SriCamelInfo) *gsm_map.CamelInfo {
+func convertSriCamelInfoToWire(c *SriCamelInfo) (*gsm_map.CamelInfo, error) {
+	bits, err := convertCamelPhasesToBitString(&c.SupportedCamelPhases)
+	if err != nil {
+		return nil, fmt.Errorf("encoding SupportedCamelPhases: %w", err)
+	}
 	out := &gsm_map.CamelInfo{
-		SupportedCamelPhases: convertCamelPhasesToBitString(&c.SupportedCamelPhases),
+		SupportedCamelPhases: bits,
 		SuppressTCSI:         boolToNullPtr(c.SuppressTCSI),
 	}
 	if c.OfferedCamel4CSIs != nil {
-		bs := convertOfferedCamel4CSIsToBitString(c.OfferedCamel4CSIs)
+		bs, err := convertOfferedCamel4CSIsToBitString(c.OfferedCamel4CSIs)
+		if err != nil {
+			return nil, fmt.Errorf("encoding OfferedCamel4CSIs: %w", err)
+		}
 		out.OfferedCamel4CSIs = &bs
 	}
-	return out
+	return out, nil
 }
 
 func convertWireToSriCamelInfo(w *gsm_map.CamelInfo) *SriCamelInfo {

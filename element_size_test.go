@@ -91,7 +91,7 @@ func TestSSCodeElementSize(t *testing.T) {
 				t.Run(fmt.Sprintf("decode %d octets", n), func(t *testing.T) {
 					data := tolerantBER(t, tc.wire(t, bytes.Repeat([]byte{byte(SsCodeCD)}, n)))
 					got, err := tc.parse(data)
-					wantConstraintError(t, err, tc.path, "SIZE (1)")
+					wantValidationError(t, err, tc.path, "SIZE (1)")
 					if got != nil {
 						t.Errorf("Parse = %v, want nil", got)
 					}
@@ -185,11 +185,11 @@ func TestPLMNIDElementSize(t *testing.T) {
 				bad := bytes.Repeat([]byte{0x21}, n)
 				t.Run(fmt.Sprintf("encode %d octets", n), func(t *testing.T) {
 					_, err := tc.msg([]HexBytes{{0x21, 0xf3, 0x54}, bad}).Marshal()
-					wantConstraintError(t, err, tc.path, "SIZE (3)")
+					wantValidationError(t, err, tc.path, "SIZE (3)")
 				})
 				t.Run(fmt.Sprintf("decode %d octets", n), func(t *testing.T) {
 					got, err := tc.parse(tolerantBER(t, tc.wire(bad)))
-					wantConstraintError(t, err, tc.path, "SIZE (3)")
+					wantValidationError(t, err, tc.path, "SIZE (3)")
 					if got != nil {
 						t.Errorf("Parse = %v, want nil", got)
 					}

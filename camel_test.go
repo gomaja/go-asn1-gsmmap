@@ -53,7 +53,7 @@ func TestCAMELStrictEmptyLists(t *testing.T) {
 			w := marshalledISDWire(t, camelISD())
 			tc.change(w)
 			_, err := ParseInsertSubscriberData(tolerantBER(t, w))
-			wantConstraintError(t, err, tc.path, tc.constraint)
+			wantValidationError(t, err, tc.path, tc.constraint)
 		})
 	}
 }

@@ -10,8 +10,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // §17.7.1 NetworkAccessMode: "if unknown values are received in
@@ -168,7 +168,7 @@ func TestRoamingNotAllowedCauseDiscardedWithAdditionalCause(t *testing.T) {
 			}
 			v, err := ParseReturnErrorParameter(MapErrorRoamingNotAllowed, tolerantBER(t, w))
 			if cause != 0 && cause != 3 {
-				wantConstraintError(t, err, "roamingNotAllowedCause", "ENUMERATED {0, 3}")
+				wantValidationError(t, err, "roamingNotAllowedCause", "ENUMERATED {0, 3}")
 				if v != nil {
 					t.Errorf("cause %d additional %t: got %v, want nil", cause, withAdditional, v)
 				}

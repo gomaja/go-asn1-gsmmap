@@ -329,7 +329,7 @@ func TestProvideSubscriberLocationArgIMSIDecodedEmptyRejected(t *testing.T) {
 		MlcNumber:    mlc,
 		Imsi:         &emptyImsi,
 	}
-	wantConstraintError(t, strictDecodeWire(w), "imsi", "SIZE (3..8)")
+	wantValidationError(t, strictDecodeWire(w), "imsi", "SIZE (3..8)")
 }
 
 func TestProvideSubscriberLocationArgIMEIDecodedEmptyRejected(t *testing.T) {
@@ -340,12 +340,12 @@ func TestProvideSubscriberLocationArgIMEIDecodedEmptyRejected(t *testing.T) {
 		MlcNumber:    mlc,
 		Imei:         &emptyImei,
 	}
-	wantConstraintError(t, strictDecodeWire(w), "imei", "SIZE (8)")
+	wantValidationError(t, strictDecodeWire(w), "imei", "SIZE (8)")
 }
 
 // Decode-side size and range validation. Each case builds a wire argument
 // with one out-of-range value. Bounds the codec checks fail strict decoding
-// with a *ber.ConstraintError for the field (matchesConstraint); semantic
+// with a *ber.ValidationError for the field (matchesConstraint); semantic
 // rules fail convertWireToProvideSubscriberLocationArg with their sentinel
 // (errors.Is).
 func TestProvideSubscriberLocationArgDecodeSizeRangeValidation(t *testing.T) {

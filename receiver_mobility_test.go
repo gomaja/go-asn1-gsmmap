@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"math/bits"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime"
-	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // TS 29.002 V19.1.0 §17.7.1 CancelLocationArg restricts sending both
@@ -126,9 +125,10 @@ func TestReceiverISRUnknownBits(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if got.EpsInfo == nil || got.EpsInfo.PdnGwUpdate != nil || got.EpsInfo.IsrInformationBits != max(3, 8-bits.TrailingZeros8(raw)) || !bytes.Equal(got.EpsInfo.IsrInformation, []byte{raw & 0xE0}) {
-					t.Fatalf("ISR corrected incorrectly: %+v", got.EpsInfo)
-				}
+				wantEqual(t, "EpsInfo", &EpsInfo{IsrInformation: &IsrInformation{
+					UpdateLocation: raw&0x80 != 0, CancelSGSN: raw&0x40 != 0, InitialAttachIndicator: raw&0x20 != 0,
+				}}, got.EpsInfo)
+
 			})
 		}
 	}
@@ -162,7 +162,7 @@ func TestReceiverExtAccessRestrictionUnknownBits(t *testing.T) {
 			if r == nil {
 				t.Fatal("missing restrictions")
 			}
-			if r.NrAsSecondaryRATNotAllowed != (tc.raw[0]&0x80 != 0) || r.UnlicensedSpectrumAsSecondaryRATNotAllowed != (tc.raw[0]&0x40 != 0) || !bytes.Equal(r.UnknownBits, tc.unknown) || r.BitLength != 0 {
+			if r.NrAsSecondaryRATNotAllowed != (tc.raw[0]&0x80 != 0) || r.UnlicensedSpectrumAsSecondaryRATNotAllowed != (tc.raw[0]&0x40 != 0) || !bytes.Equal(r.UnknownBits, tc.unknown) {
 				t.Fatalf("restrictions = %+v", r)
 			}
 			data, err := got.Marshal()
@@ -399,7 +399,7 @@ func TestReceiverDestinationNumberCriteriaEmptyPresentLists(t *testing.T) {
 				} else {
 					_, err = ParseSriResp(tolerantBER(t, &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: new(gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: l}}))}))
 				}
-				var constraint *ber.ConstraintError
+				var constraint *ber.ValidationError
 				if !errors.As(err, &constraint) {
 					t.Fatalf("Parse: %v, want codec SIZE error", err)
 				}

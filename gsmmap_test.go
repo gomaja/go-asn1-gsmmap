@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"math"
 	"testing"
 
@@ -2368,8 +2367,7 @@ func TestUpdateGprsLocationEpsInfoIsr(t *testing.T) {
 		SgsnNumber:  "31631000001",
 		SGSNAddress: "192.168.31.1",
 		EpsInfo: &EpsInfo{
-			IsrInformation:     HexBytes{0xC0},
-			IsrInformationBits: 3,
+			IsrInformation: &IsrInformation{UpdateLocation: true, CancelSGSN: true},
 		},
 	}
 
@@ -2387,30 +2385,25 @@ func TestUpdateGprsLocationEpsInfoIsr(t *testing.T) {
 	if got.EpsInfo.PdnGwUpdate != nil {
 		t.Error("PdnGwUpdate should be nil in IsrInformation alternative")
 	}
-	if got.EpsInfo.IsrInformationBits != in.EpsInfo.IsrInformationBits {
-		t.Errorf("IsrInformationBits: got %d want %d", got.EpsInfo.IsrInformationBits, in.EpsInfo.IsrInformationBits)
-	}
-	if !bytes.Equal(got.EpsInfo.IsrInformation, in.EpsInfo.IsrInformation) {
-		t.Errorf("IsrInformation: got %x want %x", got.EpsInfo.IsrInformation, in.EpsInfo.IsrInformation)
-	}
+	wantEqual(t, "IsrInformation", in.EpsInfo.IsrInformation, got.EpsInfo.IsrInformation)
 }
 
 func TestUpdateGprsLocationEpsInfoIsrMinimum(t *testing.T) {
-	for _, bits := range []int{1, 2} {
-		t.Run(fmt.Sprint(bits), func(t *testing.T) {
-			in := &UpdateGprsLocation{
-				IMSI:        "310260311111111",
-				SgsnNumber:  "31631000001",
-				SGSNAddress: "192.168.31.1",
-				EpsInfo: &EpsInfo{
-					IsrInformation:     HexBytes{0xC0},
-					IsrInformationBits: bits,
-				},
-			}
-			_, err := in.Marshal()
-			wantConstraintError(t, err, "eps-info.isr-Information", "SIZE (3..8)")
-		})
+	in := senderMobilityGPRS()
+	in.EpsInfo = &EpsInfo{IsrInformation: &IsrInformation{}}
+	data, err := in.Marshal()
+	if err != nil {
+		t.Fatal(err)
 	}
+	// SIZE (3..8), all-false value: 5 unused bits and one zero content octet.
+	if !bytes.Contains(data, mustHex(t, "a50481020500")) {
+		t.Fatalf("Marshal = %x, want ISR 81020500", data)
+	}
+	got, err := ParseUpdateGprsLocation(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantEqual(t, "EpsInfo", in.EpsInfo, got.EpsInfo)
 }
 
 func TestUpdateGprsLocationResFullRoundTrip(t *testing.T) {
@@ -2462,8 +2455,7 @@ func TestEpsInfoChoiceValidation(t *testing.T) {
 				PdnGwUpdate: &PdnGwUpdate{
 					ContextID: &ctxID,
 				},
-				IsrInformation:     HexBytes{0x80},
-				IsrInformationBits: 1,
+				IsrInformation: &IsrInformation{UpdateLocation: true},
 			},
 		}
 		_, err := in.Marshal()
@@ -2543,7 +2535,11 @@ func TestMwStatusBitStringRoundTrip(t *testing.T) {
 			Mnr5gn3gSet:          combo&(1<<5) != 0,
 		}
 
-		bs := convertMwStatusToBitString(m)
+		bs, err := convertMwStatusToBitString(m)
+
+		if err != nil {
+			t.Fatal(err)
+		}
 		if bs.BitLength != 6 {
 			t.Errorf("combo=%06b: BitLength=%d want 6", combo, bs.BitLength)
 		}
@@ -4262,7 +4258,7 @@ func TestCamelDecodeRejectsInvalidServiceKey(t *testing.T) {
 			}},
 		},
 	}
-	wantConstraintError(t, strictDecodeWire(&wire), "o-CSI.o-BcsmCamelTDPDataList.element[0].serviceKey", "(0..2147483647)")
+	wantValidationError(t, strictDecodeWire(&wire), "o-CSI.o-BcsmCamelTDPDataList.element[0].serviceKey", "(0..2147483647)")
 }
 
 // TestCamelDecodeRejectsOversizedCriteriaList verifies that the decoder rejects
@@ -4276,5 +4272,5 @@ func TestCamelDecodeRejectsOversizedCriteriaList(t *testing.T) {
 		}
 	}
 	wire := gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
-	wantConstraintError(t, strictDecodeWire(&wire), "o-BcsmCamelTDP-CriteriaList", "SIZE (1..10)")
+	wantValidationError(t, strictDecodeWire(&wire), "o-BcsmCamelTDP-CriteriaList", "SIZE (1..10)")
 }

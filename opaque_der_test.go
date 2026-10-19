@@ -6,8 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
-	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 
 	"github.com/gomaja/go-asn1-gsmmap/address"
 )
@@ -23,8 +22,8 @@ func mustHex(t *testing.T, s string) []byte {
 }
 
 // PDP-ContextInfo (3GPP TS 29.002 V19.1.0 §17.7.1) is opaque in
-// PsSubscriberState. Parse returns it in DER and Marshal sends it in DER,
-// whatever BER it arrived in, so the result meets §17.1.1.
+// PsSubscriberState. Parse returns it in DER; Marshal freshly encodes its
+// typed value to meet §17.1.1, whatever BER the caller supplies.
 func TestOpaquePDPContextInfoInDER(t *testing.T) {
 	const (
 		pdp = "30078001018202f121" // pdp-ContextIdentifier 1, pdp-Type f121
@@ -73,14 +72,15 @@ func TestOpaquePDPContextInfoInDER(t *testing.T) {
 }
 
 // PagingArea (3GPP TS 29.002 V19.1.0 §17.7.1) entries are opaque
-// LocationArea values. Marshal sends them in DER, whatever BER the caller
-// gives, so the result meets §17.1.1.
+// LocationArea values. Marshal freshly encodes them with primitive strings
+// and minimal definite lengths, as required by §17.1.1.
 func TestOpaquePagingAreaInDER(t *testing.T) {
 	const lac = "81021234" // lac [1] 1234
 	for _, tc := range []struct{ name, entry string }{
 		{"definite short form", lac},
 		{"long-form length", "8181021234"},
 		{"constructed lac", "a10404021234"},
+		{"indefinite constructed lac", "a180040212340000"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := &UpdateLocation{
@@ -108,23 +108,36 @@ func TestOpaquePagingAreaInDER(t *testing.T) {
 	}
 }
 
-// https://github.com/gomaja/go-asn1/issues/156: ber.WithoutBERReplay refuses
-// an unknown extension addition that MarshalDER encodes, so unmarshalAsDER
-// still decodes opaque entries again from their DER encoding. This pins
-// today's behaviour; when it fails, Marshal can encode with
-// WithoutBERReplay and unmarshalAsDER can be removed.
-func TestGoASN1Issue156WithoutBERReplayRejectsUnknownExtension(t *testing.T) {
-	const encoded = "300a8001018202f1219e01ff"
-	var ctx gsm_map.PDPContextInfo
-	if err := ctx.UnmarshalBER(mustHex(t, encoded)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := ctx.MarshalBER(ber.WithoutBERReplay()); !errors.Is(err, ber.ErrInvalidValue) {
-		t.Fatalf("MarshalBER(WithoutBERReplay): %v, want ber.ErrInvalidValue", err)
-	}
-	out, err := ctx.MarshalDER()
+// 3GPP TS 29.002 V19.1.0 §17.1.1 applies to opaque entries too.
+func TestOpaquePDPContextUnknownExtension(t *testing.T) {
+	in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{PsSubscriberState: &PsSubscriberState{
+		PsPDPActiveReachableForPaging: []HexBytes{mustHex(t, "30808001018202f1219e01ff0000")},
+	}}}
+	out, err := in.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantEqual(t, "MarshalDER", mustHex(t, encoded), out)
+	// The entry contains 3 + 4 + 3 octets; enclosing lengths are 12, 14, 16, 18.
+	wantEqual(t, "Marshal", mustHex(t, "30123010a40ea50c300a8001018202f1219e01ff"), out)
+	if err := checkDefiniteLengths(out); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOpaquePDPContextNonMinimalExtensionLength(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Marshal panicked: %v", r)
+		}
+	}()
+	in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{PsSubscriberState: &PsSubscriberState{
+		PsPDPActiveReachableForPaging: []HexBytes{mustHex(t, "30808001018202f1219e8101ff0000")},
+	}}}
+	out, err := in.Marshal()
+	if !errors.Is(err, ber.ErrInvalidValue) {
+		t.Fatalf("Marshal = %x, %v; want ber.ErrInvalidValue", out, err)
+	}
+	if out != nil {
+		t.Fatalf("Marshal returned %x with an error", out)
+	}
 }

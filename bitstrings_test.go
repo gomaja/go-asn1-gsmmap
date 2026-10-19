@@ -1,10 +1,8 @@
 package gsmmap
 
 import (
-	"errors"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
@@ -17,7 +15,6 @@ func TestBitStringsEmptyNamedFeatures(t *testing.T) {
 		bytes    HexBytes
 	}{
 		{"unset", ExtSupportedFeatures{}, 1, HexBytes{0}},
-		{"explicit minimum", ExtSupportedFeatures{BitLength: 1}, 1, HexBytes{0}},
 		{"named bit", ExtSupportedFeatures{UnlicensedSpectrumAsSecondaryRAT: true}, 1, HexBytes{0x80}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -38,18 +35,5 @@ func TestBitStringsEmptyNamedFeatures(t *testing.T) {
 			wantEqual(t, "bit length", tc.bits, got.BitLength)
 			wantEqual(t, "octets", []byte(tc.bytes), got.Bytes)
 		})
-	}
-}
-
-// X.690 (02/2021) §8.6.2.2: three bits require one content octet.
-func TestBitStringsMissingOctets(t *testing.T) {
-	in := &UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "1234", SGSNAddress: "192.0.2.1",
-		EpsInfo: &EpsInfo{IsrInformationBits: 3}}
-	data, err := in.Marshal()
-	if !errors.Is(err, ber.ErrInvalidValue) {
-		t.Fatalf("Marshal = %x, %v; want invalid BIT STRING storage", data, err)
-	}
-	if data != nil {
-		t.Fatalf("Marshal returned %x with an error", data)
 	}
 }

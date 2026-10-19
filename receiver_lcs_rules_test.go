@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/gomaja/go-asn1/runtime/ber"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 	"github.com/gomaja/go-gad"
 )
 
@@ -29,7 +29,11 @@ func TestReceiverBeingInsideAreaIsOneTimeEvent(t *testing.T) {
 	for _, inside := range []bool{false, true} {
 		for _, occurrence := range []*gsm_map.OccurrenceInfo{nil, new(gsm_map.OccurrenceInfoOneTimeEvent), new(gsm_map.OccurrenceInfoMultipleTimeEvent), new(gsm_map.OccurrenceInfo(99))} {
 			w := lcsRulePSLArg(t)
-			w.LocationType.DeferredLocationEventType = new(convertDeferredLocationEventTypeToBitString(&DeferredLocationEventType{MsAvailable: true, BeingInsideArea: inside}))
+			eventsBits, bitsErr := convertDeferredLocationEventTypeToBitString(&DeferredLocationEventType{MsAvailable: true, BeingInsideArea: inside})
+			if bitsErr != nil {
+				t.Fatal(bitsErr)
+			}
+			w.LocationType.DeferredLocationEventType = &eventsBits
 			w.AreaEventInfo = &gsm_map.AreaEventInfo{
 				AreaDefinition: gsm_map.AreaDefinition{AreaList: &gsm_map.AreaList{Values: []gsm_map.Area{{AreaType: gsm_map.AreaTypeCountryCode, AreaIdentification: gsm_map.AreaIdentification{0x21, 0xf3}}}}},
 				OccurrenceInfo: occurrence,
@@ -58,7 +62,11 @@ func TestReceiverBeingInsideAreaIsOneTimeEvent(t *testing.T) {
 			}
 		}
 		w := lcsRulePSLArg(t)
-		w.LocationType.DeferredLocationEventType = new(convertDeferredLocationEventTypeToBitString(&DeferredLocationEventType{BeingInsideArea: inside}))
+		eventsBits, bitsErr := convertDeferredLocationEventTypeToBitString(&DeferredLocationEventType{BeingInsideArea: inside})
+		if bitsErr != nil {
+			t.Fatal(bitsErr)
+		}
+		w.LocationType.DeferredLocationEventType = &eventsBits
 		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
 		if err != nil || got.AreaEventInfo != nil {
 			t.Fatalf("absent area: got=%+v err=%v", got, err)
@@ -71,7 +79,11 @@ func TestReceiverBeingInsideAreaIsOneTimeEvent(t *testing.T) {
 		{LeavingFromArea: true, BeingInsideArea: true},
 	} {
 		w := lcsRulePSLArg(t)
-		w.LocationType.DeferredLocationEventType = new(convertDeferredLocationEventTypeToBitString(&events))
+		eventsBits, bitsErr := convertDeferredLocationEventTypeToBitString(&events)
+		if bitsErr != nil {
+			t.Fatal(bitsErr)
+		}
+		w.LocationType.DeferredLocationEventType = &eventsBits
 		w.AreaEventInfo = &gsm_map.AreaEventInfo{
 			AreaDefinition: gsm_map.AreaDefinition{AreaList: &gsm_map.AreaList{Values: []gsm_map.Area{{AreaType: gsm_map.AreaTypeCountryCode, AreaIdentification: gsm_map.AreaIdentification{0x21, 0xf3}}}}},
 			OccurrenceInfo: new(gsm_map.OccurrenceInfoMultipleTimeEvent),
@@ -621,7 +633,7 @@ func TestReceiverLCSCodecConstraints(t *testing.T) {
 			w := &gsm_map.ProvideSubscriberLocationRes{LocationEstimate: gsm_map.ExtGeographicalInformation{0, 0, 0, 0, 0, 0, 0}}
 			tc.change(w)
 			_, err := ParseProvideSubscriberLocationRes(tolerantBER(t, w))
-			var constraint *ber.ConstraintError
+			var constraint *ber.ValidationError
 			if !errors.As(err, &constraint) {
 				t.Fatalf("want codec constraint error, got %v", err)
 			}
@@ -631,7 +643,7 @@ func TestReceiverLCSCodecConstraints(t *testing.T) {
 		w := lcsRulePSLArg(t)
 		w.PeriodicLDRInfo = &gsm_map.PeriodicLDRInfo{ReportingAmount: amount, ReportingInterval: 1}
 		_, err := ParseProvideSubscriberLocation(tolerantBER(t, w))
-		var constraint *ber.ConstraintError
+		var constraint *ber.ValidationError
 		if !errors.As(err, &constraint) {
 			t.Fatalf("amount%d: want codec constraint error, got %v", amount, err)
 		}
@@ -770,7 +782,7 @@ func TestLocationEstimateOneOctetMarshal(t *testing.T) {
 	oversized := make(AddGeographicalInformation, 92)
 	oversized[0] = 0x53
 	_, err := (&ProvideSubscriberLocationRes{LocationEstimate: ExtGeographicalInformation{0x00}, AddLocationEstimate: oversized}).Marshal()
-	wantConstraintError(t, err, "add-LocationEstimate", "SIZE (1..91)")
+	wantValidationError(t, err, "add-LocationEstimate", "SIZE (1..91)")
 	a := minimalSLRArg()
 	a.LocationEstimate = one
 	if _, err := a.Marshal(); !errors.Is(err, ErrLocationEstimateOneOctetWithoutAdd) {
@@ -786,7 +798,7 @@ func TestLocationEstimateOneOctetMarshal(t *testing.T) {
 	}
 	a.AddLocationEstimate = oversized
 	_, err = a.Marshal()
-	wantConstraintError(t, err, "add-LocationEstimate", "SIZE (1..91)")
+	wantValidationError(t, err, "add-LocationEstimate", "SIZE (1..91)")
 }
 
 // An SLR argument whose estimate is in add-LocationEstimate carries a

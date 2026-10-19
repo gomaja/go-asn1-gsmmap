@@ -95,7 +95,10 @@ func buildRequestedInfo(ri *RequestedInfo) (gsm_map.RequestedInfo, error) {
 		wire.TAdsData = nullMarker
 	}
 	if ri.RequestedNodes != nil {
-		bs := convertRequestedNodesToBitString(ri.RequestedNodes)
+		bs, err := convertRequestedNodesToBitString(ri.RequestedNodes)
+		if err != nil {
+			return gsm_map.RequestedInfo{}, fmt.Errorf("encoding RequestedNodes: %w", err)
+		}
 		wire.RequestedNodes = &bs
 	}
 	if ri.ServingNodeIndication {
