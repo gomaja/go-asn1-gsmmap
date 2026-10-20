@@ -12,7 +12,6 @@ import (
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
-	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // ============================================================================
@@ -109,14 +108,10 @@ func TestDeferredLocationEventTypeOversizedRejected(t *testing.T) {
 		t.Fatal(err)
 	}
 	wire.DeferredLocationEventType = &runtime.BitString{Bytes: []byte{0, 0, 0x80}, BitLength: 17}
-	// Strict encoding currently hits https://github.com/gomaja/go-asn1/issues/183.
+	// Strict encoding and strict decoding report the same SIZE violation.
 	_, err = wire.MarshalBER()
-	var validation *ber.ValidationError
-	if !errors.Is(err, ber.ErrInvalidValue) || errors.As(err, &validation) {
-		t.Fatalf("MarshalBER: %v, want ErrInvalidValue without ValidationError (#183)", err)
-	}
-	// Strict decoding still reports SIZE as ValidationError despite encoding #183.
-	wantValidationError(t, strictDecodeWire(wire), "deferredLocationEventType", "SIZE (1..16)")
+	wantValidationError(t, err, "deferredLocationEventType", "SIZE (1..16)", 17)
+	wantValidationError(t, strictDecodeWire(wire), "deferredLocationEventType", "SIZE (1..16)", 17)
 }
 
 // ============================================================================
@@ -214,13 +209,9 @@ func TestSupportedGADShapesOversizedRejected(t *testing.T) {
 		t.Fatal(err)
 	}
 	wire.SupportedGADShapes = &bs
-	// https://github.com/gomaja/go-asn1/issues/183 affects strict encoding only.
 	_, err = wire.MarshalBER()
-	var validation *ber.ValidationError
-	if !errors.Is(err, ber.ErrInvalidValue) || errors.As(err, &validation) {
-		t.Fatalf("MarshalBER: %v, want ErrInvalidValue without ValidationError (#183)", err)
-	}
-	wantValidationError(t, strictDecodeWire(wire), "supportedGADShapes", "SIZE (7..16)")
+	wantValidationError(t, err, "supportedGADShapes", "SIZE (7..16)", 17)
+	wantValidationError(t, strictDecodeWire(wire), "supportedGADShapes", "SIZE (7..16)", 17)
 }
 
 // ============================================================================

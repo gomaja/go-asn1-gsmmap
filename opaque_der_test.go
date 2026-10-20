@@ -141,3 +141,42 @@ func TestOpaquePDPContextNonMinimalExtensionLength(t *testing.T) {
 		t.Fatalf("Marshal returned %x with an error", out)
 	}
 }
+
+// ITU-T X.690 (02/2021) §10.3 orders SET components by tag and §11.6 orders
+// SET OF components by encoding. A universal SET in an opaque extension that
+// follows neither order cannot be repaired without its type, so Marshal and
+// Parse reject it. The same SET in SET OF order is kept.
+func TestOpaquePDPContextUnorderedSETExtension(t *testing.T) {
+	const (
+		unordered = "30138001018202f121be0a31080201020201010500" // [30] SET { 2, 1, NULL }
+		ordered   = "30138001018202f121be0a31080201010201020500" // [30] SET { 1, 2, NULL }
+		envelope  = "301b3019a417a515"                           // the entry has 21 octets
+	)
+	marshal := func(pdp string) ([]byte, error) {
+		in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{PsSubscriberState: &PsSubscriberState{
+			PsPDPActiveReachableForPaging: []HexBytes{mustHex(t, pdp)},
+		}}}
+		return in.Marshal()
+	}
+	out, err := marshal(ordered)
+	if err != nil {
+		t.Fatalf("Marshal in SET OF order: %v", err)
+	}
+	wantEqual(t, "Marshal in SET OF order", mustHex(t, envelope+ordered), out)
+	got, err := ParseAnyTimeInterrogationRes(out)
+	if err != nil {
+		t.Fatalf("Parse in SET OF order: %v", err)
+	}
+	wantEqual(t, "PDP-ContextInfo", []HexBytes{mustHex(t, ordered)}, got.SubscriberInfo.PsSubscriberState.PsPDPActiveReachableForPaging)
+
+	out, err = marshal(unordered)
+	if !errors.Is(err, ber.ErrInvalidValue) {
+		t.Fatalf("Marshal = %x, %v; want ber.ErrInvalidValue", out, err)
+	}
+	if out != nil {
+		t.Fatalf("Marshal returned %x with an error", out)
+	}
+	if _, err := ParseAnyTimeInterrogationRes(mustHex(t, envelope+unordered)); !errors.Is(err, ber.ErrInvalidValue) {
+		t.Fatalf("Parse: %v, want ber.ErrInvalidValue", err)
+	}
+}

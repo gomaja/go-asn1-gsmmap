@@ -1898,7 +1898,8 @@ type AccessRestrictionData struct {
 
 // ExtAccessRestrictionData (BIT STRING SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // UnknownBits retains unnamed set bits. go-asn1 chooses the shortest encoded
-// length SIZE permits (ITU-T X.680 (02/2021) §22.7).
+// length SIZE permits (ITU-T X.680 (02/2021) §22.7). Marshal rejects a set
+// bit beyond 31 with the codec's *ber.ValidationError.
 type ExtAccessRestrictionData struct {
 	NrAsSecondaryRATNotAllowed                 bool     // bit 0
 	UnlicensedSpectrumAsSecondaryRATNotAllowed bool     // bit 1
@@ -1955,7 +1956,8 @@ type SupportedFeatures struct {
 // ExtSupportedFeatures (BIT STRING SIZE 1..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // Only bit 0 is named. UnknownBits retains unnamed set bits 1..39.
 // go-asn1 chooses the shortest encoded length SIZE permits
-// (ITU-T X.680 (02/2021) §22.7).
+// (ITU-T X.680 (02/2021) §22.7). Marshal rejects a set bit beyond 39 with
+// the codec's *ber.ValidationError.
 type ExtSupportedFeatures struct {
 	UnlicensedSpectrumAsSecondaryRAT bool     // bit 0
 	UnknownBits                      HexBytes // positions 1..39, MSB first, without trailing zero octets; bit 0 is ignored

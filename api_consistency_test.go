@@ -8,7 +8,6 @@ import (
 	identity "github.com/gomaja/go-3gpp-identity"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
-	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // TS 29.002 V19.1.0 §17.7.8: each FTN-AddressString carries its own
@@ -373,22 +372,24 @@ func TestBitStringToWireClearsPaddingBits(t *testing.T) {
 	}
 }
 
-// Unnamed set bits beyond SIZE fail in the generated builders. Until
-// https://github.com/gomaja/go-asn1/issues/183 is fixed, these errors wrap
-// ber.ErrInvalidValue without a *ber.ValidationError.
+// Unnamed set bits beyond SIZE fail in the generated builders with the
+// codec's *ber.ValidationError (ITU-T X.680 (02/2021) §51.5).
 func TestFeatureUnknownBitsOutOfRange(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		marshal func() ([]byte, error)
+		name       string
+		marshal    func() ([]byte, error)
+		path       string
+		constraint string
+		length     int
 	}{
 		{"ExtAccessRestrictionData bit 32", func() ([]byte, error) {
 			return (&InsertSubscriberDataArg{ExtAccessRestrictionData: &ExtAccessRestrictionData{UnknownBits: HexBytes{0, 0, 0, 0, 0x80}}}).Marshal()
-		}},
+		}, "Ext-AccessRestrictionData", "SIZE (1..32)", 33},
 		{"ExtSupportedFeatures bit 40", func() ([]byte, error) {
 			in := senderMobilityGPRS()
 			in.SGSNCapability = &SGSNCapability{ExtSupportedFeatures: &ExtSupportedFeatures{UnknownBits: HexBytes{0, 0, 0, 0, 0, 0x80}}}
 			return in.Marshal()
-		}},
+		}, "Ext-SupportedFeatures", "SIZE (1..40)", 41},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {
@@ -397,10 +398,7 @@ func TestFeatureUnknownBitsOutOfRange(t *testing.T) {
 				}
 			}()
 			out, err := tc.marshal()
-			var validation *ber.ValidationError
-			if !errors.Is(err, ber.ErrInvalidValue) || errors.As(err, &validation) {
-				t.Fatalf("Marshal: %v, want ErrInvalidValue without ValidationError (#183)", err)
-			}
+			wantValidationError(t, err, tc.path, tc.constraint, tc.length)
 			if out != nil {
 				t.Fatalf("Marshal returned %x with an error", out)
 			}
