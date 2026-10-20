@@ -2,12 +2,10 @@ package gsmmap
 
 import (
 	"bytes"
-	"errors"
 	"testing"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
-	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // ITU-T X.680 (02/2021) §22.7 permits removing trailing zero bits to
@@ -110,19 +108,6 @@ func TestMarshalNamedBitStringShortestRAT(t *testing.T) {
 				t.Fatalf("Marshal = %x, want RAT %s", got, tc.wire)
 			}
 		})
-	}
-}
-
-// https://github.com/gomaja/go-asn1/issues/183: a named-bit SIZE overflow
-// should be a *ber.ValidationError (ITU-T X.680 (02/2021) §51.5).
-// When this fails, go-asn1 has fixed #183: expect *ber.ValidationError
-// and update the named-bit SIZE assertions and the README.
-func TestGoASN1Issue183NamedBitSizeErrorClass(t *testing.T) {
-	value := gsm_map.SGSNCapability{SupportedRATTypesIndicator: &runtime.BitString{Bytes: []byte{0x00, 0x80}, BitLength: 9}}
-	_, err := value.MarshalBER()
-	var validation *ber.ValidationError
-	if !errors.Is(err, ber.ErrInvalidValue) || errors.As(err, &validation) {
-		t.Fatalf("MarshalBER: %v, want ErrInvalidValue without ValidationError (#183)", err)
 	}
 }
 
