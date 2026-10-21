@@ -22,9 +22,9 @@ func ussdTLV(tag byte, v []byte) []byte {
 	return append([]byte{tag, 0x81, byte(len(v))}, v...)
 }
 
-// wantValidationError checks that err wraps a go-asn1 constraint violation
-// of the given field and constraint.
-func wantValidationError(t *testing.T, err error, path, constraint string, observedLength ...int) {
+// wantValidationError checks that err wraps a go-asn1 violation of the given
+// field and constraint, and returns its details for further assertions.
+func wantValidationError(t *testing.T, err error, path, constraint string, observedLength ...int) ber.Violation {
 	t.Helper()
 	var ce *ber.ValidationError
 	if !errors.As(err, &ce) {
@@ -39,6 +39,7 @@ func wantValidationError(t *testing.T, err error, path, constraint string, obser
 	if len(observedLength) > 0 && (ce.ObservedLength == nil || *ce.ObservedLength != observedLength[0]) {
 		t.Errorf("observed length = %v, want %d", ce.ObservedLength, observedLength[0])
 	}
+	return ce.Violation
 }
 
 func TestUSSDStringSize(t *testing.T) {
