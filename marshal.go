@@ -7,11 +7,13 @@ import (
 )
 
 // Every Marshal encodes its current typed value with ber.WithoutBERReplay, so
-// no received form is replayed, including that of an opaque entry the caller
-// supplies in BER. The MAP transfer syntax is this package's responsibility,
-// not go-asn1's: 3GPP TS 29.002 V19.1.0 §17.1.1 requires OCTET STRING and BIT
-// STRING values in the primitive form, a definite length below 128 octets in
-// the short form, and a long-form length in the fewest octets.
+// no received form is replayed: the output meets 3GPP TS 29.002 V19.1.0
+// §17.1.1 and uses definite lengths throughout. go-asn1 enforces §17.1.1 on
+// decode, including opaque entries supplied by the caller: OCTET STRING and
+// BIT STRING values must be primitive, definite lengths below 128 octets must
+// use the short form, and long-form lengths must use the fewest octets.
+// Indefinite lengths remain allowed on decode (ITU-T X.690 (02/2021)
+// §8.1.3.6).
 
 // Marshal encodes SriSm into BER-encoded bytes.
 func (s *SriSm) Marshal() ([]byte, error) {

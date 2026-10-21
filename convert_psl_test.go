@@ -214,6 +214,38 @@ func TestSupportedGADShapesOversizedRejected(t *testing.T) {
 	wantValidationError(t, strictDecodeWire(wire), "supportedGADShapes", "SIZE (7..16)", 17)
 }
 
+// A MAP-defined BIT STRING must be primitive (3GPP TS 29.002 V19.1.0 §17.1.1),
+// including the implicitly tagged supportedGADShapes [9].
+func TestSupportedGADShapesConstructedRejected(t *testing.T) {
+	wire, err := convertProvideSubscriberLocationArgToWire(&ProvideSubscriberLocationArg{
+		IMSI: "001010123456789", LocationType: LocationType{LocationEstimateType: LocationEstimateCurrentLocation}, MlcNumber: "1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wire.SupportedGADShapes = &runtime.BitString{Bytes: []byte{0x80}, BitLength: 7}
+	data, err := wire.MarshalBER()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ParseProvideSubscriberLocation(data); err != nil {
+		t.Fatalf("primitive form: %v", err)
+	}
+	// The constructed [9] holds one primitive BIT STRING segment (ITU-T X.690
+	// (02/2021) §8.6.4), so the enclosing short-form length grows by 2.
+	i := bytes.Index(data, mustHex(t, "89020180"))
+	if i < 0 || data[0] != 0x30 || data[1] > 0x7d {
+		t.Fatalf("unexpected encoding %x", data)
+	}
+	mutated := append(append(append([]byte{}, data[:i]...), mustHex(t, "a90403020180")...), data[i+4:]...)
+	mutated[1] += 2
+	got, err := ParseProvideSubscriberLocation(mutated)
+	if got != nil {
+		t.Errorf("Parse = %+v, want nil", got)
+	}
+	wantMAPProfileError(t, err, "supportedGADShapes", "primitive-bit-string")
+}
+
 // ============================================================================
 // LocationType
 // ============================================================================

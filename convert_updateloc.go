@@ -134,8 +134,8 @@ func convertUpdateLocationToArg(u *UpdateLocation) (*gsm_map.UpdateLocationArg, 
 	if len(u.PagingArea) > 0 {
 		pa := gsm_map.PagingArea{Values: make([]gsm_map.LocationArea, len(u.PagingArea))}
 		for i, raw := range u.PagingArea {
-			// Each entry is a LocationArea CHOICE in any BER; Marshal
-			// encodes its typed value using the MAP transfer-syntax profile.
+			// Each entry is a LocationArea CHOICE. Decode enforces
+			// 3GPP TS 29.002 V19.1.0 §17.1.1; Marshal freshly encodes it.
 			var la gsm_map.LocationArea
 			err := la.UnmarshalBER(raw)
 			if err != nil {

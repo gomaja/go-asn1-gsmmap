@@ -22,39 +22,58 @@ func mustHex(t *testing.T, s string) []byte {
 }
 
 // PDP-ContextInfo (3GPP TS 29.002 V19.1.0 §17.7.1) is opaque in
-// PsSubscriberState. Parse returns it in DER; Marshal freshly encodes its
-// typed value to meet §17.1.1, whatever BER the caller supplies.
+// PsSubscriberState. Parse and Marshal reject entries excluded by §17.1.1.
+// Indefinite lengths remain allowed (ITU-T X.690 (02/2021) §8.1.3.6).
+// Parse returns DER; Marshal freshly encodes accepted entries.
 func TestOpaquePDPContextInfoInDER(t *testing.T) {
 	const (
 		pdp = "30078001018202f121" // pdp-ContextIdentifier 1, pdp-Type f121
 		ati = "300f300da40ba509" + pdp
 	)
-	for _, tc := range []struct{ name, pdp, ati string }{
-		{"definite short form", pdp, ati},
-		{"long-form length", "3008808101018202f121", "3010300ea40ca50a3008808101018202f121"},
-		{"indefinite length", "30808001018202f1210000", "3011300fa40da50b30808001018202f1210000"},
-		{"constructed pdp-Type", "3009800101a2040402f121", "3011300fa40da50b3009800101a2040402f121"},
+	for _, tc := range []struct{ name, pdp, ati, path, rule string }{
+		{"definite short form", pdp, ati, "", ""},
+		{"long-form length", "3008808101018202f121", "3010300ea40ca50a3008808101018202f121", "pdp-ContextIdentifier", "short-length"},
+		{"indefinite length", "30808001018202f1210000", "3011300fa40da50b30808001018202f1210000", "", ""},
+		{"constructed pdp-Type", "3009800101a2040402f121", "3011300fa40da50b3009800101a2040402f121", "pdp-Type", "primitive-octet-string"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ParseAnyTimeInterrogationRes(mustHex(t, tc.ati))
-			if err != nil {
-				t.Fatalf("Parse: %v", err)
-			}
-			wantEqual(t, "PDP-ContextInfo", []HexBytes{mustHex(t, pdp)}, got.SubscriberInfo.PsSubscriberState.PsPDPActiveReachableForPaging)
-			out, err := got.Marshal()
-			if err != nil {
-				t.Fatalf("Marshal of the parsed value: %v", err)
-			}
-			wantEqual(t, "Marshal of the parsed value", mustHex(t, ati), out)
+			t.Run("Parse", func(t *testing.T) {
+				got, err := ParseAnyTimeInterrogationRes(mustHex(t, tc.ati))
+				if tc.rule != "" {
+					if got != nil {
+						t.Errorf("Parse = %+v, want nil", got)
+					}
+					wantMAPProfileError(t, err, "subscriberInfo.ps-SubscriberState.ps-PDP-ActiveReachableForPaging.element[0]."+tc.path, tc.rule)
+					return
+				}
+				if err != nil {
+					t.Fatalf("Parse: %v", err)
+				}
+				wantEqual(t, "PDP-ContextInfo", []HexBytes{mustHex(t, pdp)}, got.SubscriberInfo.PsSubscriberState.PsPDPActiveReachableForPaging)
+				out, err := got.Marshal()
+				if err != nil {
+					t.Fatalf("Marshal of the parsed value: %v", err)
+				}
+				wantEqual(t, "Marshal of the parsed value", mustHex(t, ati), out)
+			})
 
-			in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{PsSubscriberState: &PsSubscriberState{
-				PsPDPActiveReachableForPaging: []HexBytes{mustHex(t, tc.pdp)},
-			}}}
-			out, err = in.Marshal()
-			if err != nil {
-				t.Fatalf("Marshal: %v", err)
-			}
-			wantEqual(t, "Marshal", mustHex(t, ati), out)
+			t.Run("Marshal", func(t *testing.T) {
+				in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{PsSubscriberState: &PsSubscriberState{
+					PsPDPActiveReachableForPaging: []HexBytes{mustHex(t, tc.pdp)},
+				}}}
+				out, err := in.Marshal()
+				if tc.rule != "" {
+					if out != nil {
+						t.Errorf("Marshal = %x, want nil", out)
+					}
+					wantMAPProfileError(t, err, tc.path, tc.rule)
+					return
+				}
+				if err != nil {
+					t.Fatalf("Marshal: %v", err)
+				}
+				wantEqual(t, "Marshal", mustHex(t, ati), out)
+			})
 		})
 	}
 	// An unknown extension addition, [30] here, is kept.
@@ -72,15 +91,15 @@ func TestOpaquePDPContextInfoInDER(t *testing.T) {
 }
 
 // PagingArea (3GPP TS 29.002 V19.1.0 §17.7.1) entries are opaque
-// LocationArea values. Marshal freshly encodes them with primitive strings
-// and minimal definite lengths, as required by §17.1.1.
+// LocationArea values. Marshal rejects entries excluded by §17.1.1 and
+// freshly encodes accepted entries with primitive strings and definite lengths.
 func TestOpaquePagingAreaInDER(t *testing.T) {
 	const lac = "81021234" // lac [1] 1234
-	for _, tc := range []struct{ name, entry string }{
-		{"definite short form", lac},
-		{"long-form length", "8181021234"},
-		{"constructed lac", "a10404021234"},
-		{"indefinite constructed lac", "a180040212340000"},
+	for _, tc := range []struct{ name, entry, rule string }{
+		{"definite short form", lac, ""},
+		{"long-form length", "8181021234", "short-length"},
+		{"constructed lac", "a10404021234", "primitive-octet-string"},
+		{"indefinite constructed lac", "a180040212340000", "primitive-octet-string"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := &UpdateLocation{
@@ -90,6 +109,13 @@ func TestOpaquePagingAreaInDER(t *testing.T) {
 				PagingArea: []HexBytes{mustHex(t, tc.entry)},
 			}
 			out, err := in.Marshal()
+			if tc.rule != "" {
+				if out != nil {
+					t.Errorf("Marshal = %x, want nil", out)
+				}
+				wantMAPProfileError(t, err, "lac", tc.rule)
+				return
+			}
 			if err != nil {
 				t.Fatalf("Marshal: %v", err)
 			}

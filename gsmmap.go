@@ -266,7 +266,7 @@ type UpdateLocation struct {
 	CsLCSNotSupportedByUE       bool                        // [12] NULL
 	VGmlcAddress                string                      // [2] GSN-Address; empty if absent
 	AddInfo                     *AddInfo                    // [13]
-	PagingArea                  []HexBytes                  // [14] opaque LocationArea entries: Parse returns DER, Marshal takes any BER and sends DER
+	PagingArea                  []HexBytes                  // [14] opaque LocationArea entries: Parse returns DER; Marshal requires BER per 3GPP TS 29.002 V19.1.0 §17.1.1 and sends DER
 	SkipSubscriberDataUpdate    bool                        // [15] NULL
 	RestorationIndicator        bool                        // [16] NULL
 	EplmnList                   []HexBytes                  // [3] list of PLMNId (3 octets each)
@@ -571,7 +571,7 @@ type PsSubscriberState struct {
 	PsDetached                       bool                // [1] NULL
 	PsAttachedNotReachableForPaging  bool                // [2] NULL
 	PsAttachedReachableForPaging     bool                // [3] NULL
-	PsPDPActiveNotReachableForPaging []HexBytes          // [4] opaque PDP-ContextInfo entries: Parse returns DER, Marshal takes any BER and sends DER
+	PsPDPActiveNotReachableForPaging []HexBytes          // [4] opaque PDP-ContextInfo entries: Parse returns DER; Marshal requires BER per 3GPP TS 29.002 V19.1.0 §17.1.1 and sends DER
 	PsPDPActiveReachableForPaging    []HexBytes          // [5] opaque PDP-ContextInfo entries, as for [4]
 	NetDetNotReachable               *NotReachableReason // untagged, TS 29.002 V19.1.0 §17.7.1
 }
