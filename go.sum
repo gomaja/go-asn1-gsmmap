@@ -1,7 +1,7 @@
 github.com/gomaja/go-3gpp-identity v0.0.0-20261015070659-866133e946dc h1:DAKGIgFwEA7pKA0qe3QtoLBUVEabdIjigeI2g7vikgk=
 github.com/gomaja/go-3gpp-identity v0.0.0-20261015070659-866133e946dc/go.mod h1:dtVjfCqQGohi0KWPP2OkIjnQ0V5lLZrecco4pZLdjcA=
-github.com/gomaja/go-asn1 v0.0.0-20261021182037-fd8335c59a05 h1:2PDQgznh0ctTsbabMwtCR9y9HOvngZY9rXOapz2NhAE=
-github.com/gomaja/go-asn1 v0.0.0-20261021182037-fd8335c59a05/go.mod h1:KRznJ08GIF3SHIZS8QWEUJ7QDhCCuLrN94EbeQc0grQ=
+github.com/gomaja/go-asn1 v0.0.0-20261022014350-f2c57b4625d2 h1:6KjAa72RTv+Tz6FBOgNKk62qFwMsghLJeX5K4P1PS7E=
+github.com/gomaja/go-asn1 v0.0.0-20261022014350-f2c57b4625d2/go.mod h1:KRznJ08GIF3SHIZS8QWEUJ7QDhCCuLrN94EbeQc0grQ=
 github.com/gomaja/go-gad v0.0.0-20261015090110-463e9e2108fc h1:6YMgs79fF9rxnRbJgBMTpPNzdJ+lI/cVH55REQgOX7c=
 github.com/gomaja/go-gad v0.0.0-20261015090110-463e9e2108fc/go.mod h1:UI/omF20jQtd1V+rqF8syB3byQhHFkdGPvY5T7z+pt4=
 github.com/gomaja/go-sms v0.0.0-20261016094937-0e8b7b4d2388 h1:l9I2/jfU6vGI73heEhMJ6eUJtfgWzQ7T7iS1FIQpW5g=
