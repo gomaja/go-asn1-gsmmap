@@ -210,9 +210,9 @@ func TestParseSystemFailureParamExtensibleChoiceRoundTrip(t *testing.T) {
 // =============================================================================
 
 func TestParseRoamingNotAllowedParamRoundTrip(t *testing.T) {
-	addCause := gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed
+	addCause := AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed
 	wire := &gsm_map.RoamingNotAllowedParam{
-		RoamingNotAllowedCause:           gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed,
+		RoamingNotAllowedCause:           RoamingNotAllowedCausePlmnRoamingNotAllowed,
 		AdditionalRoamingNotAllowedCause: &addCause,
 	}
 	data, err := wire.MarshalBER()
@@ -223,14 +223,48 @@ func TestParseRoamingNotAllowedParamRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
-	// Discarded next to the additional cause (3GPP TS 29.002 V19.1.0 §17.7.7).
-	if got.RoamingNotAllowedCause != nil {
-		t.Errorf("RoamingNotAllowedCause: want nil, got %v", *got.RoamingNotAllowedCause)
+	if got.RoamingNotAllowedCause != RoamingNotAllowedCausePlmnRoamingNotAllowed {
+		t.Errorf("RoamingNotAllowedCause: want plmnRoamingNotAllowed, got %v", got.RoamingNotAllowedCause)
 	}
 	if got.AdditionalRoamingNotAllowedCause == nil ||
-		*got.AdditionalRoamingNotAllowedCause != gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed {
+		*got.AdditionalRoamingNotAllowedCause != AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed {
 		t.Errorf("AdditionalRoamingNotAllowedCause: want supportedRAT-TypesNotAllowed, got %v",
 			got.AdditionalRoamingNotAllowedCause)
+	}
+}
+
+// 3GPP TS 29.002 V19.1.0 §17.7.7 requires the base cause even when
+// an additional cause is present; receiver-specific handling is the caller's.
+func TestParseRoamingNotAllowedParamPreservesCauses(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		data       []byte
+		base       RoamingNotAllowedCause
+		additional bool
+	}{
+		{"both", []byte{0x30, 0x06, 0x0a, 0x01, 0x00, 0x80, 0x01, 0x00}, RoamingNotAllowedCausePlmnRoamingNotAllowed, true},
+		{"base only", []byte{0x30, 0x03, 0x0a, 0x01, 0x03}, RoamingNotAllowedCauseOperatorDeterminedBarring, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			value, err := ParseReturnErrorParameter(MapErrorRoamingNotAllowed, tc.data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, ok := value.(*RoamingNotAllowedParam)
+			if !ok || got == nil {
+				t.Fatalf("parameter = %T, want *RoamingNotAllowedParam", value)
+			}
+			if got.RoamingNotAllowedCause != tc.base {
+				t.Errorf("base cause = %v, want %v", got.RoamingNotAllowedCause, tc.base)
+			}
+			if tc.additional {
+				if got.AdditionalRoamingNotAllowedCause == nil || *got.AdditionalRoamingNotAllowedCause != AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed {
+					t.Errorf("additional cause = %v, want supportedRAT-TypesNotAllowed", got.AdditionalRoamingNotAllowedCause)
+				}
+			} else if got.AdditionalRoamingNotAllowedCause != nil {
+				t.Errorf("additional cause = %v, want nil", got.AdditionalRoamingNotAllowedCause)
+			}
+		})
 	}
 }
 

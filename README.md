@@ -115,7 +115,7 @@ What that means for a consumer:
 - `MTSMSTPDUTypeSmsSUBMITREPORT` is removed: CAMEL phase 4 permits only `sms-DELIVER` and `sms-STATUS-REPORT` in MT-SMS TPDU criteria; the sender rejects that value and the receiver ignores the entire TPDU-TypeCriterion containing it.
 - `MtFsm` and `MoFsm` expose SM-RP-DA and SM-RP-OA through `SmRpDa` and `SmRpOa` CHOICE fields. Their former shorthand identity and service-centre fields, including nature/plan fields, are removed. `ErrMtFsmMissingIMSI` is gone: an `SmRpDa` with no alternative set returns `ErrSmRpDaNoAlternative`.
 - CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`, `GPRSCSI`, `MGCSI`) omit `NotificationToCSE` and `CsiActive`; Parse drops those wire fields. Segmented CSI and SRI presence rules that depend on other segments remain the caller's responsibility, so `ErrCamelSMSCSIMissingTDPData`, `ErrCamelSMSCSIMissingCapabilityHandling` and `ErrGPRSCSIRequiresTDPListAndPhase` are removed.
-- `RoamingNotAllowedParam.RoamingNotAllowedCause` is a pointer, nil when the additional cause is present after successful strict decoding. `LCSQoS.LcsQosClass` decodes unrecognized values as `LCSQoSClassBestEffort`.
+- `RoamingNotAllowedParam` returns both causes as received. An application acting as MSC/VLR or SGSN must ignore `RoamingNotAllowedCause` when `AdditionalRoamingNotAllowedCause` is present (3GPP TS 29.002 V19.1.0 §17.7.7); other receivers keep both. `LCSQoS.LcsQosClass` decodes unrecognized values as `LCSQoSClassBestEffort`.
 - `ParseReturnErrorParameter(MapErrorCode, []byte)` replaces the per-error `Parse*Param` functions, and `MapErrorCode(code).String()` replaces `GetErrorString(code)`.
 - `ParseReturnErrorParameter(MapErrorRoamingNotAllowed, nil)` or an empty parameter returns `ErrRoamingNotAllowedParameterMissing`; the caller constructs the TCAP mistyped-parameter reject required by TS 29.002 §17.1.2.
 - Parse preserves both CancelLocation MTRF flags, TypeOfUpdate with any CancellationType, independent PDP QoS/address extensions, repeated CAMEL TDP entries, D-CSI capability without a list, DestinationNumberCriteria without either list, both short and long group IDs, QoS accuracy high bits, and periodic reporting operands whose product exceeds the sender cap. Marshal keeps its sender restrictions.
@@ -125,6 +125,7 @@ What that means for a consumer:
 
 **Renamed or retyped fields**
 
+- `RoamingNotAllowedParam.RoamingNotAllowedCause` changes from `*gsm_map.RoamingNotAllowedCause` to `RoamingNotAllowedCause`, an alias of `gsm_map.RoamingNotAllowedCause`. The base cause is mandatory and retained alongside the optional additional cause.
 - `SubscriberStateInfo.NotReachableReason` changes from `*int` to `*NotReachableReason`, an alias of `gsm_map.NotReachableReason`.
 - `PsSubscriberState.NetDetNotReachable` changes from `*int` to `*NotReachableReason`; this also applies when used as `SubscriberInfo.EpsSubscriberState`.
 - `SubscriberInfo.DaylightSavingTime` changes from `*int` to `*DaylightSavingTime`, an alias of `gsm_map.DaylightSavingTime`, with `DaylightSavingTimeNoAdjustment`, `DaylightSavingTimePlusOneHourAdjustment`, and `DaylightSavingTimePlusTwoHoursAdjustment` constants.
@@ -637,6 +638,13 @@ case *gsmmap.UnexpectedDataParam:
     fmt.Println(v.UnexpectedSubscriber)
 }
 ```
+
+Error parameter enums and their named values are available from this package:
+`UnknownSubscriberDiagnostic`, `CallBarringCause`, `NetworkResource`,
+`AdditionalNetworkResource`, `FailureCauseParam`, `RoamingNotAllowedCause`,
+`AdditionalRoamingNotAllowedCause` and `AbsentSubscriberReason` alias go-asn1's
+ENUMERATED types. For example, compare a system failure's network resource with
+`gsmmap.NetworkResourceHlr`.
 
 It returns `(nil, nil)` for errors without a parameter (unknownAlphabet 71,
 ussd-Busy 72), for codes it does not decode, and for an empty parameter.

@@ -23,10 +23,10 @@ func TestReceiverRoamingNotAllowedRequiresParameter(t *testing.T) {
 			t.Errorf("optional parameter: got %v, %v", got, err)
 		}
 	}
-	w := &gsm_map.RoamingNotAllowedParam{RoamingNotAllowedCause: gsm_map.RoamingNotAllowedCause(0)}
+	w := &gsm_map.RoamingNotAllowedParam{RoamingNotAllowedCause: RoamingNotAllowedCausePlmnRoamingNotAllowed}
 	got, err := ParseReturnErrorParameter(MapErrorRoamingNotAllowed, strictBER(t, w))
 	param, ok := got.(*RoamingNotAllowedParam)
-	if err != nil || !ok || param.RoamingNotAllowedCause == nil || *param.RoamingNotAllowedCause != 0 {
+	if err != nil || !ok || param.RoamingNotAllowedCause != RoamingNotAllowedCausePlmnRoamingNotAllowed {
 		t.Fatalf("valid parameter: got %v, %v", got, err)
 	}
 }
