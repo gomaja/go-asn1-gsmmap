@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	identity "github.com/gomaja/go-3gpp-identity"
+	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -295,8 +297,8 @@ func isStrictEncodeError(err error) bool {
 }
 
 // FuzzParse drives every Parse function. None may panic, a value that
-// parses marshals again unless Marshal reports one of strictEncodeErrors,
-// and the marshalled value parses back to the same value.
+// parses marshals again unless sender rules or opaque content prevent fresh
+// encoding, and the marshalled value parses back to the same normalized value.
 func FuzzParse(f *testing.F) {
 	for _, s := range berSeeds(f) {
 		for i := range parsers {
@@ -313,8 +315,8 @@ func FuzzParse(f *testing.F) {
 
 // checkParseRoundTrip applies the FuzzParse property to data and parse:
 // an error comes without a value; a parsed value marshals, unless Marshal
-// reports one of strictEncodeErrors; and the marshalled octets parse back
-// to an equal value of the same type.
+// reports one of strictEncodeErrors or opaque content prevents fresh encoding;
+// and the marshalled octets parse back to an equal normalized value of the same type.
 func checkParseRoundTrip(name string, parse func([]byte) (marshaler, error), data []byte) error {
 	v, err := parse(data)
 	if err != nil {
@@ -324,11 +326,18 @@ func checkParseRoundTrip(name string, parse func([]byte) (marshaler, error), dat
 		return nil
 	}
 	enc, err := v.Marshal()
+	opaqueErr := freshenOpaquePDPEntries(v)
 	if err != nil {
 		if isStrictEncodeError(err) {
 			return nil
 		}
+		if errors.Is(opaqueErr, ber.ErrInvalidValue) && errors.Is(err, ber.ErrInvalidValue) {
+			return nil
+		}
 		return fmt.Errorf("%s: parsed value does not marshal: %w\nwire %x", name, err, data)
+	}
+	if opaqueErr != nil {
+		return fmt.Errorf("%s: freshly encoding opaque PDP entries: %w", name, opaqueErr)
 	}
 	again, err := parse(enc)
 	if err != nil {
@@ -339,6 +348,44 @@ func checkParseRoundTrip(name string, parse func([]byte) (marshaler, error), dat
 	}
 	if reflect.TypeOf(v) != reflect.TypeOf(again) {
 		return fmt.Errorf("%s: type changed", name)
+	}
+	return nil
+}
+
+// freshenOpaquePDPEntries normalizes the expected value to Marshal's fresh
+// encoding. Parse retains BER entries as received (TS 29.002 V19.1.0 §17.1.4);
+// opaque content needing schema-dependent repair cannot be freshly encoded
+// (ITU-T X.690 (02/2021) §§10.3, 11.6).
+func freshenOpaquePDPEntries(v marshaler) error {
+	var info *SubscriberInfo
+	switch v := v.(type) {
+	case *AnyTimeInterrogationRes:
+		info = &v.SubscriberInfo
+	case *ProvideSubscriberInfoRes:
+		info = &v.SubscriberInfo
+	case *SriResp:
+		info = v.SubscriberInfo
+	}
+	if info == nil {
+		return nil
+	}
+	for _, state := range []*PsSubscriberState{info.PsSubscriberState, info.EpsSubscriberState} {
+		if state == nil {
+			continue
+		}
+		for _, entries := range [][]HexBytes{state.PsPDPActiveReachableForPaging, state.PsPDPActiveNotReachableForPaging} {
+			for i, entry := range entries {
+				var ctx gsm_map.PDPContextInfo
+				if err := ctx.UnmarshalBER(entry); err != nil {
+					return err
+				}
+				encoded, err := ctx.MarshalBER(ber.WithoutBERReplay())
+				if err != nil {
+					return err
+				}
+				entries[i] = encoded
+			}
+		}
 	}
 	return nil
 }

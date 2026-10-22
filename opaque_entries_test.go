@@ -24,8 +24,8 @@ func mustHex(t *testing.T, s string) []byte {
 // PDP-ContextInfo (3GPP TS 29.002 V19.1.0 §17.7.1) is opaque in
 // PsSubscriberState. Parse and Marshal reject entries excluded by §17.1.1.
 // Indefinite lengths remain allowed (ITU-T X.690 (02/2021) §8.1.3.6).
-// Parse returns DER; Marshal freshly encodes accepted entries.
-func TestOpaquePDPContextInfoInDER(t *testing.T) {
+// Parse returns entries as received; Marshal freshly encodes accepted entries.
+func TestOpaquePDPContextInfoEncoding(t *testing.T) {
 	const (
 		pdp = "30078001018202f121" // pdp-ContextIdentifier 1, pdp-Type f121
 		ati = "300f300da40ba509" + pdp
@@ -49,7 +49,7 @@ func TestOpaquePDPContextInfoInDER(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Parse: %v", err)
 				}
-				wantEqual(t, "PDP-ContextInfo", []HexBytes{mustHex(t, pdp)}, got.SubscriberInfo.PsSubscriberState.PsPDPActiveReachableForPaging)
+				wantEqual(t, "PDP-ContextInfo", []HexBytes{mustHex(t, tc.pdp)}, got.SubscriberInfo.PsSubscriberState.PsPDPActiveReachableForPaging)
 				out, err := got.Marshal()
 				if err != nil {
 					t.Fatalf("Marshal of the parsed value: %v", err)
@@ -93,13 +93,14 @@ func TestOpaquePDPContextInfoInDER(t *testing.T) {
 // PagingArea (3GPP TS 29.002 V19.1.0 §17.7.1) entries are opaque
 // LocationArea values. Marshal rejects entries excluded by §17.1.1 and
 // freshly encodes accepted entries with primitive strings and definite lengths.
-func TestOpaquePagingAreaInDER(t *testing.T) {
+func TestOpaquePagingAreaEncoding(t *testing.T) {
 	const lac = "81021234" // lac [1] 1234
-	for _, tc := range []struct{ name, entry, rule string }{
-		{"definite short form", lac, ""},
-		{"long-form length", "8181021234", "short-length"},
-		{"constructed lac", "a10404021234", "primitive-octet-string"},
-		{"indefinite constructed lac", "a180040212340000", "primitive-octet-string"},
+	for _, tc := range []struct{ name, entry, paging, rule string }{
+		{"definite short form", lac, "ae0481021234", ""},
+		{"LAI", "800500f1101234", "ae07800500f1101234", ""},
+		{"long-form length", "8181021234", "", "short-length"},
+		{"constructed lac", "a10404021234", "", "primitive-octet-string"},
+		{"indefinite constructed lac", "a180040212340000", "", "primitive-octet-string"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := &UpdateLocation{
@@ -119,8 +120,8 @@ func TestOpaquePagingAreaInDER(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Marshal: %v", err)
 			}
-			if !bytes.Contains(out, mustHex(t, "ae04"+lac)) {
-				t.Errorf("Marshal = %x, want pagingArea ae04%s", out, lac)
+			if !bytes.Contains(out, mustHex(t, tc.paging)) {
+				t.Errorf("Marshal = %x, want pagingArea %s", out, tc.paging)
 			}
 			if err := checkDefiniteLengths(out); err != nil {
 				t.Errorf("Marshal = %x: %v", out, err)
@@ -129,7 +130,12 @@ func TestOpaquePagingAreaInDER(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
 			}
-			wantEqual(t, "PagingArea", []HexBytes{mustHex(t, lac)}, got.PagingArea)
+			want := []HexBytes{mustHex(t, tc.entry)}
+			wantEqual(t, "PagingArea", want, got.PagingArea)
+			for i := range out {
+				out[i] = ^out[i]
+			}
+			wantEqual(t, "PagingArea after overwriting input", want, got.PagingArea)
 		})
 	}
 }
@@ -170,8 +176,8 @@ func TestOpaquePDPContextNonMinimalExtensionLength(t *testing.T) {
 
 // ITU-T X.690 (02/2021) §10.3 orders SET components by tag and §11.6 orders
 // SET OF components by encoding. A universal SET in an opaque extension that
-// follows neither order cannot be repaired without its type, so Marshal and
-// Parse reject it. The same SET in SET OF order is kept.
+// follows neither order cannot be repaired without its type, so Marshal
+// rejects it. Parse keeps either order as received (§8.12).
 func TestOpaquePDPContextUnorderedSETExtension(t *testing.T) {
 	const (
 		unordered = "30138001018202f121be0a31080201020201010500" // [30] SET { 2, 1, NULL }
@@ -202,7 +208,102 @@ func TestOpaquePDPContextUnorderedSETExtension(t *testing.T) {
 	if out != nil {
 		t.Fatalf("Marshal returned %x with an error", out)
 	}
-	if _, err := ParseAnyTimeInterrogationRes(mustHex(t, envelope+unordered)); !errors.Is(err, ber.ErrInvalidValue) {
-		t.Fatalf("Parse: %v, want ber.ErrInvalidValue", err)
+	got, err = ParseAnyTimeInterrogationRes(mustHex(t, envelope+unordered))
+	if err != nil {
+		t.Fatalf("Parse unordered SET: %v", err)
+	}
+	wantEqual(t, "unordered PDP-ContextInfo", []HexBytes{mustHex(t, unordered)}, got.SubscriberInfo.PsSubscriberState.PsPDPActiveReachableForPaging)
+	out, err = got.Marshal()
+	if !errors.Is(err, ber.ErrInvalidValue) || out != nil {
+		t.Fatalf("Marshal of parsed unordered SET = %x, %v; want nil, ber.ErrInvalidValue", out, err)
+	}
+}
+
+// A receiver must not reject an unsupported extension (3GPP TS 29.002
+// V19.1.0 §17.1.4), and BER leaves SET OF components in any order (ITU-T
+// X.690 (02/2021) §8.12): Parse returns such PDP-ContextInfo entries exactly
+// as received, also when SubscriberInfo arrives in an SRI result.
+func TestOpaquePDPContextInfoAsReceived(t *testing.T) {
+	const (
+		ordered          = "30138001018202f121be0a31080201010201020500"
+		unordered        = "30138001018202f121be0a31080201020201010500"
+		privateOrdered   = "301a8001018202f121b111a00f300d06032a03043106020101020102"
+		privateUnordered = "301a8001018202f121b111a00f300d06032a03043106020102020101"
+	)
+	type vector struct {
+		name, wire, entry string
+		eps, unreachable  bool
+	}
+	common := []vector{
+		{"ordered control", "301b3019a417a51530138001018202f121be0a31080201010201020500", ordered, false, false},
+		{"unordered ps reachable", "301b3019a417a51530138001018202f121be0a31080201020201010500", unordered, false, false},
+		{"unordered ps unreachable", "301b3019a417a41530138001018202f121be0a31080201020201010500", unordered, false, true},
+		{"unordered eps reachable", "301b3019ac17a51530138001018202f121be0a31080201020201010500", unordered, true, false},
+		{"unordered eps unreachable", "301b3019ac17a41530138001018202f121be0a31080201020201010500", unordered, true, true},
+		{"ordered private extType", "30223020a41ea51c301a8001018202f121b111a00f300d06032a03043106020101020102", privateOrdered, false, false},
+		{"unordered private extType", "30223020a41ea51c301a8001018202f121b111a00f300d06032a03043106020102020101", privateUnordered, false, false},
+		{"indefinite entry", "3011300fa40da50b30808001018202f1210000", "30808001018202f1210000", false, false},
+	}
+	for _, parser := range []struct {
+		name    string
+		parse   func([]byte) (*SubscriberInfo, error)
+		vectors []vector
+	}{
+		{"ATI", func(b []byte) (*SubscriberInfo, error) {
+			v, err := ParseAnyTimeInterrogationRes(b)
+			if err != nil {
+				return nil, err
+			}
+			return &v.SubscriberInfo, nil
+		}, common},
+		{"PSI", func(b []byte) (*SubscriberInfo, error) {
+			v, err := ParseProvideSubscriberInfoRes(b)
+			if err != nil {
+				return nil, err
+			}
+			return &v.SubscriberInfo, nil
+		}, common},
+		{"SRI", func(b []byte) (*SubscriberInfo, error) {
+			v, err := ParseSriResp(b)
+			if err != nil {
+				return nil, err
+			}
+			return v.SubscriberInfo, nil
+		}, []vector{
+			{"ordered control", "a325890800010121436587f9a719a417a51530138001018202f121be0a31080201010201020500", ordered, false, false},
+			{"unordered", "a325890800010121436587f9a719a417a51530138001018202f121be0a31080201020201010500", unordered, false, false},
+		}},
+	} {
+		t.Run(parser.name, func(t *testing.T) {
+			for _, tc := range parser.vectors {
+				t.Run(tc.name, func(t *testing.T) {
+					input := mustHex(t, tc.wire)
+					info, err := parser.parse(input)
+					if err != nil {
+						t.Fatalf("Parse: %v", err)
+					}
+					if info == nil {
+						t.Fatal("missing SubscriberInfo")
+					}
+					state := info.PsSubscriberState
+					if tc.eps {
+						state = info.EpsSubscriberState
+					}
+					if state == nil {
+						t.Fatal("missing subscriber state")
+					}
+					entries := state.PsPDPActiveReachableForPaging
+					if tc.unreachable {
+						entries = state.PsPDPActiveNotReachableForPaging
+					}
+					want := []HexBytes{mustHex(t, tc.entry)}
+					wantEqual(t, "received entry", want, entries)
+					for i := range input {
+						input[i] = ^input[i]
+					}
+					wantEqual(t, "entry after overwriting input", want, entries)
+				})
+			}
+		})
 	}
 }
