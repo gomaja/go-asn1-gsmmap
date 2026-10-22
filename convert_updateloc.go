@@ -273,7 +273,7 @@ func convertArgToUpdateLocation(arg *gsm_map.UpdateLocationArg) (*UpdateLocation
 	if arg.PagingArea != nil && len(arg.PagingArea.Values) > 0 {
 		pa := make([]HexBytes, len(arg.PagingArea.Values))
 		for i, la := range arg.PagingArea.Values {
-			encoded, err := la.MarshalDER()
+			encoded, err := la.MarshalBER()
 			if err != nil {
 				return nil, fmt.Errorf("PagingArea[%d]: %w", i, err)
 			}

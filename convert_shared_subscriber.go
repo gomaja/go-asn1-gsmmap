@@ -351,11 +351,13 @@ func convertWireToPsSubscriberState(w *gsm_map.PSSubscriberState) (*PsSubscriber
 	return out, nil
 }
 
-// encodePDPContextInfoList serializes each gsm_map.PDPContextInfo entry to
-// its DER encoding, which the caller sees as opaque bytes. Every extension is
-// kept, private extensions included: 3GPP TS 29.002 V19.1.0 §17.7.11 has the
-// receiver discard the private extensions it does not support, and only the
-// caller knows which it supports.
+// encodePDPContextInfoList returns each gsm_map.PDPContextInfo entry exactly
+// as received, which the caller sees as opaque bytes: a receiver must not
+// reject an unsupported extension (3GPP TS 29.002 V19.1.0 §17.1.4), and BER
+// leaves SET OF components in any order (ITU-T X.690 (02/2021) §8.12), so a
+// DER re-encoding could fail. Every extension is kept, private extensions
+// included: TS 29.002 §17.7.11 has the receiver discard the private
+// extensions it does not support, and only the caller knows which it supports.
 func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, error) {
 	if list == nil {
 		list = &gsm_map.PDPContextInfoList{}
@@ -364,7 +366,7 @@ func encodePDPContextInfoList(list *gsm_map.PDPContextInfoList) ([]HexBytes, err
 	out := make([]HexBytes, len(list.Values))
 	for i := range list.Values {
 		ctx := list.Values[i]
-		enc, err := ctx.MarshalDER()
+		enc, err := ctx.MarshalBER()
 		if err != nil {
 			return nil, fmt.Errorf("PDPContextInfo[%d]: %w", i, err)
 		}

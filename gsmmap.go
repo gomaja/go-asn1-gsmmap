@@ -266,7 +266,7 @@ type UpdateLocation struct {
 	CsLCSNotSupportedByUE       bool                        // [12] NULL
 	VGmlcAddress                string                      // [2] GSN-Address; empty if absent
 	AddInfo                     *AddInfo                    // [13]
-	PagingArea                  []HexBytes                  // [14] opaque LocationArea entries: Parse returns DER; Marshal requires BER per 3GPP TS 29.002 V19.1.0 §17.1.1 and sends DER
+	PagingArea                  []HexBytes                  // [14] opaque LocationArea entries: Parse returns bytes as received; Marshal requires BER per 3GPP TS 29.002 V19.1.0 §17.1.1 and freshly encodes
 	SkipSubscriberDataUpdate    bool                        // [15] NULL
 	RestorationIndicator        bool                        // [16] NULL
 	EplmnList                   []HexBytes                  // [3] list of PLMNId (3 octets each)
@@ -563,15 +563,19 @@ type SubscriberInfo struct {
 
 // PsSubscriberState is the PS-SubscriberState CHOICE (opCode 71).
 // Set exactly one alternative. The PDP-ContextInfoList alternatives carry
-// opaque gsm_map.PDPContextInfo bytes, in DER from Parse, with every extension
-// kept: 3GPP TS 29.002 V19.1.0 §17.7.11 has the receiver discard the private
-// extensions it does not support, and only the caller knows which it supports.
+// opaque gsm_map.PDPContextInfo bytes, exactly as received from Parse
+// (3GPP TS 29.002 V19.1.0 §17.1.4; ITU-T X.690 (02/2021) §8.12). Marshal
+// freshly encodes them and refuses content needing schema-dependent repair
+// (X.690 §§10.3, 11.6), so a parsed value carrying such content does not
+// marshal. Every extension is kept: TS 29.002 §17.7.11 has the receiver
+// discard the private extensions it does not support, and only the caller
+// knows which it supports.
 type PsSubscriberState struct {
 	NotProvidedFromSGSNorMME         bool                // [0] NULL
 	PsDetached                       bool                // [1] NULL
 	PsAttachedNotReachableForPaging  bool                // [2] NULL
 	PsAttachedReachableForPaging     bool                // [3] NULL
-	PsPDPActiveNotReachableForPaging []HexBytes          // [4] opaque PDP-ContextInfo entries: Parse returns DER; Marshal requires BER per 3GPP TS 29.002 V19.1.0 §17.1.1 and sends DER
+	PsPDPActiveNotReachableForPaging []HexBytes          // [4] opaque PDP-ContextInfo entries: Parse returns bytes as received; Marshal requires BER per 3GPP TS 29.002 V19.1.0 §17.1.1 and freshly encodes
 	PsPDPActiveReachableForPaging    []HexBytes          // [5] opaque PDP-ContextInfo entries, as for [4]
 	NetDetNotReachable               *NotReachableReason // untagged, TS 29.002 V19.1.0 §17.7.1
 }
