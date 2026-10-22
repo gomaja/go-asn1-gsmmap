@@ -166,17 +166,11 @@ func convertWireToRoamingNotAllowedParam(w *gsm_map.RoamingNotAllowedParam) *Roa
 	if w == nil {
 		return nil
 	}
-	out := &RoamingNotAllowedParam{}
+	out := &RoamingNotAllowedParam{RoamingNotAllowedCause: w.RoamingNotAllowedCause}
 	if w.AdditionalRoamingNotAllowedCause != nil {
-		// 3GPP TS 29.002 V19.1.0 §17.7.7: "if the
-		// additionalRoamingNotallowedCause is received by the MSC/VLR or SGSN
-		// then the roamingNotAllowedCause shall be discarded."
 		v := *w.AdditionalRoamingNotAllowedCause
 		out.AdditionalRoamingNotAllowedCause = &v
-		return out
 	}
-	c := w.RoamingNotAllowedCause
-	out.RoamingNotAllowedCause = &c
 	return out
 }
 

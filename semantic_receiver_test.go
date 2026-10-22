@@ -156,11 +156,11 @@ func TestAbsentSubscriberReasonIgnoresUnknown(t *testing.T) {
 	}
 }
 
-// §17.7.7: "if the additionalRoamingNotallowedCause is received by the
-// MSC/VLR or SGSN then the roamingNotAllowedCause shall be discarded."
-func TestRoamingNotAllowedCauseDiscardedWithAdditionalCause(t *testing.T) {
-	additional := gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed
-	for _, cause := range []gsm_map.RoamingNotAllowedCause{0, 1, 2, 3, -1, math.MaxInt64} {
+// 3GPP TS 29.002 V19.1.0 §17.7.7: the base cause is mandatory;
+// discarding it beside an additional cause is specific to MSC/VLR and SGSN.
+func TestRoamingNotAllowedCauseRetainedWithAdditionalCause(t *testing.T) {
+	additional := AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed
+	for _, cause := range []RoamingNotAllowedCause{RoamingNotAllowedCausePlmnRoamingNotAllowed, 1, 2, RoamingNotAllowedCauseOperatorDeterminedBarring, -1, math.MaxInt64} {
 		for _, withAdditional := range []bool{true, false} {
 			w := &gsm_map.RoamingNotAllowedParam{RoamingNotAllowedCause: cause}
 			if withAdditional {
@@ -178,15 +178,15 @@ func TestRoamingNotAllowedCauseDiscardedWithAdditionalCause(t *testing.T) {
 				t.Fatalf("cause %d additional %t: %v", cause, withAdditional, err)
 			}
 			got := v.(*RoamingNotAllowedParam)
+			if got.RoamingNotAllowedCause != cause {
+				t.Errorf("cause %d: RoamingNotAllowedCause = %v", cause, got.RoamingNotAllowedCause)
+			}
 			if withAdditional {
-				if got.RoamingNotAllowedCause != nil {
-					t.Errorf("cause %d: RoamingNotAllowedCause = %v, want nil", cause, got.RoamingNotAllowedCause)
-				}
 				if got.AdditionalRoamingNotAllowedCause == nil || *got.AdditionalRoamingNotAllowedCause != additional {
 					t.Errorf("cause %d: AdditionalRoamingNotAllowedCause = %v", cause, got.AdditionalRoamingNotAllowedCause)
 				}
-			} else if c := got.RoamingNotAllowedCause; c == nil || *c != cause {
-				t.Errorf("cause %d without additional cause: RoamingNotAllowedCause = %v", cause, c)
+			} else if got.AdditionalRoamingNotAllowedCause != nil {
+				t.Errorf("cause %d: AdditionalRoamingNotAllowedCause = %v, want nil", cause, got.AdditionalRoamingNotAllowedCause)
 			}
 		}
 	}

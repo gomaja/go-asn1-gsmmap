@@ -7,8 +7,6 @@ package gsmmap
 
 import (
 	"testing"
-
-	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
 // Compile-smoke: every new public type must be referenceable.
@@ -39,28 +37,28 @@ func TestMapErrorParamDiagnosticEnumStringers(t *testing.T) {
 		want string
 	}{
 		// CallBarringCause (from CallBarredParam, ExtensibleCallBarredParam).
-		{"CallBarringCauseBarringServiceActive", gsm_map.CallBarringCauseBarringServiceActive.String(), "barringServiceActive"},
-		{"CallBarringCauseOperatorBarring", gsm_map.CallBarringCauseOperatorBarring.String(), "operatorBarring"},
+		{"CallBarringCauseBarringServiceActive", CallBarringCauseBarringServiceActive.String(), "barringServiceActive"},
+		{"CallBarringCauseOperatorBarring", CallBarringCauseOperatorBarring.String(), "operatorBarring"},
 
 		// RoamingNotAllowedCause (from RoamingNotAllowedParam). Spec lists
 		// plmnRoamingNotAllowed and operatorDeterminedBarring as the two
 		// canonical values.
-		{"RoamingNotAllowedCausePlmnRoamingNotAllowed", gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed.String(), "plmnRoamingNotAllowed"},
-		{"RoamingNotAllowedCauseOperatorDeterminedBarring", gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring.String(), "operatorDeterminedBarring"},
+		{"RoamingNotAllowedCausePlmnRoamingNotAllowed", RoamingNotAllowedCausePlmnRoamingNotAllowed.String(), "plmnRoamingNotAllowed"},
+		{"RoamingNotAllowedCauseOperatorDeterminedBarring", RoamingNotAllowedCauseOperatorDeterminedBarring.String(), "operatorDeterminedBarring"},
 
 		// AdditionalRoamingNotAllowedCause (from RoamingNotAllowedParam).
-		{"AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed", gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed.String(), "supportedRAT-TypesNotAllowed"},
+		{"AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed", AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed.String(), "supportedRAT-TypesNotAllowed"},
 
 		// NetworkResource (from SystemFailureParam, ExtensibleSystemFailureParam).
-		{"NetworkResourcePlmn", gsm_map.NetworkResourcePlmn.String(), "plmn"},
-		{"NetworkResourceHlr", gsm_map.NetworkResourceHlr.String(), "hlr"},
-		{"NetworkResourceVlr", gsm_map.NetworkResourceVlr.String(), "vlr"},
+		{"NetworkResourcePlmn", NetworkResourcePlmn.String(), "plmn"},
+		{"NetworkResourceHlr", NetworkResourceHlr.String(), "hlr"},
+		{"NetworkResourceVlr", NetworkResourceVlr.String(), "vlr"},
 
 		// FailureCauseParam (from ExtensibleSystemFailureParam).
-		{"FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests", gsm_map.FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests.String(), "limitReachedOnNumberOfConcurrentLocationRequests"},
+		{"FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests", FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests.String(), "limitReachedOnNumberOfConcurrentLocationRequests"},
 
 		// UnknownSubscriberDiagnostic (from UnknownSubscriberParam).
-		{"UnknownSubscriberDiagnosticImsiUnknown", gsm_map.UnknownSubscriberDiagnosticImsiUnknown.String(), "imsiUnknown"},
+		{"UnknownSubscriberDiagnosticImsiUnknown", UnknownSubscriberDiagnosticImsiUnknown.String(), "imsiUnknown"},
 	}
 	for _, tc := range cases {
 		if tc.got != tc.want {
@@ -97,8 +95,8 @@ func TestMapErrorParamZeroValues(t *testing.T) {
 	}
 
 	var rna RoamingNotAllowedParam
-	if rna.RoamingNotAllowedCause != nil {
-		t.Error("RoamingNotAllowedParam zero: cause should be nil")
+	if rna.RoamingNotAllowedCause != RoamingNotAllowedCausePlmnRoamingNotAllowed {
+		t.Error("RoamingNotAllowedParam zero: cause should be plmnRoamingNotAllowed")
 	}
 	if rna.AdditionalRoamingNotAllowedCause != nil {
 		t.Error("RoamingNotAllowedParam zero: additional cause should be nil")
@@ -113,14 +111,14 @@ func TestMapErrorParamZeroValues(t *testing.T) {
 // Diagnostic-enum fields are pointers so that "absent" is distinguishable
 // from "value 0". Verify the pointer indirection works as expected.
 func TestMapErrorParamPointerSemantics(t *testing.T) {
-	cause := gsm_map.CallBarringCauseOperatorBarring
+	cause := CallBarringCauseOperatorBarring
 	cb := CallBarredParam{
 		CallBarringCause: &cause,
 	}
 	if cb.CallBarringCause == nil {
 		t.Fatal("CallBarringCause should not be nil after assignment")
 	}
-	if *cb.CallBarringCause != gsm_map.CallBarringCauseOperatorBarring {
+	if *cb.CallBarringCause != CallBarringCauseOperatorBarring {
 		t.Errorf("CallBarringCause: want OperatorBarring, got %v", *cb.CallBarringCause)
 	}
 

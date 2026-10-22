@@ -43,8 +43,8 @@ func (h *HexBytes) UnmarshalJSON(data []byte) error {
 type SmDeliveryNotIntended = gsm_map.SMDeliveryNotIntended
 
 const (
-	SmDeliveryOnlyIMSIRequested   = gsm_map.SMDeliveryNotIntendedOnlyIMSIRequested
-	SmDeliveryOnlyMCCMNCRequested = gsm_map.SMDeliveryNotIntendedOnlyMCCMNCRequested
+	SmDeliveryOnlyIMSIRequested   SmDeliveryNotIntended = gsm_map.SMDeliveryNotIntendedOnlyIMSIRequested
+	SmDeliveryOnlyMCCMNCRequested SmDeliveryNotIntended = gsm_map.SMDeliveryNotIntendedOnlyMCCMNCRequested
 )
 
 // SriSmCorrelationID corresponds to CorrelationID SEQUENCE.
@@ -171,9 +171,9 @@ type MtFsmResp struct {
 type SmDeliveryOutcome = gsm_map.SMDeliveryOutcome
 
 const (
-	SmDeliveryMemoryCapacityExceeded = gsm_map.SMDeliveryOutcomeMemoryCapacityExceeded
-	SmDeliveryAbsentSubscriber       = gsm_map.SMDeliveryOutcomeAbsentSubscriber
-	SmDeliverySuccessfulTransfer     = gsm_map.SMDeliveryOutcomeSuccessfulTransfer
+	SmDeliveryMemoryCapacityExceeded SmDeliveryOutcome = gsm_map.SMDeliveryOutcomeMemoryCapacityExceeded
+	SmDeliveryAbsentSubscriber       SmDeliveryOutcome = gsm_map.SMDeliveryOutcomeAbsentSubscriber
+	SmDeliverySuccessfulTransfer     SmDeliveryOutcome = gsm_map.SMDeliveryOutcomeSuccessfulTransfer
 )
 
 // SmRpDa represents the SM-RP-DA CHOICE (destination address).
@@ -311,8 +311,8 @@ type SupportedLCSCapabilitySets struct {
 type ISTSupportIndicator = gsm_map.ISTSupportIndicator
 
 const (
-	ISTSupportIndicatorBasicISTSupported   = gsm_map.ISTSupportIndicatorBasicISTSupported
-	ISTSupportIndicatorIstCommandSupported = gsm_map.ISTSupportIndicatorIstCommandSupported
+	ISTSupportIndicatorBasicISTSupported   ISTSupportIndicator = gsm_map.ISTSupportIndicatorBasicISTSupported
+	ISTSupportIndicatorIstCommandSupported ISTSupportIndicator = gsm_map.ISTSupportIndicatorIstCommandSupported
 )
 
 // UpdateLocationRes represents an UpdateLocation response (opCode 2).
@@ -331,29 +331,29 @@ type UpdateLocationRes struct {
 type UsedRatType = gsm_map.UsedRATType
 
 const (
-	UsedRatUTRAN          = gsm_map.UsedRATTypeUtran
-	UsedRatGERAN          = gsm_map.UsedRATTypeGeran
-	UsedRatGAN            = gsm_map.UsedRATTypeGan
-	UsedRatIHSPAEvolution = gsm_map.UsedRATTypeIHspaEvolution
-	UsedRatEUTRAN         = gsm_map.UsedRATTypeEUtran
-	UsedRatNBIOT          = gsm_map.UsedRATTypeNbIot
+	UsedRatUTRAN          UsedRatType = gsm_map.UsedRATTypeUtran
+	UsedRatGERAN          UsedRatType = gsm_map.UsedRATTypeGeran
+	UsedRatGAN            UsedRatType = gsm_map.UsedRATTypeGan
+	UsedRatIHSPAEvolution UsedRatType = gsm_map.UsedRATTypeIHspaEvolution
+	UsedRatEUTRAN         UsedRatType = gsm_map.UsedRATTypeEUtran
+	UsedRatNBIOT          UsedRatType = gsm_map.UsedRATTypeNbIot
 )
 
 // UeSrvccCapability per 3GPP TS 29.002 (opCode 23). Aliased from go-asn1.
 type UeSrvccCapability = gsm_map.UESRVCCCapability
 
 const (
-	UeSrvccNotSupported = gsm_map.UESRVCCCapabilityUeSrvccNotSupported
-	UeSrvccSupported    = gsm_map.UESRVCCCapabilityUeSrvccSupported
+	UeSrvccNotSupported UeSrvccCapability = gsm_map.UESRVCCCapabilityUeSrvccNotSupported
+	UeSrvccSupported    UeSrvccCapability = gsm_map.UESRVCCCapabilityUeSrvccSupported
 )
 
 // SmsRegisterRequest per 3GPP TS 29.002 (opCode 23). Aliased from go-asn1.
 type SmsRegisterRequest = gsm_map.SMSRegisterRequest
 
 const (
-	SmsRegistrationRequired     = gsm_map.SMSRegisterRequestSmsRegistrationRequired
-	SmsRegistrationNotPreferred = gsm_map.SMSRegisterRequestSmsRegistrationNotPreferred
-	SmsRegistrationNoPreference = gsm_map.SMSRegisterRequestNoPreference
+	SmsRegistrationRequired     SmsRegisterRequest = gsm_map.SMSRegisterRequestSmsRegistrationRequired
+	SmsRegistrationNotPreferred SmsRegisterRequest = gsm_map.SMSRegisterRequestSmsRegistrationNotPreferred
+	SmsRegistrationNoPreference SmsRegisterRequest = gsm_map.SMSRegisterRequestNoPreference
 )
 
 // EpsInfo is the EPS-Info CHOICE (opCode 23). Set exactly one of PdnGwUpdate
@@ -465,8 +465,8 @@ type UpdateGprsLocationRes struct {
 type DomainType = gsm_map.DomainType
 
 const (
-	CsDomain = gsm_map.DomainTypeCsDomain
-	PsDomain = gsm_map.DomainTypePsDomain
+	CsDomain DomainType = gsm_map.DomainTypeCsDomain
+	PsDomain DomainType = gsm_map.DomainTypePsDomain
 )
 
 // RequestedNodes indicates which network nodes are requested.
@@ -595,18 +595,18 @@ type MnpInfoRes struct {
 type ImsVoiceOverPSSessionsIndication = gsm_map.IMSVoiceOverPSSessionsInd
 
 const (
-	IMSVoiceOverPSNotSupported = gsm_map.IMSVoiceOverPSSessionsIndImsVoiceOverPSSessionsNotSupported
-	IMSVoiceOverPSSupported    = gsm_map.IMSVoiceOverPSSessionsIndImsVoiceOverPSSessionsSupported
-	IMSVoiceOverPSUnknown      = gsm_map.IMSVoiceOverPSSessionsIndUnknown
+	IMSVoiceOverPSNotSupported ImsVoiceOverPSSessionsIndication = gsm_map.IMSVoiceOverPSSessionsIndImsVoiceOverPSSessionsNotSupported
+	IMSVoiceOverPSSupported    ImsVoiceOverPSSessionsIndication = gsm_map.IMSVoiceOverPSSessionsIndImsVoiceOverPSSessionsSupported
+	IMSVoiceOverPSUnknown      ImsVoiceOverPSSessionsIndication = gsm_map.IMSVoiceOverPSSessionsIndUnknown
 )
 
 // DaylightSavingTime is non-extensible (TS 29.002 V19.1.0 §17.7.1).
 type DaylightSavingTime = gsm_map.DaylightSavingTime
 
 const (
-	DaylightSavingTimeNoAdjustment           = gsm_map.DaylightSavingTimeNoAdjustment
-	DaylightSavingTimePlusOneHourAdjustment  = gsm_map.DaylightSavingTimePlusOneHourAdjustment
-	DaylightSavingTimePlusTwoHoursAdjustment = gsm_map.DaylightSavingTimePlusTwoHoursAdjustment
+	DaylightSavingTimeNoAdjustment           DaylightSavingTime = gsm_map.DaylightSavingTimeNoAdjustment
+	DaylightSavingTimePlusOneHourAdjustment  DaylightSavingTime = gsm_map.DaylightSavingTimePlusOneHourAdjustment
+	DaylightSavingTimePlusTwoHoursAdjustment DaylightSavingTime = gsm_map.DaylightSavingTimePlusTwoHoursAdjustment
 )
 
 // GprsMSClass is the GPRSMSClass SEQUENCE (opCode 71).
@@ -662,10 +662,10 @@ const (
 type NotReachableReason = gsm_map.NotReachableReason
 
 const (
-	NotReachableReasonMsPurged       = gsm_map.NotReachableReasonMsPurged
-	NotReachableReasonImsiDetached   = gsm_map.NotReachableReasonImsiDetached
-	NotReachableReasonRestrictedArea = gsm_map.NotReachableReasonRestrictedArea
-	NotReachableReasonNotRegistered  = gsm_map.NotReachableReasonNotRegistered
+	NotReachableReasonMsPurged       NotReachableReason = gsm_map.NotReachableReasonMsPurged
+	NotReachableReasonImsiDetached   NotReachableReason = gsm_map.NotReachableReasonImsiDetached
+	NotReachableReasonRestrictedArea NotReachableReason = gsm_map.NotReachableReasonRestrictedArea
+	NotReachableReasonNotRegistered  NotReachableReason = gsm_map.NotReachableReasonNotRegistered
 )
 
 // CSLocationInformation contains CS domain location data (opCode 71).
@@ -730,8 +730,8 @@ type GPRSLocationInformation struct {
 type InterrogationType = gsm_map.InterrogationType
 
 const (
-	InterrogationBasicCall  = gsm_map.InterrogationTypeBasicCall
-	InterrogationForwarding = gsm_map.InterrogationTypeForwarding
+	InterrogationBasicCall  InterrogationType = gsm_map.InterrogationTypeBasicCall
+	InterrogationForwarding InterrogationType = gsm_map.InterrogationTypeForwarding
 )
 
 // ForwardingReason per 3GPP TS 29.002 V19.1.0 §17.7.3. It is not
@@ -740,32 +740,32 @@ const (
 type ForwardingReason = gsm_map.ForwardingReason
 
 const (
-	ForwardingNotReachable = gsm_map.ForwardingReasonNotReachable
-	ForwardingBusy         = gsm_map.ForwardingReasonBusy
-	ForwardingNoReply      = gsm_map.ForwardingReasonNoReply
+	ForwardingNotReachable ForwardingReason = gsm_map.ForwardingReasonNotReachable
+	ForwardingBusy         ForwardingReason = gsm_map.ForwardingReasonBusy
+	ForwardingNoReply      ForwardingReason = gsm_map.ForwardingReasonNoReply
 )
 
 // NumberPortabilityStatus per 3GPP TS 29.002.
 type NumberPortabilityStatus = gsm_map.NumberPortabilityStatus
 
 const (
-	MnpNotKnownToBePorted                  = gsm_map.NumberPortabilityStatusNotKnownToBePorted
-	MnpOwnNumberPortedOut                  = gsm_map.NumberPortabilityStatusOwnNumberPortedOut
-	MnpForeignNumberPortedToForeignNetwork = gsm_map.NumberPortabilityStatusForeignNumberPortedToForeignNetwork
-	MnpOwnNumberNotPortedOut               = gsm_map.NumberPortabilityStatusOwnNumberNotPortedOut
-	MnpForeignNumberPortedIn               = gsm_map.NumberPortabilityStatusForeignNumberPortedIn
+	MnpNotKnownToBePorted                  NumberPortabilityStatus = gsm_map.NumberPortabilityStatusNotKnownToBePorted
+	MnpOwnNumberPortedOut                  NumberPortabilityStatus = gsm_map.NumberPortabilityStatusOwnNumberPortedOut
+	MnpForeignNumberPortedToForeignNetwork NumberPortabilityStatus = gsm_map.NumberPortabilityStatusForeignNumberPortedToForeignNetwork
+	MnpOwnNumberNotPortedOut               NumberPortabilityStatus = gsm_map.NumberPortabilityStatusOwnNumberNotPortedOut
+	MnpForeignNumberPortedIn               NumberPortabilityStatus = gsm_map.NumberPortabilityStatusForeignNumberPortedIn
 )
 
 // UnavailabilityCause per 3GPP TS 29.002.
 type UnavailabilityCause = gsm_map.UnavailabilityCause
 
 const (
-	UnavailBearerServiceNotProvisioned = gsm_map.UnavailabilityCauseBearerServiceNotProvisioned
-	UnavailTeleserviceNotProvisioned   = gsm_map.UnavailabilityCauseTeleserviceNotProvisioned
-	UnavailAbsentSubscriber            = gsm_map.UnavailabilityCauseAbsentSubscriber
-	UnavailBusySubscriber              = gsm_map.UnavailabilityCauseBusySubscriber
-	UnavailCallBarred                  = gsm_map.UnavailabilityCauseCallBarred
-	UnavailCugReject                   = gsm_map.UnavailabilityCauseCugReject
+	UnavailBearerServiceNotProvisioned UnavailabilityCause = gsm_map.UnavailabilityCauseBearerServiceNotProvisioned
+	UnavailTeleserviceNotProvisioned   UnavailabilityCause = gsm_map.UnavailabilityCauseTeleserviceNotProvisioned
+	UnavailAbsentSubscriber            UnavailabilityCause = gsm_map.UnavailabilityCauseAbsentSubscriber
+	UnavailBusySubscriber              UnavailabilityCause = gsm_map.UnavailabilityCauseBusySubscriber
+	UnavailCallBarred                  UnavailabilityCause = gsm_map.UnavailabilityCauseCallBarred
+	UnavailCugReject                   UnavailabilityCause = gsm_map.UnavailabilityCauseCugReject
 )
 
 // SuppressMTSSFlags is the SuppressMTSS BIT STRING (bits 0..1 defined).
@@ -814,16 +814,16 @@ type ExtExternalSignalInfo struct {
 type ProtocolID = gsm_map.ProtocolId
 
 const (
-	ProtocolIDGsm0408    = gsm_map.ProtocolIdGsm0408
-	ProtocolIDGsm0806    = gsm_map.ProtocolIdGsm0806
-	ProtocolIDGsmBSSMAP  = gsm_map.ProtocolIdGsmBSSMAP
-	ProtocolIDEts3001021 = gsm_map.ProtocolIdEts3001021
+	ProtocolIDGsm0408    ProtocolID = gsm_map.ProtocolIdGsm0408
+	ProtocolIDGsm0806    ProtocolID = gsm_map.ProtocolIdGsm0806
+	ProtocolIDGsmBSSMAP  ProtocolID = gsm_map.ProtocolIdGsmBSSMAP
+	ProtocolIDEts3001021 ProtocolID = gsm_map.ProtocolIdEts3001021
 )
 
 // ExtProtocolID is Ext-ProtocolId (TS 29.002 V19.1.0 §17.7.8).
 type ExtProtocolID = gsm_map.ExtProtocolId
 
-const ExtProtocolIDEts300356 = gsm_map.ExtProtocolIdEts300356
+const ExtProtocolIDEts300356 ExtProtocolID = gsm_map.ExtProtocolIdEts300356
 
 // SriCamelInfo mirrors the CamelInfo SEQUENCE used in SRI.
 type SriCamelInfo struct {
@@ -877,8 +877,8 @@ type CamelRoutingInfo struct {
 type OBcsmTriggerDetectionPoint = gsm_map.OBcsmTriggerDetectionPoint
 
 const (
-	OBcsmTriggerCollectedInfo      = gsm_map.OBcsmTriggerDetectionPointCollectedInfo
-	OBcsmTriggerRouteSelectFailure = gsm_map.OBcsmTriggerDetectionPointRouteSelectFailure
+	OBcsmTriggerCollectedInfo      OBcsmTriggerDetectionPoint = gsm_map.OBcsmTriggerDetectionPointCollectedInfo
+	OBcsmTriggerRouteSelectFailure OBcsmTriggerDetectionPoint = gsm_map.OBcsmTriggerDetectionPointRouteSelectFailure
 )
 
 // TBcsmTriggerDetectionPoint per 3GPP TS 29.002. The encoder accepts only
@@ -887,9 +887,9 @@ const (
 type TBcsmTriggerDetectionPoint = gsm_map.TBcsmTriggerDetectionPoint
 
 const (
-	TBcsmTriggerTermAttemptAuthorized = gsm_map.TBcsmTriggerDetectionPointTermAttemptAuthorized
-	TBcsmTriggerTBusy                 = gsm_map.TBcsmTriggerDetectionPointTBusy
-	TBcsmTriggerTNoAnswer             = gsm_map.TBcsmTriggerDetectionPointTNoAnswer
+	TBcsmTriggerTermAttemptAuthorized TBcsmTriggerDetectionPoint = gsm_map.TBcsmTriggerDetectionPointTermAttemptAuthorized
+	TBcsmTriggerTBusy                 TBcsmTriggerDetectionPoint = gsm_map.TBcsmTriggerDetectionPointTBusy
+	TBcsmTriggerTNoAnswer             TBcsmTriggerDetectionPoint = gsm_map.TBcsmTriggerDetectionPointTNoAnswer
 )
 
 // DefaultCallHandling per 3GPP TS 29.002.
@@ -901,24 +901,24 @@ const (
 type DefaultCallHandling = gsm_map.DefaultCallHandling
 
 const (
-	DefaultCallHandlingContinueCall = gsm_map.DefaultCallHandlingContinueCall
-	DefaultCallHandlingReleaseCall  = gsm_map.DefaultCallHandlingReleaseCall
+	DefaultCallHandlingContinueCall DefaultCallHandling = gsm_map.DefaultCallHandlingContinueCall
+	DefaultCallHandlingReleaseCall  DefaultCallHandling = gsm_map.DefaultCallHandlingReleaseCall
 )
 
 // CallTypeCriteria per 3GPP TS 29.002 (O-BcsmCamelTDP-Criteria).
 type CallTypeCriteria = gsm_map.CallTypeCriteria
 
 const (
-	CallTypeCriteriaForwarded    = gsm_map.CallTypeCriteriaForwarded
-	CallTypeCriteriaNotForwarded = gsm_map.CallTypeCriteriaNotForwarded
+	CallTypeCriteriaForwarded    CallTypeCriteria = gsm_map.CallTypeCriteriaForwarded
+	CallTypeCriteriaNotForwarded CallTypeCriteria = gsm_map.CallTypeCriteriaNotForwarded
 )
 
 // MatchType per 3GPP TS 29.002 (DestinationNumberCriteria).
 type MatchType = gsm_map.MatchType
 
 const (
-	MatchTypeInhibiting = gsm_map.MatchTypeInhibiting
-	MatchTypeEnabling   = gsm_map.MatchTypeEnabling
+	MatchTypeInhibiting MatchType = gsm_map.MatchTypeInhibiting
+	MatchTypeEnabling   MatchType = gsm_map.MatchTypeEnabling
 )
 
 // DestinationNumberCriteria per 3GPP TS 29.002.
@@ -1154,8 +1154,8 @@ type MCSI struct {
 type DefaultSMSHandling = gsm_map.DefaultSMSHandling
 
 const (
-	DefaultSMSHandlingContinueTransaction = gsm_map.DefaultSMSHandlingContinueTransaction
-	DefaultSMSHandlingReleaseTransaction  = gsm_map.DefaultSMSHandlingReleaseTransaction
+	DefaultSMSHandlingContinueTransaction DefaultSMSHandling = gsm_map.DefaultSMSHandlingContinueTransaction
+	DefaultSMSHandlingReleaseTransaction  DefaultSMSHandling = gsm_map.DefaultSMSHandlingReleaseTransaction
 )
 
 // SMSTriggerDetectionPoint per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -1167,8 +1167,8 @@ const (
 type SMSTriggerDetectionPoint = gsm_map.SMSTriggerDetectionPoint
 
 const (
-	SMSTriggerDetectionPointSmsCollectedInfo   = gsm_map.SMSTriggerDetectionPointSmsCollectedInfo
-	SMSTriggerDetectionPointSmsDeliveryRequest = gsm_map.SMSTriggerDetectionPointSmsDeliveryRequest
+	SMSTriggerDetectionPointSmsCollectedInfo   SMSTriggerDetectionPoint = gsm_map.SMSTriggerDetectionPointSmsCollectedInfo
+	SMSTriggerDetectionPointSmsDeliveryRequest SMSTriggerDetectionPoint = gsm_map.SMSTriggerDetectionPointSmsDeliveryRequest
 )
 
 // SMSCAMELTDPData per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -1216,8 +1216,8 @@ type SMSCSI struct {
 type MTSMSTPDUType = gsm_map.MTSMSTPDUType
 
 const (
-	MTSMSTPDUTypeSmsDELIVER      = gsm_map.MTSMSTPDUTypeSmsDELIVER
-	MTSMSTPDUTypeSmsSTATUSREPORT = gsm_map.MTSMSTPDUTypeSmsSTATUSREPORT
+	MTSMSTPDUTypeSmsDELIVER      MTSMSTPDUType = gsm_map.MTSMSTPDUTypeSmsDELIVER
+	MTSMSTPDUTypeSmsSTATUSREPORT MTSMSTPDUType = gsm_map.MTSMSTPDUTypeSmsSTATUSREPORT
 )
 
 // MTSmsCAMELTDPCriteria per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -1255,9 +1255,9 @@ type VlrCamelSubscriptionInfo struct {
 type CliRestrictionOption = gsm_map.CliRestrictionOption
 
 const (
-	CliRestrictionPermanent                  = gsm_map.CliRestrictionOptionPermanent
-	CliRestrictionTemporaryDefaultRestricted = gsm_map.CliRestrictionOptionTemporaryDefaultRestricted
-	CliRestrictionTemporaryDefaultAllowed    = gsm_map.CliRestrictionOptionTemporaryDefaultAllowed
+	CliRestrictionPermanent                  CliRestrictionOption = gsm_map.CliRestrictionOptionPermanent
+	CliRestrictionTemporaryDefaultRestricted CliRestrictionOption = gsm_map.CliRestrictionOptionTemporaryDefaultRestricted
+	CliRestrictionTemporaryDefaultAllowed    CliRestrictionOption = gsm_map.CliRestrictionOptionTemporaryDefaultAllowed
 )
 
 // OverrideCategory per 3GPP TS 29.002 V19.1.0 §17.7.4.
@@ -1265,8 +1265,8 @@ const (
 type OverrideCategory = gsm_map.OverrideCategory
 
 const (
-	OverrideEnabled  = gsm_map.OverrideCategoryOverrideEnabled
-	OverrideDisabled = gsm_map.OverrideCategoryOverrideDisabled
+	OverrideEnabled  OverrideCategory = gsm_map.OverrideCategoryOverrideEnabled
+	OverrideDisabled OverrideCategory = gsm_map.OverrideCategoryOverrideDisabled
 )
 
 // SSSubscriptionOption is the SS-SubscriptionOption CHOICE
@@ -1282,9 +1282,9 @@ type SSSubscriptionOption struct {
 type IntraCUGOptions = gsm_map.IntraCUGOptions
 
 const (
-	IntraCUGNoRestrictions = gsm_map.IntraCUGOptionsNoCUGRestrictions
-	IntraCUGICCallBarred   = gsm_map.IntraCUGOptionsCugICCallBarred
-	IntraCUGOGCallBarred   = gsm_map.IntraCUGOptionsCugOGCallBarred
+	IntraCUGNoRestrictions IntraCUGOptions = gsm_map.IntraCUGOptionsNoCUGRestrictions
+	IntraCUGICCallBarred   IntraCUGOptions = gsm_map.IntraCUGOptionsCugICCallBarred
+	IntraCUGOGCallBarred   IntraCUGOptions = gsm_map.IntraCUGOptionsCugOGCallBarred
 )
 
 // CUGSubscription per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -1511,8 +1511,8 @@ type MwStatusFlags struct {
 type SmsGmscAlertEvent = gsm_map.SmsGmscAlertEvent
 
 const (
-	SmsGmscAlertMsAvailableForMtSms   = gsm_map.SmsGmscAlertEventMsAvailableForMtSms
-	SmsGmscAlertMsUnderNewServingNode = gsm_map.SmsGmscAlertEventMsUnderNewServingNode
+	SmsGmscAlertMsAvailableForMtSms   SmsGmscAlertEvent = gsm_map.SmsGmscAlertEventMsAvailableForMtSms
+	SmsGmscAlertMsUnderNewServingNode SmsGmscAlertEvent = gsm_map.SmsGmscAlertEventMsUnderNewServingNode
 )
 
 // AlertServiceCentre represents an AlertServiceCentre request (opCode 64)
@@ -1658,14 +1658,14 @@ type PurgeMSRes struct {
 type RequestingNodeType = gsm_map.RequestingNodeType
 
 const (
-	RequestingNodeVlr           = gsm_map.RequestingNodeTypeVlr
-	RequestingNodeSgsn          = gsm_map.RequestingNodeTypeSgsn
-	RequestingNodeSCscf         = gsm_map.RequestingNodeTypeSCscf
-	RequestingNodeBsf           = gsm_map.RequestingNodeTypeBsf
-	RequestingNodeGanAAAServer  = gsm_map.RequestingNodeTypeGanAaaServer
-	RequestingNodeWlanAAAServer = gsm_map.RequestingNodeTypeWlanAaaServer
-	RequestingNodeMme           = gsm_map.RequestingNodeTypeMme
-	RequestingNodeMmeSgsn       = gsm_map.RequestingNodeTypeMmeSgsn
+	RequestingNodeVlr           RequestingNodeType = gsm_map.RequestingNodeTypeVlr
+	RequestingNodeSgsn          RequestingNodeType = gsm_map.RequestingNodeTypeSgsn
+	RequestingNodeSCscf         RequestingNodeType = gsm_map.RequestingNodeTypeSCscf
+	RequestingNodeBsf           RequestingNodeType = gsm_map.RequestingNodeTypeBsf
+	RequestingNodeGanAAAServer  RequestingNodeType = gsm_map.RequestingNodeTypeGanAaaServer
+	RequestingNodeWlanAAAServer RequestingNodeType = gsm_map.RequestingNodeTypeWlanAaaServer
+	RequestingNodeMme           RequestingNodeType = gsm_map.RequestingNodeTypeMme
+	RequestingNodeMmeSgsn       RequestingNodeType = gsm_map.RequestingNodeTypeMmeSgsn
 )
 
 // ReSynchronisationInfo per 3GPP TS 29.002 (opCode 56).
@@ -1748,9 +1748,9 @@ type SendAuthenticationInfoRes struct {
 type CancellationType = gsm_map.CancellationType
 
 const (
-	CancellationTypeUpdateProcedure        = gsm_map.CancellationTypeUpdateProcedure
-	CancellationTypeSubscriptionWithdraw   = gsm_map.CancellationTypeSubscriptionWithdraw
-	CancellationTypeInitialAttachProcedure = gsm_map.CancellationTypeInitialAttachProcedure
+	CancellationTypeUpdateProcedure        CancellationType = gsm_map.CancellationTypeUpdateProcedure
+	CancellationTypeSubscriptionWithdraw   CancellationType = gsm_map.CancellationTypeSubscriptionWithdraw
+	CancellationTypeInitialAttachProcedure CancellationType = gsm_map.CancellationTypeInitialAttachProcedure
 )
 
 // TypeOfUpdate per 3GPP TS 29.002 V19.1.0 §17.7.1 (opCode 3). Marshal
@@ -1759,8 +1759,8 @@ const (
 type TypeOfUpdate = gsm_map.TypeOfUpdate
 
 const (
-	TypeOfUpdateSgsnChange = gsm_map.TypeOfUpdateSgsnChange
-	TypeOfUpdateMmeChange  = gsm_map.TypeOfUpdateMmeChange
+	TypeOfUpdateSgsnChange TypeOfUpdate = gsm_map.TypeOfUpdateSgsnChange
+	TypeOfUpdateMmeChange  TypeOfUpdate = gsm_map.TypeOfUpdateMmeChange
 )
 
 // CancelLocationIdentity is the CHOICE between IMSI alone and IMSI+LMSI.
@@ -1810,8 +1810,8 @@ type CancelLocation struct {
 type SubscriberStatus = gsm_map.SubscriberStatus
 
 const (
-	SubscriberStatusServiceGranted            = gsm_map.SubscriberStatusServiceGranted
-	SubscriberStatusOperatorDeterminedBarring = gsm_map.SubscriberStatusOperatorDeterminedBarring
+	SubscriberStatusServiceGranted            SubscriberStatus = gsm_map.SubscriberStatusServiceGranted
+	SubscriberStatusOperatorDeterminedBarring SubscriberStatus = gsm_map.SubscriberStatusOperatorDeterminedBarring
 )
 
 // NetworkAccessMode per 3GPP TS 29.002 (3GPP TS 29.002 V19.1.0 §17.7.1).
@@ -1819,9 +1819,9 @@ const (
 type NetworkAccessMode = gsm_map.NetworkAccessMode
 
 const (
-	NetworkAccessModePacketAndCircuit = gsm_map.NetworkAccessModePacketAndCircuit
-	NetworkAccessModeOnlyCircuit      = gsm_map.NetworkAccessModeOnlyCircuit
-	NetworkAccessModeOnlyPacket       = gsm_map.NetworkAccessModeOnlyPacket
+	NetworkAccessModePacketAndCircuit NetworkAccessMode = gsm_map.NetworkAccessModePacketAndCircuit
+	NetworkAccessModeOnlyCircuit      NetworkAccessMode = gsm_map.NetworkAccessModeOnlyCircuit
+	NetworkAccessModeOnlyPacket       NetworkAccessMode = gsm_map.NetworkAccessModeOnlyPacket
 )
 
 // RegionalSubscriptionResponse per 3GPP TS 29.002 (3GPP TS 29.002 V19.1.0 §17.7.1).
@@ -1832,10 +1832,10 @@ const (
 type RegionalSubscriptionResponse = gsm_map.RegionalSubscriptionResponse
 
 const (
-	RegionalSubscriptionResponseNetworkNodeAreaRestricted = gsm_map.RegionalSubscriptionResponseNetworkNodeAreaRestricted
-	RegionalSubscriptionResponseTooManyZoneCodes          = gsm_map.RegionalSubscriptionResponseTooManyZoneCodes
-	RegionalSubscriptionResponseZoneCodesConflict         = gsm_map.RegionalSubscriptionResponseZoneCodesConflict
-	RegionalSubscriptionResponseRegionalSubscNotSupported = gsm_map.RegionalSubscriptionResponseRegionalSubscNotSupported
+	RegionalSubscriptionResponseNetworkNodeAreaRestricted RegionalSubscriptionResponse = gsm_map.RegionalSubscriptionResponseNetworkNodeAreaRestricted
+	RegionalSubscriptionResponseTooManyZoneCodes          RegionalSubscriptionResponse = gsm_map.RegionalSubscriptionResponseTooManyZoneCodes
+	RegionalSubscriptionResponseZoneCodesConflict         RegionalSubscriptionResponse = gsm_map.RegionalSubscriptionResponseZoneCodesConflict
+	RegionalSubscriptionResponseRegionalSubscNotSupported RegionalSubscriptionResponse = gsm_map.RegionalSubscriptionResponseRegionalSubscNotSupported
 )
 
 // ODBGeneralData (BIT STRING SIZE 15..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2121,16 +2121,16 @@ type AMBR struct {
 type SIPTOPermission = gsm_map.SIPTOPermission
 
 const (
-	SIPTOAboveRanAllowed    = gsm_map.SIPTOPermissionSiptoAboveRanAllowed
-	SIPTOAboveRanNotAllowed = gsm_map.SIPTOPermissionSiptoAboveRanNotAllowed
+	SIPTOAboveRanAllowed    SIPTOPermission = gsm_map.SIPTOPermissionSiptoAboveRanAllowed
+	SIPTOAboveRanNotAllowed SIPTOPermission = gsm_map.SIPTOPermissionSiptoAboveRanNotAllowed
 )
 
 // SIPTOLocalNetworkPermission (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1. Aliased from go-asn1.
 type SIPTOLocalNetworkPermission = gsm_map.SIPTOLocalNetworkPermission
 
 const (
-	SIPTOAtLocalNetworkAllowed    = gsm_map.SIPTOLocalNetworkPermissionSiptoAtLocalNetworkAllowed
-	SIPTOAtLocalNetworkNotAllowed = gsm_map.SIPTOLocalNetworkPermissionSiptoAtLocalNetworkNotAllowed
+	SIPTOAtLocalNetworkAllowed    SIPTOLocalNetworkPermission = gsm_map.SIPTOLocalNetworkPermissionSiptoAtLocalNetworkAllowed
+	SIPTOAtLocalNetworkNotAllowed SIPTOLocalNetworkPermission = gsm_map.SIPTOLocalNetworkPermissionSiptoAtLocalNetworkNotAllowed
 )
 
 // LIPAPermission (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2138,9 +2138,9 @@ const (
 type LIPAPermission = gsm_map.LIPAPermission
 
 const (
-	LIPAProhibited  = gsm_map.LIPAPermissionLipaProhibited
-	LIPAOnly        = gsm_map.LIPAPermissionLipaOnly
-	LIPAConditional = gsm_map.LIPAPermissionLipaConditional
+	LIPAProhibited  LIPAPermission = gsm_map.LIPAPermissionLipaProhibited
+	LIPAOnly        LIPAPermission = gsm_map.LIPAPermissionLipaOnly
+	LIPAConditional LIPAPermission = gsm_map.LIPAPermissionLipaConditional
 )
 
 // NIDDMechanism (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2149,8 +2149,8 @@ const (
 type NIDDMechanism = gsm_map.NIDDMechanism
 
 const (
-	NIDDSGiBasedDataDelivery  = gsm_map.NIDDMechanismSGiBasedDataDelivery
-	NIDDSCEFBasedDataDelivery = gsm_map.NIDDMechanismSCEFBasedDataDelivery
+	NIDDSGiBasedDataDelivery  NIDDMechanism = gsm_map.NIDDMechanismSGiBasedDataDelivery
+	NIDDSCEFBasedDataDelivery NIDDMechanism = gsm_map.NIDDMechanismSCEFBasedDataDelivery
 )
 
 // PDPContext (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2209,8 +2209,8 @@ type GPRSSubscriptionData struct {
 type LSAOnlyAccessIndicator = gsm_map.LSAOnlyAccessIndicator
 
 const (
-	LSAAccessOutsideAllowed    = gsm_map.LSAOnlyAccessIndicatorAccessOutsideLSAsAllowed
-	LSAAccessOutsideRestricted = gsm_map.LSAOnlyAccessIndicatorAccessOutsideLSAsRestricted
+	LSAAccessOutsideAllowed    LSAOnlyAccessIndicator = gsm_map.LSAOnlyAccessIndicatorAccessOutsideLSAsAllowed
+	LSAAccessOutsideRestricted LSAOnlyAccessIndicator = gsm_map.LSAOnlyAccessIndicatorAccessOutsideLSAsRestricted
 )
 
 // LSAData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2236,9 +2236,9 @@ type LSAInformation struct {
 type PDNConnectionContinuity = gsm_map.PDNConnectionContinuity
 
 const (
-	PDNConnectionMaintain                             = gsm_map.PDNConnectionContinuityMaintainPDNConnection
-	PDNConnectionDisconnectWithReactivationRequest    = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithReactivationRequest
-	PDNConnectionDisconnectWithoutReactivationRequest = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithoutReactivationRequest
+	PDNConnectionMaintain                             PDNConnectionContinuity = gsm_map.PDNConnectionContinuityMaintainPDNConnection
+	PDNConnectionDisconnectWithReactivationRequest    PDNConnectionContinuity = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithReactivationRequest
+	PDNConnectionDisconnectWithoutReactivationRequest PDNConnectionContinuity = gsm_map.PDNConnectionContinuityDisconnectPDNConnectionWithoutReactivationRequest
 )
 
 // PDNGWAllocationType (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2246,8 +2246,8 @@ const (
 type PDNGWAllocationType = gsm_map.PDNGWAllocationType
 
 const (
-	PDNGWAllocationStatic  = gsm_map.PDNGWAllocationTypeStatic
-	PDNGWAllocationDynamic = gsm_map.PDNGWAllocationTypeDynamic
+	PDNGWAllocationStatic  PDNGWAllocationType = gsm_map.PDNGWAllocationTypeStatic
+	PDNGWAllocationDynamic PDNGWAllocationType = gsm_map.PDNGWAllocationTypeDynamic
 )
 
 // WLANOffloadabilityIndication (ENUMERATED) per TS 29.002.
@@ -2255,8 +2255,8 @@ const (
 type WLANOffloadabilityIndication = gsm_map.WLANOffloadabilityIndication
 
 const (
-	WLANOffloadabilityNotAllowed = gsm_map.WLANOffloadabilityIndicationNotAllowed
-	WLANOffloadabilityAllowed    = gsm_map.WLANOffloadabilityIndicationAllowed
+	WLANOffloadabilityNotAllowed WLANOffloadabilityIndication = gsm_map.WLANOffloadabilityIndicationNotAllowed
+	WLANOffloadabilityAllowed    WLANOffloadabilityIndication = gsm_map.WLANOffloadabilityIndicationAllowed
 )
 
 // AllocationRetentionPriority (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1. PriorityLevel is an opaque INTEGER per spec
@@ -2382,8 +2382,8 @@ type EPSSubscriptionData struct {
 type GMLCRestriction = gsm_map.GMLCRestriction
 
 const (
-	GMLCRestrictionGmlcList    = gsm_map.GMLCRestrictionGmlcList
-	GMLCRestrictionHomeCountry = gsm_map.GMLCRestrictionHomeCountry
+	GMLCRestrictionGmlcList    GMLCRestriction = gsm_map.GMLCRestrictionGmlcList
+	GMLCRestrictionHomeCountry GMLCRestriction = gsm_map.GMLCRestrictionHomeCountry
 )
 
 // NotificationToMSUser (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -2393,10 +2393,10 @@ const (
 type NotificationToMSUser = gsm_map.NotificationToMSUser
 
 const (
-	NotifyLocationAllowed                         = gsm_map.NotificationToMSUserNotifyLocationAllowed
-	NotifyAndVerifyLocationAllowedIfNoResponse    = gsm_map.NotificationToMSUserNotifyAndVerifyLocationAllowedIfNoResponse
-	NotifyAndVerifyLocationNotAllowedIfNoResponse = gsm_map.NotificationToMSUserNotifyAndVerifyLocationNotAllowedIfNoResponse
-	NotificationLocationNotAllowed                = gsm_map.NotificationToMSUserLocationNotAllowed
+	NotifyLocationAllowed                         NotificationToMSUser = gsm_map.NotificationToMSUserNotifyLocationAllowed
+	NotifyAndVerifyLocationAllowedIfNoResponse    NotificationToMSUser = gsm_map.NotificationToMSUserNotifyAndVerifyLocationAllowedIfNoResponse
+	NotifyAndVerifyLocationNotAllowedIfNoResponse NotificationToMSUser = gsm_map.NotificationToMSUserNotifyAndVerifyLocationNotAllowedIfNoResponse
+	NotificationLocationNotAllowed                NotificationToMSUser = gsm_map.NotificationToMSUserLocationNotAllowed
 )
 
 // LCSClientInternalID (ENUMERATED) per TS 29.002
@@ -2407,11 +2407,11 @@ const (
 type LCSClientInternalID = gsm_map.LCSClientInternalID
 
 const (
-	LCSClientBroadcastService          = gsm_map.LCSClientInternalIDBroadcastService
-	LCSClientOAndMHPLMN                = gsm_map.LCSClientInternalIDOAndMHPLMN
-	LCSClientOAndMVPLMN                = gsm_map.LCSClientInternalIDOAndMVPLMN
-	LCSClientAnonymousLocation         = gsm_map.LCSClientInternalIDAnonymousLocation
-	LCSClientTargetMSsubscribedService = gsm_map.LCSClientInternalIDTargetMSsubscribedService
+	LCSClientBroadcastService          LCSClientInternalID = gsm_map.LCSClientInternalIDBroadcastService
+	LCSClientOAndMHPLMN                LCSClientInternalID = gsm_map.LCSClientInternalIDOAndMHPLMN
+	LCSClientOAndMVPLMN                LCSClientInternalID = gsm_map.LCSClientInternalIDOAndMVPLMN
+	LCSClientAnonymousLocation         LCSClientInternalID = gsm_map.LCSClientInternalIDAnonymousLocation
+	LCSClientTargetMSsubscribedService LCSClientInternalID = gsm_map.LCSClientInternalIDTargetMSsubscribedService
 )
 
 // LCSClientExternalID (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.8
@@ -2524,12 +2524,12 @@ type LCSInformation struct {
 type LocationEstimateType = gsm_map.LocationEstimateType
 
 const (
-	LocationEstimateCurrentLocation              = gsm_map.LocationEstimateTypeCurrentLocation
-	LocationEstimateCurrentOrLastKnownLocation   = gsm_map.LocationEstimateTypeCurrentOrLastKnownLocation
-	LocationEstimateInitialLocation              = gsm_map.LocationEstimateTypeInitialLocation
-	LocationEstimateActivateDeferredLocation     = gsm_map.LocationEstimateTypeActivateDeferredLocation
-	LocationEstimateCancelDeferredLocation       = gsm_map.LocationEstimateTypeCancelDeferredLocation
-	LocationEstimateNotificationVerificationOnly = gsm_map.LocationEstimateTypeNotificationVerificationOnly
+	LocationEstimateCurrentLocation              LocationEstimateType = gsm_map.LocationEstimateTypeCurrentLocation
+	LocationEstimateCurrentOrLastKnownLocation   LocationEstimateType = gsm_map.LocationEstimateTypeCurrentOrLastKnownLocation
+	LocationEstimateInitialLocation              LocationEstimateType = gsm_map.LocationEstimateTypeInitialLocation
+	LocationEstimateActivateDeferredLocation     LocationEstimateType = gsm_map.LocationEstimateTypeActivateDeferredLocation
+	LocationEstimateCancelDeferredLocation       LocationEstimateType = gsm_map.LocationEstimateTypeCancelDeferredLocation
+	LocationEstimateNotificationVerificationOnly LocationEstimateType = gsm_map.LocationEstimateTypeNotificationVerificationOnly
 )
 
 // DeferredLocationEventType (BIT STRING SIZE 1..16) per 3GPP TS 29.002 V19.1.0 §17.7.13. 5 named bits (msAvailable through periodicLDR).
@@ -2569,10 +2569,10 @@ type LocationType struct {
 type LCSClientType = gsm_map.LCSClientType
 
 const (
-	LCSClientTypeEmergencyServices       = gsm_map.LCSClientTypeEmergencyServices
-	LCSClientTypeValueAddedServices      = gsm_map.LCSClientTypeValueAddedServices
-	LCSClientTypePlmnOperatorServices    = gsm_map.LCSClientTypePlmnOperatorServices
-	LCSClientTypeLawfulInterceptServices = gsm_map.LCSClientTypeLawfulInterceptServices
+	LCSClientTypeEmergencyServices       LCSClientType = gsm_map.LCSClientTypeEmergencyServices
+	LCSClientTypeValueAddedServices      LCSClientType = gsm_map.LCSClientTypeValueAddedServices
+	LCSClientTypePlmnOperatorServices    LCSClientType = gsm_map.LCSClientTypePlmnOperatorServices
+	LCSClientTypeLawfulInterceptServices LCSClientType = gsm_map.LCSClientTypeLawfulInterceptServices
 )
 
 // LCSFormatIndicator (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.13.
@@ -2580,11 +2580,11 @@ const (
 type LCSFormatIndicator = gsm_map.LCSFormatIndicator
 
 const (
-	LCSFormatLogicalName  = gsm_map.LCSFormatIndicatorLogicalName
-	LCSFormatEMailAddress = gsm_map.LCSFormatIndicatorEMailAddress
-	LCSFormatMsisdn       = gsm_map.LCSFormatIndicatorMsisdn
-	LCSFormatUrl          = gsm_map.LCSFormatIndicatorUrl
-	LCSFormatSipUrl       = gsm_map.LCSFormatIndicatorSipUrl
+	LCSFormatLogicalName  LCSFormatIndicator = gsm_map.LCSFormatIndicatorLogicalName
+	LCSFormatEMailAddress LCSFormatIndicator = gsm_map.LCSFormatIndicatorEMailAddress
+	LCSFormatMsisdn       LCSFormatIndicator = gsm_map.LCSFormatIndicatorMsisdn
+	LCSFormatUrl          LCSFormatIndicator = gsm_map.LCSFormatIndicatorUrl
+	LCSFormatSipUrl       LCSFormatIndicator = gsm_map.LCSFormatIndicatorSipUrl
 )
 
 // LCSClientName (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
@@ -2634,8 +2634,8 @@ type LCSClientID struct {
 type ResponseTimeCategory = gsm_map.ResponseTimeCategory
 
 const (
-	ResponseTimeLowdelay      = gsm_map.ResponseTimeCategoryLowdelay
-	ResponseTimeDelaytolerant = gsm_map.ResponseTimeCategoryDelaytolerant
+	ResponseTimeLowdelay      ResponseTimeCategory = gsm_map.ResponseTimeCategoryLowdelay
+	ResponseTimeDelaytolerant ResponseTimeCategory = gsm_map.ResponseTimeCategoryDelaytolerant
 )
 
 // ResponseTime (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
@@ -2652,8 +2652,8 @@ type ResponseTime struct {
 type LCSQoSClass = gsm_map.LCSQoSClass
 
 const (
-	LCSQoSClassBestEffort = gsm_map.LCSQoSClassBestEffort
-	LCSQoSClassAssured    = gsm_map.LCSQoSClassAssured
+	LCSQoSClassBestEffort LCSQoSClass = gsm_map.LCSQoSClassBestEffort
+	LCSQoSClassAssured    LCSQoSClass = gsm_map.LCSQoSClassAssured
 )
 
 // LCSQoS (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
@@ -2691,11 +2691,11 @@ type LCSQoS struct {
 type PrivacyCheckRelatedAction = gsm_map.PrivacyCheckRelatedAction
 
 const (
-	PrivacyCheckAllowedWithoutNotification = gsm_map.PrivacyCheckRelatedActionAllowedWithoutNotification
-	PrivacyCheckAllowedWithNotification    = gsm_map.PrivacyCheckRelatedActionAllowedWithNotification
-	PrivacyCheckAllowedIfNoResponse        = gsm_map.PrivacyCheckRelatedActionAllowedIfNoResponse
-	PrivacyCheckRestrictedIfNoResponse     = gsm_map.PrivacyCheckRelatedActionRestrictedIfNoResponse
-	PrivacyCheckNotAllowed                 = gsm_map.PrivacyCheckRelatedActionNotAllowed
+	PrivacyCheckAllowedWithoutNotification PrivacyCheckRelatedAction = gsm_map.PrivacyCheckRelatedActionAllowedWithoutNotification
+	PrivacyCheckAllowedWithNotification    PrivacyCheckRelatedAction = gsm_map.PrivacyCheckRelatedActionAllowedWithNotification
+	PrivacyCheckAllowedIfNoResponse        PrivacyCheckRelatedAction = gsm_map.PrivacyCheckRelatedActionAllowedIfNoResponse
+	PrivacyCheckRestrictedIfNoResponse     PrivacyCheckRelatedAction = gsm_map.PrivacyCheckRelatedActionRestrictedIfNoResponse
+	PrivacyCheckNotAllowed                 PrivacyCheckRelatedAction = gsm_map.PrivacyCheckRelatedActionNotAllowed
 )
 
 // LCSPrivacyCheck (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
@@ -2716,8 +2716,8 @@ type LCSCodeword struct {
 type AccuracyFulfilmentIndicator = gsm_map.AccuracyFulfilmentIndicator
 
 const (
-	AccuracyFulfilmentRequestedAccuracyFulfilled    = gsm_map.AccuracyFulfilmentIndicatorRequestedAccuracyFulfilled
-	AccuracyFulfilmentRequestedAccuracyNotFulfilled = gsm_map.AccuracyFulfilmentIndicatorRequestedAccuracyNotFulfilled
+	AccuracyFulfilmentRequestedAccuracyFulfilled    AccuracyFulfilmentIndicator = gsm_map.AccuracyFulfilmentIndicatorRequestedAccuracyFulfilled
+	AccuracyFulfilmentRequestedAccuracyNotFulfilled AccuracyFulfilmentIndicator = gsm_map.AccuracyFulfilmentIndicatorRequestedAccuracyNotFulfilled
 )
 
 // SupportedGADShapes (BIT STRING SIZE 7..16) per 3GPP TS 29.002 V19.1.0 §17.7.13. 7 named bits per 3GPP TS 23.032.
@@ -2816,12 +2816,12 @@ type UtranBaroPressureMeas = gsm_map.UtranBaroPressureMeas
 type AreaType = gsm_map.AreaType
 
 const (
-	AreaTypeCountryCode    = gsm_map.AreaTypeCountryCode
-	AreaTypePlmnId         = gsm_map.AreaTypePlmnId
-	AreaTypeLocationAreaId = gsm_map.AreaTypeLocationAreaId
-	AreaTypeRoutingAreaId  = gsm_map.AreaTypeRoutingAreaId
-	AreaTypeCellGlobalId   = gsm_map.AreaTypeCellGlobalId
-	AreaTypeUtranCellId    = gsm_map.AreaTypeUtranCellId
+	AreaTypeCountryCode    AreaType = gsm_map.AreaTypeCountryCode
+	AreaTypePlmnId         AreaType = gsm_map.AreaTypePlmnId
+	AreaTypeLocationAreaId AreaType = gsm_map.AreaTypeLocationAreaId
+	AreaTypeRoutingAreaId  AreaType = gsm_map.AreaTypeRoutingAreaId
+	AreaTypeCellGlobalId   AreaType = gsm_map.AreaTypeCellGlobalId
+	AreaTypeUtranCellId    AreaType = gsm_map.AreaTypeUtranCellId
 )
 
 // AreaIdentification (OCTET STRING SIZE 2..7) per 3GPP TS 29.002 V19.1.0 §17.7.13. Internal structure per the spec comment
@@ -2847,8 +2847,8 @@ type AreaDefinition struct {
 type OccurrenceInfo = gsm_map.OccurrenceInfo
 
 const (
-	OccurrenceOneTimeEvent      = gsm_map.OccurrenceInfoOneTimeEvent
-	OccurrenceMultipleTimeEvent = gsm_map.OccurrenceInfoMultipleTimeEvent
+	OccurrenceOneTimeEvent      OccurrenceInfo = gsm_map.OccurrenceInfoOneTimeEvent
+	OccurrenceMultipleTimeEvent OccurrenceInfo = gsm_map.OccurrenceInfoMultipleTimeEvent
 )
 
 // IntervalTime (INTEGER 1..32767) per 3GPP TS 29.002 V19.1.0 §17.7.13.
@@ -2897,8 +2897,8 @@ type PeriodicLDRInfo struct {
 type RANTechnology = gsm_map.RANTechnology
 
 const (
-	RANTechnologyGsm  = gsm_map.RANTechnologyGsm
-	RANTechnologyUmts = gsm_map.RANTechnologyUmts
+	RANTechnologyGsm  RANTechnology = gsm_map.RANTechnologyGsm
+	RANTechnologyUmts RANTechnology = gsm_map.RANTechnologyUmts
 )
 
 // ReportingPLMN (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
@@ -2925,16 +2925,16 @@ type ReportingPLMNList struct {
 type TerminationCause = gsm_map.TerminationCause
 
 const (
-	TerminationNormal                              = gsm_map.TerminationCauseNormal
-	TerminationErrorundefined                      = gsm_map.TerminationCauseErrorundefined
-	TerminationInternalTimeout                     = gsm_map.TerminationCauseInternalTimeout
-	TerminationCongestion                          = gsm_map.TerminationCauseCongestion
-	TerminationMtLrRestart                         = gsm_map.TerminationCauseMtLrRestart
-	TerminationPrivacyViolation                    = gsm_map.TerminationCausePrivacyViolation
-	TerminationShapeOfLocationEstimateNotSupported = gsm_map.TerminationCauseShapeOfLocationEstimateNotSupported
-	TerminationSubscriberTermination               = gsm_map.TerminationCauseSubscriberTermination
-	TerminationUETermination                       = gsm_map.TerminationCauseUETermination
-	TerminationNetworkTermination                  = gsm_map.TerminationCauseNetworkTermination
+	TerminationNormal                              TerminationCause = gsm_map.TerminationCauseNormal
+	TerminationErrorundefined                      TerminationCause = gsm_map.TerminationCauseErrorundefined
+	TerminationInternalTimeout                     TerminationCause = gsm_map.TerminationCauseInternalTimeout
+	TerminationCongestion                          TerminationCause = gsm_map.TerminationCauseCongestion
+	TerminationMtLrRestart                         TerminationCause = gsm_map.TerminationCauseMtLrRestart
+	TerminationPrivacyViolation                    TerminationCause = gsm_map.TerminationCausePrivacyViolation
+	TerminationShapeOfLocationEstimateNotSupported TerminationCause = gsm_map.TerminationCauseShapeOfLocationEstimateNotSupported
+	TerminationSubscriberTermination               TerminationCause = gsm_map.TerminationCauseSubscriberTermination
+	TerminationUETermination                       TerminationCause = gsm_map.TerminationCauseUETermination
+	TerminationNetworkTermination                  TerminationCause = gsm_map.TerminationCauseNetworkTermination
 )
 
 // ServingNodeAddress (CHOICE) per TS 29.002 §17.7.13 (used
@@ -3210,30 +3210,61 @@ type AbsentSubscriberSMParam struct {
 	UserIdentifierAlert                    string                        // [3] TBCD-decoded digits; "" = absent
 }
 
+// UnknownSubscriberDiagnostic is extensible (3GPP TS 29.002 V19.1.0 §17.7.7).
+type UnknownSubscriberDiagnostic = gsm_map.UnknownSubscriberDiagnostic
+
+const (
+	UnknownSubscriberDiagnosticImsiUnknown                UnknownSubscriberDiagnostic = gsm_map.UnknownSubscriberDiagnosticImsiUnknown
+	UnknownSubscriberDiagnosticGprsEpsSubscriptionUnknown UnknownSubscriberDiagnostic = gsm_map.UnknownSubscriberDiagnosticGprsEpsSubscriptionUnknown
+	UnknownSubscriberDiagnosticNpdbMismatch               UnknownSubscriberDiagnostic = gsm_map.UnknownSubscriberDiagnosticNpdbMismatch
+)
+
 // UnknownSubscriberParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 1 (unknownSubscriber). The diagnostic
 // distinguishes "we never had this MSISDN" from "this MSISDN is not
 // provisioned for the queried service".
 type UnknownSubscriberParam struct {
-	UnknownSubscriberDiagnostic *gsm_map.UnknownSubscriberDiagnostic
+	UnknownSubscriberDiagnostic *UnknownSubscriberDiagnostic
 }
+
+// CallBarringCause is non-extensible (3GPP TS 29.002 V19.1.0 §17.7.7).
+type CallBarringCause = gsm_map.CallBarringCause
+
+const (
+	CallBarringCauseBarringServiceActive CallBarringCause = gsm_map.CallBarringCauseBarringServiceActive
+	CallBarringCauseOperatorBarring      CallBarringCause = gsm_map.CallBarringCauseOperatorBarring
+)
 
 // CallBarredParam (CHOICE) per TS 29.002 §17.7.7.
 // Returned with errorCode 13 (callBarred). The CHOICE is between a
 // bare CallBarringCause and the extensible variant. Decode populates
 // exactly one of CallBarringCause or ExtensibleCallBarredParam.
 type CallBarredParam struct {
-	CallBarringCause          *gsm_map.CallBarringCause  // bare alternative
+	CallBarringCause          *CallBarringCause          // bare alternative
 	ExtensibleCallBarredParam *ExtensibleCallBarredParam // extensible alternative
 }
 
 // ExtensibleCallBarredParam (SEQUENCE) — extensible variant of the
 // callBarred CHOICE.
 type ExtensibleCallBarredParam struct {
-	CallBarringCause              *gsm_map.CallBarringCause // untagged
-	UnauthorisedMessageOriginator bool                      // [1] NULL flag
-	AnonymousCallRejection        bool                      // [2] NULL flag
+	CallBarringCause              *CallBarringCause // untagged
+	UnauthorisedMessageOriginator bool              // [1] NULL flag
+	AnonymousCallRejection        bool              // [2] NULL flag
 }
+
+// NetworkResource is non-extensible (3GPP TS 29.002 V19.1.0 §17.7.8).
+type NetworkResource = gsm_map.NetworkResource
+
+const (
+	NetworkResourcePlmn           NetworkResource = gsm_map.NetworkResourcePlmn
+	NetworkResourceHlr            NetworkResource = gsm_map.NetworkResourceHlr
+	NetworkResourceVlr            NetworkResource = gsm_map.NetworkResourceVlr
+	NetworkResourcePvlr           NetworkResource = gsm_map.NetworkResourcePvlr
+	NetworkResourceControllingMSC NetworkResource = gsm_map.NetworkResourceControllingMSC
+	NetworkResourceVmsc           NetworkResource = gsm_map.NetworkResourceVmsc
+	NetworkResourceEir            NetworkResource = gsm_map.NetworkResourceEir
+	NetworkResourceRss            NetworkResource = gsm_map.NetworkResourceRss
+)
 
 // SystemFailureParam (CHOICE) per TS 29.002 §17.7.7.
 // Returned with errorCode 34 (systemFailure). Identifies which network
@@ -3243,31 +3274,68 @@ type ExtensibleCallBarredParam struct {
 // NetworkResource is not extensible: Parse rejects a value other than plmn(0)
 // to rss(7) in either alternative with the codec's *ber.ValidationError.
 type SystemFailureParam struct {
-	NetworkResource              *gsm_map.NetworkResource      // bare alternative
+	NetworkResource              *NetworkResource              // bare alternative
 	ExtensibleSystemFailureParam *ExtensibleSystemFailureParam // extensible alternative
 }
+
+// AdditionalNetworkResource is extensible (3GPP TS 29.002 V19.1.0 §17.7.8).
+type AdditionalNetworkResource = gsm_map.AdditionalNetworkResource
+
+const (
+	AdditionalNetworkResourceSgsn   AdditionalNetworkResource = gsm_map.AdditionalNetworkResourceSgsn
+	AdditionalNetworkResourceGgsn   AdditionalNetworkResource = gsm_map.AdditionalNetworkResourceGgsn
+	AdditionalNetworkResourceGmlc   AdditionalNetworkResource = gsm_map.AdditionalNetworkResourceGmlc
+	AdditionalNetworkResourceGsmSCF AdditionalNetworkResource = gsm_map.AdditionalNetworkResourceGsmSCF
+	AdditionalNetworkResourceNplr   AdditionalNetworkResource = gsm_map.AdditionalNetworkResourceNplr
+	AdditionalNetworkResourceAuc    AdditionalNetworkResource = gsm_map.AdditionalNetworkResourceAuc
+	AdditionalNetworkResourceUe     AdditionalNetworkResource = gsm_map.AdditionalNetworkResourceUe
+	AdditionalNetworkResourceMme    AdditionalNetworkResource = gsm_map.AdditionalNetworkResourceMme
+)
+
+// FailureCauseParam is extensible (3GPP TS 29.002 V19.1.0 §17.7.7).
+type FailureCauseParam = gsm_map.FailureCauseParam
+
+const (
+	FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests FailureCauseParam = gsm_map.FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests
+)
 
 // ExtensibleSystemFailureParam (SEQUENCE) — extensible variant of the
 // systemFailure CHOICE.
 type ExtensibleSystemFailureParam struct {
-	NetworkResource           *gsm_map.NetworkResource           // untagged
-	AdditionalNetworkResource *gsm_map.AdditionalNetworkResource // [0]
-	FailureCauseParam         *gsm_map.FailureCauseParam         // [1]
+	NetworkResource           *NetworkResource           // untagged
+	AdditionalNetworkResource *AdditionalNetworkResource // [0]
+	FailureCauseParam         *FailureCauseParam         // [1]
 }
 
-// RoamingNotAllowedParam (SEQUENCE) per TS 29.002 §17.7.7.
-// Returned with errorCode 8 (roamingNotAllowed). The cause distinguishes
-// PLMN-roaming-not-allowed from operator-determined-barring.
-// RoamingNotAllowedCause is mandatory on the wire but nil when
-// AdditionalRoamingNotAllowedCause is present: "if the
-// additionalRoamingNotallowedCause is received by the MSC/VLR or SGSN then
-// the roamingNotAllowedCause shall be discarded" (3GPP TS 29.002 V19.1.0
-// §17.7.7). Only UpdateLocation and UpdateGprsLocation return
-// roamingNotAllowed (§17.6.1); they are sent by the VLR and SGSN, or by an
-// IWF in their place (§8.1.2.1, §8.1.7.1).
+// RoamingNotAllowedCause is non-extensible (3GPP TS 29.002 V19.1.0 §17.7.7).
+type RoamingNotAllowedCause = gsm_map.RoamingNotAllowedCause
+
+const (
+	RoamingNotAllowedCausePlmnRoamingNotAllowed     RoamingNotAllowedCause = gsm_map.RoamingNotAllowedCausePlmnRoamingNotAllowed
+	RoamingNotAllowedCauseOperatorDeterminedBarring RoamingNotAllowedCause = gsm_map.RoamingNotAllowedCauseOperatorDeterminedBarring
+)
+
+// AdditionalRoamingNotAllowedCause is extensible (3GPP TS 29.002 V19.1.0 §17.7.7).
+type AdditionalRoamingNotAllowedCause = gsm_map.AdditionalRoamingNotAllowedCause
+
+const (
+	AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed AdditionalRoamingNotAllowedCause = gsm_map.AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed
+)
+
+// RoamingNotAllowedParam (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.7.
+// Both causes are returned as received. An application acting as MSC/VLR or
+// SGSN must ignore the base cause when the additional cause is present:
+// "if the additionalRoamingNotallowedCause is received by the MSC/VLR or SGSN
+// then the roamingNotAllowedCause shall be discarded" (§17.7.7).
+// Other receivers keep both causes. Only UpdateLocation and UpdateGprsLocation
+// return roamingNotAllowed (§17.6.1); they are sent by the VLR and SGSN, or by
+// an IWF in their place (§8.1.2.1, §8.1.7.1).
 type RoamingNotAllowedParam struct {
-	RoamingNotAllowedCause           *gsm_map.RoamingNotAllowedCause           // untagged; nil when discarded
-	AdditionalRoamingNotAllowedCause *gsm_map.AdditionalRoamingNotAllowedCause // [0]
+	// RoamingNotAllowedCause is mandatory and returned as received.
+	// MSC/VLR and SGSN applications ignore it when the additional cause is present.
+	RoamingNotAllowedCause RoamingNotAllowedCause // untagged
+	// AdditionalRoamingNotAllowedCause is returned as received; nil if absent.
+	AdditionalRoamingNotAllowedCause *AdditionalRoamingNotAllowedCause // [0]
 }
 
 // UnauthorizedRequestingNetworkParam (SEQUENCE) per TS 29.002
@@ -3295,6 +3363,18 @@ type TeleservNotProvParam struct{}
 // ExtensionContainer in the spec; the public type is empty.
 type DataMissingParam struct{}
 
+// AbsentSubscriberReason is extensible (3GPP TS 29.002 V19.1.0 §17.7.7).
+type AbsentSubscriberReason = gsm_map.AbsentSubscriberReason
+
+const (
+	AbsentSubscriberReasonImsiDetach     AbsentSubscriberReason = gsm_map.AbsentSubscriberReasonImsiDetach
+	AbsentSubscriberReasonRestrictedArea AbsentSubscriberReason = gsm_map.AbsentSubscriberReasonRestrictedArea
+	AbsentSubscriberReasonNoPageResponse AbsentSubscriberReason = gsm_map.AbsentSubscriberReasonNoPageResponse
+	AbsentSubscriberReasonPurgedMS       AbsentSubscriberReason = gsm_map.AbsentSubscriberReasonPurgedMS
+	AbsentSubscriberReasonMtRoamingRetry AbsentSubscriberReason = gsm_map.AbsentSubscriberReasonMtRoamingRetry
+	AbsentSubscriberReasonBusySubscriber AbsentSubscriberReason = gsm_map.AbsentSubscriberReasonBusySubscriber
+)
+
 // AbsentSubscriberParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 27 (absentSubscriber) by SRI and PSI on the
 // GSM CS side. Distinct from AbsentSubscriberSMParam (errorCode 6),
@@ -3304,7 +3384,7 @@ type DataMissingParam struct{}
 // response maps purgedMS (3) to imsiDetach (0)
 // (3GPP TS 29.002 V19.1.0 §17.7.7).
 type AbsentSubscriberParam struct {
-	AbsentSubscriberReason *gsm_map.AbsentSubscriberReason // [0]
+	AbsentSubscriberReason *AbsentSubscriberReason // [0]
 }
 
 // IllegalSubscriberParam (SEQUENCE) per TS 29.002 §17.7.7. Returned with
@@ -3344,12 +3424,12 @@ type UnexpectedDataParam struct {
 type LCSEvent = gsm_map.LCSEvent
 
 const (
-	LCSEventEmergencyCallOrigination   = gsm_map.LCSEventEmergencyCallOrigination
-	LCSEventEmergencyCallRelease       = gsm_map.LCSEventEmergencyCallRelease
-	LCSEventMoLr                       = gsm_map.LCSEventMoLr
-	LCSEventDeferredmtLrResponse       = gsm_map.LCSEventDeferredmtLrResponse
-	LCSEventDeferredmoLrTTTPInitiation = gsm_map.LCSEventDeferredmoLrTTTPInitiation
-	LCSEventEmergencyCallHandover      = gsm_map.LCSEventEmergencyCallHandover
+	LCSEventEmergencyCallOrigination   LCSEvent = gsm_map.LCSEventEmergencyCallOrigination
+	LCSEventEmergencyCallRelease       LCSEvent = gsm_map.LCSEventEmergencyCallRelease
+	LCSEventMoLr                       LCSEvent = gsm_map.LCSEventMoLr
+	LCSEventDeferredmtLrResponse       LCSEvent = gsm_map.LCSEventDeferredmtLrResponse
+	LCSEventDeferredmoLrTTTPInitiation LCSEvent = gsm_map.LCSEventDeferredmoLrTTTPInitiation
+	LCSEventEmergencyCallHandover      LCSEvent = gsm_map.LCSEventEmergencyCallHandover
 )
 
 // SequenceNumber (INTEGER 1..maxReportingAmount=8639999) per TS 29.002
@@ -3581,11 +3661,11 @@ type SriLcsResp struct {
 type GPRSTriggerDetectionPoint = gsm_map.GPRSTriggerDetectionPoint
 
 const (
-	GPRSTDPAttach                                 = gsm_map.GPRSTriggerDetectionPointAttach
-	GPRSTDPAttachChangeOfPosition                 = gsm_map.GPRSTriggerDetectionPointAttachChangeOfPosition
-	GPRSTDPPdpContextEstablishment                = gsm_map.GPRSTriggerDetectionPointPdpContextEstablishment
-	GPRSTDPPdpContextEstablishmentAcknowledgement = gsm_map.GPRSTriggerDetectionPointPdpContextEstablishmentAcknowledgement
-	GPRSTDPPdpContextChangeOfPosition             = gsm_map.GPRSTriggerDetectionPointPdpContextChangeOfPosition
+	GPRSTDPAttach                                 GPRSTriggerDetectionPoint = gsm_map.GPRSTriggerDetectionPointAttach
+	GPRSTDPAttachChangeOfPosition                 GPRSTriggerDetectionPoint = gsm_map.GPRSTriggerDetectionPointAttachChangeOfPosition
+	GPRSTDPPdpContextEstablishment                GPRSTriggerDetectionPoint = gsm_map.GPRSTriggerDetectionPointPdpContextEstablishment
+	GPRSTDPPdpContextEstablishmentAcknowledgement GPRSTriggerDetectionPoint = gsm_map.GPRSTriggerDetectionPointPdpContextEstablishmentAcknowledgement
+	GPRSTDPPdpContextChangeOfPosition             GPRSTriggerDetectionPoint = gsm_map.GPRSTriggerDetectionPointPdpContextChangeOfPosition
 )
 
 // DefaultGPRSHandling (ENUMERATED) per 3GPP TS 29.002 V19.1.0 §17.7.1. Its
@@ -3594,8 +3674,8 @@ const (
 type DefaultGPRSHandling = gsm_map.DefaultGPRSHandling
 
 const (
-	DefaultGPRSContinueTransaction = gsm_map.DefaultGPRSHandlingContinueTransaction
-	DefaultGPRSReleaseTransaction  = gsm_map.DefaultGPRSHandlingReleaseTransaction
+	DefaultGPRSContinueTransaction DefaultGPRSHandling = gsm_map.DefaultGPRSHandlingContinueTransaction
+	DefaultGPRSReleaseTransaction  DefaultGPRSHandling = gsm_map.DefaultGPRSHandlingReleaseTransaction
 )
 
 // GPRSCamelTDPData (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.1.
