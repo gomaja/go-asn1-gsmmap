@@ -4,9 +4,9 @@ go 1.26.9
 
 require (
 	github.com/gomaja/go-3gpp-identity v0.0.0-20261015070659-866133e946dc
-	github.com/gomaja/go-asn1 v0.0.0-20261026104051-690de4d03c91
+	github.com/gomaja/go-asn1 v0.0.0-20261026141129-51451aa47e41
 	github.com/gomaja/go-gad v0.0.0-20261015090110-463e9e2108fc
-	github.com/gomaja/go-sms v0.0.0-20261026085818-5f4ec40bade2
+	github.com/gomaja/go-sms v0.0.0-20261026145616-091b4737772e
 	github.com/gomaja/go-tbcd v0.0.0-20261015073026-64bd86dfe62e
 	github.com/google/go-cmp v0.7.0
 )
