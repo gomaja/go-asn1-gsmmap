@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-sms/encoding/cbs"
 	"github.com/gomaja/go-sms/encoding/gsm7"
 	"github.com/gomaja/go-sms/encoding/ucs2"
 	"github.com/google/go-cmp/cmp"
@@ -70,7 +71,7 @@ func ussdSpecClass(d uint8) string {
 	case b[:4] == "0000":
 		return "gsm7"
 	case b == "00010000", b == "00010001", b == "00010010":
-		return "unsupported" // language indication codings
+		return "language" // group 0001 language indication codings
 	case b[:4] == "0001":
 		return "reserved"
 	case b[:4] == "0010":
@@ -81,6 +82,9 @@ func ussdSpecClass(d uint8) string {
 	case b[:4] == "0011":
 		return "reserved" // reserved for other languages
 	case b[:2] == "01":
+		if b[4:6] == "11" {
+			return "reserved" // §5 reserved-coding rule precedes compression
+		}
 		if b[2] == '1' {
 			return "unsupported" // compressed
 		}
@@ -96,6 +100,8 @@ func ussdSpecClass(d uint8) string {
 		}
 	case b[:4] == "1000", b[:4] == "1010", b[:4] == "1011", b[:4] == "1100":
 		return "reserved"
+	case b[:4] == "1001" && b[4:6] == "11":
+		return "reserved" // reserved alphabet in the UDH group
 	case b[:4] == "1001", b[:4] == "1101", b[:4] == "1110":
 		return "unsupported" // UDH, I1, WAP
 	default: // 1111
@@ -127,6 +133,12 @@ func TestUSSDDataCodingSchemeClassificationAll256(t *testing.T) {
 				if err != nil || text != "AB" {
 					t.Errorf("Decode = %q, %v; want AB", text, err)
 				}
+			case "language":
+				vectors := map[USSDDataCodingScheme]string{0x10: "65772308", 0x11: "65370041", 0x12: "234c0041"}
+				text, err := d.Decode(ussdMustHex(t, vectors[d]))
+				if err != nil || text != "A" {
+					t.Errorf("Decode = %q, %v; want A", text, err)
+				}
 			case "unsupported":
 				if _, err := d.Decode(gsm7Octets); !errors.Is(err, ErrUSSDUnsupportedDataCodingScheme) {
 					t.Errorf("Decode err = %v, want ErrUSSDUnsupportedDataCodingScheme", err)
@@ -142,7 +154,7 @@ func TestUSSDDataCodingSchemeClassificationAll256(t *testing.T) {
 				if want := ussdMustHex(t, "0041004200430044004500460047"); err != nil || !bytes.Equal(out, want) {
 					t.Errorf("Encode = %x, %v; want %x", out, err, want)
 				}
-			default: // reserved and unsupported are never sent
+			default: // reserved, unsupported and language codings are never sent by Encode
 				if !errors.Is(err, ErrUSSDUnsupportedDataCodingScheme) {
 					t.Errorf("Encode err = %v, want ErrUSSDUnsupportedDataCodingScheme", err)
 				}
@@ -156,9 +168,6 @@ func TestUSSDDataCodingSchemeUnsupportedReasons(t *testing.T) {
 		dcs    USSDDataCodingScheme
 		reason string
 	}{
-		{0x10, "GSM 7 bit default alphabet with language indication"},
-		{0x11, "UCS2 with language indication"},
-		{0x12, "UCS2 with three-letter language indication"},
 		{0x60, "compressed"},
 		{0x44, "8 bit data"},
 		{0xF4, "8 bit data"},
@@ -170,7 +179,7 @@ func TestUSSDDataCodingSchemeUnsupportedReasons(t *testing.T) {
 		_, derr := tc.dcs.Decode([]byte{0x41})
 		_, eerr := tc.dcs.Encode("A")
 		for name, err := range map[string]error{"Decode": derr, "Encode": eerr} {
-			if !errors.Is(err, ErrUSSDUnsupportedDataCodingScheme) {
+			if !errors.Is(err, ErrUSSDUnsupportedDataCodingScheme) || !errors.Is(err, cbs.ErrUnsupported) {
 				t.Errorf("0x%02X %s err = %v", uint8(tc.dcs), name, err)
 				continue
 			}
@@ -668,6 +677,113 @@ func TestParseUSSDMalformed(t *testing.T) {
 				// A USSD-Arg with extra components is a valid USSD-Res
 				// only if it is the two-field form; none of these are.
 				t.Errorf("ParseUSSDRes(%x) = %+v, want an error", data, got)
+			}
+		})
+	}
+}
+
+func TestUSSDDecodeText(t *testing.T) {
+	// 3GPP TS 23.038 V20.0.0 §5: group 0001 carries a prefix; groups
+	// 0000 and 0010 identify a language in the DCS itself.
+	for _, tc := range []struct {
+		dcs      USSDDataCodingScheme
+		hex      string
+		language string
+		charset  cbs.Charset
+	}{
+		{0x10, "65772308", "en", cbs.CharsetGSM7},
+		{0x11, "65370041", "en", cbs.CharsetUCS2},
+		{0x12, "234c0041", "eng", cbs.CharsetUCS2},
+		{0x01, "41", "en", cbs.CharsetGSM7},
+		{0x20, "41", "cs", cbs.CharsetGSM7},
+		{0x0F, "41", "", cbs.CharsetGSM7},
+		{0x48, "0041", "", cbs.CharsetUCS2},
+		{0x25, "41", "", cbs.CharsetGSM7},
+		{0x4C, "41", "", cbs.CharsetGSM7},
+		{0x6C, "41", "", cbs.CharsetGSM7},
+		{0x9C, "41", "", cbs.CharsetGSM7},
+	} {
+		t.Run(fmt.Sprintf("0x%02X", uint8(tc.dcs)), func(t *testing.T) {
+			got, err := tc.dcs.DecodeText(ussdMustHex(t, tc.hex))
+			want := USSDText{Text: "A", Language: tc.language, Charset: tc.charset}
+			if err != nil || got != want {
+				t.Errorf("DecodeText = %+v, %v; want %+v", got, err, want)
+			}
+		})
+	}
+}
+
+func TestUSSDDecodeTextErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		dcs  USSDDataCodingScheme
+		hex  string
+		want error
+	}{
+		{"gsm7 missing CR", 0x10, "65370041", cbs.ErrLanguageIndication},
+		{"ucs2 short prefix", 0x11, "65", cbs.ErrLanguageIndication},
+		{"three letters padding", 0x12, "234d0041", cbs.ErrLanguageIndication},
+		{"three letters reserved", 0x12, "d34c0041", cbs.ErrLanguageIndication},
+		{"gsm7 empty", 0x10, "", ErrUSSDTextEmpty},
+		{"ucs2 empty", 0x11, "", ErrUSSDTextEmpty},
+		{"three letters empty", 0x12, "", ErrUSSDTextEmpty},
+		{"ucs2 odd body", 0x11, "653700", ucs2.ErrInvalidLength},
+		{"three letters odd body", 0x12, "234c00", ucs2.ErrInvalidLength},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data := ussdMustHex(t, tc.hex)
+			got, err := tc.dcs.DecodeText(data)
+			if !errors.Is(err, tc.want) || got != (USSDText{}) {
+				t.Errorf("DecodeText = %+v, %v; want zero text and %v", got, err, tc.want)
+			}
+			text, err := tc.dcs.Decode(data)
+			if !errors.Is(err, tc.want) || text != "" {
+				t.Errorf("Decode = %q, %v; want empty text and %v", text, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestUSSDCodingErrorPrecedenceAll256(t *testing.T) {
+	for v := 0; v < 256; v++ {
+		d := USSDDataCodingScheme(v)
+		class := ussdSpecClass(uint8(v))
+		t.Run(fmt.Sprintf("0x%02X", v), func(t *testing.T) {
+			want := ErrUSSDTextEmpty
+			if class == "unsupported" {
+				want = ErrUSSDUnsupportedDataCodingScheme
+			}
+			for _, data := range [][]byte{nil, {}} {
+				got, err := d.DecodeText(data)
+				text, derr := d.Decode(data)
+				if got != (USSDText{}) || text != "" || !errors.Is(err, want) || !errors.Is(derr, want) {
+					t.Errorf("empty DecodeText = %+v, %v; Decode = %q, %v; want %v", got, err, text, derr, want)
+				}
+				if class == "unsupported" && (!errors.Is(err, cbs.ErrUnsupported) || !errors.Is(derr, cbs.ErrUnsupported)) {
+					t.Errorf("DecodeText err = %v; Decode err = %v; want cbs.ErrUnsupported", err, derr)
+				}
+			}
+			for _, text := range []string{"", "A", "\xff"} {
+				out, err := d.Encode(text)
+				switch class {
+				case "reserved", "unsupported", "language":
+					if out != nil || !errors.Is(err, ErrUSSDUnsupportedDataCodingScheme) {
+						t.Errorf("Encode(%q) = %x, %v; want nil and ErrUSSDUnsupportedDataCodingScheme", text, out, err)
+					}
+					if class == "reserved" && !errors.Is(err, cbs.ErrReserved) || class == "unsupported" && !errors.Is(err, cbs.ErrUnsupported) {
+						t.Errorf("Encode(%q) err = %v; want cbs coding error for %s", text, err, class)
+					}
+					if class == "language" && (err == nil || !strings.Contains(err.Error(), "Encode carries no language") || !strings.Contains(err.Error(), "cbs.DCS.EncodeUSSD")) {
+						t.Errorf("Encode(%q) err = %v; want language encoding guidance", text, err)
+					}
+				default:
+					if text == "" && !errors.Is(err, ErrUSSDTextEmpty) {
+						t.Errorf("Encode empty err = %v; want ErrUSSDTextEmpty", err)
+					}
+					if class == "ucs2" && text == "\xff" && !errors.Is(err, ErrUSSDInvalidUTF8) {
+						t.Errorf("Encode invalid UTF-8 err = %v; want ErrUSSDInvalidUTF8", err)
+					}
+				}
 			}
 		})
 	}

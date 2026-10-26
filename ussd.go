@@ -19,8 +19,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-	"github.com/gomaja/go-sms/encoding/gsm7"
-	"github.com/gomaja/go-sms/encoding/ucs2"
+	"github.com/gomaja/go-sms/encoding/cbs"
 )
 
 // Sentinel errors of the USSD codec. All are wrapped with context and are
@@ -65,168 +64,106 @@ const (
 	USSDDataCodingSchemeUCS2 USSDDataCodingScheme = 0x48
 )
 
-// ussdAlphabet is how a USSDDataCodingScheme codes the USSD-String.
-type ussdAlphabet int
-
-const (
-	// ussdAlphabetGSM7 is an explicit GSM 7 bit default alphabet coding.
-	ussdAlphabetGSM7 ussdAlphabet = iota
-	// ussdAlphabetGSM7Reserved is a reserved coding, which a receiving entity
-	// assumes to be the GSM 7 bit default alphabet. It is never sent.
-	ussdAlphabetGSM7Reserved
-	// ussdAlphabetUCS2 is an explicit UCS2 coding.
-	ussdAlphabetUCS2
-	// ussdAlphabetUnsupported is a coding this package does not handle.
-	ussdAlphabetUnsupported
-)
-
-// classify sorts d by the coding group table of 3GPP TS 23.038 V20.0.0 §5.
-// For ussdAlphabetUnsupported and ussdAlphabetGSM7Reserved the returned
-// string names the reason.
-func (d USSDDataCodingScheme) classify() (ussdAlphabet, string) {
-	group := uint8(d) >> 4
-	low := uint8(d) & 0x0F
-	switch group {
-	case 0x0: // language using the GSM 7 bit default alphabet
-		return ussdAlphabetGSM7, ""
-	case 0x1:
-		switch low {
-		case 0x0:
-			return ussdAlphabetUnsupported, "GSM 7 bit default alphabet with language indication"
-		case 0x1:
-			return ussdAlphabetUnsupported, "UCS2 with language indication"
-		case 0x2:
-			// Added to TS 23.038 in V20.0.0 by CR 0243.
-			return ussdAlphabetUnsupported, "UCS2 with three-letter language indication"
-		default:
-			return ussdAlphabetGSM7Reserved, "reserved coding in group 0001"
-		}
-	case 0x2:
-		if low <= 0x4 { // Czech, Hebrew, Arabic, Russian, Icelandic
-			return ussdAlphabetGSM7, ""
-		}
-		return ussdAlphabetGSM7Reserved, "reserved for other languages in group 0010"
-	case 0x3:
-		return ussdAlphabetGSM7Reserved, "reserved for other languages in group 0011"
-	case 0x4, 0x5, 0x6, 0x7: // general data coding indication
-		if d&0x20 != 0 {
-			return ussdAlphabetUnsupported, "compressed text (3GPP TS 23.042)"
-		}
-		switch (uint8(d) >> 2) & 0x03 {
-		case 0x0:
-			return ussdAlphabetGSM7, ""
-		case 0x1:
-			return ussdAlphabetUnsupported, "8 bit data"
-		case 0x2:
-			return ussdAlphabetUCS2, ""
-		default:
-			return ussdAlphabetGSM7Reserved, "reserved character set in general data coding"
-		}
-	case 0x8, 0xA, 0xB, 0xC:
-		return ussdAlphabetGSM7Reserved, "reserved coding group"
-	case 0x9:
-		return ussdAlphabetUnsupported, "message with user data header structure"
-	case 0xD:
-		return ussdAlphabetUnsupported, "I1 protocol message (3GPP TS 24.294)"
-	case 0xE:
-		return ussdAlphabetUnsupported, "WAP Forum defined"
-	default: // 0xF: data coding / message handling
-		if d&0x08 != 0 {
-			return ussdAlphabetGSM7Reserved, "reserved bit 3 set in group 1111"
-		}
-		if d&0x04 != 0 {
-			return ussdAlphabetUnsupported, "8 bit data"
-		}
-		return ussdAlphabetGSM7, ""
-	}
-}
-
-func (d USSDDataCodingScheme) unsupported(reason string) error {
-	return fmt.Errorf("data coding scheme 0x%02X (%s): %w", uint8(d), reason, ErrUSSDUnsupportedDataCodingScheme)
+// USSDText is a USSD-String decoded by DecodeText, with the facts its data
+// coding scheme gives (3GPP TS 23.038 V20.0.0 §5).
+type USSDText struct {
+	// Text is the decoded text, without the language indication.
+	Text string
+	// Language is the language the coding indicates: for 0x10 and 0x11 the
+	// two characters that precede the text, as received; for 0x12 its three
+	// lower-case letters; for groups 0000 and 0010 the ISO 639-1 code that
+	// bits 3..0 name (0x01 is "en"). It is empty for language unspecified,
+	// reserved codings and the other groups.
+	Language string
+	// Charset is the character set the text was decoded with, cbs.CharsetGSM7
+	// or cbs.CharsetUCS2, after the §5 rule that a receiving entity assumes
+	// the GSM 7 bit default alphabet for any reserved coding.
+	Charset cbs.Charset
 }
 
 // Decode converts the octets of a USSD-String, coded per d, into text.
-//
-// The coding is classified by the Cell Broadcast Data Coding Scheme table of
-// 3GPP TS 23.038 V20.0.0 §5. The GSM 7 bit default alphabet codings are
-// unpacked with the USSD rules of §6.1.2.3.1 (including the removal of a final
-// <CR> on an octet boundary) and mapped with the default alphabet and its
-// extension table (§6.2.1, §6.2.1.1). UCS2 codings are mapped per §6.2.3.
-//
-// A reserved coding is decoded as the GSM 7 bit default alphabet, as §5
-// requires of a receiving entity: "Any reserved codings shall be assumed to be
-// the GSM 7 bit default alphabet (the same as codepoint 00001111) by a
-// receiving entity." Codings with a language indication, compressed text, 8 bit
-// data, a user data header, the I1 protocol and WAP are not supported and yield
-// ErrUSSDUnsupportedDataCodingScheme. An empty s yields ErrUSSDTextEmpty.
+// It returns DecodeText's Text, or an empty string on error; use DecodeText
+// for the language and effective character set of 3GPP TS 23.038 V20.0.0 §5.
 func (d USSDDataCodingScheme) Decode(s []byte) (string, error) {
-	alphabet, reason := d.classify()
-	if alphabet == ussdAlphabetUnsupported {
-		return "", d.unsupported(reason)
+	text, err := d.DecodeText(s)
+	return text.Text, err
+}
+
+// DecodeText converts the octets of a USSD-String, coded per d, into text,
+// language and character set. Classification and decoding are delegated to
+// go-sms encoding/cbs (cbs.DCS.DecodeUSSD), which applies the Cell Broadcast
+// Data Coding Scheme of 3GPP TS 23.038 V20.0.0 §5: groups 0000 and 0010 name
+// a language, the group 0001 codings 0x10..0x12 precede the text with a
+// language indication (0x12 was added in V20.0.0 by CR 0243), and "Any
+// reserved codings shall be assumed to be the GSM 7 bit default alphabet (the
+// same as codepoint 00001111) by a receiving entity." GSM 7 bit text uses the
+// USSD packing of §6.1.2.3.1 (including the removal of a final <CR> on an
+// octet boundary) and the default alphabet and its extension table (§6.2.1,
+// §6.2.1.1). UCS2 text is mapped per §6.2.3.
+//
+// Compressed text, 8 bit data, a user data header, the I1 protocol and WAP are
+// not supported: their errors match both ErrUSSDUnsupportedDataCodingScheme
+// and cbs.ErrUnsupported, even for an empty s. Otherwise an empty s yields
+// ErrUSSDTextEmpty. A malformed language indication matches
+// cbs.ErrLanguageIndication, and the errors of the GSM 7 bit and UCS2 decoders
+// stay matchable (for example ucs2.ErrInvalidLength). On error the USSDText is
+// zero.
+func (d USSDDataCodingScheme) DecodeText(s []byte) (USSDText, error) {
+	coding := cbs.DCS(d)
+	text, language, err := coding.DecodeUSSD(s)
+	if errors.Is(err, cbs.ErrUnsupported) {
+		return USSDText{}, fmt.Errorf("decoding USSD-String (data coding scheme 0x%02X): %w: %w", uint8(d), ErrUSSDUnsupportedDataCodingScheme, err)
 	}
 	if len(s) == 0 {
-		return "", fmt.Errorf("decoding USSD-String (data coding scheme 0x%02X): %w", uint8(d), ErrUSSDTextEmpty)
+		return USSDText{}, fmt.Errorf("decoding USSD-String (data coding scheme 0x%02X): %w", uint8(d), ErrUSSDTextEmpty)
 	}
-	if alphabet == ussdAlphabetUCS2 {
-		runes, err := ucs2.Decode(s)
-		if err != nil {
-			return "", fmt.Errorf("decoding UCS2 USSD-String: %w", err)
-		}
-		return string(runes), nil
-	}
-	text, err := gsm7.Decode(gsm7.Unpack7BitUSSD(s))
 	if err != nil {
-		return "", fmt.Errorf("decoding GSM 7 bit USSD-String: %w", err)
+		return USSDText{}, fmt.Errorf("decoding USSD-String (data coding scheme 0x%02X): %w", uint8(d), err)
 	}
-	return string(text), nil
+	if language == "" {
+		language, _ = coding.Language()
+	}
+	return USSDText{Text: text, Language: language, Charset: coding.Charset()}, nil
 }
 
 // Encode converts text into the octets of a USSD-String, coded per d.
+// Classification and encoding are delegated to go-sms encoding/cbs
+// (cbs.DCS.EncodeUSSD). Only the GSM 7 bit default alphabet and UCS2 codings
+// of 3GPP TS 23.038 V20.0.0 §5 without a language indication are accepted.
+// §5 gives a reserved coding a meaning only for a receiving entity, so a
+// reserved coding yields an error matching both
+// ErrUSSDUnsupportedDataCodingScheme and cbs.ErrReserved; an unsupported coding
+// yields one matching both ErrUSSDUnsupportedDataCodingScheme and
+// cbs.ErrUnsupported. The language indication codings 0x10..0x12 yield
+// ErrUSSDUnsupportedDataCodingScheme, because Encode carries no language;
+// cbs.DCS.EncodeUSSD encodes one. Coding errors take precedence over empty
+// text.
 //
-// Only the explicit GSM 7 bit default alphabet codings and the explicit UCS2
-// codings of 3GPP TS 23.038 V20.0.0 §5 are accepted; a reserved coding must not
-// be used by a sending entity, and the codings Decode does not support are not
-// supported here either (ErrUSSDUnsupportedDataCodingScheme). GSM 7 bit text is
-// mapped with the default alphabet and its extension table (§6.2.1, §6.2.1.1)
-// and packed with the USSD rules of §6.1.2.3.1. UCS2 text is mapped per §6.2.3;
-// UCS2 has 16 bits per character, so a character above U+FFFF, which would need
-// a UTF-16 surrogate pair, is rejected. Text that cannot be represented is an
-// error, empty text yields ErrUSSDTextEmpty, and a result longer than
-// maxUSSD-StringLength (160 octets, 3GPP TS 29.002 V19.1.0 §17.7.4; 182 septets
-// per §6.1.2.3.1) yields ErrUSSDTextTooLong.
+// GSM 7 bit text uses the default alphabet and extension table (§6.2.1,
+// §6.2.1.1) with USSD packing (§6.1.2.3.1). UCS2 uses §6.2.3's 16 bits per
+// character; characters above U+FFFF are rejected. Invalid UTF-8 with a UCS2
+// coding yields ErrUSSDInvalidUTF8. Empty text yields ErrUSSDTextEmpty, and
+// a result longer than maxUSSD-StringLength (160 octets, 3GPP TS 29.002
+// V19.1.0 §17.7.4; 182 septets per TS 23.038 §6.1.2.3.1) yields
+// ErrUSSDTextTooLong. Alphabet errors remain wrapped.
 func (d USSDDataCodingScheme) Encode(text string) ([]byte, error) {
-	alphabet, reason := d.classify()
-	switch alphabet {
-	case ussdAlphabetUnsupported:
-		return nil, d.unsupported(reason)
-	case ussdAlphabetGSM7Reserved:
-		return nil, d.unsupported(reason + "; a sending entity must not use a reserved coding (3GPP TS 23.038 V20.0.0 §5)")
+	coding := cbs.DCS(d)
+	out, err := coding.EncodeUSSD(text, "")
+	if errors.Is(err, cbs.ErrReserved) || errors.Is(err, cbs.ErrUnsupported) {
+		return nil, fmt.Errorf("encoding USSD-String (data coding scheme 0x%02X): %w: %w", uint8(d), ErrUSSDUnsupportedDataCodingScheme, err)
+	}
+	if coding.LanguageIndication() != cbs.NoLanguageIndication {
+		return nil, fmt.Errorf("data coding scheme 0x%02X (Encode carries no language; cbs.DCS.EncodeUSSD encodes one): %w", uint8(d), ErrUSSDUnsupportedDataCodingScheme)
 	}
 	if text == "" {
 		return nil, fmt.Errorf("encoding USSD-String (data coding scheme 0x%02X): %w", uint8(d), ErrUSSDTextEmpty)
 	}
-
-	var out []byte
-	if alphabet == ussdAlphabetUCS2 {
-		// []rune would turn invalid UTF-8 into U+FFFD, which UCS2 can code,
-		// so the text is checked first.
-		if !utf8.ValidString(text) {
-			return nil, fmt.Errorf("encoding UCS2 USSD-String: %w", ErrUSSDInvalidUTF8)
-		}
-		var err error
-		out, err = ucs2.Encode([]rune(text))
-		if err != nil {
-			return nil, fmt.Errorf("encoding UCS2 USSD-String: %w", err)
-		}
-	} else {
-		septets, err := gsm7.Encode([]byte(text))
-		if err != nil {
-			return nil, fmt.Errorf("encoding GSM 7 bit USSD-String: %w", err)
-		}
-		out, err = gsm7.Pack7BitUSSD(septets)
-		if err != nil {
-			return nil, fmt.Errorf("packing GSM 7 bit USSD-String: %w", err)
-		}
+	// []rune would turn invalid UTF-8 into U+FFFD, which UCS2 can code.
+	if coding.Charset() == cbs.CharsetUCS2 && !utf8.ValidString(text) {
+		return nil, fmt.Errorf("encoding UCS2 USSD-String: %w", ErrUSSDInvalidUTF8)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("encoding USSD-String (data coding scheme 0x%02X): %w", uint8(d), err)
 	}
 	if len(out) > int(gsm_map.MaxUSSDStringLength) {
 		return nil, fmt.Errorf("encoded USSD-String is %d octets, maximum %d: %w", len(out), int(gsm_map.MaxUSSDStringLength), ErrUSSDTextTooLong)

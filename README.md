@@ -140,7 +140,7 @@ What that means for a consumer:
 - `GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan` in ATI and CAMEL structs. `SCANature/Plan` → `ServiceCentreAddressNature/Plan` in SRI-SM, AlertServiceCentre, and ReportSMDeliveryStatus; `SCADANature/Plan` and `SCAOANature/Plan` follow their full ServiceCentreAddress field names.
 - `UpdateLocation.MSCNumber/VLRNumber` → `MscNumber/VlrNumber`; `UpdateGprsLocation.SGSNNumber` → `SgsnNumber`; `PurgeMS.VLRNumber/SGSNNumber` → `VlrNumber/SgsnNumber`; `UpdateLocationRes.HLRNumber` and `UpdateGprsLocationRes.HLRNumber` → `HlrNumber`. Each associated nature/plan field follows the new base name.
 - `Sri.GmscNature/Plan` → `GmscOrGsmSCFAddressNature/Plan`, and `SriResp.VmscNature/Plan` → `VmscAddressNature/Plan`.
-- LCS client and codeword data coding schemes use `USSDDataCodingScheme`, with strings decoded by `DataCodingScheme.Decode`.
+- LCS client and codeword data coding schemes use `USSDDataCodingScheme`, with strings decoded by `DataCodingScheme.Decode`, or by `DecodeText` for the language and character set too (see [USSD](#ussd-opcodes-59-60-61)).
 
 **Removed identifiers**
 
@@ -580,12 +580,12 @@ arg, err := gsmmap.ParseUSSDArg(invokeParameter)
 if err != nil {
     log.Fatal(err)
 }
-text, err := arg.DataCodingScheme.Decode(arg.USSDString) // "*100#"
+msg, err := arg.DataCodingScheme.DecodeText(arg.USSDString)
 if err != nil {
     // e.g. errors.Is(err, gsmmap.ErrUSSDUnsupportedDataCodingScheme):
     log.Fatal(err) // answer with MapErrorUnknownAlphabet in a TCAP gateway
 }
-fmt.Println(text)
+fmt.Println(msg.Text, msg.Language) // "*100#", and "" for language unspecified (0x0F)
 
 // Answer with USSD-Res
 reply, err := gsmmap.USSDDataCodingSchemeGSM7.Encode("Balance: 10.00 EUR")
@@ -604,18 +604,29 @@ _ = resultParameter // send the result bytes
 ```
 
 `USSDDataCodingScheme` interprets the data coding scheme as the Cell
-Broadcast Data Coding Scheme of 3GPP TS 23.038 §5, as TS 29.002 §7.6.4.36
-requires:
+Broadcast Data Coding Scheme of 3GPP TS 23.038 V20.0.0 §5, as TS 29.002 §7.6.4.36
+requires. Classification, decoding and encoding delegate to go-sms `encoding/cbs`:
 
 | Coding | Decode | Encode |
 |---|---|---|
 | GSM 7 bit default alphabet (`0000 xxxx`, e.g. `0x0F`; `0010 0000`–`0010 0100`; `010x 00xx`; `1111 00xx`) | yes, with the USSD packing of TS 23.038 §6.1.2.3.1 (a final `<CR>` pad is removed) and the extension table | yes |
 | UCS2 (`010x 10xx`, e.g. `0x48`) | yes | yes, for characters up to U+FFFF |
-| Reserved codings (e.g. `0010 0101`–`0011 1111`, `1111 1xxx`) | as GSM 7 bit, which §5 requires of a receiving entity | no (a sender must not use them) |
-| Language indication (`0x10`, `0x11`, `0x12`), compressed, 8 bit data, UDH, I1, WAP | `ErrUSSDUnsupportedDataCodingScheme` | `ErrUSSDUnsupportedDataCodingScheme` |
+| Language indication (`0x10`: GSM 7 bit with two letters and CR; `0x11`: UCS2 with two letters; `0x12`: UCS2 with three letters) | yes, with the prefix removed; `DecodeText` also returns the language | `ErrUSSDUnsupportedDataCodingScheme`; use `cbs.DCS.EncodeUSSD` to encode a language |
+| Reserved codings (e.g. `0010 0101`–`0011 1111`, `1111 1xxx`, and charset bits `11` in groups `01xx` and `1001`) | as GSM 7 bit, which §5 requires of a receiving entity, including reserved charset values with compression or UDH bits set | errors matching both `ErrUSSDUnsupportedDataCodingScheme` and `cbs.ErrReserved` |
+| Non-reserved compressed, 8 bit data, UDH, I1, WAP | errors matching both `ErrUSSDUnsupportedDataCodingScheme` and `cbs.ErrUnsupported` | same |
 
-The 7 bit packing and the character tables come from go-sms
-(`encoding/gsm7`, `encoding/ucs2`).
+`Decode` returns only the text. `DecodeText` returns a `USSDText` with `Text`,
+`Language` and `Charset` (`cbs.CharsetGSM7` or `cbs.CharsetUCS2` on success).
+For `0x10`–`0x12`, `Language` is the prefix returned by `cbs.DCS.DecodeUSSD`;
+for groups `0000` and `0010` it is the DCS language (for example `0x01` is
+`"en"`, `0x20` is `"cs"`). It is empty for language unspecified, reserved
+codings and other groups. A malformed prefix matches `cbs.ErrLanguageIndication`.
+
+Unsupported coding errors precede the empty-input check; an empty string for
+any decodable coding yields `ErrUSSDTextEmpty`. `Encode` also rejects empty
+text, invalid UTF-8 for UCS2 (`ErrUSSDInvalidUTF8`), and results over 160 octets
+(`ErrUSSDTextTooLong`, TS 29.002 V19.1.0 §17.7.4). Coding errors precede empty
+text. Alphabet errors from go-sms remain wrapped and matchable.
 
 ### MAP errors
 
