@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gomaja/go-sms/encoding/cbs"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 )
@@ -111,6 +112,18 @@ func FuzzUSSDDataCodingSchemeDecode(f *testing.F) {
 		{0x00, "31"},
 		{0x13, "31"},
 		{0x10, "31"},
+		{0x10, "65772308"},
+		{0x11, "65370041"},
+		{0x12, "234c0041"},
+		{0x10, "65370041"},
+		{0x11, "65"},
+		{0x12, "234d0041"},
+		{0x12, "d34c0041"},
+		{0x10, ""},
+		{0x11, ""},
+		{0x12, ""},
+		{0x6C, "41"},
+		{0x9C, "41"},
 		{0x44, "31"},
 		{0x0F, ""},
 	}
@@ -120,16 +133,26 @@ func FuzzUSSDDataCodingSchemeDecode(f *testing.F) {
 	f.Fuzz(func(t *testing.T, dcs uint8, s []byte) {
 		d := USSDDataCodingScheme(dcs)
 		t1, err := d.Decode(s)
+		decoded, detailErr := d.DecodeText(s)
+		if (err == nil) != (detailErr == nil) || decoded.Text != t1 {
+			t.Fatalf("Decode = %q, %v; DecodeText = %+v, %v", t1, err, decoded, detailErr)
+		}
 		if err != nil {
+			if t1 != "" || decoded != (USSDText{}) {
+				t.Fatalf("error returned text: Decode = %q; DecodeText = %+v", t1, decoded)
+			}
 			return
+		}
+		if decoded.Charset != cbs.CharsetGSM7 && decoded.Charset != cbs.CharsetUCS2 {
+			t.Fatalf("DecodeText charset = %v", decoded.Charset)
 		}
 		if len(s) == 0 {
 			t.Fatalf("Decode of empty input succeeded for DCS 0x%02X", dcs)
 		}
 		enc, err := d.Encode(t1)
 		if err != nil {
-			// Reserved codings are never sent, text can outgrow 160 octets, and
-			// UCS2 rejects characters above U+FFFF.
+			// Reserved and language-indication codings are not sent by Encode,
+			// text can outgrow 160 octets, and UCS2 rejects characters above U+FFFF.
 			return
 		}
 		t2, err := d.Decode(enc)
