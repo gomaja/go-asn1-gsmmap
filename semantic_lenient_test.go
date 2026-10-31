@@ -95,6 +95,9 @@ func semLenientCases() []semLenientCase {
 			imei := semTBCD(t, "490154203237518")
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{Imei: &imei}}
 		}},
+		{identity.ErrIMSILength, asParser(ParseSriSmResp), func(*testing.T) semWire {
+			return &gsm_map.RoutingInfoForSMRes{Imsi: gsm_map.IMSI{0x00, 0x01, 0xf1}, LocationInfoWithLMSI: gsm_map.LocationInfoWithLMSI{NetworkNodeNumber: gsm_map.ISDNAddressString{0x91, 0x51, 0x55, 0, 0, 0, 0xf1}}}
+		}},
 		{ErrProtocolIDReserved, asParser(ParseSri), func(t *testing.T) semWire {
 			w := semMust(convertSriToArg(&Sri{MSISDN: "31612345678", GmscOrGsmSCFAddress: "31600000001"}))
 			w.NetworkSignalInfo = &gsm_map.ExternalSignalInfo{ProtocolId: gsm_map.ProtocolIdGsmBSSMAP, SignalInfo: gsm_map.SignalInfo{0x01}}
@@ -310,7 +313,7 @@ func TestStrictEncodeErrorsAreReachable(t *testing.T) {
 // field name the list mentions.
 func TestIsStrictEncodeErrorIsExact(t *testing.T) {
 	for _, err := range []error{
-		identity.ErrIMSILength,
+		identity.ErrNotDigits,
 		identity.ErrIMEILength,
 		ErrAscMissingMSISDN,
 		errors.New("cancelLocation: CancellationType must be one of updateProcedure(0)"),
@@ -332,7 +335,9 @@ func TestCheckParseRoundTripMarshalErrors(t *testing.T) {
 		err  error
 		pass bool
 	}{
-		{identity.ErrIMSILength, false},
+		{identity.ErrIMSILength, true},
+		{fmt.Errorf("IMSI: %w", identity.ErrIMSILength), true},
+		{identity.ErrNotDigits, false},
 		{fmt.Errorf("wrapped: %w", ErrAscMissingMSISDN), false},
 		{ErrAlertingPatternReserved, true},
 		{fmt.Errorf("CancellationType: %w", ErrCancelLocInvalidCancellationType), true},

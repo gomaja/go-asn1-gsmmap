@@ -49,7 +49,7 @@ const (
 
 // SriSmCorrelationID corresponds to CorrelationID SEQUENCE.
 type SriSmCorrelationID struct {
-	HlrID   string   // HLR-Id digits, optional ("" = absent); HLR-Id ::= IMSI, see identityIMSI
+	HlrID   string   // HLR-Id digits as received, optional ("" = absent); HLR-Id ::= IMSI, see identityIMSI
 	SipUriA HexBytes // SIP-URI, optional
 	SipUriB HexBytes // SIP-URI, mandatory within CorrelationID
 }
@@ -103,6 +103,13 @@ type SriSm struct {
 
 // SriSmResp represents a Send Routing Info for Short Message response.
 type SriSmResp struct {
+	// IMSI holds the digits as received. When the request set
+	// SmDeliveryOnlyMCCMNCRequested, it may hold MCC+MNC+dummy MSIN (TS
+	// 29.002 V19.1.0 §12.1.3), or only the five digits of an MCC and a
+	// two-digit MNC from HLRs that omit the dummy MSIN. Between an SMS-GMSC
+	// and an SMS Router it holds an MT Correlation ID (TS 23.040 V20.0.0
+	// §3.2.7a). Marshal requires 6 to 15 digits (TS 23.003 V20.1.0 §§2.2,
+	// 2.3).
 	IMSI                 string
 	LocationInfoWithLMSI LocationInfoWithLMSI
 	IpSmGwGuidance       *IpSmGwGuidance // [5] optional
@@ -3002,7 +3009,7 @@ type ProvideSubscriberLocationArg struct {
 	// Optional.
 	LcsClientID               *LCSClientID
 	PrivacyOverride           bool     // [1] NULL flag
-	IMSI                      string   // TBCD-decoded digits; "" = absent (6..15 digits, identity.ErrIMSILength)
+	IMSI                      string   // TBCD-decoded digits; "" = absent (6..15 digits, identity.ErrIMSILength; Parse also keeps five digits, an MCC and a two-digit MNC, which Marshal rejects)
 	MSISDN                    string   // ISDN-AddressString digits; "" = absent
 	MSISDNNature              uint8    // address nature indicator
 	MSISDNPlan                uint8    // numbering plan indicator
@@ -3525,7 +3532,7 @@ type SubscriberLocationReportArg struct {
 	MSISDN       string // [0] ISDN-AddressString digits; "" = absent
 	MSISDNNature uint8
 	MSISDNPlan   uint8
-	IMSI         string // [1] TBCD-decoded digits; "" = absent (6..15 digits, identity.ErrIMSILength)
+	IMSI         string // [1] TBCD-decoded digits; "" = absent (6..15 digits, identity.ErrIMSILength; Parse also keeps five digits, an MCC and a two-digit MNC, which Marshal rejects)
 	IMEI         string // [2] TBCD-decoded digits; "" = absent (15 digits, or 16 with the SVN; Parse keeps a non-zero spare digit; Marshal rejects a non-zero spare digit, see identity.ErrIMEISpareDigitNotZero)
 
 	// Optional emergency-services routing identifiers (ISDN-AddressString).

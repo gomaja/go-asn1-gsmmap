@@ -4,7 +4,8 @@
 // every other IMSI in the package, through the shared identity rules: an
 // IMSI has 6 to 15 decimal digits (3GPP TS 23.003 V20.1.0 §2.2, §2.3), and
 // "HLR-Id ::= IMSI -- leading digits of IMSI, i.e. (MCC, MNC, leading digits
-// of MSIN)" (3GPP TS 29.002 V19.1.0 §17.7.8) follows the same rule.
+// of MSIN)" (3GPP TS 29.002 V19.1.0 §17.7.8) follows the same rule on
+// Marshal. Parse also preserves five-digit MCC+MNC values from peers.
 package gsmmap
 
 import (
@@ -111,13 +112,15 @@ func TestCorrelationIDHlrIDDigits(t *testing.T) {
 		})
 	}
 	for _, tc := range []struct {
-		name string
-		hlr  gsm_map.HLRId
-		want error
+		name       string
+		hlr        gsm_map.HLRId
+		want       error
+		digits     string
+		marshalErr error
 	}{
-		{"five digits", gsm_map.HLRId{0x02, 0x04, 0xF8}, identity.ErrIMSILength},
-		{"octets AA BB", gsm_map.HLRId{0xAA, 0xBB, 0xAA}, identity.ErrNotDigits},
-		{"six digits", gsm_map.HLRId{0x02, 0x04, 0x08}, nil},
+		{"five digits", gsm_map.HLRId{0x02, 0x04, 0xF8}, nil, "20408", identity.ErrIMSILength},
+		{"octets AA BB", gsm_map.HLRId{0xAA, 0xBB, 0xAA}, identity.ErrNotDigits, "", nil},
+		{"six digits", gsm_map.HLRId{0x02, 0x04, 0x08}, nil, "204080", nil},
 	} {
 		t.Run("Parse "+tc.name, func(t *testing.T) {
 			w, err := convertSriSmToArg(sriSm("204080"))
@@ -130,8 +133,18 @@ func TestCorrelationIDHlrIDDigits(t *testing.T) {
 			if err != nil {
 				t.Fatalf("MarshalBER: %v", err)
 			}
-			if _, err := ParseSriSm(data); !errors.Is(err, tc.want) {
-				t.Errorf("ParseSriSm: err = %v, want %v", err, tc.want)
+			got, err := ParseSriSm(data)
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("ParseSriSm: err = %v, want %v", err, tc.want)
+			}
+			if err != nil {
+				return
+			}
+			if got.CorrelationID.HlrID != tc.digits {
+				t.Errorf("HlrID = %q, want %q", got.CorrelationID.HlrID, tc.digits)
+			}
+			if _, err := got.Marshal(); !errors.Is(err, tc.marshalErr) {
+				t.Errorf("Marshal: err = %v, want %v", err, tc.marshalErr)
 			}
 		})
 	}

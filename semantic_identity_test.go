@@ -4,8 +4,8 @@
 // composition of each identity (§2.2, §2.3, §6.2.1, §6.2.2); TS 29.002
 // V19.1.0 §17.7.8 carries them as TBCD-STRING (IMSI SIZE (3..8), IMEI
 // SIZE (8)), so the octet SIZE the codec checks admits digit counts the
-// identities do not have. One rule per identity applies to every operation,
-// on Marshal and on Parse alike.
+// identities do not have. Shared identity rules apply to every operation;
+// Parse also accepts five-digit MCC+MNC values and any 15th IMEI digit.
 package gsmmap
 
 import (
@@ -129,6 +129,17 @@ func semIMSICases() []semIdentityCase {
 				v, err := ParseSriSm(d)
 				return semField(v, err, func() string { return v.IMSI })
 			}},
+		{"SriSm HLR-Id",
+			func(_ *testing.T, id string) ([]byte, error) {
+				return (&SriSm{
+					MSISDN: msisdn, ServiceCentreAddress: sca, SmRpPri: true,
+					CorrelationID: &SriSmCorrelationID{HlrID: id, SipUriB: HexBytes("sip:b@example.com")},
+				}).Marshal()
+			},
+			func(d []byte) (string, error) {
+				v, err := ParseSriSm(d)
+				return semField(v, err, func() string { return v.CorrelationID.HlrID })
+			}},
 		{"SriSmResp",
 			func(_ *testing.T, id string) ([]byte, error) {
 				return (&SriSmResp{IMSI: id, LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: msisdn}}).Marshal()
@@ -152,6 +163,22 @@ func semIMSICases() []semIdentityCase {
 			func(d []byte) (string, error) {
 				v, err := ParseMtFsm(d)
 				return semField(v, err, func() string { return v.SmRpDa.IMSI })
+			}},
+		{"MoFsm imsi",
+			func(t *testing.T, id string) ([]byte, error) {
+				m := knownMoFsm(t)
+				m.IMSI = id
+				return m.Marshal()
+			},
+			func(d []byte) (string, error) {
+				v, err := ParseMoFsm(d)
+				return semField(v, err, func() string { return v.IMSI })
+			}},
+		{"InsertSubscriberData",
+			func(_ *testing.T, id string) ([]byte, error) { return (&InsertSubscriberDataArg{IMSI: id}).Marshal() },
+			func(d []byte) (string, error) {
+				v, err := ParseInsertSubscriberData(d)
+				return semField(v, err, func() string { return v.IMSI })
 			}},
 		{"ProvideSubscriberLocation",
 			func(_ *testing.T, id string) ([]byte, error) {
@@ -356,8 +383,10 @@ func TestParseSendAuthenticationInfoShortIMSI(t *testing.T) {
 	}
 }
 
-// Parse applies the same rules as Marshal. The octet strings below fit the
-// codec's SIZE; the identity rule rejects their digit count.
+// Parse accepts five-digit MCC+MNC values from peers omitting the dummy MSIN
+// (TS 29.002 V19.1.0 §12.1.3; TS 23.040 V20.0.0 §8.1.4), preserving the
+// digits. Other IMSI counts follow TS 23.003 V20.1.0 §§2.2, 2.3. All raw
+// identities below fit the codec's octet SIZE, including rejected counts.
 func TestParseIdentityDigitCount(t *testing.T) {
 	const scf = "31612345678"
 	isdn := func(t *testing.T) []byte {
@@ -373,23 +402,38 @@ func TestParseIdentityDigitCount(t *testing.T) {
 	imsiCases := []struct {
 		name  string
 		build func(t *testing.T, imsi gsm_map.IMSI) wire
-		parse func([]byte) error
+		parse func([]byte) (string, error)
 	}{
 		{"SendAuthenticationInfo", func(_ *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.SendAuthenticationInfoArg{Imsi: imsi, NumberOfRequestedVectors: 1}
-		}, func(d []byte) error { _, err := ParseSendAuthenticationInfo(d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseSendAuthenticationInfo(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
 		{"UpdateLocation", func(t *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.UpdateLocationArg{Imsi: imsi, MscNumber: isdn(t), VlrNumber: isdn(t)}
-		}, func(d []byte) error { _, err := ParseUpdateLocation(d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseUpdateLocation(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
 		{"PurgeMS", func(_ *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.PurgeMSArg{Imsi: imsi}
-		}, func(d []byte) error { _, err := ParsePurgeMS(d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParsePurgeMS(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
 		{"ReportSMDeliveryStatus", func(t *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.ReportSMDeliveryStatusArg{Msisdn: isdn(t), ServiceCentreAddress: isdn(t), Imsi: &imsi}
-		}, func(d []byte) error { _, err := ParseReportSMDeliveryStatus(d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseReportSMDeliveryStatus(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
 		{"SriSmResp", func(t *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.RoutingInfoForSMRes{Imsi: imsi, LocationInfoWithLMSI: gsm_map.LocationInfoWithLMSI{NetworkNodeNumber: isdn(t)}}
-		}, func(d []byte) error { _, err := ParseSriSmResp(d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseSriSmResp(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
 		{"AnyTimeInterrogation", func(t *testing.T, imsi gsm_map.IMSI) wire {
 			v := struct{}{}
 			return &gsm_map.AnyTimeInterrogationArg{
@@ -397,10 +441,16 @@ func TestParseIdentityDigitCount(t *testing.T) {
 				RequestedInfo:      gsm_map.RequestedInfo{SubscriberState: &v},
 				GsmSCFAddress:      isdn(t),
 			}
-		}, func(d []byte) error { _, err := ParseAnyTimeInterrogation(d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseAnyTimeInterrogation(d)
+			return semField(v, err, func() string { return v.SubscriberIdentity.IMSI })
+		}},
 		{"AnyTimeInterrogationRes mnpInfoRes", func(_ *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{MnpInfoRes: &gsm_map.MNPInfoRes{Imsi: &imsi}}}
-		}, func(d []byte) error { _, err := ParseAnyTimeInterrogationRes(d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseAnyTimeInterrogationRes(d)
+			return semField(v, err, func() string { return v.SubscriberInfo.MnpInfoRes.IMSI })
+		}},
 		{"ProvideSubscriberLocation", func(t *testing.T, imsi gsm_map.IMSI) wire {
 			w, err := convertProvideSubscriberLocationArgToWire(semPSLArg())
 			if err != nil {
@@ -408,7 +458,10 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			}
 			w.Imsi = &imsi
 			return w
-		}, func(d []byte) error { _, err := ParseProvideSubscriberLocation(d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseProvideSubscriberLocation(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
 		{"SubscriberLocationReport", func(t *testing.T, imsi gsm_map.IMSI) wire {
 			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
 			if err != nil {
@@ -416,31 +469,128 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			}
 			w.Imsi = &imsi
 			return w
-		}, func(d []byte) error { _, err := ParseSubscriberLocationReport(d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseSubscriberLocationReport(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
 		{"absentSubscriberSM imsi", func(_ *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.AbsentSubscriberSMParam{Imsi: &imsi}
-		}, func(d []byte) error { _, err := ParseReturnErrorParameter(MapErrorAbsentSubscriberSM, d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseReturnErrorParameter(MapErrorAbsentSubscriberSM, d)
+			if err != nil {
+				return "", err
+			}
+			return v.(*AbsentSubscriberSMParam).IMSI, nil
+		}},
 		{"absentSubscriberSM userIdentifierAlert", func(_ *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.AbsentSubscriberSMParam{UserIdentifierAlert: &imsi}
-		}, func(d []byte) error { _, err := ParseReturnErrorParameter(MapErrorAbsentSubscriberSM, d); return err }},
+		}, func(d []byte) (string, error) {
+			v, err := ParseReturnErrorParameter(MapErrorAbsentSubscriberSM, d)
+			if err != nil {
+				return "", err
+			}
+			return v.(*AbsentSubscriberSMParam).UserIdentifierAlert, nil
+		}},
+		{"UpdateGprsLocation", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			return &gsm_map.UpdateGprsLocationArg{Imsi: imsi, SgsnNumber: isdn(t), SgsnAddress: gsm_map.GSNAddress{0x04, 192, 168, 31, 1}}
+		}, func(d []byte) (string, error) {
+			v, err := ParseUpdateGprsLocation(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
+		{"ProvideSubscriberInfo", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			return &gsm_map.ProvideSubscriberInfoArg{Imsi: imsi, RequestedInfo: gsm_map.RequestedInfo{LocationInformation: &struct{}{}}}
+		}, func(d []byte) (string, error) {
+			v, err := ParseProvideSubscriberInfo(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
+		{"CancelLocation imsi", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			return &gsm_map.CancelLocationArg{Identity: gsm_map.NewIdentityImsi(imsi)}
+		}, func(d []byte) (string, error) {
+			v, err := ParseCancelLocation(d)
+			return semField(v, err, func() string { return v.Identity.IMSI })
+		}},
+		{"CancelLocation imsi-WithLMSI", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			return &gsm_map.CancelLocationArg{Identity: gsm_map.NewIdentityImsiWithLMSI(gsm_map.IMSIWithLMSI{Imsi: imsi, Lmsi: gsm_map.LMSI{1, 2, 3, 4}})}
+		}, func(d []byte) (string, error) {
+			v, err := ParseCancelLocation(d)
+			return semField(v, err, func() string { return v.Identity.IMSIWithLMSI.IMSI })
+		}},
+		{"AlertServiceCentre", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			return &gsm_map.AlertServiceCentreArg{Msisdn: isdn(t), ServiceCentreAddress: isdn(t), Imsi: &imsi}
+		}, func(d []byte) (string, error) {
+			v, err := ParseAlertServiceCentre(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
+		{"SriSm", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			return &gsm_map.RoutingInfoForSMArg{Msisdn: isdn(t), ServiceCentreAddress: isdn(t), Imsi: &imsi}
+		}, func(d []byte) (string, error) {
+			v, err := ParseSriSm(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
+		{"SriResp", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			return &gsm_map.SendRoutingInfoRes{Imsi: &imsi}
+		}, func(d []byte) (string, error) {
+			v, err := ParseSriResp(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
+		{"MtFsm sm-RP-DA", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			w := semMust(convertMtFsmToArg(semMtFsm(t)))
+			w.SmRPDA = gsm_map.NewSMRPDAImsi(imsi)
+			return w
+		}, func(d []byte) (string, error) {
+			v, err := ParseMtFsm(d)
+			return semField(v, err, func() string { return v.SmRpDa.IMSI })
+		}},
+		{"MoFsm imsi", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			w := semMust(convertMoFsmToArg(knownMoFsm(t)))
+			w.Imsi = &imsi
+			return w
+		}, func(d []byte) (string, error) {
+			v, err := ParseMoFsm(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
+		{"InsertSubscriberData", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			return &gsm_map.InsertSubscriberDataArg{Imsi: &imsi}
+		}, func(d []byte) (string, error) {
+			v, err := ParseInsertSubscriberData(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
+		{"SriSm HLR-Id", func(t *testing.T, imsi gsm_map.IMSI) wire {
+			return &gsm_map.RoutingInfoForSMArg{Msisdn: isdn(t), ServiceCentreAddress: isdn(t), CorrelationID: &gsm_map.CorrelationID{HlrId: &imsi, SipUriB: gsm_map.SIPURI("sip:b@example.com")}}
+		}, func(d []byte) (string, error) {
+			v, err := ParseSriSm(d)
+			return semField(v, err, func() string { return v.CorrelationID.HlrID })
+		}},
 	}
 	for _, c := range imsiCases {
 		for _, tc := range []struct {
 			digits string
+			raw    gsm_map.IMSI
 			want   error
 		}{
-			{semDigits(5), identity.ErrIMSILength},
-			{semDigits(6), nil},
-			{semDigits(15), nil},
-			{semDigits(16), identity.ErrIMSILength},
+			{semDigits(5), nil, nil},
+			{semDigits(6), nil, nil},
+			{semDigits(15), nil, nil},
+			{semDigits(16), nil, identity.ErrIMSILength},
+			{"nondecimal MCC", gsm_map.IMSI{0xa0, 0x01, 0xf1}, identity.ErrNotDigits},
+			{"nondecimal MNC", gsm_map.IMSI{0x00, 0xa1, 0xf1}, identity.ErrNotDigits},
+			{"three digits", gsm_map.IMSI{0x00, 0xf1, 0xff}, identity.ErrIMSILength},
 		} {
 			t.Run("IMSI/"+c.name+"/"+tc.digits, func(t *testing.T) {
-				data, err := c.build(t, semTBCD(t, tc.digits)).MarshalBER()
+				raw := tc.raw
+				if raw == nil {
+					raw = semTBCD(t, tc.digits)
+				}
+				data, err := c.build(t, raw).MarshalBER()
 				if err != nil {
 					t.Fatalf("MarshalBER: %v", err)
 				}
-				if err := c.parse(data); !errors.Is(err, tc.want) {
-					t.Errorf("Parse: err = %v, want %v", err, tc.want)
+				got, err := c.parse(data)
+				if !errors.Is(err, tc.want) {
+					t.Fatalf("Parse: err = %v, want %v", err, tc.want)
+				}
+				if err == nil && got != tc.digits {
+					t.Errorf("parsed digits = %q, want %q", got, tc.digits)
 				}
 			})
 		}
@@ -500,5 +650,37 @@ func TestParseIdentityDigitCount(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TS 29.002 V19.1.0 §12.1.3 permits MCC+MNC+dummy MSIN for only MCC+MNC
+// requested; peers omitting the dummy MSIN still yield the received result.
+func TestParseSriSmRespMCCMNC(t *testing.T) {
+	for _, tc := range []struct {
+		wire, imsi string
+		marshalErr error
+	}{
+		{"301004030001f1a0098107915155000000f1", "00101", identity.ErrIMSILength},
+		{"30100403000101a0098107915155000000f1", "001010", nil},
+	} {
+		t.Run(tc.imsi, func(t *testing.T) {
+			data, err := hex.DecodeString(tc.wire)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := ParseSriSmResp(data)
+			if err != nil {
+				t.Fatalf("ParseSriSmResp: %v", err)
+			}
+			if got.IMSI != tc.imsi {
+				t.Errorf("IMSI = %q, want %q", got.IMSI, tc.imsi)
+			}
+			if got.LocationInfoWithLMSI.NetworkNodeNumber != "15550000001" {
+				t.Errorf("NetworkNodeNumber = %q, want 15550000001", got.LocationInfoWithLMSI.NetworkNodeNumber)
+			}
+			if _, err := got.Marshal(); !errors.Is(err, tc.marshalErr) {
+				t.Errorf("Marshal: err = %v, want %v", err, tc.marshalErr)
+			}
+		})
 	}
 }
