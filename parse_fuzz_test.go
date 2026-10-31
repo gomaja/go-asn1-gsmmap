@@ -234,6 +234,10 @@ var strictEncodeErrors = []error{
 	// the spare digit 0. Parse keeps it on purpose; Marshal sends 0 (3GPP
 	// TS 29.002 V19.1.0 §17.7.8 IMEI, 3GPP TS 23.003 V20.1.0 §6.2.1).
 	identity.ErrIMEISpareDigitNotZero,
+	// Five-digit MCC+MNC from peers omitting the dummy MSIN for "only
+	// MCC+MNC requested" (TS 29.002 V19.1.0 §12.1.3). Parse keeps the
+	// digits; Marshal requires 6 to 15 (TS 23.003 V20.1.0 §§2.2, 2.3).
+	identity.ErrIMSILength,
 	// ProtocolId gsm-BSSMAP (3) is listed, so Parse keeps it, but §17.7.8:
 	// "Value 3 is reserved and must not be used".
 	ErrProtocolIDReserved,

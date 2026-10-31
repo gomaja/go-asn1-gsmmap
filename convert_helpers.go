@@ -172,8 +172,20 @@ type identityField struct {
 }
 
 var (
-	// identityIMSI: 6 to 15 digits, 3GPP TS 23.003 V20.1.0 §§2.2, 2.3.
-	identityIMSI = identityField{received: identity.ValidateIMSI, sent: identity.ValidateIMSI}
+	// identityIMSI: 3GPP TS 23.003 V20.1.0 §2.2 composes the IMSI of the
+	// MCC (three digits), the MNC (two or three digits) and the MSIN; §2.3
+	// "The number of digits in IMSI shall not exceed 15." Marshal requires
+	// such an IMSI, 6 to 15 digits.
+	//
+	// Parse also accepts five digits, an MCC and a two-digit MNC with no
+	// MSIN, which the shortest IMSI of 3GPP TS 29.002 V19.1.0 §17.7.8,
+	// TBCD-STRING (SIZE (3..8)), carries. When an SRI-SM has "only MCC+MNC
+	// requested", the result's IMSI "may contain MCC+MNC+dummy MSIN"
+	// (§12.1.3; 3GPP TS 23.040 V20.0.0 §8.1.4), and HLRs that omit the
+	// dummy MSIN send the five digits. Parse keeps them as received, so such
+	// a value does not marshal again. HLR-Id ::= IMSI (§17.7.8) shares both
+	// rules.
+	identityIMSI = identityField{received: receivedIMSI, sent: identity.ValidateIMSI}
 
 	// identityIMEI: 3GPP TS 23.003 V20.1.0 §6.2.1 composes the IMEI of the
 	// TAC ("Its length is 8 digits"), the SNR ("Its length is 6 digits") and
@@ -200,6 +212,16 @@ var (
 	// §6.2.2.
 	identityIMEISV = identityField{received: identity.ValidateIMEISV, sent: identity.ValidateIMEISV}
 )
+
+// receivedIMSI is identityIMSI's Parse rule: five digits must be an MCC and
+// a two-digit MNC, and any other count a TS 23.003 IMSI.
+func receivedIMSI(digits string) error {
+	if len(digits) == 5 {
+		_, err := identity.NewPLMN(digits[:3], digits[3:])
+		return err
+	}
+	return identity.ValidateIMSI(digits)
+}
 
 // imeiField checks the digits of a MAP IMEI field: a 16-digit IMEISV, or
 // otherwise the 15-digit IMEI that imei checks.
