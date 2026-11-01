@@ -10,14 +10,15 @@ import (
 
 // A failed ASN.1 decode in Parse is wrapped in *ber.ElementError and matches
 // exactly one ber sentinel: ErrUnexpectedElement for a well-formed element
-// the MAP ASN.1 does not admit at its position, and for an explicit [0]
-// holding no value or more than one in an EXTERNAL, EMBEDDED PDV or
-// CHARACTER STRING in an open value (ITU-T X.690 (02/2021) §8.14.3),
-// otherwise the sentinel of the X.690 violation. Every input changes one
-// thing in the AnyTimeInterrogationArg of TestAnyTimeInterrogationDecodeProfile
-// (3GPP TS 29.002 V19.1.0 §17.7.1): [0] subscriberIdentity holding imsi,
-// [1] requestedInfo and [3] gsmSCF-Address. The extType inputs add an
-// extensionContainer [2] with one private extension, extId 1.2.3.4.
+// the MAP ASN.1 does not admit at its position, and for an EXTERNAL,
+// EMBEDDED PDV or CHARACTER STRING in an open value whose explicit [0]
+// (single-ASN1-type or identification) holds no value or more than one
+// (ITU-T X.690 (02/2021) §8.14.3), otherwise the sentinel of the X.690
+// violation. Every input changes one thing in the AnyTimeInterrogationArg of
+// TestAnyTimeInterrogationDecodeProfile (3GPP TS 29.002 V19.1.0 §17.7.1):
+// [0] subscriberIdentity holding imsi, [1] requestedInfo and
+// [3] gsmSCF-Address. The extType inputs add an extensionContainer [2] with
+// one private extension, extId 1.2.3.4.
 func TestParseDecodeErrorSentinel(t *testing.T) {
 	sentinels := []error{
 		ber.ErrUnexpectedElement, ber.ErrTruncated, ber.ErrInvalidLength,
