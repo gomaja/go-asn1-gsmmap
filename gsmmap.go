@@ -1982,8 +1982,9 @@ type ODBData struct {
 }
 
 // ZoneCode (OCTET STRING SIZE 2) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-// Internal structure defined in 3GPP TS 23.003.
-type ZoneCode HexBytes
+// Internal structure defined in 3GPP TS 23.003. An alias of HexBytes, so
+// JSON carries it as hex like every other byte field.
+type ZoneCode = HexBytes
 
 // ZoneCodeList (SEQUENCE SIZE 1..10 OF ZoneCode) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 type ZoneCodeList []ZoneCode
