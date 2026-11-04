@@ -21,6 +21,10 @@ func TestZoneCodeListJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantEqual(t, "zone codes", in, decoded)
+	// Base64 text, the form before ZoneCode carried hex, is refused.
+	if err := json.Unmarshal([]byte(`["EjQ="]`), &decoded); err == nil {
+		t.Errorf("Unmarshal of base64 = %x, want an error", decoded)
+	}
 }
 
 // HexBytes follows encoding/json.Marshaler and Unmarshaler contracts.
