@@ -277,19 +277,38 @@ func TestParseOptionInvalid(t *testing.T) {
 }
 
 func TestParseToleranceEmptyOptionalOctets(t *testing.T) {
-	// SRI: present empty sm-RP-SMEA [9]; length = 21 + 2 = 23.
-	data := mustHex(t, "30178007912143658709f18101008207912143658709f18900")
-	var violations []Violation
-	v, err := ParseSriSm(data, WithTolerance(&violations))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(v.SmRpSmea) != 0 || len(violations) != 1 || violations[0].Path != "sm-RP-SMEA" {
-		t.Fatalf("SMEA = %x; violations = %+v", v.SmRpSmea, violations)
-	}
-	canonical, err := v.Marshal()
-	if err != nil || !bytes.Equal(canonical, mustHex(t, toleranceSriValid)) {
-		t.Fatalf("Marshal = %x, %v", canonical, err)
+	for _, tc := range []struct {
+		name, wire, sent, path string
+		parser                 int
+		field                  func(marshaler) HexBytes
+	}{
+		// SRI: present empty sm-RP-SMEA [9]; length = 21 + 2 = 23.
+		{"SriSm sm-RP-SMEA", "30178007912143658709f18101008207912143658709f18900", toleranceSriValid, "sm-RP-SMEA", 0,
+			func(v marshaler) HexBytes { return v.(*SriSm).SmRpSmea }},
+		// MT: empty smDeliveryStartTime after the TPDU; length = 31 + 2 = 33.
+		{"MtFsm smDeliveryStartTime", "3021800800010121436587f984029121040f0002912100006210100000000001410400", toleranceMtValid, "smDeliveryStartTime", 2,
+			func(v marshaler) HexBytes { return v.(*MtFsm).SmDeliveryStartTime }},
+		// MT: empty maximumRetransmissionTime [2]; length = 31 + 2 = 33.
+		{"MtFsm maximumRetransmissionTime", "3021800800010121436587f984029121040f0002912100006210100000000001418200", toleranceMtValid, "maximumRetransmissionTime", 2,
+			func(v marshaler) HexBytes { return v.(*MtFsm).MaximumRetransmissionTime }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var violations []Violation
+			v, err := tolerantParsers[tc.parser].parse(mustHex(t, tc.wire), WithTolerance(&violations))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := tc.field(v); got != nil {
+				t.Errorf("field = %#v, want nil", got)
+			}
+			if len(violations) != 1 || violations[0].Path != tc.path {
+				t.Errorf("violations = %+v, want one at %s", violations, tc.path)
+			}
+			sent, err := v.Marshal()
+			if err != nil || !bytes.Equal(sent, mustHex(t, tc.sent)) {
+				t.Errorf("Marshal = %x, %v; want %s", sent, err, tc.sent)
+			}
+		})
 	}
 }
 
@@ -328,6 +347,20 @@ func TestParseToleranceEmptyLMSI(t *testing.T) {
 	wantValidationError(t, err, "sm-RP-DA.lmsi", "SIZE (4)")
 	violations := []Violation{{Path: "existing"}}
 	v, err := ParseMoFsm(data, WithTolerance(&violations))
+	if v != nil || !errors.Is(err, ErrSmRpDaLMSIDecodedEmpty) {
+		t.Fatalf("Parse = %+v, %v; want nil, %v", v, err, ErrSmRpDaLMSIDecodedEmpty)
+	}
+	if len(violations) != 1 || violations[0].Path != "existing" {
+		t.Fatalf("violations = %+v, want the existing report only", violations)
+	}
+}
+
+func TestParseToleranceEmptyLMSIMt(t *testing.T) {
+	// MT: present zero-octet LMSI DA [1], service-centre OA [4] and an
+	// SMS-DELIVER; SEQUENCE length = 2 + 4 + 17 = 23.
+	data := mustHex(t, "3017810084029121040f000291210000621010000000000141")
+	violations := []Violation{{Path: "existing"}}
+	v, err := ParseMtFsm(data, WithTolerance(&violations))
 	if v != nil || !errors.Is(err, ErrSmRpDaLMSIDecodedEmpty) {
 		t.Fatalf("Parse = %+v, %v; want nil, %v", v, err, ErrSmRpDaLMSIDecodedEmpty)
 	}
