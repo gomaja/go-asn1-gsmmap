@@ -911,3 +911,31 @@ func TestTraceModeReceiverSeeds(t *testing.T) {
 	}
 	wantEqual(t, "empty sequences", a, again)
 }
+
+// 3GPP TS 29.002 V19.1.0 §17.7.2 maps each received medium separately: "if value
+// medium is received, value minimum shall be applied". A pair that differs only
+// by that mapping becomes consistent, and any other pair stays refused.
+func TestTraceDepthPairAfterMapping(t *testing.T) {
+	minimum, maximum := TraceDepthMinimum, TraceDepthMaximum
+	extMinimum := TraceDepthExtensionMinimumWithoutVendorSpecificExtension
+	// traceReference; traceType; [6] msc-s depth medium and msc-s extension minimum.
+	got, err := ParseActivateTraceModeArg(mustHex(t, "300e810101820100a6068001018a0100"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantEqual(t, "mapped pair", &TraceDepthList{MscSTraceDepth: &minimum, MscSTraceDepthExtension: &extMinimum}, got.TraceDepthList)
+	data, err := got.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantEqual(t, "mapped wire", mustHex(t, "300e810101820100a6068001008a0100"), data)
+	// The same with msc-s depth maximum: Parse keeps the pair and Marshal refuses it.
+	got, err = ParseActivateTraceModeArg(mustHex(t, "300e810101820100a6068001028a0100"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantEqual(t, "kept pair", &TraceDepthList{MscSTraceDepth: &maximum, MscSTraceDepthExtension: &extMinimum}, got.TraceDepthList)
+	if _, err := got.Marshal(); !errors.Is(err, ErrTraceDepthExtensionMismatch) {
+		t.Errorf("Marshal: err = %v, want %v", err, ErrTraceDepthExtensionMismatch)
+	}
+}
