@@ -4172,6 +4172,456 @@ const (
 	AlertReasonMemoryAvailable AlertReason = gsm_map.AlertReasonMemoryAvailable
 )
 
+// ActivateTraceModeArg activates subscriber tracing (opCode 50).
+// 3GPP TS 29.002 V19.1.0 §9.1.1.3: "The IMSI is a mandatory parameter in a
+// stand-alone operation". TraceReference2, TraceDepthList, TraceNETypeList,
+// TraceInterfaceList and TraceEventList "shall be used for UMTS trace activation".
+// For UMTS-only tracing, TraceType shall contain "No MSC Trace" for MSC Record
+// Type and "No BSS Trace" for BSS Record Type (§7.6.10.3).
+// The caller applies these context rules and TS 52.008 TraceType coding;
+// TS 32.422 coding for the other trace parameters is not checked here (§7.6.10).
+type ActivateTraceModeArg struct {
+	IMSI                  string
+	TraceReference        HexBytes
+	TraceType             int
+	OMCID                 string
+	OMCIDNature           uint8
+	OMCIDPlan             uint8
+	TraceReference2       HexBytes
+	TraceDepthList        *TraceDepthList
+	TraceNETypeList       *TraceNETypeList
+	TraceInterfaceList    *TraceInterfaceList
+	TraceEventList        *TraceEventList
+	TraceCollectionEntity string
+	MDTConfiguration      *MDTConfiguration
+}
+
+// ActivateTraceModeRes is the optional result of activateTraceMode (opCode 50).
+// TraceSupportIndicator "shall be used for UMTS trace activation";
+// the caller applies this context rule (3GPP TS 29.002 V19.1.0 §9.1.1.3).
+type ActivateTraceModeRes struct{ TraceSupportIndicator bool }
+
+// DeactivateTraceModeArg deactivates subscriber tracing (opCode 51).
+// 3GPP TS 29.002 V19.1.0 §9.1.2.3: "The IMSI is a mandatory parameter in a
+// stand-alone operation"; TraceReference2 "shall be used for UMTS trace activation".
+// The caller applies these context rules and TS 32.422 reference coding (§7.6.10).
+type DeactivateTraceModeArg struct {
+	IMSI            string
+	TraceReference  HexBytes
+	TraceReference2 HexBytes
+}
+
+// DeactivateTraceModeRes is the optional empty result of deactivateTraceMode (opCode 51).
+type DeactivateTraceModeRes struct{}
+
+// TraceDepthList holds the per-network-element depths (3GPP TS 29.002 V19.1.0 §17.7.2).
+// "If one of the TraceDepthExtension types is received and supported, the
+// corresponding TraceDepth type shall be ignored." The caller decides support;
+// Parse retains both, mapping medium to minimum for non-RNC fields.
+type TraceDepthList struct {
+	MscSTraceDepth          *TraceDepth
+	MgwTraceDepth           *TraceDepth
+	SgsnTraceDepth          *TraceDepth
+	GgsnTraceDepth          *TraceDepth
+	RncTraceDepth           *TraceDepth
+	BmscTraceDepth          *TraceDepth
+	MmeTraceDepth           *TraceDepth
+	SgwTraceDepth           *TraceDepth
+	PgwTraceDepth           *TraceDepth
+	ENBTraceDepth           *TraceDepth
+	MscSTraceDepthExtension *TraceDepthExtension
+	MgwTraceDepthExtension  *TraceDepthExtension
+	SgsnTraceDepthExtension *TraceDepthExtension
+	GgsnTraceDepthExtension *TraceDepthExtension
+	RncTraceDepthExtension  *TraceDepthExtension
+	BmscTraceDepthExtension *TraceDepthExtension
+	MmeTraceDepthExtension  *TraceDepthExtension
+	SgwTraceDepthExtension  *TraceDepthExtension
+	PgwTraceDepthExtension  *TraceDepthExtension
+	ENBTraceDepthExtension  *TraceDepthExtension
+}
+
+// TraceDepth is the ASN.1 enumeration in 3GPP TS 29.002 V19.1.0 §17.7.2.
+type TraceDepth = gsm_map.TraceDepth
+
+const (
+	TraceDepthMinimum TraceDepth = gsm_map.TraceDepthMinimum
+	TraceDepthMedium  TraceDepth = gsm_map.TraceDepthMedium
+	TraceDepthMaximum TraceDepth = gsm_map.TraceDepthMaximum
+)
+
+// TraceDepthExtension is the ASN.1 enumeration in 3GPP TS 29.002 V19.1.0 §17.7.2.
+type TraceDepthExtension = gsm_map.TraceDepthExtension
+
+const (
+	TraceDepthExtensionMinimumWithoutVendorSpecificExtension TraceDepthExtension = gsm_map.TraceDepthExtensionMinimumWithoutVendorSpecificExtension
+	TraceDepthExtensionMediumWithoutVendorSpecificExtension  TraceDepthExtension = gsm_map.TraceDepthExtensionMediumWithoutVendorSpecificExtension
+	TraceDepthExtensionMaximumWithoutVendorSpecificExtension TraceDepthExtension = gsm_map.TraceDepthExtensionMaximumWithoutVendorSpecificExtension
+)
+
+// JobType is the ASN.1 enumeration in 3GPP TS 29.002 V19.1.0 §17.7.2.
+type JobType = gsm_map.JobType
+
+const (
+	JobTypeImmediateMDTOnly     JobType = gsm_map.JobTypeImmediateMDTOnly
+	JobTypeLoggedMDTOnly        JobType = gsm_map.JobTypeLoggedMDTOnly
+	JobTypeTraceOnly            JobType = gsm_map.JobTypeTraceOnly
+	JobTypeImmediateMDTAndTrace JobType = gsm_map.JobTypeImmediateMDTAndTrace
+)
+
+// PeriodUMTS is the ASN.1 enumeration in 3GPP TS 29.002 V19.1.0 §17.7.2.
+type PeriodUMTS = gsm_map.PeriodUMTS
+
+const (
+	PeriodUMTSD250ms   PeriodUMTS = gsm_map.PeriodUMTSD250ms
+	PeriodUMTSD500ms   PeriodUMTS = gsm_map.PeriodUMTSD500ms
+	PeriodUMTSD1000ms  PeriodUMTS = gsm_map.PeriodUMTSD1000ms
+	PeriodUMTSD2000ms  PeriodUMTS = gsm_map.PeriodUMTSD2000ms
+	PeriodUMTSD3000ms  PeriodUMTS = gsm_map.PeriodUMTSD3000ms
+	PeriodUMTSD4000ms  PeriodUMTS = gsm_map.PeriodUMTSD4000ms
+	PeriodUMTSD6000ms  PeriodUMTS = gsm_map.PeriodUMTSD6000ms
+	PeriodUMTSD8000ms  PeriodUMTS = gsm_map.PeriodUMTSD8000ms
+	PeriodUMTSD12000ms PeriodUMTS = gsm_map.PeriodUMTSD12000ms
+	PeriodUMTSD16000ms PeriodUMTS = gsm_map.PeriodUMTSD16000ms
+	PeriodUMTSD20000ms PeriodUMTS = gsm_map.PeriodUMTSD20000ms
+	PeriodUMTSD24000ms PeriodUMTS = gsm_map.PeriodUMTSD24000ms
+	PeriodUMTSD28000ms PeriodUMTS = gsm_map.PeriodUMTSD28000ms
+	PeriodUMTSD32000ms PeriodUMTS = gsm_map.PeriodUMTSD32000ms
+	PeriodUMTSD64000ms PeriodUMTS = gsm_map.PeriodUMTSD64000ms
+)
+
+// PeriodLTE is the ASN.1 enumeration in 3GPP TS 29.002 V19.1.0 §17.7.2.
+type PeriodLTE = gsm_map.PeriodLTE
+
+const (
+	PeriodLTED1024ms  PeriodLTE = gsm_map.PeriodLTED1024ms
+	PeriodLTED1280ms  PeriodLTE = gsm_map.PeriodLTED1280ms
+	PeriodLTED2048ms  PeriodLTE = gsm_map.PeriodLTED2048ms
+	PeriodLTED2560ms  PeriodLTE = gsm_map.PeriodLTED2560ms
+	PeriodLTED5120ms  PeriodLTE = gsm_map.PeriodLTED5120ms
+	PeriodLTED10240ms PeriodLTE = gsm_map.PeriodLTED10240ms
+	PeriodLTED1min    PeriodLTE = gsm_map.PeriodLTED1min
+)
+
+// ReportInterval is the ASN.1 enumeration in 3GPP TS 29.002 V19.1.0 §17.7.2.
+type ReportInterval = gsm_map.ReportInterval
+
+const (
+	ReportIntervalUmts250ms   ReportInterval = gsm_map.ReportIntervalUmts250ms
+	ReportIntervalUmts500ms   ReportInterval = gsm_map.ReportIntervalUmts500ms
+	ReportIntervalUmts1000ms  ReportInterval = gsm_map.ReportIntervalUmts1000ms
+	ReportIntervalUmts2000ms  ReportInterval = gsm_map.ReportIntervalUmts2000ms
+	ReportIntervalUmts3000ms  ReportInterval = gsm_map.ReportIntervalUmts3000ms
+	ReportIntervalUmts4000ms  ReportInterval = gsm_map.ReportIntervalUmts4000ms
+	ReportIntervalUmts6000ms  ReportInterval = gsm_map.ReportIntervalUmts6000ms
+	ReportIntervalUmts8000ms  ReportInterval = gsm_map.ReportIntervalUmts8000ms
+	ReportIntervalUmts12000ms ReportInterval = gsm_map.ReportIntervalUmts12000ms
+	ReportIntervalUmts16000ms ReportInterval = gsm_map.ReportIntervalUmts16000ms
+	ReportIntervalUmts20000ms ReportInterval = gsm_map.ReportIntervalUmts20000ms
+	ReportIntervalUmts24000ms ReportInterval = gsm_map.ReportIntervalUmts24000ms
+	ReportIntervalUmts28000ms ReportInterval = gsm_map.ReportIntervalUmts28000ms
+	ReportIntervalUmts32000ms ReportInterval = gsm_map.ReportIntervalUmts32000ms
+	ReportIntervalUmts64000ms ReportInterval = gsm_map.ReportIntervalUmts64000ms
+	ReportIntervalLte120ms    ReportInterval = gsm_map.ReportIntervalLte120ms
+	ReportIntervalLte240ms    ReportInterval = gsm_map.ReportIntervalLte240ms
+	ReportIntervalLte480ms    ReportInterval = gsm_map.ReportIntervalLte480ms
+	ReportIntervalLte640ms    ReportInterval = gsm_map.ReportIntervalLte640ms
+	ReportIntervalLte1024ms   ReportInterval = gsm_map.ReportIntervalLte1024ms
+	ReportIntervalLte2048ms   ReportInterval = gsm_map.ReportIntervalLte2048ms
+	ReportIntervalLte5120ms   ReportInterval = gsm_map.ReportIntervalLte5120ms
+	ReportIntervalLte10240ms  ReportInterval = gsm_map.ReportIntervalLte10240ms
+	ReportIntervalLte1min     ReportInterval = gsm_map.ReportIntervalLte1min
+	ReportIntervalLte6min     ReportInterval = gsm_map.ReportIntervalLte6min
+	ReportIntervalLte12min    ReportInterval = gsm_map.ReportIntervalLte12min
+	ReportIntervalLte30min    ReportInterval = gsm_map.ReportIntervalLte30min
+	ReportIntervalLte60min    ReportInterval = gsm_map.ReportIntervalLte60min
+)
+
+// ReportAmount is the ASN.1 enumeration in 3GPP TS 29.002 V19.1.0 §17.7.2.
+type ReportAmount = gsm_map.ReportAmount
+
+const (
+	ReportAmountD1       ReportAmount = gsm_map.ReportAmountD1
+	ReportAmountD2       ReportAmount = gsm_map.ReportAmountD2
+	ReportAmountD4       ReportAmount = gsm_map.ReportAmountD4
+	ReportAmountD8       ReportAmount = gsm_map.ReportAmountD8
+	ReportAmountD16      ReportAmount = gsm_map.ReportAmountD16
+	ReportAmountD32      ReportAmount = gsm_map.ReportAmountD32
+	ReportAmountD64      ReportAmount = gsm_map.ReportAmountD64
+	ReportAmountInfinity ReportAmount = gsm_map.ReportAmountInfinity
+)
+
+// LoggingInterval is the ASN.1 enumeration in 3GPP TS 29.002 V19.1.0 §17.7.2.
+type LoggingInterval = gsm_map.LoggingInterval
+
+const (
+	LoggingIntervalD1dot28  LoggingInterval = gsm_map.LoggingIntervalD1dot28
+	LoggingIntervalD2dot56  LoggingInterval = gsm_map.LoggingIntervalD2dot56
+	LoggingIntervalD5dot12  LoggingInterval = gsm_map.LoggingIntervalD5dot12
+	LoggingIntervalD10dot24 LoggingInterval = gsm_map.LoggingIntervalD10dot24
+	LoggingIntervalD20dot48 LoggingInterval = gsm_map.LoggingIntervalD20dot48
+	LoggingIntervalD30dot72 LoggingInterval = gsm_map.LoggingIntervalD30dot72
+	LoggingIntervalD40dot96 LoggingInterval = gsm_map.LoggingIntervalD40dot96
+	LoggingIntervalD61dot44 LoggingInterval = gsm_map.LoggingIntervalD61dot44
+)
+
+// LoggingDuration is the ASN.1 enumeration in 3GPP TS 29.002 V19.1.0 §17.7.2.
+type LoggingDuration = gsm_map.LoggingDuration
+
+const (
+	LoggingDurationD600sec  LoggingDuration = gsm_map.LoggingDurationD600sec
+	LoggingDurationD1200sec LoggingDuration = gsm_map.LoggingDurationD1200sec
+	LoggingDurationD2400sec LoggingDuration = gsm_map.LoggingDurationD2400sec
+	LoggingDurationD3600sec LoggingDuration = gsm_map.LoggingDurationD3600sec
+	LoggingDurationD5400sec LoggingDuration = gsm_map.LoggingDurationD5400sec
+	LoggingDurationD7200sec LoggingDuration = gsm_map.LoggingDurationD7200sec
+)
+
+// TraceInterfaceList holds optional per-network-element lists (3GPP TS 29.002 V19.1.0 §17.7.2).
+type TraceInterfaceList struct {
+	MscSList *MSCSInterfaceList
+	MgwList  *MGWInterfaceList
+	SgsnList *SGSNInterfaceList
+	GgsnList *GGSNInterfaceList
+	RncList  *RNCInterfaceList
+	BmscList *BMSCInterfaceList
+	MmeList  *MMEInterfaceList
+	SgwList  *SGWInterfaceList
+	PgwList  *PGWInterfaceList
+	ENBList  *ENBInterfaceList
+}
+
+// TraceEventList holds optional per-network-element lists (3GPP TS 29.002 V19.1.0 §17.7.2).
+type TraceEventList struct {
+	MscSList *MSCSEventList
+	MgwList  *MGWEventList
+	SgsnList *SGSNEventList
+	GgsnList *GGSNEventList
+	BmscList *BMSCEventList
+	MmeList  *MMEEventList
+	SgwList  *SGWEventList
+	PgwList  *PGWEventList
+}
+
+// TraceNETypeList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type TraceNETypeList struct {
+	MscS bool
+	Mgw  bool
+	Sgsn bool
+	Ggsn bool
+	Rnc  bool
+	Bmsc bool
+	Mme  bool
+	Sgw  bool
+	Pgw  bool
+	ENB  bool
+}
+
+// MSCSInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type MSCSInterfaceList struct {
+	A    bool
+	Iu   bool
+	Mc   bool
+	MapG bool
+	MapB bool
+	MapE bool
+	MapF bool
+	Cap  bool
+	MapD bool
+	MapC bool
+}
+
+// MGWInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type MGWInterfaceList struct {
+	Mc   bool
+	NbUp bool
+	IuUp bool
+}
+
+// SGSNInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type SGSNInterfaceList struct {
+	Gb    bool
+	Iu    bool
+	Gn    bool
+	MapGr bool
+	MapGd bool
+	MapGf bool
+	Gs    bool
+	Ge    bool
+	S3    bool
+	S4    bool
+	S6d   bool
+}
+
+// GGSNInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type GGSNInterfaceList struct {
+	Gn  bool
+	Gi  bool
+	Gmb bool
+}
+
+// RNCInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type RNCInterfaceList struct {
+	Iu  bool
+	Iur bool
+	Iub bool
+	Uu  bool
+}
+
+// BMSCInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type BMSCInterfaceList struct {
+	Gmb bool
+}
+
+// MMEInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type MMEInterfaceList struct {
+	S1Mme bool
+	S3    bool
+	S6a   bool
+	S10   bool
+	S11   bool
+}
+
+// SGWInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type SGWInterfaceList struct {
+	S4  bool
+	S5  bool
+	S8b bool
+	S11 bool
+	Gxc bool
+}
+
+// PGWInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type PGWInterfaceList struct {
+	S2a bool
+	S2b bool
+	S2c bool
+	S5  bool
+	S6b bool
+	Gx  bool
+	S8b bool
+	Sgi bool
+}
+
+// ENBInterfaceList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type ENBInterfaceList struct {
+	S1Mme bool
+	X2    bool
+	Uu    bool
+}
+
+// MSCSEventList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type MSCSEventList struct {
+	MoMtCall               bool
+	MoMtSms                bool
+	LuImsiAttachImsiDetach bool
+	Handovers              bool
+	Ss                     bool
+}
+
+// MGWEventList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type MGWEventList struct {
+	Context bool
+}
+
+// SGSNEventList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type SGSNEventList struct {
+	PdpContext              bool
+	MoMtSms                 bool
+	RauGprsAttachGprsDetach bool
+	MbmsContext             bool
+}
+
+// GGSNEventList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type GGSNEventList struct {
+	PdpContext  bool
+	MbmsContext bool
+}
+
+// BMSCEventList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type BMSCEventList struct {
+	MbmsMulticastServiceActivation bool
+}
+
+// MMEEventList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type MMEEventList struct {
+	UeInitiatedPDNConnectivityRequest     bool // ue-initiatedPDNconectivityRequest (0)
+	ServiceRequest                        bool // serviceRequestts (1)
+	InitialAttachTrackingAreaUpdateDetach bool
+	UeInitiatedPDNdisconnection           bool
+	BearerActivationModificationDeletion  bool
+	Handover                              bool
+}
+
+// SGWEventList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type SGWEventList struct {
+	PdnConnectionCreation                bool
+	PdnConnectionTermination             bool
+	BearerActivationModificationDeletion bool
+}
+
+// PGWEventList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
+// Other received bits are discarded.
+type PGWEventList struct {
+	PdnConnectionCreation                bool
+	PdnConnectionTermination             bool
+	BearerActivationModificationDeletion bool
+}
+
+// MDTConfiguration carries MDT parameters (3GPP TS 29.002 V19.1.0 §§7.6.10.11,17.7.2).
+// The caller applies TS 32.422 coding and the conditional presence rules it defines;
+// this package checks only ASN.1 constraints and the shared PLMN digit coding.
+// Empty octets and nil lists and scalar pointers mean absent.
+type MDTConfiguration struct {
+	JobType                 JobType
+	AreaScope               *AreaScope
+	ListOfMeasurements      HexBytes
+	ReportingTrigger        HexBytes
+	ReportInterval          *ReportInterval
+	ReportAmount            *ReportAmount
+	EventThresholdRSRP      *int
+	EventThresholdRSRQ      *int
+	LoggingInterval         *LoggingInterval
+	LoggingDuration         *LoggingDuration
+	MeasurementPeriodUMTS   *PeriodUMTS
+	MeasurementPeriodLTE    *PeriodLTE
+	CollectionPeriodRRMUMTS *PeriodUMTS
+	CollectionPeriodRRMLTE  *PeriodLTE
+	PositioningMethod       HexBytes
+	MeasurementQuantity     HexBytes
+	EventThreshold1F        *int
+	EventThreshold1I        *int
+	MDTAllowedPLMNList      []HexBytes
+}
+
+// AreaScope holds optional lists of cell and area identities (§17.7.2).
+// Nil lists are absent; present empty lists are subject to the codec SIZE check.
+type AreaScope struct {
+	CgiList            []HexBytes
+	EUtranCgiList      []HexBytes
+	RoutingAreaIdList  []HexBytes
+	LocationAreaIdList []HexBytes
+	TrackingAreaIdList []HexBytes
+}
+
 // MAP operation sentinel errors.
 var (
 	// 3GPP TS 29.002 V19.1.0 §17.7.8; RFC 6733 §4.3.1.
@@ -4661,4 +5111,15 @@ var (
 	ErrResetArgSubscriptionDataDeletionWithoutResetIdList         = errors.New("resetArg: SubscriptionDataDeletion requires ResetIdList per 3GPP TS 29.002 V19.1.0 §8.10.1.3")
 	ErrCheckIMEIArgBMUEFRequiresIMEISV                            = errors.New("checkIMEIArg: BMUEF requires a 16-digit IMEISV per 3GPP TS 29.002 V19.1.0 §8.7.1.3")
 	ErrCheckIMEIArgNoEquipmentInfoRequested                       = errors.New("checkIMEIArg: EquipmentStatus or BMUEF or both must be requested per 3GPP TS 29.002 V19.1.0 §8.7.1.3")
+	// Trace mode operations (3GPP TS 29.002 V19.1.0 §17.7.2).
+	ErrActivateTraceModeArgNil               = errors.New("activateTraceModeArg: nil argument is not permitted")
+	ErrActivateTraceModeResNil               = errors.New("activateTraceModeRes: nil argument is not permitted")
+	ErrDeactivateTraceModeArgNil             = errors.New("deactivateTraceModeArg: nil argument is not permitted")
+	ErrDeactivateTraceModeResNil             = errors.New("deactivateTraceModeRes: nil argument is not permitted")
+	ErrActivateTraceModeArgOMCIDDecodedEmpty = errors.New("activateTraceModeArg: present OMCID decoded to empty digits")
+	ErrTraceDepthInvalid                     = errors.New("traceDepth: undefined enumeration value")
+	ErrTraceDepthExtensionInvalid            = errors.New("traceDepthExtension: undefined enumeration value")
+	ErrTraceDepthMediumNonRNC                = errors.New("traceDepth: medium is applicable only for RNC")
+	ErrTraceDepthExtensionMediumNonRNC       = errors.New("traceDepthExtension: mediumWithoutVendorSpecificExtension is applicable only for RNC")
+	ErrTraceDepthExtensionMismatch           = errors.New("traceDepthList: extension requires the corresponding base depth with the same enumeration value")
 )
