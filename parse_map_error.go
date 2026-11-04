@@ -31,6 +31,10 @@ import (
 //	MapErrorUnexpectedDataValue           (36) → *UnexpectedDataParam
 //	MapErrorUnauthorizedRequestingNetwork (52) → *UnauthorizedRequestingNetworkParam
 //
+// Each returned type has a Marshal method for encoding a ReturnError parameter.
+// All listed errors except roamingNotAllowed may carry no parameter
+// (3GPP TS 29.002 V19.1.0 §17.6.6).
+//
 // unknownAlphabet (71) and ussd-Busy (72) have no parameter. For them, for
 // any error code not listed above, and when an optional parameter is empty,
 // the result is (nil, nil). An empty roamingNotAllowed parameter instead

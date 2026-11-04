@@ -130,6 +130,9 @@ func berSeeds(tb testing.TB) [][]byte {
 // strictEncodeErrors lists values Parse accepts but Marshal rejects. The
 // reasons include receiver mappings and deliberate decode leniency:
 var strictEncodeErrors = []error{
+	// 3GPP TS 29.002 V19.1.0 §17.7.7: Parse keeps conflicting call-barred indicators and unknown additional roaming causes.
+	ErrExtensibleCallBarredParamMutuallyExclusiveIndicators,
+	ErrAdditionalRoamingNotAllowedCauseInvalid,
 	// ASCII DiameterIdentity is a sender rule (RFC 6733 §4.3.1; TS 29.002 §17.7.8).
 	ErrDiameterIdentityNotASCII,
 	// Decimal MCC/MNC coding is a sender rule (TS 29.002 §§17.7.8,17.7.13).
