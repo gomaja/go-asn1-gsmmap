@@ -19,7 +19,7 @@ func TestParseFunctionNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	funcs := regexp.MustCompile(`(?m)^func Parse(\w+)\(data \[\]byte\) \(\*(\w+), error\)`).FindAllSubmatch(src, -1)
+	funcs := regexp.MustCompile(`(?m)^func Parse(\w+)\(data \[\]byte(?:, opts \.\.\.ParseOption)?\) \(\*(\w+), error\)`).FindAllSubmatch(src, -1)
 	if len(funcs) == 0 {
 		t.Fatal("no Parse functions found in parse.go")
 	}

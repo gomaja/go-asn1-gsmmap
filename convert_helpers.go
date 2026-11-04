@@ -83,9 +83,8 @@ func validatePLMNIdentityDigits(raw []byte, field string) error {
 }
 
 // decodeAddressField decodes an AddressString byte slice into a phone number string and address components.
-// Every AddressString it receives has at least the nature/plan octet: the
-// codec checks SIZE (1..n) for fields and SEQUENCE OF elements
-// (3GPP TS 29.002 V19.1.0 §17.7.8).
+// An empty address decodes to no digits. Callers requiring digits use
+// decodeAddressWithDigits, including after a tolerant codec decode.
 func decodeAddressField(encoded []byte) (digits string, nature, plan uint8, err error) {
 	_, nat, pl, rawDigits := address.Decode(encoded)
 	digits, err = tbcd.Decode(rawDigits)
@@ -103,7 +102,7 @@ func decodeAddressField(encoded []byte) (digits string, nature, plan uint8, err 
 // would decode to a value Marshal rejects (mandatory) or drops (OPTIONAL).
 // It is rejected with empty: for a mandatory field the sentinel the encoder
 // returns for the missing field, otherwise the field's "...DecodedEmpty"
-// sentinel. A parsed message therefore marshals back to the same fields.
+// sentinel. This preserves address presence in the string-based public types.
 func decodeAddressWithDigits(encoded []byte, empty error) (digits string, nature, plan uint8, err error) {
 	digits, nature, plan, err = decodeAddressField(encoded)
 	if err != nil {

@@ -113,7 +113,7 @@ func semOptionalAddressCases() []semAddressCase {
 			}
 			w.SmsGmscAddress = ptr(a)
 			return w
-		}, semParse(ParseMtFsm), ErrMtFsmSmsGmscAddressDecodedEmpty},
+		}, semParse(withoutParseOptions(ParseMtFsm)), ErrMtFsmSmsGmscAddressDecodedEmpty},
 		{"InsertSubscriberData msisdn", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.InsertSubscriberDataArg{Msisdn: ptr(a)}
 		}, semParse(ParseInsertSubscriberDataArg), ErrIsdMSISDNDecodedEmpty},

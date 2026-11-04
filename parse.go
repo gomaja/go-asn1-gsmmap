@@ -6,13 +6,23 @@ import (
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 )
 
-// ParseSriSm decodes BER-encoded bytes into an SriSm.
-func ParseSriSm(data []byte) (*SriSm, error) {
+// ParseSriSm decodes BER-encoded bytes into an SriSm. Decoding is strict
+// unless WithTolerance is supplied; package conversion rules still apply.
+func ParseSriSm(data []byte, opts ...ParseOption) (*SriSm, error) {
+	config, err := makeParseConfig(opts)
+	if err != nil {
+		return nil, err
+	}
 	var arg gsm_map.RoutingInfoForSMArg
-	if err := arg.UnmarshalBER(data); err != nil {
+	if err := arg.UnmarshalBER(data, config.decodeOptions()...); err != nil {
 		return nil, fmt.Errorf("decoding RoutingInfoForSMArg: %w", err)
 	}
-	return convertArgToSriSm(&arg)
+	value, err := convertArgToSriSm(&arg)
+	if err != nil {
+		return nil, err
+	}
+	config.publish()
+	return value, nil
 }
 
 // ParseSriSmRes decodes BER-encoded bytes into an SriSmRes.
@@ -24,13 +34,23 @@ func ParseSriSmRes(data []byte) (*SriSmRes, error) {
 	return convertResToSriSmRes(&res)
 }
 
-// ParseMtFsm decodes BER-encoded bytes into an MtFsm.
-func ParseMtFsm(data []byte) (*MtFsm, error) {
+// ParseMtFsm decodes BER-encoded bytes into an MtFsm. Decoding is strict
+// unless WithTolerance is supplied; package conversion rules still apply.
+func ParseMtFsm(data []byte, opts ...ParseOption) (*MtFsm, error) {
+	config, err := makeParseConfig(opts)
+	if err != nil {
+		return nil, err
+	}
 	var arg gsm_map.MTForwardSMArg
-	if err := arg.UnmarshalBER(data); err != nil {
+	if err := arg.UnmarshalBER(data, config.decodeOptions()...); err != nil {
 		return nil, fmt.Errorf("decoding MTForwardSMArg: %w", err)
 	}
-	return convertArgToMtFsm(&arg)
+	value, err := convertArgToMtFsm(&arg)
+	if err != nil {
+		return nil, err
+	}
+	config.publish()
+	return value, nil
 }
 
 // ParseMtFsmRes decodes BER-encoded bytes into an MtFsmRes.
@@ -42,13 +62,23 @@ func ParseMtFsmRes(data []byte) (*MtFsmRes, error) {
 	return convertResToMtFsmRes(&res), nil
 }
 
-// ParseMoFsm decodes BER-encoded bytes into an MoFsm.
-func ParseMoFsm(data []byte) (*MoFsm, error) {
+// ParseMoFsm decodes BER-encoded bytes into an MoFsm. Decoding is strict
+// unless WithTolerance is supplied; package conversion rules still apply.
+func ParseMoFsm(data []byte, opts ...ParseOption) (*MoFsm, error) {
+	config, err := makeParseConfig(opts)
+	if err != nil {
+		return nil, err
+	}
 	var arg gsm_map.MOForwardSMArg
-	if err := arg.UnmarshalBER(data); err != nil {
+	if err := arg.UnmarshalBER(data, config.decodeOptions()...); err != nil {
 		return nil, fmt.Errorf("decoding MOForwardSMArg: %w", err)
 	}
-	return convertArgToMoFsm(&arg)
+	value, err := convertArgToMoFsm(&arg)
+	if err != nil {
+		return nil, err
+	}
+	config.publish()
+	return value, nil
 }
 
 // ParseMoFsmRes decodes BER-encoded bytes into an MoFsmRes.

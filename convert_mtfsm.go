@@ -112,7 +112,9 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 	// Optional fields (post-extension marker).
 	if arg.SmDeliveryTimer != nil {
 		v := int(*arg.SmDeliveryTimer)
-
+		if int64(v) != *arg.SmDeliveryTimer {
+			return nil, fmt.Errorf("decoding SmDeliveryTimer: %w: %d", ErrIntOverflow, *arg.SmDeliveryTimer)
+		}
 		mtFsm.SmDeliveryTimer = &v
 	}
 	if arg.SmDeliveryStartTime != nil {
