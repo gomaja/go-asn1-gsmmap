@@ -7,6 +7,26 @@ import (
 	"testing"
 )
 
+// ZoneCode is an alias of HexBytes, so a ZoneCodeList carries hex in JSON
+// like every other byte field, and reads hex back.
+func TestZoneCodeListJSON(t *testing.T) {
+	in := ZoneCodeList{ZoneCode{0x12, 0x34}, ZoneCode{0xab, 0xcd}}
+	got, err := json.Marshal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantEqual(t, "JSON", `["1234","abcd"]`, string(got))
+	var decoded ZoneCodeList
+	if err := json.Unmarshal(got, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	wantEqual(t, "zone codes", in, decoded)
+	// Base64 text, the form before ZoneCode carried hex, is refused.
+	if err := json.Unmarshal([]byte(`["EjQ="]`), &decoded); err == nil {
+		t.Errorf("Unmarshal of base64 = %x, want an error", decoded)
+	}
+}
+
 // HexBytes follows encoding/json.Marshaler and Unmarshaler contracts.
 func TestHexBytesJSON(t *testing.T) {
 	for _, tc := range []struct {

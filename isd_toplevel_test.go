@@ -85,8 +85,8 @@ func TestInsertSubscriberDataArg_OdbAndZoneCodeRoundTrip(t *testing.T) {
 			OdbGeneralData: &ODBGeneralData{AllOGCallsBarred: true},
 		},
 		RegionalSubscriptionData: ZoneCodeList{
-			ZoneCode(HexBytes{0x12, 0x34}),
-			ZoneCode(HexBytes{0x56, 0x78}),
+			ZoneCode{0x12, 0x34},
+			ZoneCode{0x56, 0x78},
 		},
 	}
 	encoded, err := in.Marshal()
