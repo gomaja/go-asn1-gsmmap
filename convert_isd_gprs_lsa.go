@@ -60,11 +60,11 @@ func convertWireToAMBR(w *gsm_map.AMBR) (*AMBR, error) {
 	}
 	ul, err := int64FromBigInt(w.MaxRequestedBandwidthUL, "AMBR.MaxRequestedBandwidthUL")
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrAMBRBandwidthOutOfRange, err)
+		return nil, fmt.Errorf("%w: %w", ErrAMBRBandwidthOutOfRange, err)
 	}
 	dl, err := int64FromBigInt(w.MaxRequestedBandwidthDL, "AMBR.MaxRequestedBandwidthDL")
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrAMBRBandwidthOutOfRange, err)
+		return nil, fmt.Errorf("%w: %w", ErrAMBRBandwidthOutOfRange, err)
 	}
 	if ul < 0 || dl < 0 {
 		return nil, fmt.Errorf("%w (UL=%d, DL=%d)", ErrAMBRBandwidthOutOfRange, ul, dl)
@@ -76,7 +76,7 @@ func convertWireToAMBR(w *gsm_map.AMBR) (*AMBR, error) {
 	if w.ExtendedMaxRequestedBandwidthUL != nil {
 		v, err := int64FromBigInt(w.ExtendedMaxRequestedBandwidthUL, "AMBR.ExtendedMaxRequestedBandwidthUL")
 		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrAMBRBandwidthOutOfRange, err)
+			return nil, fmt.Errorf("%w: %w", ErrAMBRBandwidthOutOfRange, err)
 		}
 		if v < 0 {
 			return nil, fmt.Errorf("%w (extended UL=%d)", ErrAMBRBandwidthOutOfRange, v)
@@ -86,7 +86,7 @@ func convertWireToAMBR(w *gsm_map.AMBR) (*AMBR, error) {
 	if w.ExtendedMaxRequestedBandwidthDL != nil {
 		v, err := int64FromBigInt(w.ExtendedMaxRequestedBandwidthDL, "AMBR.ExtendedMaxRequestedBandwidthDL")
 		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrAMBRBandwidthOutOfRange, err)
+			return nil, fmt.Errorf("%w: %w", ErrAMBRBandwidthOutOfRange, err)
 		}
 		if v < 0 {
 			return nil, fmt.Errorf("%w (extended DL=%d)", ErrAMBRBandwidthOutOfRange, v)
