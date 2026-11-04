@@ -11,8 +11,9 @@ type parseConfig struct {
 // go-asn1's ber.WithTolerance and, when Parse succeeds, append the admitted
 // violations to *violations. It admits representable constraint and protocol-rule
 // violations, including the BER forms of TS 29.002 V19.1.0 §17.1.1.
-// Package conversion rules still apply. An optional octet string whose SIZE
-// excludes zero octets, received empty, reads as absent. Marshal remains strict.
+// Package conversion rules still apply. An empty sm-RP-SMEA,
+// smDeliveryStartTime or maximumRetransmissionTime reads as absent; an empty
+// LMSI is refused with ErrSmRpDaLMSIDecodedEmpty. Marshal remains strict.
 // A nil destination or a repeated WithTolerance returns ErrParseOptionInvalid.
 // Parse appends without synchronization, so calls running at the same time
 // need separate slices.

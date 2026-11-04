@@ -239,8 +239,8 @@ that the public types can represent retain all received digits, even beyond the
 ASN.1 SIZE (TS 29.002 V19.1.0 §§17.7.6, 17.7.8).
 
 Marshal stays strict: the codec refuses values that violate its constraints on
-encode. An optional octet string whose SIZE excludes zero octets, received empty,
-reads as absent (nil), for example `SriSm.SmRpSmea`, so it is not sent. A
+encode. An empty sm-RP-SMEA, smDeliveryStartTime or maximumRetransmissionTime,
+whose SIZE excludes zero octets, reads as absent (nil), so it is not sent. A
 tolerated §17.1.1 BER form marshals in canonical form.
 
 ### Build and marshal MAP data
