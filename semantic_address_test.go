@@ -96,7 +96,7 @@ func semAddressCases() []semAddressCase {
 			}
 			w.MlcNumber = a
 			return w
-		}, semParse(ParseProvideSubscriberLocation), ErrPSLArgMlcNumberEmpty},
+		}, semParse(ParseProvideSubscriberLocationArg), ErrPSLArgMlcNumberEmpty},
 		{"SendRoutingInfoForLCS mlc-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.RoutingInfoForLCSArg{MlcNumber: a, TargetMS: gsm_map.NewSubscriberIdentityImsi(semAddrIMSI)}
 		}, semParse(ParseSriLcs), ErrSriLcsMlcNumberEmpty},
@@ -107,7 +107,7 @@ func semAddressCases() []semAddressCase {
 			}
 			w.LcsLocationInfo.NetworkNodeNumber = a
 			return w
-		}, semParse(ParseSubscriberLocationReport), ErrLCSLocationInfoNetworkNodeNumberEmpty},
+		}, semParse(ParseSubscriberLocationReportArg), ErrLCSLocationInfoNetworkNodeNumberEmpty},
 		{"UpdateGprsLocation sgsn-Number", func(t *testing.T, a []byte) semWire {
 			w, err := convertUpdateGprsLocationToArg(&UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "12", SGSNAddress: "192.0.2.1"})
 			if err != nil {
@@ -126,7 +126,7 @@ func semAddressCases() []semAddressCase {
 			}
 			w.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList.Values[0].GsmSCFAddress = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingGsmSCFAddress},
 		{"MG-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
 			w, err := convertInsertSubscriberDataArgToWire(&InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &SGSNCAMELSubscriptionInfo{MgCsi: makeMGCSI()}})
 			if err != nil {
@@ -134,55 +134,55 @@ func semAddressCases() []semAddressCase {
 			}
 			w.SgsnCAMELSubscriptionInfo.MgCsi.GsmSCFAddress = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingGsmSCFAddress},
 		{"O-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
 			w := isdWire(t, semCamelAddressISD())
 			c := w.VlrCamelSubscriptionInfo
 			c.OCSI.OBcsmCamelTDPDataList.Values[0].GsmSCFAddress = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingGsmSCFAddress},
 		{"O-BCSM destinationNumberList", func(t *testing.T, a []byte) semWire {
 			w := isdWire(t, semCamelAddressISD())
 			c := w.VlrCamelSubscriptionInfo
 			c.OBcsmCamelTDPCriteriaList.Values[0].DestinationNumberCriteria.DestinationNumberList.Values[0] = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingDestinationNumber},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingDestinationNumber},
 		{"VT-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
 			w := isdWire(t, semCamelAddressISD())
 			c := w.VlrCamelSubscriptionInfo
 			c.VtCSI.TBcsmCamelTDPDataList.Values[0].GsmSCFAddress = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingGsmSCFAddress},
 		{"D-CSI dialledNumber", func(t *testing.T, a []byte) semWire {
 			w := isdWire(t, semCamelAddressISD())
 			c := w.VlrCamelSubscriptionInfo
 			c.DCSI.DpAnalysedInfoCriteriaList.Values[0].DialledNumber = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingDialledNumber},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingDialledNumber},
 		{"D-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
 			w := isdWire(t, semCamelAddressISD())
 			c := w.VlrCamelSubscriptionInfo
 			c.DCSI.DpAnalysedInfoCriteriaList.Values[0].GsmSCFAddress = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingGsmSCFAddress},
 		{"SS-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
 			w := isdWire(t, semCamelAddressISD())
 			c := w.VlrCamelSubscriptionInfo
 			c.SsCSI.SsCamelData.GsmSCFAddress = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingGsmSCFAddress},
 		{"M-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
 			w := isdWire(t, semCamelAddressISD())
 			c := w.VlrCamelSubscriptionInfo
 			c.MCSI.GsmSCFAddress = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingGsmSCFAddress},
 		{"MO-SMS-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
 			w := isdWire(t, semCamelAddressISD())
 			c := w.VlrCamelSubscriptionInfo
 			c.MoSmsCSI.SmsCAMELTDPDataList.Values[0].GsmSCFAddress = a
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		}, semParse(ParseInsertSubscriberDataArg), ErrCamelMissingGsmSCFAddress},
 		{"AlertServiceCentre msisdn", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.AlertServiceCentreArg{Msisdn: a, ServiceCentreAddress: semTwoDigits}
 		}, semParse(ParseAlertServiceCentre), ErrAscMissingMSISDN},
@@ -199,7 +199,7 @@ func semAddressCases() []semAddressCase {
 			eri := gsm_map.NewExtendedRoutingInfoRoutingInfo(gsm_map.NewRoutingInfoRoamingNumber(a))
 			imsi := semAddrIMSI
 			return &gsm_map.SendRoutingInfoRes{Imsi: &imsi, ExtendedRoutingInfo: &eri}
-		}, semParse(ParseSriResp), ErrRoutingInfoRoamingNumberDecodedEmpty},
+		}, semParse(ParseSriRes), ErrRoutingInfoRoamingNumberDecodedEmpty},
 		{"RoutingInfoForSM msisdn", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.RoutingInfoForSMArg{Msisdn: a, SmRPPRI: true, ServiceCentreAddress: semTwoDigits}
 		}, semParse(ParseSriSm), ErrSriSmMissingMSISDN},
@@ -208,19 +208,19 @@ func semAddressCases() []semAddressCase {
 		}, semParse(ParseSriSm), ErrSriSmMissingServiceCentreAddress},
 		{"RoutingInfoForSMRes networkNode-Number", func(_ *testing.T, a []byte) semWire {
 			return sriSmRes(a, nil, nil)
-		}, semParse(ParseSriSmResp), ErrSriSmRespMissingNetworkNodeNumber},
+		}, semParse(ParseSriSmRes), ErrSriSmResMissingNetworkNodeNumber},
 		{"RoutingInfoForSMRes additional-Number msc-Number", func(_ *testing.T, a []byte) semWire {
 			return sriSmRes(semTwoDigits, addl(true, a), nil)
-		}, semParse(ParseSriSmResp), ErrAdditionalNumberMscNumberDecodedEmpty},
+		}, semParse(ParseSriSmRes), ErrAdditionalNumberMscNumberDecodedEmpty},
 		{"RoutingInfoForSMRes additional-Number sgsn-Number", func(_ *testing.T, a []byte) semWire {
 			return sriSmRes(semTwoDigits, addl(false, a), nil)
-		}, semParse(ParseSriSmResp), ErrAdditionalNumberSgsnNumberDecodedEmpty},
+		}, semParse(ParseSriSmRes), ErrAdditionalNumberSgsnNumberDecodedEmpty},
 		{"RoutingInfoForSMRes thirdNumber msc-Number", func(_ *testing.T, a []byte) semWire {
 			return sriSmRes(semTwoDigits, nil, addl(true, a))
-		}, semParse(ParseSriSmResp), ErrAdditionalNumberMscNumberDecodedEmpty},
+		}, semParse(ParseSriSmRes), ErrAdditionalNumberMscNumberDecodedEmpty},
 		{"SubscriberLocationReport additional-Number sgsn-Number", func(t *testing.T, a []byte) semWire {
 			return slr(t, addl(false, a))
-		}, semParse(ParseSubscriberLocationReport), ErrAdditionalNumberSgsnNumberDecodedEmpty},
+		}, semParse(ParseSubscriberLocationReportArg), ErrAdditionalNumberSgsnNumberDecodedEmpty},
 		{"UpdateLocation msc-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.UpdateLocationArg{Imsi: semAddrIMSI, MscNumber: a, VlrNumber: semTwoDigits}
 		}, semParse(ParseUpdateLocation), ErrUpdateLocationMissingMscNumber},
@@ -314,7 +314,7 @@ func TestMarshalMissingMandatoryAddress(t *testing.T) {
 		want error
 	}{
 		{"UpdateLocationRes HlrNumber", &UpdateLocationRes{}, ErrUpdateLocationResMissingHlrNumber},
-		{"SriSmResp NetworkNodeNumber", &SriSmResp{IMSI: "001010123456789"}, ErrSriSmRespMissingNetworkNodeNumber},
+		{"SriSmRes NetworkNodeNumber", &SriSmRes{IMSI: "001010123456789"}, ErrSriSmResMissingNetworkNodeNumber},
 		{"AnyTimeInterrogation GsmSCFAddress", &AnyTimeInterrogation{
 			SubscriberIdentity: SubscriberIdentity{IMSI: "001010123456789"},
 			RequestedInfo:      RequestedInfo{SubscriberState: true},

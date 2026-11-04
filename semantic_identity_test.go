@@ -140,18 +140,18 @@ func semIMSICases() []semIdentityCase {
 				v, err := ParseSriSm(d)
 				return semField(v, err, func() string { return v.CorrelationID.HlrID })
 			}},
-		{"SriSmResp",
+		{"SriSmRes",
 			func(_ *testing.T, id string) ([]byte, error) {
-				return (&SriSmResp{IMSI: id, LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: msisdn}}).Marshal()
+				return (&SriSmRes{IMSI: id, LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: msisdn}}).Marshal()
 			},
 			func(d []byte) (string, error) {
-				v, err := ParseSriSmResp(d)
+				v, err := ParseSriSmRes(d)
 				return semField(v, err, func() string { return v.IMSI })
 			}},
-		{"SriResp",
-			func(_ *testing.T, id string) ([]byte, error) { return (&SriResp{IMSI: id}).Marshal() },
+		{"SriRes",
+			func(_ *testing.T, id string) ([]byte, error) { return (&SriRes{IMSI: id}).Marshal() },
 			func(d []byte) (string, error) {
-				v, err := ParseSriResp(d)
+				v, err := ParseSriRes(d)
 				return semField(v, err, func() string { return v.IMSI })
 			}},
 		{"MtFsm sm-RP-DA",
@@ -177,7 +177,7 @@ func semIMSICases() []semIdentityCase {
 		{"InsertSubscriberData",
 			func(_ *testing.T, id string) ([]byte, error) { return (&InsertSubscriberDataArg{IMSI: id}).Marshal() },
 			func(d []byte) (string, error) {
-				v, err := ParseInsertSubscriberData(d)
+				v, err := ParseInsertSubscriberDataArg(d)
 				return semField(v, err, func() string { return v.IMSI })
 			}},
 		{"ProvideSubscriberLocation",
@@ -187,7 +187,7 @@ func semIMSICases() []semIdentityCase {
 				return a.Marshal()
 			},
 			func(d []byte) (string, error) {
-				v, err := ParseProvideSubscriberLocation(d)
+				v, err := ParseProvideSubscriberLocationArg(d)
 				return semField(v, err, func() string { return v.IMSI })
 			}},
 		{"SubscriberLocationReport",
@@ -197,7 +197,7 @@ func semIMSICases() []semIdentityCase {
 				return a.Marshal()
 			},
 			func(d []byte) (string, error) {
-				v, err := ParseSubscriberLocationReport(d)
+				v, err := ParseSubscriberLocationReportArg(d)
 				return semField(v, err, func() string { return v.IMSI })
 			}},
 		{"AnyTimeInterrogation subscriberIdentity",
@@ -248,7 +248,7 @@ func semIMEICases() []semIdentityCase {
 				return a.Marshal()
 			},
 			func(d []byte) (string, error) {
-				v, err := ParseProvideSubscriberLocation(d)
+				v, err := ParseProvideSubscriberLocationArg(d)
 				return semField(v, err, func() string { return v.IMEI })
 			}},
 		{"SubscriberLocationReport imei",
@@ -258,7 +258,7 @@ func semIMEICases() []semIdentityCase {
 				return a.Marshal()
 			},
 			func(d []byte) (string, error) {
-				v, err := ParseSubscriberLocationReport(d)
+				v, err := ParseSubscriberLocationReportArg(d)
 				return semField(v, err, func() string { return v.IMEI })
 			}},
 	}
@@ -428,10 +428,10 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			v, err := ParseReportSMDeliveryStatus(d)
 			return semField(v, err, func() string { return v.IMSI })
 		}},
-		{"SriSmResp", func(t *testing.T, imsi gsm_map.IMSI) wire {
+		{"SriSmRes", func(t *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.RoutingInfoForSMRes{Imsi: imsi, LocationInfoWithLMSI: gsm_map.LocationInfoWithLMSI{NetworkNodeNumber: isdn(t)}}
 		}, func(d []byte) (string, error) {
-			v, err := ParseSriSmResp(d)
+			v, err := ParseSriSmRes(d)
 			return semField(v, err, func() string { return v.IMSI })
 		}},
 		{"AnyTimeInterrogation", func(t *testing.T, imsi gsm_map.IMSI) wire {
@@ -459,7 +459,7 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			w.Imsi = &imsi
 			return w
 		}, func(d []byte) (string, error) {
-			v, err := ParseProvideSubscriberLocation(d)
+			v, err := ParseProvideSubscriberLocationArg(d)
 			return semField(v, err, func() string { return v.IMSI })
 		}},
 		{"SubscriberLocationReport", func(t *testing.T, imsi gsm_map.IMSI) wire {
@@ -470,7 +470,7 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			w.Imsi = &imsi
 			return w
 		}, func(d []byte) (string, error) {
-			v, err := ParseSubscriberLocationReport(d)
+			v, err := ParseSubscriberLocationReportArg(d)
 			return semField(v, err, func() string { return v.IMSI })
 		}},
 		{"absentSubscriberSM imsi", func(_ *testing.T, imsi gsm_map.IMSI) wire {
@@ -527,10 +527,10 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			v, err := ParseSriSm(d)
 			return semField(v, err, func() string { return v.IMSI })
 		}},
-		{"SriResp", func(t *testing.T, imsi gsm_map.IMSI) wire {
+		{"SriRes", func(t *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.SendRoutingInfoRes{Imsi: &imsi}
 		}, func(d []byte) (string, error) {
-			v, err := ParseSriResp(d)
+			v, err := ParseSriRes(d)
 			return semField(v, err, func() string { return v.IMSI })
 		}},
 		{"MtFsm sm-RP-DA", func(t *testing.T, imsi gsm_map.IMSI) wire {
@@ -552,7 +552,7 @@ func TestParseIdentityDigitCount(t *testing.T) {
 		{"InsertSubscriberData", func(t *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.InsertSubscriberDataArg{Imsi: &imsi}
 		}, func(d []byte) (string, error) {
-			v, err := ParseInsertSubscriberData(d)
+			v, err := ParseInsertSubscriberDataArg(d)
 			return semField(v, err, func() string { return v.IMSI })
 		}},
 		{"SriSm HLR-Id", func(t *testing.T, imsi gsm_map.IMSI) wire {
@@ -614,7 +614,7 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			}
 			w.Imei = &imei
 			return w
-		}, func(d []byte) error { _, err := ParseProvideSubscriberLocation(d); return err },
+		}, func(d []byte) error { _, err := ParseProvideSubscriberLocationArg(d); return err },
 			map[int]error{14: identity.ErrIMEILength, 15: nil, 16: nil}},
 		{"SubscriberLocationReport imei", func(t *testing.T, imei gsm_map.IMEI) wire {
 			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
@@ -623,7 +623,7 @@ func TestParseIdentityDigitCount(t *testing.T) {
 			}
 			w.Imei = &imei
 			return w
-		}, func(d []byte) error { _, err := ParseSubscriberLocationReport(d); return err },
+		}, func(d []byte) error { _, err := ParseSubscriberLocationReportArg(d); return err },
 			map[int]error{14: identity.ErrIMEILength, 15: nil, 16: nil}},
 		{"UpdateLocation add-Info imeisv", func(t *testing.T, imei gsm_map.IMEI) wire {
 			return &gsm_map.UpdateLocationArg{
@@ -655,7 +655,7 @@ func TestParseIdentityDigitCount(t *testing.T) {
 
 // TS 29.002 V19.1.0 §12.1.3 permits MCC+MNC+dummy MSIN for only MCC+MNC
 // requested; peers omitting the dummy MSIN still yield the received result.
-func TestParseSriSmRespMCCMNC(t *testing.T) {
+func TestParseSriSmResMCCMNC(t *testing.T) {
 	for _, tc := range []struct {
 		wire, imsi string
 		marshalErr error
@@ -668,9 +668,9 @@ func TestParseSriSmRespMCCMNC(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := ParseSriSmResp(data)
+			got, err := ParseSriSmRes(data)
 			if err != nil {
-				t.Fatalf("ParseSriSmResp: %v", err)
+				t.Fatalf("ParseSriSmRes: %v", err)
 			}
 			if got.IMSI != tc.imsi {
 				t.Errorf("IMSI = %q, want %q", got.IMSI, tc.imsi)

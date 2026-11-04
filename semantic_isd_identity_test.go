@@ -37,9 +37,9 @@ func TestInsertSubscriberDataIMSIDigits(t *testing.T) {
 			if err != nil {
 				return
 			}
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
-				t.Fatalf("ParseInsertSubscriberData: %v", err)
+				t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 			}
 			if got.IMSI != tc.imsi {
 				t.Errorf("IMSI = %q, want %q", got.IMSI, tc.imsi)
@@ -66,9 +66,9 @@ func TestParseInsertSubscriberDataIMSIDigits(t *testing.T) {
 			if err != nil {
 				t.Fatalf("MarshalBER: %v", err)
 			}
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if !errors.Is(err, tc.want) {
-				t.Fatalf("ParseInsertSubscriberData: err = %v, want %v", err, tc.want)
+				t.Fatalf("ParseInsertSubscriberDataArg: err = %v, want %v", err, tc.want)
 			}
 			if err == nil && got.IMSI != tc.digs {
 				t.Errorf("IMSI = %q, want %q", got.IMSI, tc.digs)

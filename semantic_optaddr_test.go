@@ -62,20 +62,20 @@ func semOptionalAddressCases() []semAddressCase {
 		}, semParse(ParsePurgeMS), ErrPurgeMSSgsnNumberDecodedEmpty},
 		{"SendRoutingInfoRes vmsc-Address", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.SendRoutingInfoRes{Imsi: imsi(), VmscAddress: ptr(a)}
-		}, semParse(ParseSriResp), ErrSriRespVmscAddressDecodedEmpty},
+		}, semParse(ParseSriRes), ErrSriResVmscAddressDecodedEmpty},
 		{"SendRoutingInfoRes msisdn", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.SendRoutingInfoRes{Imsi: imsi(), Msisdn: ptr(a)}
-		}, semParse(ParseSriResp), ErrSriRespMSISDNDecodedEmpty},
+		}, semParse(ParseSriRes), ErrSriResMSISDNDecodedEmpty},
 		{"SendRoutingInfoRes forwardingData forwardedToNumber", func(_ *testing.T, a []byte) semWire {
 			eri := gsm_map.NewExtendedRoutingInfoRoutingInfo(gsm_map.NewRoutingInfoForwardingData(gsm_map.ForwardingData{ForwardedToNumber: ptr(a)}))
 			return &gsm_map.SendRoutingInfoRes{Imsi: imsi(), ExtendedRoutingInfo: &eri}
-		}, semParse(ParseSriResp), ErrForwardingDataForwardedToNumberDecodedEmpty},
+		}, semParse(ParseSriRes), ErrForwardingDataForwardedToNumberDecodedEmpty},
 		{"RoutingInfoForSMRes smsf-3gpp-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.RoutingInfoForSMRes{Imsi: semAddrIMSI, LocationInfoWithLMSI: gsm_map.LocationInfoWithLMSI{NetworkNodeNumber: semTwoDigits, Smsf3gppNumber: ptr(a)}}
-		}, semParse(ParseSriSmResp), ErrSriSmRespSmsf3gppNumberDecodedEmpty},
+		}, semParse(ParseSriSmRes), ErrSriSmResSmsf3gppNumberDecodedEmpty},
 		{"RoutingInfoForSMRes smsf-non-3gpp-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.RoutingInfoForSMRes{Imsi: semAddrIMSI, LocationInfoWithLMSI: gsm_map.LocationInfoWithLMSI{NetworkNodeNumber: semTwoDigits, SmsfNon3gppNumber: ptr(a)}}
-		}, semParse(ParseSriSmResp), ErrSriSmRespSmsfNon3gppNumberDecodedEmpty},
+		}, semParse(ParseSriSmRes), ErrSriSmResSmsfNon3gppNumberDecodedEmpty},
 		{"AnyTimeInterrogationRes locationInformation vlr-number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{LocationInformation: &gsm_map.LocationInformation{VlrNumber: ptr(a)}}}
 		}, semParse(ParseAnyTimeInterrogationRes), ErrLocationInformationVlrNumberDecodedEmpty},
@@ -106,7 +106,7 @@ func semOptionalAddressCases() []semAddressCase {
 		}, semParse(ParseMtFsm), ErrMtFsmSmsGmscAddressDecodedEmpty},
 		{"InsertSubscriberData msisdn", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.InsertSubscriberDataArg{Msisdn: ptr(a)}
-		}, semParse(ParseInsertSubscriberData), ErrIsdMSISDNDecodedEmpty},
+		}, semParse(ParseInsertSubscriberDataArg), ErrIsdMSISDNDecodedEmpty},
 		{"SubscriberLocationReport msisdn", func(t *testing.T, a []byte) semWire {
 			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
 			if err != nil {
@@ -114,7 +114,7 @@ func semOptionalAddressCases() []semAddressCase {
 			}
 			w.Msisdn = ptr(a)
 			return w
-		}, semParse(ParseSubscriberLocationReport), ErrSLRArgMSISDNDecodedEmpty},
+		}, semParse(ParseSubscriberLocationReportArg), ErrSLRArgMSISDNDecodedEmpty},
 		{"SubscriberLocationReport na-ESRD", func(t *testing.T, a []byte) semWire {
 			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
 			if err != nil {
@@ -122,7 +122,7 @@ func semOptionalAddressCases() []semAddressCase {
 			}
 			w.NaESRD = ptr(a)
 			return w
-		}, semParse(ParseSubscriberLocationReport), ErrSLRArgNaESRDDecodedEmpty},
+		}, semParse(ParseSubscriberLocationReportArg), ErrSLRArgNaESRDDecodedEmpty},
 		{"SubscriberLocationReport na-ESRK", func(t *testing.T, a []byte) semWire {
 			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
 			if err != nil {
@@ -130,32 +130,32 @@ func semOptionalAddressCases() []semAddressCase {
 			}
 			w.NaESRK = ptr(a)
 			return w
-		}, semParse(ParseSubscriberLocationReport), ErrSLRArgNaESRKDecodedEmpty},
+		}, semParse(ParseSubscriberLocationReportArg), ErrSLRArgNaESRKDecodedEmpty},
 		{"InsertSubscriberData sgsn-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.InsertSubscriberDataArg{SgsnNumber: ptr(a)}
-		}, semParse(ParseInsertSubscriberData), ErrIsdSgsnNumberDecodedEmpty},
+		}, semParse(ParseInsertSubscriberDataArg), ErrIsdSgsnNumberDecodedEmpty},
 		{"InsertSubscriberData additionalMSISDN", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.InsertSubscriberDataArg{AdditionalMSISDN: ptr(a)}
-		}, semParse(ParseInsertSubscriberData), ErrIsdAdditionalMSISDNDecodedEmpty},
+		}, semParse(ParseInsertSubscriberDataArg), ErrIsdAdditionalMSISDNDecodedEmpty},
 		{"InsertSubscriberData eps-SubscriptionData stn-sr", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.InsertSubscriberDataArg{EpsSubscriptionData: &gsm_map.EPSSubscriptionData{StnSr: ptr(a)}}
-		}, semParse(ParseInsertSubscriberData), ErrEPSSubscriptionDataStnSrDecodedEmpty},
+		}, semParse(ParseInsertSubscriberDataArg), ErrEPSSubscriptionDataStnSrDecodedEmpty},
 		{"InsertSubscriberData Ext-ForwFeature forwardedToNumber", func(t *testing.T, a []byte) semWire {
 			w := semForwISD(t)
 			w.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].ForwardedToNumber = ptr(a)
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrExtForwFeatureForwardedToNumberDecodedEmpty},
+		}, semParse(ParseInsertSubscriberDataArg), ErrExtForwFeatureForwardedToNumberDecodedEmpty},
 		{"InsertSubscriberData Ext-ForwFeature longForwardedToNumber", func(t *testing.T, a []byte) semWire {
 			w := semForwISD(t)
 			v := a
 			w.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].LongForwardedToNumber = &v
 			return w
-		}, semParse(ParseInsertSubscriberData), ErrExtForwFeatureLongForwardedToNumberDecodedEmpty},
+		}, semParse(ParseInsertSubscriberDataArg), ErrExtForwFeatureLongForwardedToNumberDecodedEmpty},
 		{"SendRoutingInfoRes forwardingData longForwardedToNumber", func(_ *testing.T, a []byte) semWire {
 			v := a
 			eri := gsm_map.NewExtendedRoutingInfoRoutingInfo(gsm_map.NewRoutingInfoForwardingData(gsm_map.ForwardingData{LongForwardedToNumber: &v}))
 			return &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &eri}
-		}, semParse(ParseSriResp), ErrForwardingDataLongForwardedToNumberDecodedEmpty},
+		}, semParse(ParseSriRes), ErrForwardingDataLongForwardedToNumberDecodedEmpty},
 		{"ProvideSubscriberLocation lcsClientExternalID externalAddress", func(t *testing.T, a []byte) semWire {
 			arg := semPSLArg()
 			arg.LcsClientID = &LCSClientID{LcsClientType: LCSClientTypeEmergencyServices, LcsClientExternalID: &LCSClientExternalID{}}
@@ -165,7 +165,7 @@ func semOptionalAddressCases() []semAddressCase {
 			}
 			w.LcsClientID.LcsClientExternalID.ExternalAddress = ptr(a)
 			return w
-		}, semParse(ParseProvideSubscriberLocation), ErrLCSClientExternalIDExternalAddressDecodedEmpty},
+		}, semParse(ParseProvideSubscriberLocationArg), ErrLCSClientExternalIDExternalAddressDecodedEmpty},
 	}
 }
 

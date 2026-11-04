@@ -667,7 +667,7 @@ func convertWireToInsertSubscriberDataRes(w *gsm_map.InsertSubscriberDataRes) (*
 	return out, nil
 }
 
-// Public ParseInsertSubscriberData/Res functions live in parse.go;
+// Public ParseInsertSubscriberDataArg/Res functions live in parse.go;
 // Marshal methods live in marshal.go (matching the package convention
 // established by every other operation).
 

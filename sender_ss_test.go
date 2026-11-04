@@ -37,7 +37,7 @@ func ssSenderForwardingPaths(field string) []ssSenderPath {
 				f.ForwardedToSubaddress = raw
 			}
 			return ssSenderISD(ExtSSInfo{ForwardingInfo: &ExtForwInfo{SsCode: 0x21, ForwardingFeatureList: []ExtForwFeature{f}}})
-		}, asParser(ParseInsertSubscriberData)},
+		}, asParser(ParseInsertSubscriberDataArg)},
 		{"SRI", func(raw HexBytes) marshaler {
 			f := &ForwardingData{}
 			if field == "options" {
@@ -45,8 +45,8 @@ func ssSenderForwardingPaths(field string) []ssSenderPath {
 			} else {
 				f.ForwardedToSubaddress = raw
 			}
-			return &SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{RoutingInfo: &RoutingInfo{ForwardingData: f}}}
-		}, asParser(ParseSriResp)},
+			return &SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{RoutingInfo: &RoutingInfo{ForwardingData: f}}}
+		}, asParser(ParseSriRes)},
 	}
 }
 
@@ -106,13 +106,13 @@ func TestSenderInterCUGRestrictions(t *testing.T) {
 				t.Fatalf("%02x: got %v", code, err)
 			}
 		} else {
-			ssSenderAccepted(t, m, asParser(ParseInsertSubscriberData))
+			ssSenderAccepted(t, m, asParser(ParseInsertSubscriberDataArg))
 		}
 	}
 }
 
 func ssSenderStatusPaths() []ssSenderPath {
-	parse := asParser(ParseInsertSubscriberData)
+	parse := asParser(ParseInsertSubscriberDataArg)
 	return []ssSenderPath{
 		{"forwarding", func(raw HexBytes) marshaler {
 			return ssSenderISD(ExtSSInfo{ForwardingInfo: &ExtForwInfo{SsCode: 0x21, ForwardingFeatureList: []ExtForwFeature{{SsStatus: raw}}}})
@@ -157,7 +157,7 @@ func TestSenderExtSSStatus(t *testing.T) {
 }
 
 func ssSenderCodePaths() []ssSenderPath {
-	parse := asParser(ParseInsertSubscriberData)
+	parse := asParser(ParseInsertSubscriberDataArg)
 	return []ssSenderPath{
 		{"forwarding", func(raw HexBytes) marshaler {
 			return ssSenderISD(ExtSSInfo{ForwardingInfo: &ExtForwInfo{SsCode: SsCode(raw[0]), ForwardingFeatureList: []ExtForwFeature{{SsStatus: HexBytes{1}}}}})
@@ -178,8 +178,8 @@ func ssSenderCodePaths() []ssSenderPath {
 			return &InsertSubscriberDataArg{McSSInfo: &MCSSInfo{SsCode: SsCode(raw[0]), SsStatus: HexBytes{1}, NbrSB: 2, NbrUser: 1}}
 		}, parse},
 		{"ISD result", func(raw HexBytes) marshaler { return &InsertSubscriberDataRes{SsList: []SsCode{SsCode(raw[0])}} }, asParser(ParseInsertSubscriberDataRes)},
-		{"SRI SsList", func(raw HexBytes) marshaler { return &SriResp{SsList: []SsCode{SsCode(raw[0])}} }, asParser(ParseSriResp)},
-		{"SRI SsList2", func(raw HexBytes) marshaler { return &SriResp{SsList2: []SsCode{SsCode(raw[0])}} }, asParser(ParseSriResp)},
+		{"SRI SsList", func(raw HexBytes) marshaler { return &SriRes{SsList: []SsCode{SsCode(raw[0])}} }, asParser(ParseSriRes)},
+		{"SRI SsList2", func(raw HexBytes) marshaler { return &SriRes{SsList2: []SsCode{SsCode(raw[0])}} }, asParser(ParseSriRes)},
 	}
 }
 
@@ -227,14 +227,14 @@ func TestSenderLCSPrivacyApplicability(t *testing.T) {
 		{"services", func(c *LCSPrivacyClass) { c.ServiceTypeList = ServiceTypeList{{ServiceTypeIdentity: 0}} }, func(code SsCode) bool { return code == 0xb5 }, ErrLCSPrivacyServiceTypeListNotApplicable},
 	}
 	for _, code := range []SsCode{0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5} {
-		ssSenderAccepted(t, ssSenderPrivacy(LCSPrivacyClass{SsCode: code, SsStatus: HexBytes{1}}), asParser(ParseInsertSubscriberData))
+		ssSenderAccepted(t, ssSenderPrivacy(LCSPrivacyClass{SsCode: code, SsStatus: HexBytes{1}}), asParser(ParseInsertSubscriberDataArg))
 		for _, field := range fields {
 			t.Run(fmt.Sprintf("%s/%02x", field.name, code), func(t *testing.T) {
 				c := LCSPrivacyClass{SsCode: code, SsStatus: HexBytes{1}}
 				field.set(&c)
 				m := ssSenderPrivacy(c)
 				if field.allowed(code) {
-					ssSenderAccepted(t, m, asParser(ParseInsertSubscriberData))
+					ssSenderAccepted(t, m, asParser(ParseInsertSubscriberDataArg))
 				} else if _, err := m.Marshal(); !errors.Is(err, field.want) {
 					t.Fatalf("got %v", err)
 				}
@@ -249,7 +249,7 @@ func TestSenderLCSPrivacyApplicability(t *testing.T) {
 					t.Fatalf("%d+%d: got %v", baseCount, extCount, err)
 				}
 			} else {
-				ssSenderAccepted(t, ssSenderPrivacy(c), asParser(ParseInsertSubscriberData))
+				ssSenderAccepted(t, ssSenderPrivacy(c), asParser(ParseInsertSubscriberDataArg))
 			}
 		}
 	}
@@ -279,7 +279,7 @@ func TestSenderLCSServiceTypeID(t *testing.T) {
 		for _, path := range []struct {
 			message marshaler
 			parse   func([]byte) (marshaler, error)
-		}{{psl, asParser(ParseProvideSubscriberLocation)}, {slr, asParser(ParseSubscriberLocationReport)}, {isd, asParser(ParseInsertSubscriberData)}} {
+		}{{psl, asParser(ParseProvideSubscriberLocationArg)}, {slr, asParser(ParseSubscriberLocationReportArg)}, {isd, asParser(ParseInsertSubscriberDataArg)}} {
 			if value == 8 {
 				if _, err := path.message.Marshal(); !errors.Is(err, ErrLCSServiceTypeIDReserved) {
 					t.Fatalf("%T: got %v", path.message, err)
@@ -298,9 +298,9 @@ func ssSenderServicePaths(bearer bool) []ssSenderPath {
 		}
 		return ExtBasicServiceCode{ExtTeleservice: raw}
 	}
-	isdParse := asParser(ParseInsertSubscriberData)
+	isdParse := asParser(ParseInsertSubscriberDataArg)
 	sriParse := asParser(ParseSri)
-	resParse := asParser(ParseSriResp)
+	resParse := asParser(ParseSriRes)
 	paths := []ssSenderPath{
 		{"ISD list", func(raw HexBytes) marshaler {
 			a := &InsertSubscriberDataArg{}
@@ -350,8 +350,8 @@ func ssSenderServicePaths(bearer bool) []ssSenderPath {
 			a.BasicServiceGroup2 = &s
 			return a
 		}, sriParse},
-		{"SRI result basic service", func(raw HexBytes) marshaler { s := service(raw); return &SriResp{BasicService: &s} }, resParse},
-		{"SRI result basic service2", func(raw HexBytes) marshaler { s := service(raw); return &SriResp{BasicService2: &s} }, resParse},
+		{"SRI result basic service", func(raw HexBytes) marshaler { s := service(raw); return &SriRes{BasicService: &s} }, resParse},
+		{"SRI result basic service2", func(raw HexBytes) marshaler { s := service(raw); return &SriRes{BasicService2: &s} }, resParse},
 	}
 	for _, originating := range []bool{true, false} {
 		name := "terminating"
@@ -374,7 +374,7 @@ func ssSenderServicePaths(bearer bool) []ssSenderPath {
 			} else {
 				g.TBcsmCamelTDPCriteriaList = []TBcsmCamelTDPCriteria{{TBcsmTriggerDetectionPoint: TBcsmTriggerTermAttemptAuthorized, BasicServiceCriteria: []ExtBasicServiceCode{service(raw)}}}
 			}
-			return &SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *g}}}
+			return &SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *g}}}
 		}, resParse})
 	}
 	return paths
@@ -452,15 +452,15 @@ func ssSenderLenientCases() []semLenientCase {
 			return w
 		}
 	}
-	parse := asParser(ParseInsertSubscriberData)
+	parse := asParser(ParseInsertSubscriberDataArg)
 	return []semLenientCase{
-		{ErrExtForwOptionsUnusedBits, asParser(ParseSriResp), func(*testing.T) semWire {
-			w := semMust(convertSriRespToRes(&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{RoutingInfo: &RoutingInfo{ForwardingData: &ForwardingData{ForwardingOptions: HexBytes{0x00}}}}}))
+		{ErrExtForwOptionsUnusedBits, asParser(ParseSriRes), func(*testing.T) semWire {
+			w := semMust(convertSriResToRes(&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{RoutingInfo: &RoutingInfo{ForwardingData: &ForwardingData{ForwardingOptions: HexBytes{0x00}}}}}))
 			*w.ExtendedRoutingInfo.RoutingInfo.ForwardingData.ForwardingOptions = gsm_map.ForwardingOptions{0x13}
 			return w
 		}},
-		{ErrISDNSubaddressHeaderInvalid, asParser(ParseSriResp), func(*testing.T) semWire {
-			w := semMust(convertSriRespToRes(&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{RoutingInfo: &RoutingInfo{ForwardingData: &ForwardingData{ForwardedToSubaddress: HexBytes{0x80, 0x21}}}}}))
+		{ErrISDNSubaddressHeaderInvalid, asParser(ParseSriRes), func(*testing.T) semWire {
+			w := semMust(convertSriResToRes(&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{RoutingInfo: &RoutingInfo{ForwardingData: &ForwardingData{ForwardedToSubaddress: HexBytes{0x80, 0x21}}}}}))
 			*w.ExtendedRoutingInfo.RoutingInfo.ForwardingData.ForwardedToSubaddress = gsm_map.ISDNSubaddressString{0x90, 0x21}
 			return w
 		}},
@@ -480,13 +480,13 @@ func ssSenderLenientCases() []semLenientCase {
 		{ErrLCSPrivacyServiceTypeListNotApplicable, parse, privacy(func(c *gsm_map.LCSPrivacyClass) {
 			c.ServiceTypeList = &gsm_map.ServiceTypeList{Values: []gsm_map.ServiceType{{ServiceTypeIdentity: 0}}}
 		})},
-		{ErrSSCodeReserved, asParser(ParseSriResp), func(*testing.T) semWire {
+		{ErrSSCodeReserved, asParser(ParseSriRes), func(*testing.T) semWire {
 			return &gsm_map.SendRoutingInfoRes{SsList: &gsm_map.SSList{Values: []gsm_map.SSCode{{0x15}}}}
 		}},
-		{ErrSSCodeOperationInvalid, asParser(ParseSriResp), func(*testing.T) semWire {
+		{ErrSSCodeOperationInvalid, asParser(ParseSriRes), func(*testing.T) semWire {
 			return &gsm_map.SendRoutingInfoRes{SsList: &gsm_map.SSList{Values: []gsm_map.SSCode{{0x43}}}}
 		}},
-		{ErrLCSServiceTypeIDReserved, asParser(ParseProvideSubscriberLocation), func(*testing.T) semWire {
+		{ErrLCSServiceTypeIDReserved, asParser(ParseProvideSubscriberLocationArg), func(*testing.T) semWire {
 			w := semMust(convertProvideSubscriberLocationArgToWire(semPSLArg()))
 			v := int64(8)
 			w.LcsServiceTypeID = &v
@@ -550,7 +550,7 @@ func TestSenderExtForwOptionsReservedOctets(t *testing.T) {
 		}
 		w := semMust(convertInsertSubscriberDataArgToWire(path.message(HexBytes{4}).(*InsertSubscriberDataArg)))
 		w.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].ForwardingOptions = new(gsm_map.ExtForwOptions(raw))
-		got, err := ParseInsertSubscriberData(strictBER(t, w))
+		got, err := ParseInsertSubscriberDataArg(strictBER(t, w))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -579,7 +579,7 @@ func TestSenderISDResultEchoReceivedCodes(t *testing.T) {
 	w.ProvisionedSS.Values[0].SsData.SsCode = gsm_map.SSCode{0x15}
 	w.TeleserviceList = &gsm_map.TeleserviceList{Values: []gsm_map.ExtTeleserviceCode{{0x11, 0}}}
 	w.BearerServiceList = &gsm_map.BearerServiceList{Values: []gsm_map.ExtBearerServiceCode{{0x90}}}
-	received, err := ParseInsertSubscriberData(strictBER(t, w))
+	received, err := ParseInsertSubscriberDataArg(strictBER(t, w))
 	if err != nil {
 		t.Fatal(err)
 	}

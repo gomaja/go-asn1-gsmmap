@@ -264,7 +264,7 @@ func TestOpaquePDPContextInfoAsReceived(t *testing.T) {
 			return &v.SubscriberInfo, nil
 		}, common},
 		{"SRI", func(b []byte) (*SubscriberInfo, error) {
-			v, err := ParseSriResp(b)
+			v, err := ParseSriRes(b)
 			if err != nil {
 				return nil, err
 			}

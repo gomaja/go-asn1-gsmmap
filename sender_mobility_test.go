@@ -99,12 +99,12 @@ func TestSenderPDNType(t *testing.T) {
 			}
 			continue
 		}
-		senderMobilityRoundTrip(t, in, asParser(ParseInsertSubscriberData))
+		senderMobilityRoundTrip(t, in, asParser(ParseInsertSubscriberDataArg))
 	}
 	for _, v := range []byte{0, 5, 0xff} {
 		w := semMust(convertInsertSubscriberDataArgToWire(senderMobilityPDN(1)))
 		w.EpsSubscriptionData.ApnConfigurationProfile.EpsDataList.Values[0].PdnType = []byte{v}
-		got, err := ParseInsertSubscriberData(strictBER(t, w))
+		got, err := ParseInsertSubscriberDataArg(strictBER(t, w))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -128,7 +128,7 @@ func senderMobilityCarrier(api string, si SubscriberInfo) (marshaler, func([]byt
 	case "PSI":
 		return &ProvideSubscriberInfoRes{SubscriberInfo: si}, asParser(ParseProvideSubscriberInfoRes)
 	default:
-		return &SriResp{SubscriberInfo: &si}, asParser(ParseSriResp)
+		return &SriRes{SubscriberInfo: &si}, asParser(ParseSriRes)
 	}
 }
 func senderMobilityReceivedSubscriber(t *testing.T, api string, si gsm_map.SubscriberInfo, in marshaler, want error) {
@@ -214,7 +214,7 @@ func TestSenderPDPTypes(t *testing.T) {
 					t.Fatal(err)
 				}
 			} else {
-				senderMobilityRoundTrip(t, senderMobilityISD(p), asParser(ParseInsertSubscriberData))
+				senderMobilityRoundTrip(t, senderMobilityISD(p), asParser(ParseInsertSubscriberDataArg))
 			}
 			senderMobilityCheckPDPInfo(t, c, want)
 		})
@@ -237,7 +237,7 @@ func TestSenderPDPTypes(t *testing.T) {
 					t.Fatal(err)
 				}
 			} else {
-				senderMobilityRoundTrip(t, senderMobilityISD(p), asParser(ParseInsertSubscriberData))
+				senderMobilityRoundTrip(t, senderMobilityISD(p), asParser(ParseInsertSubscriberDataArg))
 			}
 			senderMobilityCheckPDPInfo(t, c, want)
 		})
@@ -260,7 +260,7 @@ func TestSenderPDPAddressFamilies(t *testing.T) {
 					t.Fatal(err)
 				}
 			} else {
-				senderMobilityRoundTrip(t, senderMobilityISD(p), asParser(ParseInsertSubscriberData))
+				senderMobilityRoundTrip(t, senderMobilityISD(p), asParser(ParseInsertSubscriberDataArg))
 			}
 			base, ext := []byte(p.PdpAddress), []byte(p.ExtPdpAddress)
 			senderMobilityCheckPDPInfo(t, gsm_map.PDPContextInfo{PdpContextIdentifier: 1, PdpType: p.PdpType, PdpAddress: &base, ExtPdpAddress: &ext}, want)
@@ -333,12 +333,12 @@ func TestSenderNumberPortabilityATIOnly(t *testing.T) {
 				senderMobilityRoundTrip(t, in, parse)
 			}
 			if api == "SRI" {
-				top := &SriResp{NumberPortabilityStatus: v}
+				top := &SriRes{NumberPortabilityStatus: v}
 				if v != nil && (*v == 4 || *v == 5) {
 					if _, err := top.Marshal(); !errors.Is(err, ErrNumberPortabilityStatusATIOnly) {
 						t.Fatal(err)
 					}
-					got, err := ParseSriResp(strictBER(t, &gsm_map.SendRoutingInfoRes{NumberPortabilityStatus: v}))
+					got, err := ParseSriRes(strictBER(t, &gsm_map.SendRoutingInfoRes{NumberPortabilityStatus: v}))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -346,7 +346,7 @@ func TestSenderNumberPortabilityATIOnly(t *testing.T) {
 						t.Fatal("received top-level status changed")
 					}
 				} else {
-					senderMobilityRoundTrip(t, top, asParser(ParseSriResp))
+					senderMobilityRoundTrip(t, top, asParser(ParseSriRes))
 				}
 			}
 		}
@@ -576,12 +576,12 @@ func senderMobilityLenientCases() []semLenientCase {
 			w.EpsInfo = &e
 			return w
 		}},
-		{ErrPDNTypeInvalid, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrPDNTypeInvalid, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := semMust(convertInsertSubscriberDataArgToWire(senderMobilityPDN(1)))
 			w.EpsSubscriptionData.ApnConfigurationProfile.EpsDataList.Values[0].PdnType = []byte{0}
 			return w
 		}},
-		{ErrPDPAddressFamilyCombinationInvalid, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrPDPAddressFamilyCombinationInvalid, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := pdp(t)
 			c := &w.GprsSubscriptionData.GprsDataList.Values[0]
 			c.PdpAddress = new([]byte{192, 0, 2, 1})

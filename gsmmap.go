@@ -101,8 +101,8 @@ type SriSm struct {
 	SmsfSupportIndicator    bool                   // [16] NULL
 }
 
-// SriSmResp represents a Send Routing Info for Short Message response.
-type SriSmResp struct {
+// SriSmRes represents a Send Routing Info for Short Message response.
+type SriSmRes struct {
 	// IMSI holds the digits as received. When the request set
 	// SmDeliveryOnlyMCCMNCRequested, it may hold MCC+MNC+dummy MSIN (TS
 	// 29.002 V19.1.0 §12.1.3), or only the five digits of an MCC and a
@@ -169,8 +169,8 @@ type MtFsm struct {
 	SmsGmscDiameterAddress    *NetworkNodeDiameterAddress // [4]
 }
 
-// MtFsmResp represents a Mobile Terminated Forward Short Message response.
-type MtFsmResp struct {
+// MtFsmRes represents a Mobile Terminated Forward Short Message response.
+type MtFsmRes struct {
 	SmRpUI HexBytes // optional SM-RP-UI (SignalInfo); nil if absent
 }
 
@@ -224,8 +224,8 @@ type MoFsm struct {
 	SmDeliveryOutcome *SmDeliveryOutcome  // [1] 0..2, not extensible (codec *ber.ValidationError)
 }
 
-// MoFsmResp represents a Mobile Originated Forward Short Message response.
-type MoFsmResp struct {
+// MoFsmRes represents a Mobile Originated Forward Short Message response.
+type MoFsmRes struct {
 	SmRpUI HexBytes // optional SM-RP-UI (SignalInfo); nil if absent
 }
 
@@ -1474,12 +1474,12 @@ type Sri struct {
 	CallPriority                    *int // Parse maps 7..15 to 4 (3GPP TS 29.002 V19.1.0 §17.7.8)
 }
 
-// SriResp represents a SendRoutingInfo response.
+// SriRes represents a SendRoutingInfo response.
 //
 // The caller includes IMSI in an unsegmented result, and in one segment of a
 // result segmented with TC-Result-NL (3GPP TS 29.002 V19.1.0 §17.7.3);
 // Marshal and Parse treat "" as absent.
-type SriResp struct {
+type SriRes struct {
 	IMSI                            string
 	ExtendedRoutingInfo             *ExtendedRoutingInfo
 	CugCheckInfo                    *CugCheckInfo
@@ -2611,7 +2611,7 @@ const (
 // 3GPP TS 29.002 V19.1.0 §17.7.13: "a ProvideSubscriberLocation-Arg
 // containing other values than listed above in DeferredLocationEventType
 // shall be rejected by the receiver with a return error cause of unexpected
-// data value", so ParseProvideSubscriberLocation rejects any other set bit
+// data value", so ParseProvideSubscriberLocationArg rejects any other set bit
 // with ErrDeferredLocationEventTypeUnrecognized. The clause names that
 // argument only: the deferredmt-lrData of a SubscriberLocationReport-Arg
 // ignores the other bits.
@@ -2931,7 +2931,7 @@ type IntervalTime = gsm_map.IntervalTime
 // AreaEventInfo (SEQUENCE) per 3GPP TS 29.002 V19.1.0 §17.7.13.
 // beingInsideArea "is always treated as oneTimeEvent regardless of the
 // possible value of occurrenceInfo" (3GPP TS 29.002 V19.1.0 §17.7.13):
-// ParseProvideSubscriberLocation sets OccurrenceInfo to oneTimeEvent when
+// ParseProvideSubscriberLocationArg sets OccurrenceInfo to oneTimeEvent when
 // beingInsideArea is the only area event; with enteringIntoArea or
 // leavingFromArea, OccurrenceInfo is kept for those events.
 type AreaEventInfo struct {
@@ -3711,7 +3711,7 @@ type SriLcs struct {
 	TargetMS        SubscriberIdentity // mandatory CHOICE (IMSI or MSISDN)
 }
 
-// SriLcsResp represents a SendRoutingInfoForLCS response (opCode 85) per
+// SriLcsRes represents a SendRoutingInfoForLCS response (opCode 85) per
 // 3GPP TS 29.002 V19.1.0 §17.7.13 (RoutingInfoForLCS-Res). Returned
 // by the HLR with the target's serving-node location info and the
 // GMLC/PPR addresses involved in the location procedure.
@@ -3721,7 +3721,7 @@ type SriLcs struct {
 // surfaced as IP strings ("" = absent), built/parsed via the gsn helper.
 //
 // ExtensionContainer (tag [2]) is opaque metadata not surfaced.
-type SriLcsResp struct {
+type SriLcsRes struct {
 	TargetMS        SubscriberIdentity // [0] mandatory CHOICE (IMSI or MSISDN)
 	LcsLocationInfo LCSLocationInfo    // [1] mandatory
 
@@ -3983,8 +3983,8 @@ var (
 	ErrCSLocationInformationEPSConflictingFields              = errors.New("csLocationInformation: LocationInformationEPS excludes CellGlobalId, LAI, AgeOfLocationInformation, GeographicalInformation, GeodeticInformation and CurrentLocationRetrieved per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrRouteingNumberTBCDInvalid                              = errors.New("mnpInfoRes: RouteingNumber filler is permitted only in the final high nibble per 3GPP TS 29.002 V19.1.0 §17.7.8 TBCD-STRING")
 
-	ErrSriSmRespNodeIndicatorsMutuallyExclusive       = errors.New("sriSmResp: at most one network node indicator may be present per 3GPP TS 29.002 V19.1.0 §17.7.6")
-	ErrSriSmRespAdditionalNumbersSameType             = errors.New("sriSmResp: AdditionalNumber and ThirdNumber must contain different number types per 3GPP TS 29.002 V19.1.0 §17.7.6")
+	ErrSriSmResNodeIndicatorsMutuallyExclusive        = errors.New("sriSmRes: at most one network node indicator may be present per 3GPP TS 29.002 V19.1.0 §17.7.6")
+	ErrSriSmResAdditionalNumbersSameType              = errors.New("sriSmRes: AdditionalNumber and ThirdNumber must contain different number types per 3GPP TS 29.002 V19.1.0 §17.7.6")
 	ErrReportSMDeliveryStatusConflictingOutcomeFields = errors.New("reportSMDeliveryStatus: outcome indicators exclude the corresponding additional outcome and diagnostic, and IpSmGwIndicator excludes DeliveryOutcomeIndicator per 3GPP TS 29.002 V19.1.0 §17.7.6")
 	ErrIscAdditionalDiagnosticWithoutPrimary          = errors.New("informServiceCentre: AdditionalAbsentSubscriberDiagnosticSM requires AbsentSubscriberDiagnosticSM per 3GPP TS 29.002 V19.1.0 §17.7.6")
 	ErrLCSLocationInfoGPRSIndicatorWithDummyNode      = errors.New("lcsLocationInfo: GprsNodeIndicator must not be set with dummy NetworkNodeNumber 0 per 3GPP TS 29.002 V19.1.0 §17.7.13")
@@ -4111,14 +4111,14 @@ var (
 	ErrExtForwFeatureLongForwardedToNumberDecodedEmpty = errors.New("extForwFeature: present wire longForwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrForwardingDataForwardedToNumberDecodedEmpty     = errors.New("forwardingData: present wire forwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrForwardingDataLongForwardedToNumberDecodedEmpty = errors.New("forwardingData: present wire longForwardedToNumber decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSriSmRespSmsf3gppNumberDecodedEmpty             = errors.New("sriSmResp: present wire smsf-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSriSmRespSmsfNon3gppNumberDecodedEmpty          = errors.New("sriSmResp: present wire smsf-non-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriSmResSmsf3gppNumberDecodedEmpty              = errors.New("sriSmRes: present wire smsf-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriSmResSmsfNon3gppNumberDecodedEmpty           = errors.New("sriSmRes: present wire smsf-non-3gpp-Number decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrPurgeMSVlrNumberDecodedEmpty                    = errors.New("purgeMS: present wire vlr-Number decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrPurgeMSSgsnNumberDecodedEmpty                   = errors.New("purgeMS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrMnpInfoResMSISDNDecodedEmpty                    = errors.New("mnpInfoRes: present wire msisdn decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrUpdateGprsLocationMmeNumberForMTSMSDecodedEmpty = errors.New("updateGprsLocation: present wire mmeNumberforMTSMS decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSriRespVmscAddressDecodedEmpty                  = errors.New("sriResp: present wire vmsc-Address decoded to empty digits; presence cannot round-trip through string-based API")
-	ErrSriRespMSISDNDecodedEmpty                       = errors.New("sriResp: present wire msisdn decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriResVmscAddressDecodedEmpty                   = errors.New("sriRes: present wire vmsc-Address decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSriResMSISDNDecodedEmpty                        = errors.New("sriRes: present wire msisdn decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrLocationInformationVlrNumberDecodedEmpty        = errors.New("locationInformation: present wire vlr-number decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrLocationInformationMscNumberDecodedEmpty        = errors.New("locationInformation: present wire msc-Number decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrLocationInformationGPRSSgsnNumberDecodedEmpty   = errors.New("locationInformationGPRS: present wire sgsn-Number decoded to empty digits; presence cannot round-trip through string-based API")
@@ -4149,10 +4149,10 @@ var (
 	ErrSmRpOaMSISDNDecodedEmpty                 = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpOaServiceCentreAddressOADecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
 
-	ErrSriSmMissingMSISDN                = errors.New("sriSm: MSISDN is empty")
-	ErrSriSmMissingServiceCentreAddress  = errors.New("sriSm: ServiceCentreAddress is empty")
-	ErrSriSmInvalidSmRpMti               = errors.New("sriSm: SmRpMti must be 0 (SMS Deliver) or 1 (SMS Status Report); 3GPP TS 29.002 V19.1.0 §17.7.6 reserves 2..10, which a receiver discards")
-	ErrSriSmRespMissingNetworkNodeNumber = errors.New("sriSmResp: LocationInfoWithLMSI.NetworkNodeNumber is empty")
+	ErrSriSmMissingMSISDN               = errors.New("sriSm: MSISDN is empty")
+	ErrSriSmMissingServiceCentreAddress = errors.New("sriSm: ServiceCentreAddress is empty")
+	ErrSriSmInvalidSmRpMti              = errors.New("sriSm: SmRpMti must be 0 (SMS Deliver) or 1 (SMS Status Report); 3GPP TS 29.002 V19.1.0 §17.7.6 reserves 2..10, which a receiver discards")
+	ErrSriSmResMissingNetworkNodeNumber = errors.New("sriSmRes: LocationInfoWithLMSI.NetworkNodeNumber is empty")
 
 	// ErrSMDeliveryNotIntendedInvalid: the encoder sends only the listed
 	// values; the decoder keeps any other (the type is extensible, 3GPP TS
@@ -4360,7 +4360,7 @@ var (
 	// SendRoutingInfoForLCS top-level (3GPP TS 29.002 V19.1.0 §17.7.13).
 	ErrSriLcsNil            = errors.New("sriLcs: nil argument is not permitted")
 	ErrSriLcsMlcNumberEmpty = errors.New("sriLcs: MlcNumber digits are mandatory on encode and decode")
-	ErrSriLcsRespNil        = errors.New("sriLcsResp: nil argument is not permitted")
+	ErrSriLcsResNil         = errors.New("sriLcsRes: nil argument is not permitted")
 
 	// AnyTimeInterrogation top-level (3GPP TS 29.002 V19.1.0 §17.7.1).
 	ErrAnyTimeInterrogationNil = errors.New("anyTimeInterrogation: nil argument is not permitted")

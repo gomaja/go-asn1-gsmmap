@@ -20,7 +20,7 @@ func TestInsertSubscriberDataArg_MinimalRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := ParseInsertSubscriberData(encoded)
+	out, err := ParseInsertSubscriberDataArg(encoded)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -40,7 +40,7 @@ func TestInsertSubscriberDataArg_MSISDNRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := ParseInsertSubscriberData(encoded)
+	out, err := ParseInsertSubscriberDataArg(encoded)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -69,7 +69,7 @@ func TestInsertSubscriberDataArg_NULLFlagsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := ParseInsertSubscriberData(encoded)
+	out, err := ParseInsertSubscriberDataArg(encoded)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -93,7 +93,7 @@ func TestInsertSubscriberDataArg_OdbAndZoneCodeRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := ParseInsertSubscriberData(encoded)
+	out, err := ParseInsertSubscriberDataArg(encoded)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestInsertSubscriberDataArg_GprsAndLsaRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := ParseInsertSubscriberData(encoded)
+	out, err := ParseInsertSubscriberDataArg(encoded)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestInsertSubscriberDataArg_EpsAndCsgRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := ParseInsertSubscriberData(encoded)
+	out, err := ParseInsertSubscriberDataArg(encoded)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -197,7 +197,7 @@ func TestInsertSubscriberDataArg_LcsAndSgsnCamelRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := ParseInsertSubscriberData(encoded)
+	out, err := ParseInsertSubscriberDataArg(encoded)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -236,7 +236,7 @@ func TestInsertSubscriberDataArg_PR_E1aSubtypesRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := ParseInsertSubscriberData(encoded)
+	out, err := ParseInsertSubscriberDataArg(encoded)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -255,7 +255,7 @@ func TestInsertSubscriberDataArg_ServiceListsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
-	out, err := ParseInsertSubscriberData(encoded)
+	out, err := ParseInsertSubscriberDataArg(encoded)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

@@ -1,7 +1,7 @@
 // convert_slr_arg_test.go
 //
 // Tests for the top-level SubscriberLocationReportArg converter and its
-// Marshal()/ParseSubscriberLocationReport() entry points (opCode 86).
+// Marshal()/ParseSubscriberLocationReportArg() entry points (opCode 86).
 // Round-trip (struct→wire→struct), BER round-trip (Marshal→Parse), and
 // targeted negative cases.
 package gsmmap
@@ -165,7 +165,7 @@ func TestSLRArgBERRoundTrip(t *testing.T) {
 	if len(data) == 0 {
 		t.Fatal("Marshal produced empty output")
 	}
-	got, err := ParseSubscriberLocationReport(data)
+	got, err := ParseSubscriberLocationReportArg(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

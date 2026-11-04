@@ -43,10 +43,10 @@ func destinationISD(digits string) *InsertSubscriberDataArg {
 	return a
 }
 
-func destinationSriResp(digits string) *SriResp {
+func destinationSriRes(digits string) *SriRes {
 	g := gmscCamel()
 	g.OBcsmCamelTDPCriteriaList = destinationCriteria(digits)
-	return &SriResp{
+	return &SriRes{
 		IMSI:                "204080012345678",
 		ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: g}},
 	}
@@ -61,7 +61,7 @@ func TestMarshalAddressListEntrySize(t *testing.T) {
 	}{
 		{"GMLC-List", func(d string) marshaler { return gmlcISD(d) }, "lcsInformation.gmlc-List.element[0]"},
 		{"DestinationNumberList ISD", func(d string) marshaler { return destinationISD(d) }, "vlrCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.destinationNumberList.element[0]"},
-		{"DestinationNumberList SRI", func(d string) marshaler { return destinationSriResp(d) }, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.destinationNumberList.element[0]"},
+		{"DestinationNumberList SRI", func(d string) marshaler { return destinationSriRes(d) }, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.destinationNumberList.element[0]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := tc.msg(max).Marshal(); err != nil {
@@ -88,7 +88,7 @@ func TestParseAddressListEntrySize(t *testing.T) {
 		return w
 	}
 	sriDestWire := func(t *testing.T, entry []byte) berMarshaler {
-		w := sriRespWire(t, destinationSriResp("31612345678").ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo)
+		w := sriResWire(t, destinationSriRes("31612345678").ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo)
 		w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.OBcsmCamelTDPCriteriaList.Values[0].DestinationNumberCriteria.DestinationNumberList.Values[0] = entry
 		return w
 	}
@@ -98,9 +98,9 @@ func TestParseAddressListEntrySize(t *testing.T) {
 		parse func([]byte) (marshaler, error)
 		path  string
 	}{
-		{"GMLC-List", gmlcWire, asParser(ParseInsertSubscriberData), "lcsInformation.gmlc-List.element[0]"},
-		{"DestinationNumberList ISD", isdDestWire, asParser(ParseInsertSubscriberData), "vlrCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.destinationNumberList.element[0]"},
-		{"DestinationNumberList SRI", sriDestWire, asParser(ParseSriResp), "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.destinationNumberList.element[0]"},
+		{"GMLC-List", gmlcWire, asParser(ParseInsertSubscriberDataArg), "lcsInformation.gmlc-List.element[0]"},
+		{"DestinationNumberList ISD", isdDestWire, asParser(ParseInsertSubscriberDataArg), "vlrCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.destinationNumberList.element[0]"},
+		{"DestinationNumberList SRI", sriDestWire, asParser(ParseSriRes), "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.destinationNumberList.element[0]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := tc.parse(strictBER(t, tc.wire(t, isdnOctets(9)))); err != nil {

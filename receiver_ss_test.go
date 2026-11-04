@@ -48,7 +48,7 @@ func TestReceiverForwardingOptionsDiscardLaterOctets(t *testing.T) {
 			}
 			*input.ProvisionedSS.Values[0].ForwardingInfo.ForwardingFeatureList.Values[0].ForwardingOptions = gsm_map.ExtForwOptions(options)
 			data = strictBER(t, &input)
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -80,7 +80,7 @@ func TestReceiverCUGRestrictionsIgnoreUnsupportedBits(t *testing.T) {
 			}
 			w.ProvisionedSS.Values[0].CugInfo.CugFeatureList.Values[0].InterCUGRestrictions = gsm_map.InterCUGRestrictions{value}
 			data = strictBER(t, &w)
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -160,7 +160,7 @@ func TestReceiverCallPriorityMapsSpareValues(t *testing.T) {
 				w := &gsm_map.InsertSubscriberDataArg{ProvisionedSS: &gsm_map.ExtSSInfoList{Values: []gsm_map.ExtSSInfo{
 					gsm_map.NewExtSSInfoEmlppInfo(gsm_map.EMLPPInfo{MaximumentitledPriority: int64(priority), DefaultPriority: int64(priority)}),
 				}}}
-				got, err := ParseInsertSubscriberData(strictBER(t, w))
+				got, err := ParseInsertSubscriberDataArg(strictBER(t, w))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -209,7 +209,7 @@ func TestReceiverSSStatusDiscardLaterOctets(t *testing.T) {
 			input.LcsInformation.LcsPrivacyExceptionList.Values[0].SsStatus = gsm_map.ExtSSStatus(status)
 			input.LcsInformation.MolrList.Values[0].SsStatus = gsm_map.ExtSSStatus(status)
 			data = strictBER(t, &input)
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -292,7 +292,7 @@ func TestOpaquePDPContextKeepsExtensions(t *testing.T) {
 					case "ATI":
 						data, err = (&AnyTimeInterrogationRes{SubscriberInfo: si}).Marshal()
 					case "SRI":
-						data, err = (&SriResp{SubscriberInfo: &si}).Marshal()
+						data, err = (&SriRes{SubscriberInfo: &si}).Marshal()
 					}
 					if err != nil {
 						t.Fatal(err)
@@ -328,8 +328,8 @@ func TestOpaquePDPContextKeepsExtensions(t *testing.T) {
 							t.Fatal(err)
 						}
 						wireSI = w.SubscriberInfo
-						var p *SriResp
-						p, err = ParseSriResp(data)
+						var p *SriRes
+						p, err = ParseSriRes(data)
 						if p != nil {
 							got = p.SubscriberInfo
 						}

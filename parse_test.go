@@ -61,7 +61,7 @@ func TestParseSriSm(t *testing.T) {
 	}
 }
 
-func TestParseSriSmResp(t *testing.T) {
+func TestParseSriSmRes(t *testing.T) {
 	tests := []struct {
 		name        string
 		hexString   string
@@ -81,12 +81,12 @@ func TestParseSriSmResp(t *testing.T) {
 				t.Fatalf("Failed to decode hex string: %v", err)
 			}
 
-			sriSmResp, err := ParseSriSmResp(originalBytes)
+			sriSmRes, err := ParseSriSmRes(originalBytes)
 			if err != nil {
-				t.Fatalf("Failed to parse SriSmResp: %v", err)
+				t.Fatalf("Failed to parse SriSmRes: %v", err)
 			}
 
-			marshaledBytes, err := sriSmResp.Marshal()
+			marshaledBytes, err := sriSmRes.Marshal()
 			if (err != nil) != tc.expectError {
 				t.Fatalf("Unexpected error status: got %v, expected error: %v", err, tc.expectError)
 			}

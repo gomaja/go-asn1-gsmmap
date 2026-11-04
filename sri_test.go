@@ -15,7 +15,7 @@ import (
 
 func TestSriTypesCompile(t *testing.T) {
 	var _ Sri
-	var _ SriResp
+	var _ SriRes
 	var _ InterrogationType
 	var _ ForwardingReason
 	var _ NumberPortabilityStatus
@@ -336,7 +336,7 @@ func TestNaeaPreferredCI(t *testing.T) {
 				return (&InsertSubscriberDataArg{NaeaPreferredCI: ci}).Marshal()
 			},
 			func(data []byte) (*NaeaPreferredCI, error) {
-				got, err := ParseInsertSubscriberData(data)
+				got, err := ParseInsertSubscriberDataArg(data)
 				if err != nil {
 					return nil, err
 				}
@@ -349,10 +349,10 @@ func TestNaeaPreferredCI(t *testing.T) {
 		{
 			"SRI result",
 			func(ci *NaeaPreferredCI) ([]byte, error) {
-				return (&SriResp{IMSI: "001010123456789", NaeaPreferredCI: ci}).Marshal()
+				return (&SriRes{IMSI: "001010123456789", NaeaPreferredCI: ci}).Marshal()
 			},
 			func(data []byte) (*NaeaPreferredCI, error) {
-				got, err := ParseSriResp(data)
+				got, err := ParseSriRes(data)
 				if err != nil {
 					return nil, err
 				}
@@ -435,9 +435,9 @@ func TestSriValidationErrors(t *testing.T) {
 	}
 }
 
-func TestSriRespMandatoryRoundTrip(t *testing.T) {
+func TestSriResMandatoryRoundTrip(t *testing.T) {
 	mnp := MnpForeignNumberPortedToForeignNetwork
-	in := &SriResp{
+	in := &SriRes{
 		IMSI:                    "425010123456789",
 		ExtendedRoutingInfo:     &ExtendedRoutingInfo{RoutingInfo: &RoutingInfo{RoamingNumber: "31611111111"}},
 		NumberPortabilityStatus: &mnp,
@@ -446,9 +446,9 @@ func TestSriRespMandatoryRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	got, err := ParseSriResp(data)
+	got, err := ParseSriRes(data)
 	if err != nil {
-		t.Fatalf("ParseSriResp: %v", err)
+		t.Fatalf("ParseSriRes: %v", err)
 	}
 	if got.IMSI != in.IMSI {
 		t.Errorf("IMSI: got %q want %q", got.IMSI, in.IMSI)
@@ -462,8 +462,8 @@ func TestSriRespMandatoryRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSriRespForwardingDataRoundTrip(t *testing.T) {
-	in := &SriResp{
+func TestSriResForwardingDataRoundTrip(t *testing.T) {
+	in := &SriRes{
 		IMSI: "425010123456789",
 		ExtendedRoutingInfo: &ExtendedRoutingInfo{
 			RoutingInfo: &RoutingInfo{
@@ -475,9 +475,9 @@ func TestSriRespForwardingDataRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	got, err := ParseSriResp(data)
+	got, err := ParseSriRes(data)
 	if err != nil {
-		t.Fatalf("ParseSriResp: %v", err)
+		t.Fatalf("ParseSriRes: %v", err)
 	}
 	if got.ExtendedRoutingInfo.RoutingInfo.ForwardingData == nil ||
 		got.ExtendedRoutingInfo.RoutingInfo.ForwardingData.ForwardedToNumber != "31622222222" {
@@ -487,13 +487,13 @@ func TestSriRespForwardingDataRoundTrip(t *testing.T) {
 
 func intPtr(v int) *int { return &v }
 
-func TestSriRespFullStressRoundTrip(t *testing.T) {
+func TestSriResFullStressRoundTrip(t *testing.T) {
 	mnp := MnpOwnNumberPortedOut
 	ua := UnavailCallBarred
 	timer := 15 // IST-AlertTimerValue (15..255), TS 29.002 §17.7.1.
 	camel4 := &OfferedCamel4CSIs{OCSI: true, TCSI: true, PsiEnhancements: true}
 
-	in := &SriResp{
+	in := &SriRes{
 		IMSI: "425010123456789",
 		ExtendedRoutingInfo: &ExtendedRoutingInfo{
 			RoutingInfo: &RoutingInfo{
@@ -528,9 +528,9 @@ func TestSriRespFullStressRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	got, err := ParseSriResp(data)
+	got, err := ParseSriRes(data)
 	if err != nil {
-		t.Fatalf("ParseSriResp: %v", err)
+		t.Fatalf("ParseSriRes: %v", err)
 	}
 
 	if diff := cmp.Diff(in, got); diff != "" {
@@ -599,12 +599,12 @@ func TestSriFullStressRoundTrip(t *testing.T) {
 // TS 29.002 V19.1.0 §17.7.3: UnavailabilityCause defines values 1 through 6.
 func TestSriResponseBoundaries(t *testing.T) {
 	for _, v := range []UnavailabilityCause{1, 6} {
-		in := &SriResp{UnavailabilityCause: &v, SubscriberInfo: &SubscriberInfo{}, ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{ForwardingData: &ForwardingData{ForwardedToNumber: "12345"}}}}
+		in := &SriRes{UnavailabilityCause: &v, SubscriberInfo: &SubscriberInfo{}, ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{ForwardingData: &ForwardingData{ForwardedToNumber: "12345"}}}}
 		data, err := in.Marshal()
 		if err != nil {
 			t.Fatalf("Marshal %d: %v", v, err)
 		}
-		got, err := ParseSriResp(data)
+		got, err := ParseSriRes(data)
 		if err != nil {
 			t.Fatalf("Parse %d: %v", v, err)
 		}

@@ -107,7 +107,7 @@ func semLenientCases() []semLenientCase {
 			imei := semTBCD(t, "490154203237518")
 			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{Imei: &imei}}
 		}},
-		{identity.ErrIMSILength, asParser(ParseSriSmResp), func(*testing.T) semWire {
+		{identity.ErrIMSILength, asParser(ParseSriSmRes), func(*testing.T) semWire {
 			return &gsm_map.RoutingInfoForSMRes{Imsi: gsm_map.IMSI{0x00, 0x01, 0xf1}, LocationInfoWithLMSI: gsm_map.LocationInfoWithLMSI{NetworkNodeNumber: gsm_map.ISDNAddressString{0x91, 0x51, 0x55, 0, 0, 0, 0xf1}}}
 		}},
 		{ErrProtocolIDReserved, asParser(ParseSri), func(t *testing.T) semWire {
@@ -146,28 +146,28 @@ func semLenientCases() []semLenientCase {
 				MtrfSupportedAndAuthorized: &struct{}{}, MtrfSupportedAndNotAuthorized: &struct{}{},
 			}
 		}},
-		{ErrExtQoSHierarchyViolated, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrExtQoSHierarchyViolated, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := pdp(t)
 			w.GprsSubscriptionData.GprsDataList.Values[0].Ext2QoSSubscribed = new(gsm_map.Ext2QoSSubscribed{0x01})
 			return w
 		}},
-		{ErrExtPDPAddressWithoutPDPAddress, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrExtPDPAddressWithoutPDPAddress, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := pdp(t)
 			w.GprsSubscriptionData.GprsDataList.Values[0].ExtPdpAddress = new(gsm_map.PDPAddress{192, 0, 2, 1})
 			return w
 		}},
-		{ErrCamelDuplicateTriggerDetectionPoint, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrCamelDuplicateTriggerDetectionPoint, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := camel(t)
 			l := w.VlrCamelSubscriptionInfo.OCSI.OBcsmCamelTDPDataList
 			l.Values = append(l.Values, l.Values[0])
 			return w
 		}},
-		{ErrCamelDCSICapabilityHandlingWithoutList, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrCamelDCSICapabilityHandlingWithoutList, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := camel(t)
 			w.VlrCamelSubscriptionInfo.DCSI = &gsm_map.DCSI{CamelCapabilityHandling: new(gsm_map.CamelCapabilityHandling(cch))}
 			return w
 		}},
-		{ErrCamelMissingDestinationNumberCriteria, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrCamelMissingDestinationNumberCriteria, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := camel(t)
 			w.VlrCamelSubscriptionInfo.OBcsmCamelTDPCriteriaList = &gsm_map.OBcsmCamelTDPCriteriaList{
 				Values: []gsm_map.OBcsmCamelTDPCriteria{{
@@ -177,29 +177,29 @@ func semLenientCases() []semLenientCase {
 			}
 			return w
 		}},
-		{ErrGroupIdFillerRequired, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrGroupIdFillerRequired, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			return &gsm_map.InsertSubscriberDataArg{VgcsSubscriptionData: &gsm_map.VGCSDataList{
 				Values: []gsm_map.VoiceGroupCallData{{
 					GroupId: gsm_map.GroupId{0x21, 0x43, 0x65}, LongGroupId: new(gsm_map.LongGroupId{0x21, 0x43, 0x65, 0x87}),
 				}},
 			}}
 		}},
-		{ErrCamelInvalidTTriggerPoint, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrCamelInvalidTTriggerPoint, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := camel(t)
 			w.VlrCamelSubscriptionInfo.TBCSMCAMELTDPCriteriaList.Values[0].TBCSMTriggerDetectionPoint = 15
 			return w
 		}},
-		{ErrCamelInvalidDefaultCallHandling, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrCamelInvalidDefaultCallHandling, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := camel(t)
 			w.VlrCamelSubscriptionInfo.OCSI.OBcsmCamelTDPDataList.Values[0].DefaultCallHandling = -1
 			return w
 		}},
-		{ErrCamelInvalidDefaultSMSHandling, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrCamelInvalidDefaultSMSHandling, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := camel(t)
 			w.VlrCamelSubscriptionInfo.MoSmsCSI.SmsCAMELTDPDataList.Values[0].DefaultSMSHandling = -1
 			return w
 		}},
-		{ErrDefaultGPRSHandlingInvalid, asParser(ParseInsertSubscriberData), func(t *testing.T) semWire {
+		{ErrDefaultGPRSHandlingInvalid, asParser(ParseInsertSubscriberDataArg), func(t *testing.T) semWire {
 			w := camel(t)
 			w.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList.Values[0].DefaultSessionHandling = -1
 			return w
@@ -224,55 +224,55 @@ func semLenientCases() []semLenientCase {
 			w.IstSupportIndicator = &ist
 			return w
 		}},
-		{ErrUnavailabilityCauseInvalid, asParser(ParseSriResp), func(*testing.T) semWire {
+		{ErrUnavailabilityCauseInvalid, asParser(ParseSriRes), func(*testing.T) semWire {
 			uc := gsm_map.UnavailabilityCause(7)
 			return &gsm_map.SendRoutingInfoRes{UnavailabilityCause: &uc}
 		}},
-		{ErrLCSClientInternalIDInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+		{ErrLCSClientInternalIDInvalid, asParser(ParseProvideSubscriberLocationArg), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			id := gsm_map.LCSClientInternalID(5)
 			w.LcsClientID.LcsClientInternalID = &id
 			return w
 		}},
-		{ErrHorizontalAccuracyReservedBit, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+		{ErrHorizontalAccuracyReservedBit, asParser(ParseProvideSubscriberLocationArg), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			w.LcsQoS = &gsm_map.LCSQoS{HorizontalAccuracy: new(gsm_map.HorizontalAccuracy{0x80})}
 			return w
 		}},
-		{ErrVerticalAccuracyReservedBit, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+		{ErrVerticalAccuracyReservedBit, asParser(ParseProvideSubscriberLocationArg), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			w.LcsQoS = &gsm_map.LCSQoS{VerticalAccuracy: new(gsm_map.VerticalAccuracy{0x80})}
 			return w
 		}},
-		{ErrPeriodicLDRProductExceeded, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+		{ErrPeriodicLDRProductExceeded, asParser(ParseProvideSubscriberLocationArg), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			w.PeriodicLDRInfo = &gsm_map.PeriodicLDRInfo{ReportingAmount: 100, ReportingInterval: 86400}
 			return w
 		}},
-		{ErrLCSClientTypeInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+		{ErrLCSClientTypeInvalid, asParser(ParseProvideSubscriberLocationArg), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			w.LcsClientID.LcsClientType = 4
 			w.PrivacyOverride = &struct{}{}
 			return w
 		}},
-		{ErrLCSFormatIndicatorInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+		{ErrLCSFormatIndicatorInvalid, asParser(ParseProvideSubscriberLocationArg), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			f := gsm_map.LCSFormatIndicator(5)
 			w.LcsClientID.LcsClientName.LcsFormatIndicator = &f
 			return w
 		}},
-		{ErrAreaTypeInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+		{ErrAreaTypeInvalid, asParser(ParseProvideSubscriberLocationArg), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			w.AreaEventInfo.AreaDefinition.AreaList.Values[0].AreaType = 6
 			return w
 		}},
-		{ErrOccurrenceInfoInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+		{ErrOccurrenceInfoInvalid, asParser(ParseProvideSubscriberLocationArg), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			o := gsm_map.OccurrenceInfo(2)
 			w.AreaEventInfo.OccurrenceInfo = &o
 			return w
 		}},
-		{ErrRANTechnologyInvalid, asParser(ParseProvideSubscriberLocation), func(t *testing.T) semWire {
+		{ErrRANTechnologyInvalid, asParser(ParseProvideSubscriberLocationArg), func(t *testing.T) semWire {
 			w := pslWithClient(t)
 			r := gsm_map.RANTechnology(2)
 			w.ReportingPLMNList.PlmnList.Values[0].RanTechnology = &r
@@ -366,8 +366,8 @@ func TestCheckParseRoundTripMarshalErrors(t *testing.T) {
 // if SendRoutingInfoRes is not segmented. If the TC-Result-NL segmentation
 // option is taken the IMSI must be present in one segmented transmission of
 // SendRoutingInfoRes." A segment without the IMSI marshals and parses.
-func TestSriRespWithoutIMSI(t *testing.T) {
-	in := &SriResp{MSISDN: "31612345678"}
+func TestSriResWithoutIMSI(t *testing.T) {
+	in := &SriRes{MSISDN: "31612345678"}
 	data, err := in.Marshal()
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
@@ -379,11 +379,11 @@ func TestSriRespWithoutIMSI(t *testing.T) {
 	if w.Imsi != nil {
 		t.Errorf("wire imsi = %x, want absent", *w.Imsi)
 	}
-	got, err := ParseSriResp(data)
+	got, err := ParseSriRes(data)
 	if err != nil {
-		t.Fatalf("ParseSriResp: %v", err)
+		t.Fatalf("ParseSriRes: %v", err)
 	}
-	wantEqual(t, "SriResp", in, got)
+	wantEqual(t, "SriRes", in, got)
 
 	// The FuzzParse seed that found it: a SendRoutingInfoRes holding no
 	// field the package reads.
@@ -391,7 +391,7 @@ func TestSriRespWithoutIMSI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := checkParseRoundTrip("SriResp", asParser(ParseSriResp), seed); err != nil {
+	if err := checkParseRoundTrip("SriRes", asParser(ParseSriRes), seed); err != nil {
 		t.Error(err)
 	}
 }

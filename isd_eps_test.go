@@ -55,7 +55,7 @@ func TestAllocationRetentionPriority_PriorityLevelParse(t *testing.T) {
 		{"absent priority-level", "301dbf1f1aa418020101a113301180010181010183026170a405800101a100", ber.ErrUnexpectedElement},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ParseInsertSubscriberData(mustHex(t, tc.wire))
+			got, err := ParseInsertSubscriberDataArg(mustHex(t, tc.wire))
 			if tc.want != nil {
 				if got != nil || !errors.Is(err, tc.want) {
 					t.Fatalf("Parse = %+v, %v; want nil, %v", got, err, tc.want)

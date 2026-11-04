@@ -22,7 +22,7 @@ func TestParsePSLRejectsUnlistedDeferredLocationEventBitWire(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, err := ParseProvideSubscriberLocation(data); !errors.Is(err, ErrDeferredLocationEventTypeUnrecognized) || got != nil {
+	if got, err := ParseProvideSubscriberLocationArg(data); !errors.Is(err, ErrDeferredLocationEventTypeUnrecognized) || got != nil {
 		t.Errorf("got %v, %v; want ErrDeferredLocationEventTypeUnrecognized", got, err)
 	}
 }
@@ -44,9 +44,9 @@ func TestParsePSLDeferredLocationEventType(t *testing.T) {
 			w := pslWire(t, pslArg())
 			bs := tc.bs
 			w.LocationType.DeferredLocationEventType = &bs
-			got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+			got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 			if err != nil {
-				t.Fatalf("ParseProvideSubscriberLocation: %v", err)
+				t.Fatalf("ParseProvideSubscriberLocationArg: %v", err)
 			}
 			wantEqual(t, "DeferredLocationEventType", tc.want, got.LocationType.DeferredLocationEventType)
 		})
@@ -57,7 +57,7 @@ func TestParsePSLDeferredLocationEventType(t *testing.T) {
 			b := []byte{0x80, 0x00}
 			b[bit/8] |= 0x80 >> (bit % 8)
 			w.LocationType.DeferredLocationEventType = &runtime.BitString{Bytes: b, BitLength: 16}
-			if got, err := ParseProvideSubscriberLocation(strictBER(t, w)); !errors.Is(err, ErrDeferredLocationEventTypeUnrecognized) || got != nil {
+			if got, err := ParseProvideSubscriberLocationArg(strictBER(t, w)); !errors.Is(err, ErrDeferredLocationEventTypeUnrecognized) || got != nil {
 				t.Errorf("got %v, %v; want ErrDeferredLocationEventTypeUnrecognized", got, err)
 			}
 		})
@@ -77,9 +77,9 @@ func TestParseSLRDeferredLocationEventTypeIgnoresUnlistedBits(t *testing.T) {
 		t.Fatalf("convertSubscriberLocationReportArgToWire: %v", err)
 	}
 	w.DeferredmtLrData.DeferredLocationEventType = runtime.BitString{Bytes: []byte{0x44}, BitLength: 6}
-	got, err := ParseSubscriberLocationReport(strictBER(t, w))
+	got, err := ParseSubscriberLocationReportArg(strictBER(t, w))
 	if err != nil {
-		t.Fatalf("ParseSubscriberLocationReport: %v", err)
+		t.Fatalf("ParseSubscriberLocationReportArg: %v", err)
 	}
 	wantEqual(t, "DeferredLocationEventType", DeferredLocationEventType{EnteringIntoArea: true}, got.DeferredmtLrData.DeferredLocationEventType)
 }

@@ -103,26 +103,26 @@ func TestParseTBcsmCriteriaUnknownTriggerDetectionPoint(t *testing.T) {
 		w.VlrCamelSubscriptionInfo.TBCSMCAMELTDPCriteriaList.Values[0].TBCSMTriggerDetectionPoint = tdp
 		got, err := semParseISDWire(t, w)
 		if err != nil {
-			t.Errorf("VLR %d: ParseInsertSubscriberData: %v", v, err)
+			t.Errorf("VLR %d: ParseInsertSubscriberDataArg: %v", v, err)
 		} else if g := got.VlrCamelSubscriptionInfo.TBcsmCamelTDPCriteriaList; len(g) != 1 || g[0].TBcsmTriggerDetectionPoint != tdp {
 			t.Errorf("VLR %d: criteria = %+v", v, g)
 		}
 
-		res, err := convertSriRespToRes(&SriResp{
+		res, err := convertSriResToRes(&SriRes{
 			IMSI:                "204080012345678",
 			ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: GmscCamelSubscriptionInfo{TBcsmCamelTDPCriteriaList: criteria}}},
 		})
 		if err != nil {
-			t.Fatalf("convertSriRespToRes: %v", err)
+			t.Fatalf("convertSriResToRes: %v", err)
 		}
 		res.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.TBCSMCAMELTDPCriteriaList.Values[0].TBCSMTriggerDetectionPoint = tdp
 		data, err := res.MarshalBER()
 		if err != nil {
 			t.Fatalf("MarshalBER: %v", err)
 		}
-		sri, err := ParseSriResp(data)
+		sri, err := ParseSriRes(data)
 		if err != nil {
-			t.Errorf("GMSC %d: ParseSriResp: %v", v, err)
+			t.Errorf("GMSC %d: ParseSriRes: %v", v, err)
 		} else if g := sri.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.TBcsmCamelTDPCriteriaList; len(g) != 1 || g[0].TBcsmTriggerDetectionPoint != tdp {
 			t.Errorf("GMSC %d: criteria = %+v", v, g)
 		}
@@ -149,7 +149,7 @@ func TestParseLCSClientInternalIDUnknownValue(t *testing.T) {
 		w.LcsInformation.LcsPrivacyExceptionList.Values[0].PlmnClientList.Values[0] = id
 		got, err := semParseISDWire(t, w)
 		if err != nil {
-			t.Errorf("PLMNClientList %d: ParseInsertSubscriberData: %v", v, err)
+			t.Errorf("PLMNClientList %d: ParseInsertSubscriberDataArg: %v", v, err)
 		} else if g := got.LcsInformation.LcsPrivacyExceptionList[0].PlmnClientList; len(g) != 1 || g[0] != id {
 			t.Errorf("PLMNClientList %d: got %v", v, g)
 		}
@@ -166,9 +166,9 @@ func TestParseLCSClientInternalIDUnknownValue(t *testing.T) {
 		if err != nil {
 			t.Fatalf("MarshalBER: %v", err)
 		}
-		psl, err := ParseProvideSubscriberLocation(data)
+		psl, err := ParseProvideSubscriberLocationArg(data)
 		if err != nil {
-			t.Errorf("LCS-ClientID %d: ParseProvideSubscriberLocation: %v", v, err)
+			t.Errorf("LCS-ClientID %d: ParseProvideSubscriberLocationArg: %v", v, err)
 		} else if g := psl.LcsClientID.LcsClientInternalID; g == nil || *g != id {
 			t.Errorf("LCS-ClientID %d: got %v", v, g)
 		}
@@ -186,9 +186,9 @@ func TestParseLCSClientInternalIDUnknownValue(t *testing.T) {
 // rule for the application, which reads the value.
 func TestParseUnavailabilityCauseUnknownValue(t *testing.T) {
 	for _, v := range append(semUnknownEnumValues, 0, 7) {
-		res, err := convertSriRespToRes(&SriResp{IMSI: "204080012345678"})
+		res, err := convertSriResToRes(&SriRes{IMSI: "204080012345678"})
 		if err != nil {
-			t.Fatalf("convertSriRespToRes: %v", err)
+			t.Fatalf("convertSriResToRes: %v", err)
 		}
 		uc := gsm_map.UnavailabilityCause(v)
 		res.UnavailabilityCause = &uc
@@ -196,9 +196,9 @@ func TestParseUnavailabilityCauseUnknownValue(t *testing.T) {
 		if err != nil {
 			t.Fatalf("MarshalBER: %v", err)
 		}
-		got, err := ParseSriResp(data)
+		got, err := ParseSriRes(data)
 		if err != nil {
-			t.Errorf("UnavailabilityCause %d: ParseSriResp: %v", v, err)
+			t.Errorf("UnavailabilityCause %d: ParseSriRes: %v", v, err)
 			continue
 		}
 		if got.UnavailabilityCause == nil || int64(*got.UnavailabilityCause) != v {
@@ -343,7 +343,7 @@ func TestParseDefaultHandlingNegative(t *testing.T) {
 			tc.set(w, v)
 			got, err := semParseISDWire(t, w)
 			if err != nil {
-				t.Errorf("%s %d: ParseInsertSubscriberData: %v", tc.name, v, err)
+				t.Errorf("%s %d: ParseInsertSubscriberDataArg: %v", tc.name, v, err)
 				continue
 			}
 			if g := tc.get(got); g != v {

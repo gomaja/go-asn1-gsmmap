@@ -344,9 +344,9 @@ func TestMarshalNoReplyConditionTimeSenderRange(t *testing.T) {
 			if err != nil {
 				return
 			}
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
-				t.Fatalf("ParseInsertSubscriberData: %v", err)
+				t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 			}
 			gotV := got.ProvisionedSS[0].ForwardingInfo.ForwardingFeatureList[0].NoReplyConditionTime
 			if gotV == nil || *gotV != tc.v {
@@ -382,15 +382,15 @@ func TestParseNoReplyConditionTimeMapsReserved(t *testing.T) {
 			if err != nil {
 				t.Fatalf("MarshalBER: %v", err)
 			}
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
-				t.Fatalf("ParseInsertSubscriberData: %v", err)
+				t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 			}
 			gotV := got.ProvisionedSS[0].ForwardingInfo.ForwardingFeatureList[0].NoReplyConditionTime
 			if gotV == nil || *gotV != tc.want {
 				t.Errorf("wire %d: NoReplyConditionTime = %v, want %d", tc.wire, gotV, tc.want)
 			}
-			if err := checkParseRoundTrip("InsertSubscriberData", asParser(ParseInsertSubscriberData), data); err != nil {
+			if err := checkParseRoundTrip("InsertSubscriberDataArg", asParser(ParseInsertSubscriberDataArg), data); err != nil {
 				t.Error(err)
 			}
 		})
@@ -755,7 +755,7 @@ func TestExtSSInfoAlternatives(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			out, err := ParseInsertSubscriberData(data)
+			out, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -773,7 +773,7 @@ func TestExtNoReplyTimeMapping(t *testing.T) {
 			info := gsm_map.NewExtSSInfoForwardingInfo(gsm_map.ExtForwInfo{SsCode: gsm_map.SSCode{0x2a},
 				ForwardingFeatureList: &gsm_map.ExtForwFeatureList{Values: []gsm_map.ExtForwFeature{{SsStatus: gsm_map.ExtSSStatus{1}, NoReplyConditionTime: &value}}}})
 			w := &gsm_map.InsertSubscriberDataArg{ProvisionedSS: &gsm_map.ExtSSInfoList{Values: []gsm_map.ExtSSInfo{info}}}
-			out, err := ParseInsertSubscriberData(strictBER(t, w))
+			out, err := ParseInsertSubscriberDataArg(strictBER(t, w))
 			if err != nil {
 				t.Fatal(err)
 			}

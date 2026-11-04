@@ -16,9 +16,9 @@ func TestCUGInfoEmptySubscriptionList(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Marshal: %v", err)
 			}
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
-				t.Fatalf("ParseInsertSubscriberData: %v", err)
+				t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 			}
 			wantEqual(t, "ProvisionedSS", []ExtSSInfo{{CugInfo: &CUGInfo{}}}, got.ProvisionedSS)
 		})

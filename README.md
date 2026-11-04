@@ -8,13 +8,13 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 
 | Operation | OpCode | Request | Response |
 |---|---|---|---|
-| **SendRoutingInfoForSM** (SRI-SM) | 45 | `SriSm` | `SriSmResp` |
-| **MT-ForwardSM** | 44 | `MtFsm` | `MtFsmResp` |
-| **MO-ForwardSM** | 46 | `MoFsm` | `MoFsmResp` |
+| **SendRoutingInfoForSM** (SRI-SM) | 45 | `SriSm` | `SriSmRes` |
+| **MT-ForwardSM** | 44 | `MtFsm` | `MtFsmRes` |
+| **MO-ForwardSM** | 46 | `MoFsm` | `MoFsmRes` |
 | **UpdateLocation** | 2 | `UpdateLocation` | `UpdateLocationRes` |
 | **UpdateGprsLocation** | 23 | `UpdateGprsLocation` | `UpdateGprsLocationRes` |
 | **AnyTimeInterrogation** (ATI) | 71 | `AnyTimeInterrogation` | `AnyTimeInterrogationRes` |
-| **SendRoutingInfo** (SRI) | 22 | `Sri` | `SriResp` |
+| **SendRoutingInfo** (SRI) | 22 | `Sri` | `SriRes` |
 | **InformServiceCentre** (ISC) | 63 | `InformServiceCentre` | — |
 | **AlertServiceCentre** (ASC) | 64 | `AlertServiceCentre` | — |
 | **PurgeMS** | 67 | `PurgeMS` | `PurgeMSRes` |
@@ -23,7 +23,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **CancelLocation** | 3 | `CancelLocation` | `CancelLocationRes` |
 | **InsertSubscriberData** (ISD) | 7 | `InsertSubscriberDataArg` | `InsertSubscriberDataRes` |
 | **ProvideSubscriberLocation** (PSL) | 83 | `ProvideSubscriberLocationArg` | `ProvideSubscriberLocationRes` |
-| **SendRoutingInfoForLCS** (SRI-LCS) | 85 | `SriLcs` | `SriLcsResp` |
+| **SendRoutingInfoForLCS** (SRI-LCS) | 85 | `SriLcs` | `SriLcsRes` |
 | **SubscriberLocationReport** (SLR) | 86 | `SubscriberLocationReportArg` | `SubscriberLocationReportRes` |
 | **ReportSMDeliveryStatus** | 47 | `ReportSMDeliveryStatus` | `ReportSMDeliveryStatusRes` |
 | **processUnstructuredSS-Request** (USSD) | 59 | `USSDArg` | `USSDRes` |
@@ -104,7 +104,7 @@ What that means for a consumer:
 - ATI and PSI request encoders enforce `RequestedInfo` dependencies: CurrentLocation and LocationInformationEPSSupported require LocationInformation; RequestedNodes is forbidden with explicit cs-Domain; ServingNodeIndication requires LocationInformation and excludes CurrentLocation. Violations return `ErrRequestedInfoCurrentLocationWithoutLocationInformation`, `ErrRequestedInfoEPSSupportedWithoutLocationInformation`, `ErrRequestedInfoRequestedNodesInCSDomain`, `ErrRequestedInfoServingNodeWithoutLocationInformation` or `ErrRequestedInfoServingNodeWithCurrentLocation`; Parse retains received combinations.
 - All subscriber location encoders require the Q.763 uncertainty-circle geodetic shape (`ErrGeodeticInformationShapeInvalid`). MNP routing-number TBCD permits filler only in the final high nibble (`ErrRouteingNumberTBCDInvalid`). Parse retains received octets. PSI and SRI call-priority encoders reject spare priorities 7..15 with `ErrEMLPPPriorityOutOfRange`; out-of-ASN priority ranges return the codec constraint error, including in EMLPPInfo.
 - `CSLocationInformation.LocationInformationEPS` carries the `locationInformationEPS [10]` of LocationInformation (3GPP TS 29.002 V19.1.0 §17.7.1). `Marshal` rejects it beside `CellGlobalId`, `LAI`, `AgeOfLocationInformation`, `GeographicalInformation`, `GeodeticInformation` or `CurrentLocationRetrieved` (`ErrCSLocationInformationEPSConflictingFields`), and the caller omits it when `locationInformationEPS-Supported` was not requested. Parse keeps what it receives.
-- `SriSmResp.Marshal` permits at most one of its four network node indicators (`ErrSriSmRespNodeIndicatorsMutuallyExclusive`) and requires `AdditionalNumber` and `ThirdNumber` to carry different CHOICE types (`ErrSriSmRespAdditionalNumbersSameType`). Parse preserves received overlaps.
+- `SriSmRes.Marshal` permits at most one of its four network node indicators (`ErrSriSmResNodeIndicatorsMutuallyExclusive`) and requires `AdditionalNumber` and `ThirdNumber` to carry different CHOICE types (`ErrSriSmResAdditionalNumbersSameType`). Parse preserves received overlaps.
 - `ReportSMDeliveryStatus.Marshal` rejects indicator/outcome/diagnostic conflicts with `ErrReportSMDeliveryStatusConflictingOutcomeFields`. `InformServiceCentre.Marshal` requires a primary diagnostic when its additional diagnostic is present (`ErrIscAdditionalDiagnosticWithoutPrimary`); Parse keeps those received fields.
 - `ReportSMDeliveryStatus.FailedSMServingNodes` and `ReportSMDeliveryStatusRes.RegisteredSMServingNodes` carry the `failedSMServingNodes [18]` and `registeredSMServingNodes [0]` SMServingNodeAddressList of 3GPP TS 29.002 V19.1.0 §17.7.6 as `[]SMServingNodeAddress`; nil is absent, and the codec enforces SIZE (1..5) on Marshal and Parse. Each entry sets exactly one of `NetworkNodeNumber` (ISDN-AddressString digits, with `NetworkNodeNumberNature` and `NetworkNodeNumberPlan`) or `DiameterAddress`: Marshal returns `ErrSMServingNodeAddressNoAlternative` or `ErrSMServingNodeAddressMultipleAlternatives` otherwise and applies the address nature/plan and Diameter ASCII sender rules to each entry. Parse keeps the received entries, rejecting only a networkNode-Number without digits (`ErrSMServingNodeAddressNetworkNodeNumberDecodedEmpty`) or with malformed TBCD, as for every other address, and an unknown alternative (`ErrSMServingNodeAddressUnknownAlternative`). When to send each list depends on the delivery attempt and the request (§12.3.3), so that is the caller's to decide.
 - `ProvideSubscriberLocationArg.Marshal` and `SubscriberLocationReportArg.Marshal` require IMSI or MSISDN (`ErrLCSSubscriberIdentityMissing`), the applicable deferred reference (`ErrLCSDeferredReferenceNumberMissing`), and LCSClientName DCS `0x0f` (`ErrLCSClientNameDataCodingSchemeInvalid`). RequestorID and Codeword retain their own DCS definitions; Parse preserves received sender violations.
@@ -143,11 +143,13 @@ What that means for a consumer:
 - `ProvideSubscriberLocationRes.AgeOfLocationEstimate` and `SubscriberLocationReportArg.AgeOfLocationEstimate` change from `*int64` to `*int`; so does `InsertSubscriberDataArg.IstAlertTimer`. `MCSI.MobilityTriggers` and `MGCSI.MobilityTriggers` become `[]MMCode`.
 - `GsmSCFNature/Plan` → `GsmSCFAddressNature/Plan` in ATI and CAMEL structs. `SCANature/Plan` → `ServiceCentreAddressNature/Plan` in SRI-SM, AlertServiceCentre, and ReportSMDeliveryStatus; `SCADANature/Plan` and `SCAOANature/Plan` follow their full ServiceCentreAddress field names.
 - `UpdateLocation.MSCNumber/VLRNumber` → `MscNumber/VlrNumber`; `UpdateGprsLocation.SGSNNumber` → `SgsnNumber`; `PurgeMS.VLRNumber/SGSNNumber` → `VlrNumber/SgsnNumber`; `UpdateLocationRes.HLRNumber` and `UpdateGprsLocationRes.HLRNumber` → `HlrNumber`. Each associated nature/plan field follows the new base name.
-- `Sri.GmscNature/Plan` → `GmscOrGsmSCFAddressNature/Plan`, and `SriResp.VmscNature/Plan` → `VmscAddressNature/Plan`.
+- `Sri.GmscNature/Plan` → `GmscOrGsmSCFAddressNature/Plan`, and `SriRes.VmscNature/Plan` → `VmscAddressNature/Plan`.
 - LCS client and codeword data coding schemes use `USSDDataCodingScheme`, with strings decoded by `DataCodingScheme.Decode`, or by `DecodeText` for the language and character set too (see [USSD](#ussd-opcodes-59-60-61)).
 
 **Removed identifiers**
 
+- `SriResp`, `SriSmResp`, `MtFsmResp`, `MoFsmResp` and `SriLcsResp` → `SriRes`, `SriSmRes`, `MtFsmRes`, `MoFsmRes` and `SriLcsRes`, with their `Parse` functions and `Err` sentinels, like every other result type. Error messages use the new names.
+- `ParseInsertSubscriberData`, `ParseProvideSubscriberLocation` and `ParseSubscriberLocationReport` → `ParseInsertSubscriberDataArg`, `ParseProvideSubscriberLocationArg` and `ParseSubscriberLocationReportArg`, like every other function named after the type it returns.
 - The `tbcd` sub-package is removed; import [go-tbcd](https://github.com/gomaja/go-tbcd) instead. `tbcd.Encode`, `tbcd.Decode`, `tbcd.ErrInvalidCharacter` and `tbcd.ErrMisplacedFiller` keep their names and their strict filler rules.
 - `ReasonMsPurged` → `NotReachableReasonMsPurged`, a typed go-asn1 constant.
 - `ReasonImsiDetached` → `NotReachableReasonImsiDetached`, a typed go-asn1 constant.
@@ -507,7 +509,7 @@ _ = data // send the request bytes to the network
 
 // Parse an SRI response received from the network
 var respBytes []byte // BER response bytes received from the network
-resp, err := gsmmap.ParseSriResp(respBytes)
+resp, err := gsmmap.ParseSriRes(respBytes)
 if err != nil {
     log.Fatal(err)
 }
@@ -535,7 +537,7 @@ fields are dropped on Parse, so marshalled bytes need not match the input.
 
 ```go
 phase := 2
-resp := &gsmmap.SriResp{
+resp := &gsmmap.SriRes{
     IMSI: "310260123456789",
     ExtendedRoutingInfo: &gsmmap.ExtendedRoutingInfo{
         CamelRoutingInfo: &gsmmap.CamelRoutingInfo{

@@ -165,7 +165,7 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 
 // --- SRI-SM Response ---
 
-func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
+func convertSriSmResToRes(s *SriSmRes) (*gsm_map.RoutingInfoForSMRes, error) {
 	// TS 29.002 V19.1.0 §17.7.6: at most one network node indicator is sent.
 	l := &s.LocationInfoWithLMSI
 	indicators := 0
@@ -175,10 +175,10 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 		}
 	}
 	if indicators > 1 {
-		return nil, ErrSriSmRespNodeIndicatorsMutuallyExclusive
+		return nil, ErrSriSmResNodeIndicatorsMutuallyExclusive
 	}
 	if s.LocationInfoWithLMSI.NetworkNodeNumber == "" {
-		return nil, ErrSriSmRespMissingNetworkNodeNumber
+		return nil, ErrSriSmResMissingNetworkNodeNumber
 	}
 	imsiBytes, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 	if err != nil {
@@ -245,7 +245,7 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 
 	// TS 29.002 V19.1.0 §17.7.6: additional and third numbers have different CHOICE types.
 	if li.AdditionalNumber != nil && li.ThirdNumber != nil && li.AdditionalNumber.Choice == li.ThirdNumber.Choice {
-		return nil, ErrSriSmRespAdditionalNumbersSameType
+		return nil, ErrSriSmResAdditionalNumbersSameType
 	}
 
 	// ThirdNetworkNodeDiameterAddress
@@ -321,13 +321,13 @@ func convertSriSmRespToRes(s *SriSmResp) (*gsm_map.RoutingInfoForSMRes, error) {
 	return out, nil
 }
 
-func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error) {
+func convertResToSriSmRes(res *gsm_map.RoutingInfoForSMRes) (*SriSmRes, error) {
 	imsi, err := decodeIdentityDigits(identityIMSI, res.Imsi)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
-	nnn, nnnNature, nnnPlan, err := decodeAddressWithDigits(res.LocationInfoWithLMSI.NetworkNodeNumber, ErrSriSmRespMissingNetworkNodeNumber)
+	nnn, nnnNature, nnnPlan, err := decodeAddressWithDigits(res.LocationInfoWithLMSI.NetworkNodeNumber, ErrSriSmResMissingNetworkNodeNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding NetworkNodeNumber: %w", err)
 	}
@@ -384,7 +384,7 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 
 	// Smsf3gppNumber
 	if res.LocationInfoWithLMSI.Smsf3gppNumber != nil {
-		num, nature, plan, err := decodeAddressWithDigits(*res.LocationInfoWithLMSI.Smsf3gppNumber, ErrSriSmRespSmsf3gppNumberDecodedEmpty)
+		num, nature, plan, err := decodeAddressWithDigits(*res.LocationInfoWithLMSI.Smsf3gppNumber, ErrSriSmResSmsf3gppNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding Smsf3gppNumber: %w", err)
 		}
@@ -400,7 +400,7 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 
 	// SmsfNon3gppNumber
 	if res.LocationInfoWithLMSI.SmsfNon3gppNumber != nil {
-		num, nature, plan, err := decodeAddressWithDigits(*res.LocationInfoWithLMSI.SmsfNon3gppNumber, ErrSriSmRespSmsfNon3gppNumberDecodedEmpty)
+		num, nature, plan, err := decodeAddressWithDigits(*res.LocationInfoWithLMSI.SmsfNon3gppNumber, ErrSriSmResSmsfNon3gppNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmsfNon3gppNumber: %w", err)
 		}
@@ -420,7 +420,7 @@ func convertResToSriSmResp(res *gsm_map.RoutingInfoForSMRes) (*SriSmResp, error)
 	// SmsfNon3gppAddressIndicator
 	li.SmsfNon3gppAddressIndicator = nullPtrToBool(res.LocationInfoWithLMSI.SmsfNon3gppAddressIndicator)
 
-	resp := &SriSmResp{
+	resp := &SriSmRes{
 		IMSI:                 imsi,
 		LocationInfoWithLMSI: li,
 	}

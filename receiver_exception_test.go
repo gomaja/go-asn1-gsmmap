@@ -160,9 +160,9 @@ func isdWire(t *testing.T, a *InsertSubscriberDataArg) *gsm_map.InsertSubscriber
 
 func parseISD(t *testing.T, w *gsm_map.InsertSubscriberDataArg) *InsertSubscriberDataArg {
 	t.Helper()
-	got, err := ParseInsertSubscriberData(strictBER(t, w))
+	got, err := ParseInsertSubscriberDataArg(strictBER(t, w))
 	if err != nil {
-		t.Fatalf("ParseInsertSubscriberData: %v", err)
+		t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 	}
 	return got
 }
@@ -189,23 +189,23 @@ func gmscCamel() GmscCamelSubscriptionInfo {
 	}
 }
 
-func sriRespWire(t *testing.T, g GmscCamelSubscriptionInfo) *gsm_map.SendRoutingInfoRes {
+func sriResWire(t *testing.T, g GmscCamelSubscriptionInfo) *gsm_map.SendRoutingInfoRes {
 	t.Helper()
-	w, err := convertSriRespToRes(&SriResp{
+	w, err := convertSriResToRes(&SriRes{
 		IMSI:                "204080012345678",
 		ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: g}},
 	})
 	if err != nil {
-		t.Fatalf("convertSriRespToRes: %v", err)
+		t.Fatalf("convertSriResToRes: %v", err)
 	}
 	return w
 }
 
-func parseSriRespGmsc(t *testing.T, w *gsm_map.SendRoutingInfoRes) GmscCamelSubscriptionInfo {
+func parseSriResGmsc(t *testing.T, w *gsm_map.SendRoutingInfoRes) GmscCamelSubscriptionInfo {
 	t.Helper()
-	got, err := ParseSriResp(strictBER(t, w))
+	got, err := ParseSriRes(strictBER(t, w))
 	if err != nil {
-		t.Fatalf("ParseSriResp: %v", err)
+		t.Fatalf("ParseSriRes: %v", err)
 	}
 	return got.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo
 }
@@ -275,7 +275,7 @@ func TestParseCamelCapabilityHandlingAbovePhase4(t *testing.T) {
 			}
 		})
 		t.Run(fmt.Sprintf("GMSC, wire %d", tc.wire), func(t *testing.T) {
-			w := sriRespWire(t, gmscCamel())
+			w := sriResWire(t, gmscCamel())
 			g := &w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo
 			for _, p := range []**gsm_map.CamelCapabilityHandling{
 				&g.TCSI.CamelCapabilityHandling, &g.OCSI.CamelCapabilityHandling, &g.DCsi.CamelCapabilityHandling,
@@ -283,7 +283,7 @@ func TestParseCamelCapabilityHandlingAbovePhase4(t *testing.T) {
 				v := tc.wire
 				*p = &v
 			}
-			got := parseSriRespGmsc(t, w)
+			got := parseSriResGmsc(t, w)
 			for name, p := range map[string]*int{
 				"T-CSI": got.TCSI.CamelCapabilityHandling,
 				"O-CSI": got.OCSI.CamelCapabilityHandling,
@@ -299,7 +299,7 @@ func TestParseCamelCapabilityHandlingAbovePhase4(t *testing.T) {
 		w := isdWire(t, camelISD())
 		v := gsm_map.CamelCapabilityHandling(17)
 		w.VlrCamelSubscriptionInfo.OCSI.CamelCapabilityHandling = &v
-		_, err := ParseInsertSubscriberData(tolerantBER(t, w))
+		_, err := ParseInsertSubscriberDataArg(tolerantBER(t, w))
 		wantValidationError(t, err, "vlrCamelSubscriptionInfo.o-CSI.camelCapabilityHandling", "(1..16)")
 	})
 }
@@ -426,10 +426,10 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 	t.Run("GMSC, listed TDP", func(t *testing.T) {
 		g := gmscCamel()
 		g.OBcsmCamelTDPCriteriaList = keptCriteria
-		w := sriRespWire(t, g)
+		w := sriResWire(t, g)
 		wg := &w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo
 		wg.OBcsmCamelTDPCriteriaList.Values = ignoredCriteria(wg.OBcsmCamelTDPCriteriaList.Values, OBcsmTriggerRouteSelectFailure)
-		if _, err := ParseSriResp(strictBER(t, w)); !errors.Is(err, ErrCamelInvalidCauseValue) {
+		if _, err := ParseSriRes(strictBER(t, w)); !errors.Is(err, ErrCamelInvalidCauseValue) {
 			t.Errorf("err = %v, want ErrCamelInvalidCauseValue", err)
 		}
 	})
@@ -447,7 +447,7 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 			wantEqual(t, "O-BcsmCamelTDP-CriteriaList", keptCriteria, got.OBcsmCamelTDPCriteriaList)
 			bad := CallTypeCriteria(99)
 			vlr.OBcsmCamelTDPCriteriaList.Values[1].CallTypeCriteria = &bad
-			parsed, err := ParseInsertSubscriberData(tolerantBER(t, w))
+			parsed, err := ParseInsertSubscriberDataArg(tolerantBER(t, w))
 			wantValidationError(t, err, "vlrCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[1].callTypeCriteria", "ENUMERATED {0, 1}")
 			if parsed != nil {
 				t.Errorf("malformed ignored sequence: got %+v, want nil", parsed)
@@ -457,16 +457,16 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 			g := gmscCamel()
 			g.OCSI.OBcsmCamelTDPDataList = kept
 			g.OBcsmCamelTDPCriteriaList = keptCriteria
-			w := sriRespWire(t, g)
+			w := sriResWire(t, g)
 			wg := &w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo
 			wg.OCSI.OBcsmCamelTDPDataList.Values = ignoredData(wg.OCSI.OBcsmCamelTDPDataList.Values, tdp)
 			wg.OBcsmCamelTDPCriteriaList.Values = ignoredCriteria(wg.OBcsmCamelTDPCriteriaList.Values, tdp)
-			got := parseSriRespGmsc(t, w)
+			got := parseSriResGmsc(t, w)
 			wantEqual(t, "O-CSI", kept, got.OCSI.OBcsmCamelTDPDataList)
 			wantEqual(t, "O-BcsmCamelTDP-CriteriaList", keptCriteria, got.OBcsmCamelTDPCriteriaList)
 			bad := CallTypeCriteria(99)
 			wg.OBcsmCamelTDPCriteriaList.Values[1].CallTypeCriteria = &bad
-			parsed, err := ParseSriResp(tolerantBER(t, w))
+			parsed, err := ParseSriRes(tolerantBER(t, w))
 			wantValidationError(t, err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[1].callTypeCriteria", "ENUMERATED {0, 1}")
 			if parsed != nil {
 				t.Errorf("malformed ignored sequence: got %+v, want nil", parsed)
@@ -489,11 +489,11 @@ func TestParseOBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 		}
 	})
 	t.Run("GMSC, all ignored", func(t *testing.T) {
-		w := sriRespWire(t, gmscCamel())
+		w := sriResWire(t, gmscCamel())
 		wg := &w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo
 		wg.OCSI.OBcsmCamelTDPDataList.Values[0].OBcsmTriggerDetectionPoint = 3
 		wg.OBcsmCamelTDPCriteriaList.Values[0].OBcsmTriggerDetectionPoint = 3
-		got := parseSriRespGmsc(t, w)
+		got := parseSriResGmsc(t, w)
 		if got.OCSI != nil || got.OBcsmCamelTDPCriteriaList != nil {
 			t.Errorf("O-CSI %+v, criteria %+v: want both absent", got.OCSI, got.OBcsmCamelTDPCriteriaList)
 		}
@@ -531,10 +531,10 @@ func TestParseTBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 		t.Run(fmt.Sprintf("GMSC T-CSI, wire %d", tdp), func(t *testing.T) {
 			g := gmscCamel()
 			g.TCSI.TBcsmCamelTDPDataList = kept
-			w := sriRespWire(t, g)
+			w := sriResWire(t, g)
 			tc := w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.TCSI
 			tc.TBcsmCamelTDPDataList.Values = ignored(tc.TBcsmCamelTDPDataList.Values, tdp)
-			wantEqual(t, "T-CSI", kept, parseSriRespGmsc(t, w).TCSI.TBcsmCamelTDPDataList)
+			wantEqual(t, "T-CSI", kept, parseSriResGmsc(t, w).TCSI.TBcsmCamelTDPDataList)
 		})
 	}
 	t.Run("VT-CSI, all ignored", func(t *testing.T) {
@@ -549,9 +549,9 @@ func TestParseTBcsmTriggerDetectionPointIgnoresSequence(t *testing.T) {
 		}
 	})
 	t.Run("GMSC T-CSI, all ignored", func(t *testing.T) {
-		w := sriRespWire(t, gmscCamel())
+		w := sriResWire(t, gmscCamel())
 		w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.TCSI.TBcsmCamelTDPDataList.Values[0].TBcsmTriggerDetectionPoint = 15
-		got := parseSriRespGmsc(t, w)
+		got := parseSriResGmsc(t, w)
 		if got.TCSI != nil {
 			t.Errorf("T-CSI = %+v, want absent", got.TCSI)
 		}
@@ -1087,9 +1087,9 @@ func TestParseTerminationCauseUnrecognized(t *testing.T) {
 		}
 		v := tc.wire
 		w.DeferredmtLrData.TerminationCause = &v
-		got, err := ParseSubscriberLocationReport(strictBER(t, w))
+		got, err := ParseSubscriberLocationReportArg(strictBER(t, w))
 		if err != nil {
-			t.Fatalf("wire %d: ParseSubscriberLocationReport: %v", tc.wire, err)
+			t.Fatalf("wire %d: ParseSubscriberLocationReportArg: %v", tc.wire, err)
 		}
 		if c := got.DeferredmtLrData.TerminationCause; c == nil || *c != tc.want {
 			t.Errorf("wire %d: TerminationCause = %v, want %v", tc.wire, c, tc.want)
@@ -1135,22 +1135,22 @@ func TestParseRejectsUnrecognizedPrivacyCheckRelatedAction(t *testing.T) {
 		w := pslWire(t, pslArg())
 		related := v
 		w.LcsPrivacyCheck.CallSessionUnrelated, w.LcsPrivacyCheck.CallSessionRelated = v, &related
-		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 		if err != nil {
-			t.Fatalf("wire %d: ParseProvideSubscriberLocation: %v", v, err)
+			t.Fatalf("wire %d: ParseProvideSubscriberLocationArg: %v", v, err)
 		}
 		wantEqual(t, fmt.Sprintf("wire %d", v), &LCSPrivacyCheck{CallSessionUnrelated: v, CallSessionRelated: &related}, got.LcsPrivacyCheck)
 	}
 	for _, v := range []PrivacyCheckRelatedAction{5, -1, math.MaxInt64, math.MinInt64} {
 		w := pslWire(t, pslArg())
 		w.LcsPrivacyCheck.CallSessionUnrelated = v
-		if got, err := ParseProvideSubscriberLocation(strictBER(t, w)); !errors.Is(err, ErrPrivacyCheckRelatedActionUnrecognized) || got != nil {
+		if got, err := ParseProvideSubscriberLocationArg(strictBER(t, w)); !errors.Is(err, ErrPrivacyCheckRelatedActionUnrecognized) || got != nil {
 			t.Errorf("callSessionUnrelated %d: got %v, %v; want ErrPrivacyCheckRelatedActionUnrecognized", v, got, err)
 		}
 		w = pslWire(t, pslArg())
 		related := v
 		w.LcsPrivacyCheck.CallSessionRelated = &related
-		if got, err := ParseProvideSubscriberLocation(strictBER(t, w)); !errors.Is(err, ErrPrivacyCheckRelatedActionUnrecognized) || got != nil {
+		if got, err := ParseProvideSubscriberLocationArg(strictBER(t, w)); !errors.Is(err, ErrPrivacyCheckRelatedActionUnrecognized) || got != nil {
 			t.Errorf("callSessionRelated %d: got %v, %v; want ErrPrivacyCheckRelatedActionUnrecognized", v, got, err)
 		}
 	}
@@ -1163,9 +1163,9 @@ func TestParseRejectsUnrecognizedLocationEstimateType(t *testing.T) {
 	for _, v := range []LocationEstimateType{LocationEstimateCurrentLocation, LocationEstimateNotificationVerificationOnly} {
 		w := pslWire(t, pslArg())
 		w.LocationType.LocationEstimateType = v
-		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 		if err != nil {
-			t.Fatalf("wire %d: ParseProvideSubscriberLocation: %v", v, err)
+			t.Fatalf("wire %d: ParseProvideSubscriberLocationArg: %v", v, err)
 		}
 		if got.LocationType.LocationEstimateType != v {
 			t.Errorf("wire %d: LocationEstimateType = %d", v, got.LocationType.LocationEstimateType)
@@ -1174,7 +1174,7 @@ func TestParseRejectsUnrecognizedLocationEstimateType(t *testing.T) {
 	for _, v := range []LocationEstimateType{6, -1, math.MaxInt64, math.MinInt64} {
 		w := pslWire(t, pslArg())
 		w.LocationType.LocationEstimateType = v
-		if got, err := ParseProvideSubscriberLocation(strictBER(t, w)); !errors.Is(err, ErrLocationEstimateTypeUnrecognized) || got != nil {
+		if got, err := ParseProvideSubscriberLocationArg(strictBER(t, w)); !errors.Is(err, ErrLocationEstimateTypeUnrecognized) || got != nil {
 			t.Errorf("wire %d: got %v, %v; want ErrLocationEstimateTypeUnrecognized", v, got, err)
 		}
 	}
@@ -1195,9 +1195,9 @@ func TestParseRejectsUnrecognizedLCSEvent(t *testing.T) {
 	for _, v := range []LCSEvent{LCSEventEmergencyCallOrigination, LCSEventEmergencyCallHandover} {
 		w := slrWire(t)
 		w.LcsEvent = v
-		got, err := ParseSubscriberLocationReport(strictBER(t, w))
+		got, err := ParseSubscriberLocationReportArg(strictBER(t, w))
 		if err != nil {
-			t.Fatalf("wire %d: ParseSubscriberLocationReport: %v", v, err)
+			t.Fatalf("wire %d: ParseSubscriberLocationReportArg: %v", v, err)
 		}
 		if got.LcsEvent != v {
 			t.Errorf("wire %d: LcsEvent = %d", v, got.LcsEvent)
@@ -1206,7 +1206,7 @@ func TestParseRejectsUnrecognizedLCSEvent(t *testing.T) {
 	for _, v := range []LCSEvent{6, -1, math.MaxInt64, math.MinInt64} {
 		w := slrWire(t)
 		w.LcsEvent = v
-		if got, err := ParseSubscriberLocationReport(strictBER(t, w)); !errors.Is(err, ErrLCSEventUnrecognized) || got != nil {
+		if got, err := ParseSubscriberLocationReportArg(strictBER(t, w)); !errors.Is(err, ErrLCSEventUnrecognized) || got != nil {
 			t.Errorf("wire %d: got %v, %v; want ErrLCSEventUnrecognized", v, got, err)
 		}
 	}
@@ -1239,7 +1239,7 @@ func TestParseLCSClientTypeUnrecognized(t *testing.T) {
 		for _, override := range []bool{false, true} {
 			w := psl(t, override)
 			w.LcsClientID.LcsClientType = v
-			got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+			got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 			if err != nil {
 				t.Fatalf("PSL wire %d, override %t: %v", v, override, err)
 			}
@@ -1249,7 +1249,7 @@ func TestParseLCSClientTypeUnrecognized(t *testing.T) {
 		}
 		w := slr(t)
 		w.LcsClientID.LcsClientType = v
-		got, err := ParseSubscriberLocationReport(strictBER(t, w))
+		got, err := ParseSubscriberLocationReportArg(strictBER(t, w))
 		if err != nil {
 			t.Fatalf("SLR wire %d: %v", v, err)
 		}
@@ -1260,13 +1260,13 @@ func TestParseLCSClientTypeUnrecognized(t *testing.T) {
 	for _, v := range []LCSClientType{4, -1, math.MaxInt64, math.MinInt64} {
 		w := psl(t, false)
 		w.LcsClientID.LcsClientType = v
-		if got, err := ParseProvideSubscriberLocation(strictBER(t, w)); !errors.Is(err, ErrLCSClientTypeUnrecognized) || got != nil {
+		if got, err := ParseProvideSubscriberLocationArg(strictBER(t, w)); !errors.Is(err, ErrLCSClientTypeUnrecognized) || got != nil {
 			t.Errorf("PSL wire %d without privacyOverride: got %v, %v; want ErrLCSClientTypeUnrecognized", v, got, err)
 		}
 
 		w = psl(t, true)
 		w.LcsClientID.LcsClientType = v
-		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 		if err != nil {
 			t.Fatalf("PSL wire %d with privacyOverride: %v", v, err)
 		}
@@ -1279,7 +1279,7 @@ func TestParseLCSClientTypeUnrecognized(t *testing.T) {
 
 		s := slr(t)
 		s.LcsClientID.LcsClientType = v
-		if got, err := ParseSubscriberLocationReport(strictBER(t, s)); !errors.Is(err, ErrLCSClientTypeUnrecognized) || got != nil {
+		if got, err := ParseSubscriberLocationReportArg(strictBER(t, s)); !errors.Is(err, ErrLCSClientTypeUnrecognized) || got != nil {
 			t.Errorf("SLR wire %d: got %v, %v; want ErrLCSClientTypeUnrecognized", v, got, err)
 		}
 	}
@@ -1316,19 +1316,19 @@ func TestParseLCSQoSClassMapsUnrecognizedToBestEffort(t *testing.T) {
 		class := tc.wire
 		w.LcsQoS.LcsQosClass = &class
 		data := strictBER(t, w)
-		got, err := ParseProvideSubscriberLocation(data)
+		got, err := ParseProvideSubscriberLocationArg(data)
 		if err != nil {
-			t.Fatalf("lcs-qos-class %d: ParseProvideSubscriberLocation: %v", tc.wire, err)
+			t.Fatalf("lcs-qos-class %d: ParseProvideSubscriberLocationArg: %v", tc.wire, err)
 		}
 		want := pslArg().LcsQoS
 		want.LcsQosClass = &tc.want
 		wantEqual(t, fmt.Sprintf("lcs-qos-class %d", tc.wire), want, got.LcsQoS)
-		if err := checkParseRoundTrip("ProvideSubscriberLocation", asParser(ParseProvideSubscriberLocation), data); err != nil {
+		if err := checkParseRoundTrip("ProvideSubscriberLocationArg", asParser(ParseProvideSubscriberLocationArg), data); err != nil {
 			t.Error(err)
 		}
 	}
 	w := pslWire(t, pslArg())
-	got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+	got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1346,7 +1346,7 @@ func TestMarshalLCSQoSClass(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Marshal %d: %v", c, err)
 		}
-		got, err := ParseProvideSubscriberLocation(data)
+		got, err := ParseProvideSubscriberLocationArg(data)
 		if err != nil {
 			t.Fatalf("Parse %d: %v", c, err)
 		}

@@ -87,12 +87,12 @@ func TestParseDropsCSINotificationFlags(t *testing.T) {
 		}
 	})
 	t.Run("SendRoutingInfoRes", func(t *testing.T) {
-		w := sriRespWire(t, gmscCamel())
+		w := sriResWire(t, gmscCamel())
 		g := w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo
 		setFlags(&g.TCSI.NotificationToCSE, &g.TCSI.CsiActive)
 		setFlags(&g.OCSI.NotificationToCSE, &g.OCSI.CsiActive)
 		setFlags(&g.DCsi.NotificationToCSE, &g.DCsi.CsiActive)
-		got := parseSriRespGmsc(t, w)
+		got := parseSriResGmsc(t, w)
 		wantEqual(t, "GmscCamelSubscriptionInfo", gmscCamel(), got)
 	})
 }

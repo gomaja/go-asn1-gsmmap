@@ -19,7 +19,7 @@ func TestCAMELSenderBoundaries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := ParseInsertSubscriberData(data)
+	out, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestCAMELStrictEmptyLists(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			w := marshalledISDWire(t, camelISD())
 			tc.change(w)
-			_, err := ParseInsertSubscriberData(tolerantBER(t, w))
+			_, err := ParseInsertSubscriberDataArg(tolerantBER(t, w))
 			wantValidationError(t, err, tc.path, tc.constraint)
 		})
 	}
@@ -66,7 +66,7 @@ func TestCAMELDestinationLengthOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := ParseInsertSubscriberData(data)
+	out, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +97,7 @@ func TestCAMELVLRSSCSI(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := ParseInsertSubscriberData(data)
+	out, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
 		t.Fatal(err)
 	}

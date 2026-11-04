@@ -38,7 +38,7 @@ func TestParseGroupIdWithLongGroupId(t *testing.T) {
 				if err != nil {
 					t.Fatalf("MarshalBER: %v", err)
 				}
-				got, err := ParseInsertSubscriberData(data)
+				got, err := ParseInsertSubscriberDataArg(data)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -76,9 +76,9 @@ func TestParseGroupIdWithoutLongGroupId(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	got, err := ParseInsertSubscriberData(data)
+	got, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
-		t.Fatalf("ParseInsertSubscriberData: %v", err)
+		t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 	}
 	if g := got.VbsSubscriptionData[0].GroupId; g != "12" {
 		t.Errorf("GroupId = %q, want %q", g, "12")

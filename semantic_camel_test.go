@@ -56,9 +56,9 @@ func semMarshalParseISD(t *testing.T, a *InsertSubscriberDataArg) *InsertSubscri
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	got, err := ParseInsertSubscriberData(data)
+	got, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
-		t.Fatalf("ParseInsertSubscriberData: %v", err)
+		t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 	}
 	return got
 }
@@ -70,7 +70,7 @@ func semParseISDWire(t *testing.T, w *gsm_map.InsertSubscriberDataArg) (*InsertS
 	if err != nil {
 		t.Fatalf("MarshalBER: %v", err)
 	}
-	return ParseInsertSubscriberData(data)
+	return ParseInsertSubscriberDataArg(data)
 }
 
 // --- MT-SMS-TPDU-Type in CAMEL phase 4 ---
@@ -142,7 +142,7 @@ func TestParseIgnoresTPDUCriterionWithSubmitReport(t *testing.T) {
 	}
 	got, err := semParseISDWire(t, w)
 	if err != nil {
-		t.Fatalf("ParseInsertSubscriberData: %v", err)
+		t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 	}
 	want := []MTSmsCAMELTDPCriteria{
 		{SmsTriggerDetectionPoint: SMSTriggerDetectionPointSmsDeliveryRequest, TpduTypeCriterion: listed},

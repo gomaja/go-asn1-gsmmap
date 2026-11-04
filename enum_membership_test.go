@@ -25,7 +25,7 @@ func TestSubscriberStatusMembership(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Marshal SubscriberStatus %d: %v", v, err)
 		}
-		got, err := ParseInsertSubscriberData(data)
+		got, err := ParseInsertSubscriberDataArg(data)
 		if err != nil {
 			t.Fatalf("Parse SubscriberStatus %d: %v", v, err)
 		}
@@ -38,7 +38,7 @@ func TestSubscriberStatusMembership(t *testing.T) {
 		}
 		w := isdWire(t, &InsertSubscriberDataArg{})
 		w.SubscriberStatus = &s
-		if got, err := ParseInsertSubscriberData(tolerantBER(t, w)); !matchesConstraint(err, "subscriberStatus", "ENUMERATED {0, 1}") || got != nil {
+		if got, err := ParseInsertSubscriberDataArg(tolerantBER(t, w)); !matchesConstraint(err, "subscriberStatus", "ENUMERATED {0, 1}") || got != nil {
 			t.Errorf("Parse SubscriberStatus %d: got %v, %v; want codec constraint", v, got, err)
 		}
 	}
@@ -118,7 +118,7 @@ func TestNetworkResourceMembership(t *testing.T) {
 // --- ProtocolId, §17.7.8 ---
 
 // sriWithSignalInfo is a SendRoutingInfo-Arg carrying networkSignalInfo and
-// networkSignalInfo2, and sriRespWithBearer a SendRoutingInfo-Res carrying
+// networkSignalInfo2, and sriResWithBearer a SendRoutingInfo-Res carrying
 // gsmBearerCapability: the three ExternalSignalInfo fields.
 func sriWithSignalInfo(id, id2 ProtocolID) *Sri {
 	return &Sri{
@@ -130,8 +130,8 @@ func sriWithSignalInfo(id, id2 ProtocolID) *Sri {
 	}
 }
 
-func sriRespWithBearer(id ProtocolID) *SriResp {
-	return &SriResp{
+func sriResWithBearer(id ProtocolID) *SriRes {
+	return &SriRes{
 		IMSI:                "204080012345678",
 		GsmBearerCapability: &ExternalSignalInfo{ProtocolID: id, SignalInfo: HexBytes{0xde, 0xad}},
 	}
@@ -149,15 +149,15 @@ func TestProtocolIDMembership(t *testing.T) {
 		}
 		wantEqual(t, "Sri", sriWithSignalInfo(id, id), got)
 
-		data, err = sriRespWithBearer(id).Marshal()
+		data, err = sriResWithBearer(id).Marshal()
 		if err != nil {
-			t.Fatalf("SriResp ProtocolID %d: Marshal: %v", id, err)
+			t.Fatalf("SriRes ProtocolID %d: Marshal: %v", id, err)
 		}
-		resp, err := ParseSriResp(data)
+		resp, err := ParseSriRes(data)
 		if err != nil {
-			t.Fatalf("SriResp ProtocolID %d: Parse: %v", id, err)
+			t.Fatalf("SriRes ProtocolID %d: Parse: %v", id, err)
 		}
-		wantEqual(t, "SriResp", sriRespWithBearer(id), resp)
+		wantEqual(t, "SriRes", sriResWithBearer(id), resp)
 	}
 	for _, v := range append(unlistedEnums, 0, 5) {
 		id := ProtocolID(v)
@@ -166,7 +166,7 @@ func TestProtocolIDMembership(t *testing.T) {
 				t.Errorf("Marshal %s ProtocolID %d: err = %v, want codec constraint", name, v, err)
 			}
 		}
-		if _, err := sriRespWithBearer(id).Marshal(); !matchesConstraint(err, "gsm-BearerCapability.protocolId", "ENUMERATED {1, 2, 3, 4}") {
+		if _, err := sriResWithBearer(id).Marshal(); !matchesConstraint(err, "gsm-BearerCapability.protocolId", "ENUMERATED {1, 2, 3, 4}") {
 			t.Errorf("Marshal gsmBearerCapability ProtocolID %d: err = %v, want codec constraint", v, err)
 		}
 	}
@@ -187,12 +187,12 @@ func TestProtocolIDMembership(t *testing.T) {
 		if got, err := ParseSri(tolerantBER(t, w)); !matchesConstraint(err, "networkSignalInfo2.protocolId", "ENUMERATED {1, 2, 3, 4}") || got != nil {
 			t.Errorf("Parse networkSignalInfo2 ProtocolId %d: got %v, %v; want codec constraint", v, got, err)
 		}
-		res, err := convertSriRespToRes(sriRespWithBearer(1))
+		res, err := convertSriResToRes(sriResWithBearer(1))
 		if err != nil {
 			t.Fatal(err)
 		}
 		res.GsmBearerCapability.ProtocolId = gsm_map.ProtocolId(v)
-		if got, err := ParseSriResp(tolerantBER(t, res)); !matchesConstraint(err, "gsm-BearerCapability.protocolId", "ENUMERATED {1, 2, 3, 4}") || got != nil {
+		if got, err := ParseSriRes(tolerantBER(t, res)); !matchesConstraint(err, "gsm-BearerCapability.protocolId", "ENUMERATED {1, 2, 3, 4}") || got != nil {
 			t.Errorf("Parse gsmBearerCapability ProtocolId %d: got %v, %v; want codec constraint", v, got, err)
 		}
 	}
@@ -207,7 +207,7 @@ func TestProtocolIDReservedValue(t *testing.T) {
 	if _, err := sriWithSignalInfo(1, 3).Marshal(); !errors.Is(err, ErrProtocolIDReserved) {
 		t.Errorf("Marshal networkSignalInfo2 3: err = %v, want ErrProtocolIDReserved", err)
 	}
-	if _, err := sriRespWithBearer(3).Marshal(); !errors.Is(err, ErrProtocolIDReserved) {
+	if _, err := sriResWithBearer(3).Marshal(); !errors.Is(err, ErrProtocolIDReserved) {
 		t.Errorf("Marshal gsmBearerCapability 3: err = %v, want ErrProtocolIDReserved", err)
 	}
 
@@ -223,16 +223,16 @@ func TestProtocolIDReservedValue(t *testing.T) {
 	}
 	wantEqual(t, "Sri", sriWithSignalInfo(3, 3), got)
 
-	res, err := convertSriRespToRes(sriRespWithBearer(1))
+	res, err := convertSriResToRes(sriResWithBearer(1))
 	if err != nil {
 		t.Fatal(err)
 	}
 	res.GsmBearerCapability.ProtocolId = gsm_map.ProtocolIdGsmBSSMAP
-	resp, err := ParseSriResp(strictBER(t, res))
+	resp, err := ParseSriRes(strictBER(t, res))
 	if err != nil {
-		t.Fatalf("ParseSriResp: %v", err)
+		t.Fatalf("ParseSriRes: %v", err)
 	}
-	wantEqual(t, "SriResp", sriRespWithBearer(3), resp)
+	wantEqual(t, "SriRes", sriResWithBearer(3), resp)
 	if err := checkParseRoundTrip("Sri", asParser(ParseSri), strictBER(t, w)); err != nil {
 		t.Error(err)
 	}

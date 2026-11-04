@@ -3,12 +3,35 @@ package gsmmap
 import (
 	"bytes"
 	"errors"
+	"os"
+	"regexp"
 	"testing"
 
 	identity "github.com/gomaja/go-3gpp-identity"
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
 )
+
+// Every Parse function is named after the type it returns, and a result type
+// ends in Res.
+func TestParseFunctionNames(t *testing.T) {
+	src, err := os.ReadFile("parse.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	funcs := regexp.MustCompile(`(?m)^func Parse(\w+)\(data \[\]byte\) \(\*(\w+), error\)`).FindAllSubmatch(src, -1)
+	if len(funcs) == 0 {
+		t.Fatal("no Parse functions found in parse.go")
+	}
+	for _, m := range funcs {
+		if !bytes.Equal(m[1], m[2]) {
+			t.Errorf("Parse%s returns *%s", m[1], m[2])
+		}
+		if bytes.HasSuffix(m[2], []byte("Resp")) {
+			t.Errorf("result type %s ends in Resp, not Res", m[2])
+		}
+	}
+}
 
 // TS 29.002 V19.1.0 §17.7.8: each FTN-AddressString carries its own
 // nature and numbering plan octet.
@@ -23,7 +46,7 @@ func TestExtForwFeatureDistinctAddressHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := ParseInsertSubscriberData(data)
+	parsed, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +68,7 @@ func TestForwardingDataLongFTNAddress(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := ParseSriResp(data)
+	got, err := ParseSriRes(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,7 +221,7 @@ func TestGroupIdMissingSentinelPublic(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := ParseInsertSubscriberData(data); !errors.Is(err, ErrGroupIdMissingWithoutLong) {
+			if _, err := ParseInsertSubscriberDataArg(data); !errors.Is(err, ErrGroupIdMissingWithoutLong) {
 				t.Errorf("Parse: %v", err)
 			}
 		})
@@ -213,7 +236,7 @@ func TestCSGIdPublicConstraint(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := ParseInsertSubscriberData(data); err != nil {
+			if _, err := ParseInsertSubscriberDataArg(data); err != nil {
 				t.Fatal(err)
 			}
 			continue
@@ -233,7 +256,7 @@ func TestISDIstAlertTimerUsesInt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := ParseInsertSubscriberData(data)
+	got, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,7 +382,7 @@ func TestBitStringToWireClearsPaddingBits(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	parsed, err := ParseInsertSubscriberData(first)
+	parsed, err := ParseInsertSubscriberDataArg(first)
 	if err != nil {
 		t.Fatal(err)
 	}

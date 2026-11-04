@@ -28,11 +28,11 @@ func (s *SriSm) Marshal() ([]byte, error) {
 	return data, nil
 }
 
-// Marshal encodes SriSmResp into BER-encoded bytes.
-func (s *SriSmResp) Marshal() ([]byte, error) {
-	res, err := convertSriSmRespToRes(s)
+// Marshal encodes SriSmRes into BER-encoded bytes.
+func (s *SriSmRes) Marshal() ([]byte, error) {
+	res, err := convertSriSmResToRes(s)
 	if err != nil {
-		return nil, fmt.Errorf("converting SriSmResp: %w", err)
+		return nil, fmt.Errorf("converting SriSmRes: %w", err)
 	}
 	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
@@ -54,9 +54,9 @@ func (m *MtFsm) Marshal() ([]byte, error) {
 	return data, nil
 }
 
-// Marshal encodes MtFsmResp into BER-encoded bytes.
-func (r *MtFsmResp) Marshal() ([]byte, error) {
-	res := convertMtFsmRespToRes(r)
+// Marshal encodes MtFsmRes into BER-encoded bytes.
+func (r *MtFsmRes) Marshal() ([]byte, error) {
+	res := convertMtFsmResToRes(r)
 	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding MTForwardSMRes: %w", err)
@@ -77,9 +77,9 @@ func (m *MoFsm) Marshal() ([]byte, error) {
 	return data, nil
 }
 
-// Marshal encodes MoFsmResp into BER-encoded bytes.
-func (r *MoFsmResp) Marshal() ([]byte, error) {
-	res := convertMoFsmRespToRes(r)
+// Marshal encodes MoFsmRes into BER-encoded bytes.
+func (r *MoFsmRes) Marshal() ([]byte, error) {
+	res := convertMoFsmResToRes(r)
 	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding MOForwardSMRes: %w", err)
@@ -191,11 +191,11 @@ func (p *ProvideSubscriberInfoRes) Marshal() ([]byte, error) {
 	return data, nil
 }
 
-// Marshal encodes SriResp into BER-encoded bytes.
-func (s *SriResp) Marshal() ([]byte, error) {
-	res, err := convertSriRespToRes(s)
+// Marshal encodes SriRes into BER-encoded bytes.
+func (s *SriRes) Marshal() ([]byte, error) {
+	res, err := convertSriResToRes(s)
 	if err != nil {
-		return nil, fmt.Errorf("converting SriResp: %w", err)
+		return nil, fmt.Errorf("converting SriRes: %w", err)
 	}
 	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
@@ -418,10 +418,10 @@ func (s *SriLcs) Marshal() ([]byte, error) {
 
 // Marshal encodes SendRoutingInfoForLCS-Res (opCode 85) into
 // BER-encoded bytes.
-func (s *SriLcsResp) Marshal() ([]byte, error) {
-	res, err := convertSriLcsRespToRes(s)
+func (s *SriLcsRes) Marshal() ([]byte, error) {
+	res, err := convertSriLcsResToRes(s)
 	if err != nil {
-		return nil, fmt.Errorf("converting SriLcsResp: %w", err)
+		return nil, fmt.Errorf("converting SriLcsRes: %w", err)
 	}
 	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {

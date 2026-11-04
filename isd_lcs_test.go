@@ -38,7 +38,7 @@ func TestLCSGMLCListParseNegative(t *testing.T) {
 				}
 				return
 			}
-			got, err := ParseInsertSubscriberData(mustHex(t, tc.wire))
+			got, err := ParseInsertSubscriberDataArg(mustHex(t, tc.wire))
 			if tc.err != nil {
 				if got != nil || !errors.Is(err, tc.err) {
 					t.Fatalf("Parse = %+v, %v; want nil, %v", got, err, tc.err)
@@ -68,7 +68,7 @@ func TestLCSExtExternalClients(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		out, err := ParseInsertSubscriberData(data)
+		out, err := ParseInsertSubscriberDataArg(data)
 		if err != nil {
 			t.Fatal(err)
 		}

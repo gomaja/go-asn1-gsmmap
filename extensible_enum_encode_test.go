@@ -106,7 +106,7 @@ func extEnumCases() []extEnumCase {
 				w.EDRXCycleLengthList.Values[0].RatType = gsm_map.UsedRATType(v)
 				return w
 			},
-			parse: asParser(ParseInsertSubscriberData),
+			parse: asParser(ParseInsertSubscriberDataArg),
 			field: func(m marshaler) int64 {
 				return int64(m.(*InsertSubscriberDataArg).EDRXCycleLengthList[0].RatType)
 			},

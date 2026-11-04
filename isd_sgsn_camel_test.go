@@ -13,7 +13,7 @@ func TestGPRSReleaseTransaction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := ParseInsertSubscriberData(data)
+	out, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
 		t.Fatal(err)
 	}
