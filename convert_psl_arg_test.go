@@ -42,7 +42,7 @@ func TestProvideSubscriberLocationArgMinimalRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	parsed, err := ParseProvideSubscriberLocation(data)
+	parsed, err := ParseProvideSubscriberLocationArg(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestProvideSubscriberLocationArgFullPopulationRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	parsed, err := ParseProvideSubscriberLocation(data)
+	parsed, err := ParseProvideSubscriberLocationArg(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

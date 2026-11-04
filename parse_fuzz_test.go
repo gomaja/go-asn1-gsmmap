@@ -42,11 +42,11 @@ var parsers = []struct {
 	parse func([]byte) (marshaler, error)
 }{
 	{"SriSm", asParser(ParseSriSm)},
-	{"SriSmResp", asParser(ParseSriSmResp)},
+	{"SriSmRes", asParser(ParseSriSmRes)},
 	{"MtFsm", asParser(ParseMtFsm)},
-	{"MtFsmResp", asParser(ParseMtFsmResp)},
+	{"MtFsmRes", asParser(ParseMtFsmRes)},
 	{"MoFsm", asParser(ParseMoFsm)},
-	{"MoFsmResp", asParser(ParseMoFsmResp)},
+	{"MoFsmRes", asParser(ParseMoFsmRes)},
 	{"UpdateLocation", asParser(ParseUpdateLocation)},
 	{"UpdateLocationRes", asParser(ParseUpdateLocationRes)},
 	{"UpdateGprsLocation", asParser(ParseUpdateGprsLocation)},
@@ -56,7 +56,7 @@ var parsers = []struct {
 	{"ProvideSubscriberInfo", asParser(ParseProvideSubscriberInfo)},
 	{"ProvideSubscriberInfoRes", asParser(ParseProvideSubscriberInfoRes)},
 	{"Sri", asParser(ParseSri)},
-	{"SriResp", asParser(ParseSriResp)},
+	{"SriRes", asParser(ParseSriRes)},
 	{"InformServiceCentre", asParser(ParseInformServiceCentre)},
 	{"AlertServiceCentre", asParser(ParseAlertServiceCentre)},
 	{"PurgeMS", asParser(ParsePurgeMS)},
@@ -65,14 +65,14 @@ var parsers = []struct {
 	{"SendAuthenticationInfoRes", asParser(ParseSendAuthenticationInfoRes)},
 	{"CancelLocation", asParser(ParseCancelLocation)},
 	{"CancelLocationRes", asParser(ParseCancelLocationRes)},
-	{"InsertSubscriberData", asParser(ParseInsertSubscriberData)},
+	{"InsertSubscriberDataArg", asParser(ParseInsertSubscriberDataArg)},
 	{"InsertSubscriberDataRes", asParser(ParseInsertSubscriberDataRes)},
-	{"ProvideSubscriberLocation", asParser(ParseProvideSubscriberLocation)},
+	{"ProvideSubscriberLocationArg", asParser(ParseProvideSubscriberLocationArg)},
 	{"ProvideSubscriberLocationRes", asParser(ParseProvideSubscriberLocationRes)},
-	{"SubscriberLocationReport", asParser(ParseSubscriberLocationReport)},
+	{"SubscriberLocationReportArg", asParser(ParseSubscriberLocationReportArg)},
 	{"SubscriberLocationReportRes", asParser(ParseSubscriberLocationReportRes)},
 	{"SriLcs", asParser(ParseSriLcs)},
-	{"SriLcsResp", asParser(ParseSriLcsResp)},
+	{"SriLcsRes", asParser(ParseSriLcsRes)},
 	{"ReportSMDeliveryStatus", asParser(ParseReportSMDeliveryStatus)},
 	{"ReportSMDeliveryStatusRes", asParser(ParseReportSMDeliveryStatusRes)},
 	{"USSDArg", asParser(ParseUSSDArg)},
@@ -207,9 +207,9 @@ var strictEncodeErrors = []error{
 	ErrRouteingNumberTBCDInvalid,
 
 	// TS 29.002 V19.1.0 §17.7.6: received overlapping node indicators are kept.
-	ErrSriSmRespNodeIndicatorsMutuallyExclusive,
+	ErrSriSmResNodeIndicatorsMutuallyExclusive,
 	// TS 29.002 V19.1.0 §17.7.6: received additional numbers of the same CHOICE type are kept.
-	ErrSriSmRespAdditionalNumbersSameType,
+	ErrSriSmResAdditionalNumbersSameType,
 	// TS 29.002 V19.1.0 §17.7.6: received conflicting outcome fields are kept.
 	ErrReportSMDeliveryStatusConflictingOutcomeFields,
 	// TS 29.002 V19.1.0 §17.7.6: an additional diagnostic without its primary is kept.
@@ -369,7 +369,7 @@ func freshenOpaquePDPEntries(v marshaler) error {
 		info = &v.SubscriberInfo
 	case *ProvideSubscriberInfoRes:
 		info = &v.SubscriberInfo
-	case *SriResp:
+	case *SriRes:
 		info = v.SubscriberInfo
 	}
 	if info == nil {

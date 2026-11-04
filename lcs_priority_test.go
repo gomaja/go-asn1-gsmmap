@@ -20,7 +20,7 @@ func TestMarshalLCSPriority(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Marshal %x: %v", p, err)
 		}
-		got, err := ParseProvideSubscriberLocation(data)
+		got, err := ParseProvideSubscriberLocationArg(data)
 		if err != nil {
 			t.Fatalf("Parse %x: %v", p, err)
 		}
@@ -47,12 +47,12 @@ func TestParseLCSPriorityMapsOtherValuesToNormal(t *testing.T) {
 			w := pslWire(t, pslArg())
 			w.LcsPriority = &gsm_map.LCSPriority{tc.wire}
 			data := strictBER(t, w)
-			got, err := ParseProvideSubscriberLocation(data)
+			got, err := ParseProvideSubscriberLocationArg(data)
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
 			}
 			wantEqual(t, "LcsPriority", LCSPriority{tc.want}, got.LcsPriority)
-			if err := checkParseRoundTrip("ProvideSubscriberLocation", asParser(ParseProvideSubscriberLocation), data); err != nil {
+			if err := checkParseRoundTrip("ProvideSubscriberLocationArg", asParser(ParseProvideSubscriberLocationArg), data); err != nil {
 				t.Error(err)
 			}
 		})

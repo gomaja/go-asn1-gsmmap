@@ -44,7 +44,7 @@ func TestMMCodeMarshal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	got, err := ParseInsertSubscriberData(data)
+	got, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestMMCodeParseIgnoresOtherDomain(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			data := strictBER(t, mmCodeWire(t, tc.m, tc.mg))
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
 			}
@@ -111,7 +111,7 @@ func TestMMCodeParseIgnoresOtherDomain(t *testing.T) {
 				wantEqual(t, "MG-CSI MobilityTriggers", tc.wantMG, mg.MobilityTriggers)
 			}
 			wantEqual(t, "OCSI", camelISD().VlrCamelSubscriptionInfo.OCSI, got.VlrCamelSubscriptionInfo.OCSI)
-			if err := checkParseRoundTrip("InsertSubscriberData", asParser(ParseInsertSubscriberData), data); err != nil {
+			if err := checkParseRoundTrip("InsertSubscriberDataArg", asParser(ParseInsertSubscriberDataArg), data); err != nil {
 				t.Error(err)
 			}
 		})
@@ -130,7 +130,7 @@ func TestMMCodeParseRejectsWrongSize(t *testing.T) {
 			{"MG-CSI", "sgsn-CAMEL-SubscriptionInfo.mg-csi.mobilityTriggers.element[1]", [][]byte{{0x00}}, [][]byte{{0x80}, bad}},
 		} {
 			t.Run(fmt.Sprintf("%s %d octets", tc.name, len(bad)), func(t *testing.T) {
-				if got, err := ParseInsertSubscriberData(tolerantBER(t, mmCodeWire(t, tc.m, tc.mg))); !matchesConstraint(err, tc.path, "SIZE (1)") || got != nil {
+				if got, err := ParseInsertSubscriberDataArg(tolerantBER(t, mmCodeWire(t, tc.m, tc.mg))); !matchesConstraint(err, tc.path, "SIZE (1)") || got != nil {
 					t.Errorf("got %v, %v; want MM-Code SIZE (1)", got, err)
 				}
 			})

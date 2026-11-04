@@ -228,7 +228,7 @@ func TestSupportedGADShapesConstructedRejected(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ParseProvideSubscriberLocation(data); err != nil {
+	if _, err := ParseProvideSubscriberLocationArg(data); err != nil {
 		t.Fatalf("primitive form: %v", err)
 	}
 	// The constructed [9] holds one primitive BIT STRING segment (ITU-T X.690
@@ -239,7 +239,7 @@ func TestSupportedGADShapesConstructedRejected(t *testing.T) {
 	}
 	mutated := append(append(append([]byte{}, data[:i]...), mustHex(t, "a90403020180")...), data[i+4:]...)
 	mutated[1] += 2
-	got, err := ParseProvideSubscriberLocation(mutated)
+	got, err := ParseProvideSubscriberLocationArg(mutated)
 	if got != nil {
 		t.Errorf("Parse = %+v, want nil", got)
 	}

@@ -28,7 +28,7 @@ func TestSSCSIEventListMarshal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	got, err := ParseInsertSubscriberData(data)
+	got, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -64,7 +64,7 @@ func TestSSCSIEventListParse(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%x", tc.codes), func(t *testing.T) {
 			data := wire(t, tc.codes...)
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
 				t.Fatalf("Parse: %v", err)
 			}
@@ -78,7 +78,7 @@ func TestSSCSIEventListParse(t *testing.T) {
 			}
 			// The rest of the subscription info is kept.
 			wantEqual(t, "OCSI", camelISD().VlrCamelSubscriptionInfo.OCSI, v.OCSI)
-			if err := checkParseRoundTrip("InsertSubscriberData", asParser(ParseInsertSubscriberData), data); err != nil {
+			if err := checkParseRoundTrip("InsertSubscriberDataArg", asParser(ParseInsertSubscriberDataArg), data); err != nil {
 				t.Error(err)
 			}
 		})

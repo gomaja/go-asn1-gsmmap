@@ -28,7 +28,7 @@ func TestCSLocationInformationEPSRoundTrip(t *testing.T) {
 		{"ATI-Res", "301f301da01b8107911316111111f1aa10800762f22000012345810562f2201234", asParser(ParseAnyTimeInterrogationRes)},
 		{"PSI-Res", "301f301da01b8107911316111111f1aa10800762f22000012345810562f2201234", asParser(ParseProvideSubscriberInfoRes)},
 		// SRI content: IMSI 10 + SubscriberInfo [7] 31 = 41.
-		{"SRI-Res", "a329890800010121436587f9a71da01b8107911316111111f1aa10800762f22000012345810562f2201234", asParser(ParseSriResp)},
+		{"SRI-Res", "a329890800010121436587f9a71da01b8107911316111111f1aa10800762f22000012345810562f2201234", asParser(ParseSriRes)},
 		// PurgeMS content: IMSI 10 + CS location [2] 29 = 39.
 		{"PurgeMS-Arg", "a327040800010121436587f9a21b8107911316111111f1aa10800762f22000012345810562f2201234", asParser(ParsePurgeMS)},
 	} {
@@ -50,7 +50,7 @@ func TestCSLocationInformationEPSRoundTrip(t *testing.T) {
 				if v.SubscriberInfo.LocationInformationEPS != nil {
 					t.Fatal("nested EPS decoded as SubscriberInfo.LocationInformationEPS")
 				}
-			case *SriResp:
+			case *SriRes:
 				wantEqual(t, "IMSI", "001010123456789", v.IMSI)
 				if v.SubscriberInfo == nil {
 					t.Fatal("missing SubscriberInfo")

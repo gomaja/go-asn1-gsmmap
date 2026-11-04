@@ -95,7 +95,7 @@ func TestUpdateLocationDecodeIstSupportIndicator_MapsUnknownToOne(t *testing.T) 
 
 // NumberPortabilityStatus: ENUMERATED { 0, 1, 2, 4, 5 }, spec exception:
 // reception of other values shall ignore the whole field.
-func TestSriRespDecodeNumberPortabilityStatus_IgnoresUnknown(t *testing.T) {
+func TestSriResDecodeNumberPortabilityStatus_IgnoresUnknown(t *testing.T) {
 	cases := []struct {
 		name    string
 		in      gsm_map.NumberPortabilityStatus
@@ -121,9 +121,9 @@ func TestSriRespDecodeNumberPortabilityStatus_IgnoresUnknown(t *testing.T) {
 			v := tc.in
 			res.NumberPortabilityStatus = &v
 
-			out, err := convertResToSriResp(res)
+			out, err := convertResToSriRes(res)
 			if err != nil {
-				t.Fatalf("convertResToSriResp: unexpected error: %v", err)
+				t.Fatalf("convertResToSriRes: unexpected error: %v", err)
 			}
 			if tc.wantNil {
 				if out.NumberPortabilityStatus != nil {
@@ -180,7 +180,7 @@ func TestMnpInfoResDecodeNumberPortabilityStatus_IgnoresUnknown(t *testing.T) {
 // reception of unknown values shall result in service-unavailable for
 // that call. The protocol decoder surfaces the raw value; the
 // service-unavailable behavior is application-layer.
-func TestSriRespDecodeUnavailabilityCause_AcceptsUnknown(t *testing.T) {
+func TestSriResDecodeUnavailabilityCause_AcceptsUnknown(t *testing.T) {
 	cases := []struct {
 		name string
 		in   gsm_map.UnavailabilityCause
@@ -196,9 +196,9 @@ func TestSriRespDecodeUnavailabilityCause_AcceptsUnknown(t *testing.T) {
 			v := tc.in
 			res.UnavailabilityCause = &v
 
-			out, err := convertResToSriResp(res)
+			out, err := convertResToSriRes(res)
 			if err != nil {
-				t.Fatalf("convertResToSriResp: unexpected error: %v", err)
+				t.Fatalf("convertResToSriRes: unexpected error: %v", err)
 			}
 			if out.UnavailabilityCause == nil {
 				t.Fatalf("UnavailabilityCause: got nil, want %d", tc.in)

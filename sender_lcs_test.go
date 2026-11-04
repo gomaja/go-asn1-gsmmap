@@ -39,12 +39,12 @@ func senderPSLArg() *ProvideSubscriberLocationArg {
 func TestSenderSriSmNodeIndicators(t *testing.T) {
 	for mask := 0; mask < 16; mask++ {
 		t.Run(fmt.Sprint(mask), func(t *testing.T) {
-			a := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123", GprsNodeIndicator: mask&1 != 0, ImsNodeIndicator: mask&2 != 0, Smsf3gppAddressIndicator: mask&4 != 0, SmsfNon3gppAddressIndicator: mask&8 != 0}}
+			a := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123", GprsNodeIndicator: mask&1 != 0, ImsNodeIndicator: mask&2 != 0, Smsf3gppAddressIndicator: mask&4 != 0, SmsfNon3gppAddressIndicator: mask&8 != 0}}
 			var want error
 			if bits.OnesCount(uint(mask)) > 1 {
-				want = ErrSriSmRespNodeIndicatorsMutuallyExclusive
+				want = ErrSriSmResNodeIndicatorsMutuallyExclusive
 			}
-			senderLCSCheck(t, a, asParser(ParseSriSmResp), want)
+			senderLCSCheck(t, a, asParser(ParseSriSmRes), want)
 		})
 	}
 }
@@ -55,10 +55,10 @@ func TestSenderSriSmAdditionalNumberTypes(t *testing.T) {
 	for i, a := range nums {
 		for j, b := range nums {
 			t.Run(fmt.Sprintf("%d/%d", i, j), func(t *testing.T) {
-				in := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "789", AdditionalNumber: a, ThirdNumber: b}}
+				in := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "789", AdditionalNumber: a, ThirdNumber: b}}
 				var want error
 				if i == j && i > 0 {
-					want = ErrSriSmRespAdditionalNumbersSameType
+					want = ErrSriSmResAdditionalNumbersSameType
 				}
 				// Different digits do not make equal number types legal.
 				if b != nil {
@@ -70,7 +70,7 @@ func TestSenderSriSmAdditionalNumberTypes(t *testing.T) {
 					}
 					in.LocationInfoWithLMSI.ThirdNumber = &third
 				}
-				senderLCSCheck(t, in, asParser(ParseSriSmResp), want)
+				senderLCSCheck(t, in, asParser(ParseSriSmRes), want)
 			})
 		}
 	}
@@ -149,8 +149,8 @@ func TestSenderLCSSubscriberIdentity(t *testing.T) {
 		if mask == 0 {
 			want = ErrLCSSubscriberIdentityMissing
 		}
-		senderLCSCheck(t, p, asParser(ParseProvideSubscriberLocation), want)
-		senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
+		senderLCSCheck(t, p, asParser(ParseProvideSubscriberLocationArg), want)
+		senderLCSCheck(t, s, asParser(ParseSubscriberLocationReportArg), want)
 	}
 }
 
@@ -167,7 +167,7 @@ func TestSenderLCSDeferredReference(t *testing.T) {
 			if !present && (event == LocationEstimateActivateDeferredLocation || event == LocationEstimateCancelDeferredLocation) {
 				want = ErrLCSDeferredReferenceNumberMissing
 			}
-			senderLCSCheck(t, p, asParser(ParseProvideSubscriberLocation), want)
+			senderLCSCheck(t, p, asParser(ParseProvideSubscriberLocationArg), want)
 		}
 	}
 	for event := LCSEvent(0); event <= 5; event++ {
@@ -184,7 +184,7 @@ func TestSenderLCSDeferredReference(t *testing.T) {
 			if !present && event == LCSEventDeferredmtLrResponse {
 				want = ErrLCSDeferredReferenceNumberMissing
 			}
-			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
+			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReportArg), want)
 		}
 	}
 }
@@ -202,8 +202,8 @@ func TestSenderLCSClientNameDCS(t *testing.T) {
 		if v != 0x0f {
 			want = ErrLCSClientNameDataCodingSchemeInvalid
 		}
-		senderLCSCheck(t, p, asParser(ParseProvideSubscriberLocation), want)
-		senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
+		senderLCSCheck(t, p, asParser(ParseProvideSubscriberLocationArg), want)
+		senderLCSCheck(t, s, asParser(ParseSubscriberLocationReportArg), want)
 	}
 }
 
@@ -212,7 +212,7 @@ func TestSenderLCSDummyNode(t *testing.T) {
 	for _, node := range []string{"0", "123"} {
 		for _, flag := range []bool{false, true} {
 			loc := LCSLocationInfo{NetworkNodeNumber: node, GprsNodeIndicator: flag}
-			r := &SriLcsResp{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: loc}
+			r := &SriLcsRes{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: loc}
 			s := minimalSLRArg()
 			s.LcsLocationInfo = loc
 			d := minimalSLRArg()
@@ -223,9 +223,9 @@ func TestSenderLCSDummyNode(t *testing.T) {
 			if node == "0" && flag {
 				want = ErrLCSLocationInfoGPRSIndicatorWithDummyNode
 			}
-			senderLCSCheck(t, r, asParser(ParseSriLcsResp), want)
-			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
-			senderLCSCheck(t, d, asParser(ParseSubscriberLocationReport), want)
+			senderLCSCheck(t, r, asParser(ParseSriLcsRes), want)
+			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReportArg), want)
+			senderLCSCheck(t, d, asParser(ParseSubscriberLocationReportArg), want)
 		}
 	}
 }
@@ -244,7 +244,7 @@ func TestSenderSLRDeferredDataPresence(t *testing.T) {
 			if (event == LCSEventDeferredmtLrResponse) != present {
 				want = ErrSLRArgDeferredmtLrDataPresence
 			}
-			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
+			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReportArg), want)
 		}
 	}
 }
@@ -267,7 +267,7 @@ func TestSenderSLRDeferredLocationRequiresRestart(t *testing.T) {
 			if present && cause != 4 {
 				want = ErrDeferredmtLrDataLocationInfoRequiresRestart
 			}
-			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
+			senderLCSCheck(t, s, asParser(ParseSubscriberLocationReportArg), want)
 		}
 	}
 }
@@ -302,7 +302,7 @@ func senderLCSGeography(t *testing.T, value HexBytes, add bool, want error) {
 		s.LocationEstimate = value
 	}
 	senderLCSCheck(t, r, asParser(ParseProvideSubscriberLocationRes), want)
-	senderLCSCheck(t, s, asParser(ParseSubscriberLocationReport), want)
+	senderLCSCheck(t, s, asParser(ParseSubscriberLocationReportArg), want)
 }
 
 // TS 29.002 V19.1.0 §17.7.13; TS 23.032 V19.0.0 §7.3 figures define exact shape lengths.
@@ -512,7 +512,7 @@ func senderLCSVelocity(t *testing.T, v HexBytes, want, cause error) {
 		parse func([]byte) (marshaler, error)
 	}{
 		{r, asParser(ParseProvideSubscriberLocationRes)},
-		{s, asParser(ParseSubscriberLocationReport)},
+		{s, asParser(ParseSubscriberLocationReportArg)},
 	} {
 		senderLCSCheck(t, m.in, m.parse, want)
 		if cause != nil {
@@ -530,11 +530,11 @@ func TestSenderLCSNameParsePreservesDCS(t *testing.T) {
 	w := semMust(convertProvideSubscriberLocationArgToWire(a))
 	w.LcsClientID.LcsClientName.DataCodingScheme[0] = 0x48
 	data := semMust(w.MarshalBER())
-	got := semMust(ParseProvideSubscriberLocation(data))
+	got := semMust(ParseProvideSubscriberLocationArg(data))
 	if !reflect.DeepEqual(got.LcsClientID.LcsClientName.NameString, HexBytes{0x41}) || got.LcsClientID.LcsClientName.DataCodingScheme != 0x48 {
 		t.Fatalf("name not preserved: %+v", got.LcsClientID.LcsClientName)
 	}
-	senderLCSCheck(t, got, asParser(ParseProvideSubscriberLocation), ErrLCSClientNameDataCodingSchemeInvalid)
+	senderLCSCheck(t, got, asParser(ParseProvideSubscriberLocationArg), ErrLCSClientNameDataCodingSchemeInvalid)
 }
 
 // TS 29.002 V19.1.0 §§17.7.6,17.7.13: these sender violations remain received values.
@@ -544,14 +544,14 @@ func senderLCSSemLenientCases() []semLenientCase {
 			v := gsm_map.VelocityEstimate{0x03, 0, 0, 0, 0, 0, 0} // type 0 in seven octets
 			return &gsm_map.ProvideSubscriberLocationRes{LocationEstimate: make(gsm_map.ExtGeographicalInformation, 7), VelocityEstimate: &v}
 		}},
-		{ErrSriSmRespNodeIndicatorsMutuallyExclusive, asParser(ParseSriSmResp), func(*testing.T) semWire {
-			w := semMust(convertSriSmRespToRes(&SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123"}}))
+		{ErrSriSmResNodeIndicatorsMutuallyExclusive, asParser(ParseSriSmRes), func(*testing.T) semWire {
+			w := semMust(convertSriSmResToRes(&SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123"}}))
 			w.LocationInfoWithLMSI.GprsNodeIndicator = &struct{}{}
 			w.LocationInfoWithLMSI.ImsNodeIndicator = &struct{}{}
 			return w
 		}},
-		{ErrSriSmRespAdditionalNumbersSameType, asParser(ParseSriSmResp), func(*testing.T) semWire {
-			w := semMust(convertSriSmRespToRes(&SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123", AdditionalNumber: &AdditionalNumber{MscNumber: "123"}}}))
+		{ErrSriSmResAdditionalNumbersSameType, asParser(ParseSriSmRes), func(*testing.T) semWire {
+			w := semMust(convertSriSmResToRes(&SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123", AdditionalNumber: &AdditionalNumber{MscNumber: "123"}}}))
 			n := gsm_map.NewAdditionalNumberMscNumber([]byte{0x80, 0x54, 0xf6})
 			w.LocationInfoWithLMSI.ThirdNumber = &n
 			return w
@@ -564,19 +564,19 @@ func senderLCSSemLenientCases() []semLenientCase {
 		{ErrIscAdditionalDiagnosticWithoutPrimary, asParser(ParseInformServiceCentre), func(*testing.T) semWire {
 			return &gsm_map.InformServiceCentreArg{AdditionalAbsentSubscriberDiagnosticSM: new(gsm_map.AbsentSubscriberDiagnosticSM(1))}
 		}},
-		{ErrLCSLocationInfoGPRSIndicatorWithDummyNode, asParser(ParseSriLcsResp), func(*testing.T) semWire {
-			w := semMust(convertSriLcsRespToRes(&SriLcsResp{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "0"}}))
+		{ErrLCSLocationInfoGPRSIndicatorWithDummyNode, asParser(ParseSriLcsRes), func(*testing.T) semWire {
+			w := semMust(convertSriLcsResToRes(&SriLcsRes{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "0"}}))
 			w.LcsLocationInfo.GprsNodeIndicator = &struct{}{}
 			return w
 		}},
-		{ErrLCSLocationInfoGPRSIndicatorWithDummyNode, asParser(ParseSubscriberLocationReport), func(*testing.T) semWire {
+		{ErrLCSLocationInfoGPRSIndicatorWithDummyNode, asParser(ParseSubscriberLocationReportArg), func(*testing.T) semWire {
 			a := minimalSLRArg()
 			a.LcsLocationInfo.NetworkNodeNumber = "0"
 			w := semMust(convertSubscriberLocationReportArgToWire(a))
 			w.LcsLocationInfo.GprsNodeIndicator = &struct{}{}
 			return w
 		}},
-		{ErrLCSLocationInfoGPRSIndicatorWithDummyNode, asParser(ParseSubscriberLocationReport), func(*testing.T) semWire {
+		{ErrLCSLocationInfoGPRSIndicatorWithDummyNode, asParser(ParseSubscriberLocationReportArg), func(*testing.T) semWire {
 			a := minimalSLRArg()
 			a.LcsEvent = LCSEventDeferredmtLrResponse
 			a.LcsReferenceNumber = HexBytes{1}
@@ -585,23 +585,23 @@ func senderLCSSemLenientCases() []semLenientCase {
 			w.DeferredmtLrData.LcsLocationInfo.GprsNodeIndicator = &struct{}{}
 			return w
 		}},
-		{ErrLCSSubscriberIdentityMissing, asParser(ParseProvideSubscriberLocation), func(*testing.T) semWire {
+		{ErrLCSSubscriberIdentityMissing, asParser(ParseProvideSubscriberLocationArg), func(*testing.T) semWire {
 			w := semMust(convertProvideSubscriberLocationArgToWire(senderPSLArg()))
 			w.Imsi = nil
 			w.Msisdn = nil
 			return w
 		}},
-		{ErrLCSSubscriberIdentityMissing, asParser(ParseSubscriberLocationReport), func(*testing.T) semWire {
+		{ErrLCSSubscriberIdentityMissing, asParser(ParseSubscriberLocationReportArg), func(*testing.T) semWire {
 			w := semMust(convertSubscriberLocationReportArgToWire(minimalSLRArg()))
 			w.Imsi, w.Msisdn = nil, nil
 			return w
 		}},
-		{ErrLCSDeferredReferenceNumberMissing, asParser(ParseProvideSubscriberLocation), func(*testing.T) semWire {
+		{ErrLCSDeferredReferenceNumberMissing, asParser(ParseProvideSubscriberLocationArg), func(*testing.T) semWire {
 			w := semMust(convertProvideSubscriberLocationArgToWire(senderPSLArg()))
 			w.LocationType.LocationEstimateType = LocationEstimateActivateDeferredLocation
 			return w
 		}},
-		{ErrLCSDeferredReferenceNumberMissing, asParser(ParseSubscriberLocationReport), func(*testing.T) semWire {
+		{ErrLCSDeferredReferenceNumberMissing, asParser(ParseSubscriberLocationReportArg), func(*testing.T) semWire {
 			a := minimalSLRArg()
 			a.LcsEvent = LCSEventDeferredmtLrResponse
 			a.LcsReferenceNumber = HexBytes{1}
@@ -610,26 +610,26 @@ func senderLCSSemLenientCases() []semLenientCase {
 			w.LcsReferenceNumber = nil
 			return w
 		}},
-		{ErrLCSClientNameDataCodingSchemeInvalid, asParser(ParseProvideSubscriberLocation), func(*testing.T) semWire {
+		{ErrLCSClientNameDataCodingSchemeInvalid, asParser(ParseProvideSubscriberLocationArg), func(*testing.T) semWire {
 			a := senderPSLArg()
 			a.LcsClientID = &LCSClientID{LcsClientName: &LCSClientName{DataCodingScheme: 0x0f, NameString: HexBytes{0x41}}}
 			w := semMust(convertProvideSubscriberLocationArgToWire(a))
 			w.LcsClientID.LcsClientName.DataCodingScheme[0] = 0x48
 			return w
 		}},
-		{ErrLCSClientNameDataCodingSchemeInvalid, asParser(ParseSubscriberLocationReport), func(*testing.T) semWire {
+		{ErrLCSClientNameDataCodingSchemeInvalid, asParser(ParseSubscriberLocationReportArg), func(*testing.T) semWire {
 			a := minimalSLRArg()
 			a.LcsClientID.LcsClientName = &LCSClientName{DataCodingScheme: 0x0f, NameString: HexBytes{0x41}}
 			w := semMust(convertSubscriberLocationReportArgToWire(a))
 			w.LcsClientID.LcsClientName.DataCodingScheme[0] = 0x48
 			return w
 		}},
-		{ErrSLRArgDeferredmtLrDataPresence, asParser(ParseSubscriberLocationReport), func(*testing.T) semWire {
+		{ErrSLRArgDeferredmtLrDataPresence, asParser(ParseSubscriberLocationReportArg), func(*testing.T) semWire {
 			w := semMust(convertSubscriberLocationReportArgToWire(minimalSLRArg()))
 			w.DeferredmtLrData = &gsm_map.DeferredmtLrData{DeferredLocationEventType: runtime.BitString{Bytes: []byte{0}, BitLength: 5}}
 			return w
 		}},
-		{ErrSLRArgDeferredmtLrDataPresence, asParser(ParseSubscriberLocationReport), func(*testing.T) semWire {
+		{ErrSLRArgDeferredmtLrDataPresence, asParser(ParseSubscriberLocationReportArg), func(*testing.T) semWire {
 			a := minimalSLRArg()
 			a.LcsEvent = LCSEventDeferredmtLrResponse
 			a.LcsReferenceNumber = HexBytes{1}
@@ -638,7 +638,7 @@ func senderLCSSemLenientCases() []semLenientCase {
 			w.DeferredmtLrData = nil
 			return w
 		}},
-		{ErrDeferredmtLrDataLocationInfoRequiresRestart, asParser(ParseSubscriberLocationReport), func(*testing.T) semWire {
+		{ErrDeferredmtLrDataLocationInfoRequiresRestart, asParser(ParseSubscriberLocationReportArg), func(*testing.T) semWire {
 			a := minimalSLRArg()
 			a.LcsEvent = LCSEventDeferredmtLrResponse
 			a.LcsReferenceNumber = HexBytes{1}
@@ -664,9 +664,9 @@ func TestSenderReportSMIndicatorsRoundTrip(t *testing.T) {
 func TestSenderSriSmIndicatorsRoundTrip(t *testing.T) {
 	for _, field := range []string{"GprsNodeIndicator", "ImsNodeIndicator", "Smsf3gppAddressIndicator", "SmsfNon3gppAddressIndicator"} {
 		t.Run(field, func(t *testing.T) {
-			in := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123"}}
+			in := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "123"}}
 			reflect.ValueOf(&in.LocationInfoWithLMSI).Elem().FieldByName(field).SetBool(true)
-			senderMobilityRoundTrip(t, in, asParser(ParseSriSmResp))
+			senderMobilityRoundTrip(t, in, asParser(ParseSriSmRes))
 		})
 	}
 }

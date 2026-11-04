@@ -67,17 +67,17 @@ func convertArgToSriLcs(w *gsm_map.RoutingInfoForLCSArg) (*SriLcs, error) {
 // RoutingInfoForLCS-Res
 // ============================================================================
 
-func convertSriLcsRespToRes(r *SriLcsResp) (*gsm_map.RoutingInfoForLCSRes, error) {
+func convertSriLcsResToRes(r *SriLcsRes) (*gsm_map.RoutingInfoForLCSRes, error) {
 	if r == nil {
-		return nil, ErrSriLcsRespNil
+		return nil, ErrSriLcsResNil
 	}
 	target, err := convertSubscriberIdentityToWire(r.TargetMS)
 	if err != nil {
-		return nil, fmt.Errorf("SriLcsResp.TargetMS: %w", err)
+		return nil, fmt.Errorf("SriLcsRes.TargetMS: %w", err)
 	}
 	locInfo, err := convertLCSLocationInfoToWire(&r.LcsLocationInfo)
 	if err != nil {
-		return nil, fmt.Errorf("SriLcsResp.LcsLocationInfo: %w", err)
+		return nil, fmt.Errorf("SriLcsRes.LcsLocationInfo: %w", err)
 	}
 
 	out := &gsm_map.RoutingInfoForLCSRes{
@@ -85,49 +85,49 @@ func convertSriLcsRespToRes(r *SriLcsResp) (*gsm_map.RoutingInfoForLCSRes, error
 		LcsLocationInfo: *locInfo,
 	}
 
-	if err := encodeOptionalGSN(r.VGmlcAddress, "SriLcsResp.VGmlcAddress", &out.VGmlcAddress); err != nil {
+	if err := encodeOptionalGSN(r.VGmlcAddress, "SriLcsRes.VGmlcAddress", &out.VGmlcAddress); err != nil {
 		return nil, err
 	}
-	if err := encodeOptionalGSN(r.HGmlcAddress, "SriLcsResp.HGmlcAddress", &out.HGmlcAddress); err != nil {
+	if err := encodeOptionalGSN(r.HGmlcAddress, "SriLcsRes.HGmlcAddress", &out.HGmlcAddress); err != nil {
 		return nil, err
 	}
-	if err := encodeOptionalGSN(r.PprAddress, "SriLcsResp.PprAddress", &out.PprAddress); err != nil {
+	if err := encodeOptionalGSN(r.PprAddress, "SriLcsRes.PprAddress", &out.PprAddress); err != nil {
 		return nil, err
 	}
-	if err := encodeOptionalGSN(r.AdditionalVGmlcAddress, "SriLcsResp.AdditionalVGmlcAddress", &out.AdditionalVGmlcAddress); err != nil {
+	if err := encodeOptionalGSN(r.AdditionalVGmlcAddress, "SriLcsRes.AdditionalVGmlcAddress", &out.AdditionalVGmlcAddress); err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func convertResToSriLcsResp(w *gsm_map.RoutingInfoForLCSRes) (*SriLcsResp, error) {
+func convertResToSriLcsRes(w *gsm_map.RoutingInfoForLCSRes) (*SriLcsRes, error) {
 	if w == nil {
-		return nil, ErrSriLcsRespNil
+		return nil, ErrSriLcsResNil
 	}
 	target, err := convertWireToSubscriberIdentity(w.TargetMS)
 	if err != nil {
-		return nil, fmt.Errorf("SriLcsResp.TargetMS: %w", err)
+		return nil, fmt.Errorf("SriLcsRes.TargetMS: %w", err)
 	}
 	locInfo, err := convertWireToLCSLocationInfo(&w.LcsLocationInfo)
 	if err != nil {
-		return nil, fmt.Errorf("SriLcsResp.LcsLocationInfo: %w", err)
+		return nil, fmt.Errorf("SriLcsRes.LcsLocationInfo: %w", err)
 	}
 
-	out := &SriLcsResp{
+	out := &SriLcsRes{
 		TargetMS:        target,
 		LcsLocationInfo: *locInfo,
 	}
 
-	if out.VGmlcAddress, err = decodeOptionalGSN(w.VGmlcAddress, "SriLcsResp.VGmlcAddress"); err != nil {
+	if out.VGmlcAddress, err = decodeOptionalGSN(w.VGmlcAddress, "SriLcsRes.VGmlcAddress"); err != nil {
 		return nil, err
 	}
-	if out.HGmlcAddress, err = decodeOptionalGSN(w.HGmlcAddress, "SriLcsResp.HGmlcAddress"); err != nil {
+	if out.HGmlcAddress, err = decodeOptionalGSN(w.HGmlcAddress, "SriLcsRes.HGmlcAddress"); err != nil {
 		return nil, err
 	}
-	if out.PprAddress, err = decodeOptionalGSN(w.PprAddress, "SriLcsResp.PprAddress"); err != nil {
+	if out.PprAddress, err = decodeOptionalGSN(w.PprAddress, "SriLcsRes.PprAddress"); err != nil {
 		return nil, err
 	}
-	if out.AdditionalVGmlcAddress, err = decodeOptionalGSN(w.AdditionalVGmlcAddress, "SriLcsResp.AdditionalVGmlcAddress"); err != nil {
+	if out.AdditionalVGmlcAddress, err = decodeOptionalGSN(w.AdditionalVGmlcAddress, "SriLcsRes.AdditionalVGmlcAddress"); err != nil {
 		return nil, err
 	}
 	return out, nil

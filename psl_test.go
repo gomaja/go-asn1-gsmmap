@@ -36,7 +36,7 @@ func TestPSLFormats(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Marshal %d: %v", v, err)
 		}
-		got, err := ParseProvideSubscriberLocation(data)
+		got, err := ParseProvideSubscriberLocationArg(data)
 		if err != nil {
 			t.Fatalf("Parse: %v", err)
 		}

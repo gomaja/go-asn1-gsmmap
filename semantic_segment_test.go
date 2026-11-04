@@ -115,9 +115,9 @@ func TestSegmentedCSIRoundTrip(t *testing.T) {
 				if list, cch := semWireCSIFields(&w); list != seg.list || cch != seg.cch {
 					t.Errorf("wire list present = %t, camelCapabilityHandling present = %t; want %t, %t", list, cch, seg.list, seg.cch)
 				}
-				got, err := ParseInsertSubscriberData(data)
+				got, err := ParseInsertSubscriberDataArg(data)
 				if err != nil {
-					t.Fatalf("ParseInsertSubscriberData: %v", err)
+					t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 				}
 				wantEqual(t, "ISD", in, got)
 				again, err := got.Marshal()
@@ -144,7 +144,7 @@ func TestSegmentedGmscDCSIRoundTrip(t *testing.T) {
 			if seg.cch {
 				d.CamelCapabilityHandling = semPhase()
 			}
-			in := &SriResp{
+			in := &SriRes{
 				IMSI:                "204080012345678",
 				ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: GmscCamelSubscriptionInfo{DCSI: d}}},
 			}
@@ -152,9 +152,9 @@ func TestSegmentedGmscDCSIRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Marshal: %v", err)
 			}
-			got, err := ParseSriResp(data)
+			got, err := ParseSriRes(data)
 			if err != nil {
-				t.Fatalf("ParseSriResp: %v", err)
+				t.Fatalf("ParseSriRes: %v", err)
 			}
 			wantEqual(t, "D-CSI", d, got.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCSI)
 		})
@@ -173,8 +173,8 @@ func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
 	first := func() *DCSI {
 		return &DCSI{DPAnalysedInfoCriteriaList: []DPAnalysedInfoCriterium{semDPCriterium()}, CamelCapabilityHandling: semPhase()}
 	}
-	sriResp := func(d *DCSI) *SriResp {
-		return &SriResp{
+	sriRes := func(d *DCSI) *SriRes {
+		return &SriRes{
 			IMSI:                "204080012345678",
 			ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: GmscCamelSubscriptionInfo{DCSI: d}}},
 		}
@@ -187,7 +187,7 @@ func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
 		if _, err := isd(cchOnly()).Marshal(); !errors.Is(err, ErrCamelDCSICapabilityHandlingWithoutList) {
 			t.Errorf("VLR D-CSI: err = %v, want ErrCamelDCSICapabilityHandlingWithoutList", err)
 		}
-		if _, err := sriResp(cchOnly()).Marshal(); !errors.Is(err, ErrCamelDCSICapabilityHandlingWithoutList) {
+		if _, err := sriRes(cchOnly()).Marshal(); !errors.Is(err, ErrCamelDCSICapabilityHandlingWithoutList) {
 			t.Errorf("GMSC D-CSI: err = %v, want ErrCamelDCSICapabilityHandlingWithoutList", err)
 		}
 	})
@@ -198,7 +198,7 @@ func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
 			t.Fatalf("convertInsertSubscriberDataArgToWire: %v", err)
 		}
 		w.VlrCamelSubscriptionInfo.DCSI.DpAnalysedInfoCriteriaList = nil
-		got, err := ParseInsertSubscriberData(strictBER(t, w))
+		got, err := ParseInsertSubscriberDataArg(strictBER(t, w))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -209,17 +209,17 @@ func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
 		// A present but empty list breaks SIZE (1..10) and the codec
 		// rejects it.
 		w.VlrCamelSubscriptionInfo.DCSI.DpAnalysedInfoCriteriaList = &gsm_map.DPAnalysedInfoCriteriaList{}
-		if got, err := ParseInsertSubscriberData(tolerantBER(t, w)); err == nil {
-			t.Errorf("empty list: ParseInsertSubscriberData = %+v, want an error", got)
+		if got, err := ParseInsertSubscriberDataArg(tolerantBER(t, w)); err == nil {
+			t.Errorf("empty list: ParseInsertSubscriberDataArg = %+v, want an error", got)
 		}
 	})
 	t.Run("Parse GMSC D-CSI", func(t *testing.T) {
-		w, err := convertSriRespToRes(sriResp(first()))
+		w, err := convertSriResToRes(sriRes(first()))
 		if err != nil {
-			t.Fatalf("convertSriRespToRes: %v", err)
+			t.Fatalf("convertSriResToRes: %v", err)
 		}
 		w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCsi.DpAnalysedInfoCriteriaList = nil
-		got, err := ParseSriResp(strictBER(t, w))
+		got, err := ParseSriRes(strictBER(t, w))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -228,8 +228,8 @@ func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
 			t.Fatalf("Marshal: %v", err)
 		}
 		w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.DCsi.DpAnalysedInfoCriteriaList = &gsm_map.DPAnalysedInfoCriteriaList{}
-		if got, err := ParseSriResp(tolerantBER(t, w)); err == nil {
-			t.Errorf("empty list: ParseSriResp = %+v, want an error", got)
+		if got, err := ParseSriRes(tolerantBER(t, w)); err == nil {
+			t.Errorf("empty list: ParseSriRes = %+v, want an error", got)
 		}
 	})
 
@@ -244,9 +244,9 @@ func TestDCSICamelCapabilityHandlingRequiresList(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Marshal: %v", err)
 			}
-			got, err := ParseInsertSubscriberData(data)
+			got, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
-				t.Fatalf("ParseInsertSubscriberData: %v", err)
+				t.Fatalf("ParseInsertSubscriberDataArg: %v", err)
 			}
 			wantEqual(t, "ISD", in, got)
 		})

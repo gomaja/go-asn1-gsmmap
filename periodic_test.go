@@ -18,7 +18,7 @@ func TestPeriodicProductErrors(t *testing.T) {
 	wantEqual(t, "Marshal error", "converting ProvideSubscriberLocationArg: "+want, err.Error())
 	imsi := gsm_map.IMSI{0, 1, 1, 0x21, 0x43, 0x65, 0x87, 0xf9}
 	w := &gsm_map.ProvideSubscriberLocationArg{Imsi: &imsi, LocationType: gsm_map.LocationType{}, MlcNumber: gsm_map.ISDNAddressString{0x80, 0x21}, PeriodicLDRInfo: &gsm_map.PeriodicLDRInfo{ReportingAmount: 100, ReportingInterval: 86400}}
-	got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+	got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 	if err != nil {
 		t.Fatal(err)
 	}

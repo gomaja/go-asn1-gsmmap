@@ -85,7 +85,7 @@ func TestParseAllFillerIdentityRejected(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s: %v", name, err)
 			}
-			if _, err := ParseProvideSubscriberLocation(data); !errors.Is(err, identity.ErrEmpty) {
+			if _, err := ParseProvideSubscriberLocationArg(data); !errors.Is(err, identity.ErrEmpty) {
 				t.Errorf("%s: err = %v, want identity.ErrEmpty", name, err)
 			}
 		}

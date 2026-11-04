@@ -594,7 +594,7 @@ func TestMGCSI_MMCodeWrongSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	w.MobilityTriggers.Values[0] = gsm_map.MMCode{0x80, 0x81} // not 1 octet
-	if _, err := ParseInsertSubscriberData(tolerantBER(t, &gsm_map.InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &gsm_map.SGSNCAMELSubscriptionInfo{MgCsi: w}})); !matchesConstraint(err, "sgsn-CAMEL-SubscriptionInfo.mg-csi.mobilityTriggers.element[0]", "SIZE (1)") {
+	if _, err := ParseInsertSubscriberDataArg(tolerantBER(t, &gsm_map.InsertSubscriberDataArg{SgsnCAMELSubscriptionInfo: &gsm_map.SGSNCAMELSubscriptionInfo{MgCsi: w}})); !matchesConstraint(err, "sgsn-CAMEL-SubscriptionInfo.mg-csi.mobilityTriggers.element[0]", "SIZE (1)") {
 		t.Fatalf("want MM-Code SIZE (1), got %v", err)
 	}
 }

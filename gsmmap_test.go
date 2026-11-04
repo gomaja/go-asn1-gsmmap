@@ -42,8 +42,8 @@ func TestSriSmRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSriSmRespRoundTrip(t *testing.T) {
-	resp := &SriSmResp{
+func TestSriSmResRoundTrip(t *testing.T) {
+	resp := &SriSmRes{
 		IMSI: "123456789012345",
 		LocationInfoWithLMSI: LocationInfoWithLMSI{
 			NetworkNodeNumber: "12345",
@@ -55,7 +55,7 @@ func TestSriSmRespRoundTrip(t *testing.T) {
 		t.Fatalf("Marshal error: %v", err)
 	}
 
-	parsed, err := ParseSriSmResp(data)
+	parsed, err := ParseSriSmRes(data)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -397,8 +397,8 @@ func TestParseInvalidData(t *testing.T) {
 	if _, err := ParseSriSm(badData); err == nil {
 		t.Error("expected error for invalid SriSm data")
 	}
-	if _, err := ParseSriSmResp(badData); err == nil {
-		t.Error("expected error for invalid SriSmResp data")
+	if _, err := ParseSriSmRes(badData); err == nil {
+		t.Error("expected error for invalid SriSmRes data")
 	}
 	if _, err := ParseUpdateLocation(badData); err == nil {
 		t.Error("expected error for invalid UpdateLocation data")
@@ -454,14 +454,14 @@ func TestSriSmParseKnownBytes(t *testing.T) {
 	}
 }
 
-func TestSriSmRespParseKnownBytes(t *testing.T) {
+func TestSriSmResParseKnownBytes(t *testing.T) {
 	hexStr := "3015040882131068584836f3a0098107917394950862f6"
 	data, err := hex.DecodeString(hexStr)
 	if err != nil {
 		t.Fatalf("hex decode error: %v", err)
 	}
 
-	parsed, err := ParseSriSmResp(data)
+	parsed, err := ParseSriSmRes(data)
 	if err != nil {
 		t.Fatalf("Parse error: %v", err)
 	}
@@ -1361,8 +1361,8 @@ func TestSriSmFullStressRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSriSmRespFullStressRoundTrip(t *testing.T) {
-	in := &SriSmResp{
+func TestSriSmResFullStressRoundTrip(t *testing.T) {
+	in := &SriSmRes{
 		IMSI: "204080012345678",
 		LocationInfoWithLMSI: LocationInfoWithLMSI{
 			NetworkNodeNumber: "31612345678",
@@ -1407,9 +1407,9 @@ func TestSriSmRespFullStressRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	got, err := ParseSriSmResp(data)
+	got, err := ParseSriSmRes(data)
 	if err != nil {
-		t.Fatalf("ParseSriSmResp: %v", err)
+		t.Fatalf("ParseSriSmRes: %v", err)
 	}
 
 	if diff := cmp.Diff(in, got); diff != "" {
@@ -1419,7 +1419,7 @@ func TestSriSmRespFullStressRoundTrip(t *testing.T) {
 
 func TestAdditionalNumberRoundTrip(t *testing.T) {
 	t.Run("MscNumber", func(t *testing.T) {
-		in := &SriSmResp{
+		in := &SriSmRes{
 			IMSI: "204080012345678",
 			LocationInfoWithLMSI: LocationInfoWithLMSI{
 				NetworkNodeNumber: "31612345678",
@@ -1433,9 +1433,9 @@ func TestAdditionalNumberRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Marshal: %v", err)
 		}
-		got, err := ParseSriSmResp(data)
+		got, err := ParseSriSmRes(data)
 		if err != nil {
-			t.Fatalf("ParseSriSmResp: %v", err)
+			t.Fatalf("ParseSriSmRes: %v", err)
 		}
 
 		if got.LocationInfoWithLMSI.AdditionalNumber == nil {
@@ -1450,7 +1450,7 @@ func TestAdditionalNumberRoundTrip(t *testing.T) {
 	})
 
 	t.Run("SgsnNumber", func(t *testing.T) {
-		in := &SriSmResp{
+		in := &SriSmRes{
 			IMSI: "204080012345678",
 			LocationInfoWithLMSI: LocationInfoWithLMSI{
 				NetworkNodeNumber: "31612345678",
@@ -1464,9 +1464,9 @@ func TestAdditionalNumberRoundTrip(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Marshal: %v", err)
 		}
-		got, err := ParseSriSmResp(data)
+		got, err := ParseSriSmRes(data)
 		if err != nil {
-			t.Fatalf("ParseSriSmResp: %v", err)
+			t.Fatalf("ParseSriSmRes: %v", err)
 		}
 
 		if got.LocationInfoWithLMSI.AdditionalNumber == nil {
@@ -1810,18 +1810,18 @@ func TestMtMoFsmChoiceValidation(t *testing.T) {
 	}
 }
 
-func TestMtFsmRespRoundTrip(t *testing.T) {
+func TestMtFsmResRoundTrip(t *testing.T) {
 	t.Run("WithSmRpUI", func(t *testing.T) {
-		in := &MtFsmResp{
+		in := &MtFsmRes{
 			SmRpUI: HexBytes{0x01, 0x02, 0x03},
 		}
 		data, err := in.Marshal()
 		if err != nil {
 			t.Fatalf("Marshal: %v", err)
 		}
-		got, err := ParseMtFsmResp(data)
+		got, err := ParseMtFsmRes(data)
 		if err != nil {
-			t.Fatalf("ParseMtFsmResp: %v", err)
+			t.Fatalf("ParseMtFsmRes: %v", err)
 		}
 		if !bytes.Equal(in.SmRpUI, got.SmRpUI) {
 			t.Errorf("SmRpUI: got %x, want %x", got.SmRpUI, in.SmRpUI)
@@ -1829,14 +1829,14 @@ func TestMtFsmRespRoundTrip(t *testing.T) {
 	})
 
 	t.Run("Empty", func(t *testing.T) {
-		in := &MtFsmResp{}
+		in := &MtFsmRes{}
 		data, err := in.Marshal()
 		if err != nil {
 			t.Fatalf("Marshal: %v", err)
 		}
-		got, err := ParseMtFsmResp(data)
+		got, err := ParseMtFsmRes(data)
 		if err != nil {
-			t.Fatalf("ParseMtFsmResp: %v", err)
+			t.Fatalf("ParseMtFsmRes: %v", err)
 		}
 		if got.SmRpUI != nil {
 			t.Errorf("SmRpUI should be nil, got %x", got.SmRpUI)
@@ -1886,7 +1886,7 @@ func TestMtFsmDeliveryTimerValidation(t *testing.T) {
 
 func TestAdditionalNumberChoiceValidation(t *testing.T) {
 	t.Run("BothSet", func(t *testing.T) {
-		in := &SriSmResp{
+		in := &SriSmRes{
 			IMSI: "204080012345678",
 			LocationInfoWithLMSI: LocationInfoWithLMSI{
 				NetworkNodeNumber: "31612345678",
@@ -1906,7 +1906,7 @@ func TestAdditionalNumberChoiceValidation(t *testing.T) {
 	})
 
 	t.Run("NoneSet", func(t *testing.T) {
-		in := &SriSmResp{
+		in := &SriSmRes{
 			IMSI: "204080012345678",
 			LocationInfoWithLMSI: LocationInfoWithLMSI{
 				NetworkNodeNumber: "31612345678",
@@ -1964,16 +1964,16 @@ func TestMoFsmFullStressRoundTrip(t *testing.T) {
 	}
 }
 
-func TestMoFsmRespRoundTrip(t *testing.T) {
+func TestMoFsmResRoundTrip(t *testing.T) {
 	t.Run("WithSmRpUI", func(t *testing.T) {
-		in := &MoFsmResp{SmRpUI: HexBytes{0x01, 0x02, 0x03}}
+		in := &MoFsmRes{SmRpUI: HexBytes{0x01, 0x02, 0x03}}
 		data, err := in.Marshal()
 		if err != nil {
 			t.Fatalf("Marshal: %v", err)
 		}
-		got, err := ParseMoFsmResp(data)
+		got, err := ParseMoFsmRes(data)
 		if err != nil {
-			t.Fatalf("ParseMoFsmResp: %v", err)
+			t.Fatalf("ParseMoFsmRes: %v", err)
 		}
 		if !bytes.Equal(in.SmRpUI, got.SmRpUI) {
 			t.Errorf("SmRpUI: got %x, want %x", got.SmRpUI, in.SmRpUI)
@@ -1981,14 +1981,14 @@ func TestMoFsmRespRoundTrip(t *testing.T) {
 	})
 
 	t.Run("Empty", func(t *testing.T) {
-		in := &MoFsmResp{}
+		in := &MoFsmRes{}
 		data, err := in.Marshal()
 		if err != nil {
 			t.Fatalf("Marshal: %v", err)
 		}
-		got, err := ParseMoFsmResp(data)
+		got, err := ParseMoFsmRes(data)
 		if err != nil {
-			t.Fatalf("ParseMoFsmResp: %v", err)
+			t.Fatalf("ParseMoFsmRes: %v", err)
 		}
 		if got.SmRpUI != nil {
 			t.Errorf("SmRpUI should be nil, got %x", got.SmRpUI)
@@ -3825,11 +3825,11 @@ func TestCamelTCriteriaRoundTrip(t *testing.T) {
 }
 
 // TestCamelDataNoLongerDroppedViaSri proves the pitfall is fixed: building
-// an SriResp with populated CAMEL data, marshaling, parsing, and checking
+// an SriRes with populated CAMEL data, marshaling, parsing, and checking
 // the CAMEL fields are preserved end-to-end (not silently dropped).
 func TestCamelDataNoLongerDroppedViaSri(t *testing.T) {
 	phase := 2
-	in := &SriResp{
+	in := &SriRes{
 		IMSI: "204080012345678",
 		ExtendedRoutingInfo: &ExtendedRoutingInfo{
 			CamelRoutingInfo: &CamelRoutingInfo{
@@ -3853,9 +3853,9 @@ func TestCamelDataNoLongerDroppedViaSri(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	got, err := ParseSriResp(data)
+	got, err := ParseSriRes(data)
 	if err != nil {
-		t.Fatalf("ParseSriResp: %v", err)
+		t.Fatalf("ParseSriRes: %v", err)
 	}
 	if got.ExtendedRoutingInfo == nil || got.ExtendedRoutingInfo.CamelRoutingInfo == nil {
 		t.Fatal("CamelRoutingInfo was dropped on round-trip")
@@ -3955,7 +3955,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelMissingGsmSCFAddress) {
 			t.Errorf("want ErrCamelMissingGsmSCFAddress, got %v", err)
 		}
@@ -3974,7 +3974,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-CSI.o-BcsmCamelTDPDataList.element[0].serviceKey", "(0..2147483647)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
@@ -4003,7 +4003,7 @@ func TestCamelValidationErrors(t *testing.T) {
 
 	t.Run("InvalidTDPDataListSize_Empty", func(t *testing.T) {
 		in := &GmscCamelSubscriptionInfo{OCSI: &OCSI{}}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-CSI.o-BcsmCamelTDPDataList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
@@ -4021,7 +4021,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.matchType", "ENUMERATED {0, 1}") {
 			t.Errorf("want codec constraint, got %v", err)
 		}
@@ -4037,7 +4037,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].callTypeCriteria", "ENUMERATED {0, 1}") {
 			t.Errorf("want codec constraint, got %v", err)
 		}
@@ -4054,7 +4054,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelMissingDestinationNumberCriteria) {
 			t.Errorf("want ErrCamelMissingDestinationNumberCriteria, got %v", err)
 		}
@@ -4072,7 +4072,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].destinationNumberCriteria.destinationNumberLengthList.element[0]", "(1..15)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
@@ -4087,7 +4087,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelInvalidCauseValue) {
 			t.Errorf("want ErrCamelInvalidCauseValue, got %v", err)
 		}
@@ -4106,7 +4106,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				CamelCapabilityHandling: intPtr(3),
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelMissingDialledNumber) {
 			t.Errorf("want ErrCamelMissingDialledNumber, got %v", err)
 		}
@@ -4124,7 +4124,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !errors.Is(err, ErrCamelMissingDestinationNumber) {
 			t.Errorf("want ErrCamelMissingDestinationNumber, got %v", err)
 		}
@@ -4139,7 +4139,7 @@ func TestCamelValidationErrors(t *testing.T) {
 				},
 			},
 		}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].o-CauseValueCriteria", "SIZE (1..5)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
@@ -4151,7 +4151,7 @@ func TestCamelValidationErrors(t *testing.T) {
 			big[i] = OBcsmCamelTDPCriteria{OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo}
 		}
 		in := &GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: big}
-		_, err := (&SriResp{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
+		_, err := (&SriRes{ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: *in}}}).Marshal()
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList", "SIZE (1..10)") {
 			t.Errorf("want BER constraint error, got %v", err)
 		}
@@ -4174,7 +4174,7 @@ func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 			}},
 		}
 		parent := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &gsm_map.ExtendedRoutingInfo{Choice: gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo, CamelRoutingInfo: &gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: wire}}}
-		_, err := ParseSriResp(tolerantBER(t, parent))
+		_, err := ParseSriRes(tolerantBER(t, parent))
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].o-CauseValueCriteria.element[0]", "SIZE (1)") {
 			t.Errorf("want CauseValue SIZE (1), got %v", err)
 		}
@@ -4192,7 +4192,7 @@ func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 			}},
 		}
 		parent := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &gsm_map.ExtendedRoutingInfo{Choice: gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo, CamelRoutingInfo: &gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: wire}}}
-		_, err := ParseSriResp(tolerantBER(t, parent))
+		_, err := ParseSriRes(tolerantBER(t, parent))
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.o-BcsmCamelTDP-CriteriaList.element[0].o-CauseValueCriteria.element[0]", "SIZE (1)") {
 			t.Errorf("want CauseValue SIZE (1), got %v", err)
 		}
@@ -4210,7 +4210,7 @@ func TestCamelDecodeRejectsMalformedCauseValue(t *testing.T) {
 			}},
 		}
 		parent := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &gsm_map.ExtendedRoutingInfo{Choice: gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo, CamelRoutingInfo: &gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: wire}}}
-		_, err := ParseSriResp(tolerantBER(t, parent))
+		_, err := ParseSriRes(tolerantBER(t, parent))
 		if !matchesConstraint(err, "extendedRoutingInfo.camelRoutingInfo.gmscCamelSubscriptionInfo.t-BCSM-CAMEL-TDP-CriteriaList.element[0].t-CauseValueCriteria.element[0]", "SIZE (1)") {
 			t.Errorf("want CauseValue SIZE (1), got %v", err)
 		}
@@ -4229,7 +4229,7 @@ func TestCamelDecodePreservesDestinationNumberCriteriaListAbsence(t *testing.T) 
 		}}},
 	}
 	parent := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: &gsm_map.ExtendedRoutingInfo{Choice: gsm_map.ExtendedRoutingInfoChoiceCamelRoutingInfo, CamelRoutingInfo: &gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: wire}}}
-	got, err := ParseSriResp(strictBER(t, parent))
+	got, err := ParseSriRes(strictBER(t, parent))
 	if err != nil {
 		t.Fatal(err)
 	}

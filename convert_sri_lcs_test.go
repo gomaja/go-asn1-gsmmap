@@ -1,7 +1,7 @@
 // convert_sri_lcs_test.go
 //
 // Tests for SendRoutingInfoForLCS (opCode 85): the shared
-// SubscriberIdentity CHOICE converter, the SriLcs/SriLcsResp top-level
+// SubscriberIdentity CHOICE converter, the SriLcs/SriLcsRes top-level
 // converters, and their Marshal()/Parse() entry points. Round-trip,
 // BER round-trip, and targeted negative cases.
 package gsmmap
@@ -209,11 +209,11 @@ func TestSriLcsParseNegative(t *testing.T) {
 }
 
 // =============================================================================
-// SriLcsResp (Res)
+// SriLcsRes (Res)
 // =============================================================================
 
-func minimalSriLcsResp() *SriLcsResp {
-	return &SriLcsResp{
+func minimalSriLcsRes() *SriLcsRes {
+	return &SriLcsRes{
 		TargetMS: SubscriberIdentity{IMSI: "204080000000001"},
 		LcsLocationInfo: LCSLocationInfo{
 			NetworkNodeNumber:       "31650000000",
@@ -223,13 +223,13 @@ func minimalSriLcsResp() *SriLcsResp {
 	}
 }
 
-func TestSriLcsRespRoundTrip(t *testing.T) {
+func TestSriLcsResRoundTrip(t *testing.T) {
 	cases := []struct {
 		name string
-		in   *SriLcsResp
+		in   *SriLcsRes
 	}{
-		{"minimal", minimalSriLcsResp()},
-		{"MSISDN target + all GMLC/PPR addresses", &SriLcsResp{
+		{"minimal", minimalSriLcsRes()},
+		{"MSISDN target + all GMLC/PPR addresses", &SriLcsRes{
 			TargetMS: SubscriberIdentity{MSISDN: "31612345678", MSISDNNature: 0x10, MSISDNPlan: 0x01},
 			LcsLocationInfo: LCSLocationInfo{
 				NetworkNodeNumber:       "31650000000",
@@ -246,11 +246,11 @@ func TestSriLcsRespRoundTrip(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			res, err := convertSriLcsRespToRes(tc.in)
+			res, err := convertSriLcsResToRes(tc.in)
 			if err != nil {
 				t.Fatalf("toRes: %v", err)
 			}
-			got, err := convertResToSriLcsResp(res)
+			got, err := convertResToSriLcsRes(res)
 			if err != nil {
 				t.Fatalf("toStruct: %v", err)
 			}
@@ -261,14 +261,14 @@ func TestSriLcsRespRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSriLcsRespBERRoundTrip(t *testing.T) {
-	in := minimalSriLcsResp()
+func TestSriLcsResBERRoundTrip(t *testing.T) {
+	in := minimalSriLcsRes()
 	in.HGmlcAddress = "192.0.2.10"
 	data, err := in.Marshal()
 	if err != nil {
 		t.Fatalf("Marshal: %v", err)
 	}
-	got, err := ParseSriLcsResp(data)
+	got, err := ParseSriLcsRes(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}
@@ -277,24 +277,24 @@ func TestSriLcsRespBERRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSriLcsRespEncodeNegative(t *testing.T) {
+func TestSriLcsResEncodeNegative(t *testing.T) {
 	cases := []struct {
 		name string
-		mut  func(r *SriLcsResp)
+		mut  func(r *SriLcsRes)
 		want error
 	}{
-		{"nil res", nil, ErrSriLcsRespNil},
-		{"no target identity", func(r *SriLcsResp) { r.TargetMS = SubscriberIdentity{} }, ErrSubscriberIdentityNoAlternative},
-		{"empty LcsLocationInfo node", func(r *SriLcsResp) { r.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeNumberEmpty},
+		{"nil res", nil, ErrSriLcsResNil},
+		{"no target identity", func(r *SriLcsRes) { r.TargetMS = SubscriberIdentity{} }, ErrSubscriberIdentityNoAlternative},
+		{"empty LcsLocationInfo node", func(r *SriLcsRes) { r.LcsLocationInfo.NetworkNodeNumber = "" }, ErrLCSLocationInfoNetworkNodeNumberEmpty},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			var in *SriLcsResp
+			var in *SriLcsRes
 			if tc.mut != nil {
-				in = minimalSriLcsResp()
+				in = minimalSriLcsRes()
 				tc.mut(in)
 			}
-			_, err := convertSriLcsRespToRes(in)
+			_, err := convertSriLcsResToRes(in)
 			if !errors.Is(err, tc.want) {
 				t.Errorf("want %v, got %v", tc.want, err)
 			}
@@ -304,31 +304,31 @@ func TestSriLcsRespEncodeNegative(t *testing.T) {
 
 // TS 29.002 V19.1.0 §17.7.13: targetMS and lcsLocationInfo are mandatory;
 // the four optional GSN addresses use §17.7.8 (TS 23.003 V20.1.0 §5.1).
-func TestSriLcsRespParseNegative(t *testing.T) {
+func TestSriLcsResParseNegative(t *testing.T) {
 	for _, tc := range []struct {
 		name, wire, field string
 		want              error
 	}{
-		{"nil converter", "", "sriLcsResp", ErrSriLcsRespNil},
+		{"nil converter", "", "sriLcsRes", ErrSriLcsResNil},
 		// Digitless target TLV 5 + location TLV 6 = 11.
-		{"TargetMS", "300ba003810191a10404029121", "SriLcsResp.TargetMS", ErrSubscriberIdentityMSISDNDecodedEmpty},
+		{"TargetMS", "300ba003810191a10404029121", "SriLcsRes.TargetMS", ErrSubscriberIdentityMSISDNDecodedEmpty},
 		// Valid IMSI target TLV 12 + location TLV 6 or 5 = 18 or 17.
-		{"LCSLocationInfo decode", "3012a00a800800010121436587f9a1040402911f", "SriLcsResp.LcsLocationInfo", tbcd.ErrMisplacedFiller},
-		{"LCSLocationInfo empty", "3011a00a800800010121436587f9a103040191", "SriLcsResp.LcsLocationInfo", ErrLCSLocationInfoNetworkNodeNumberEmpty},
+		{"LCSLocationInfo decode", "3012a00a800800010121436587f9a1040402911f", "SriLcsRes.LcsLocationInfo", tbcd.ErrMisplacedFiller},
+		{"LCSLocationInfo empty", "3011a00a800800010121436587f9a103040191", "SriLcsRes.LcsLocationInfo", ErrLCSLocationInfoNetworkNodeNumberEmpty},
 		// Target TLV 12 + location TLV 6 + GSN TLV 7 = 25. Five GSN
 		// octets pass SIZE (5..17), but header 03 declares IPv4 length 3.
-		{"VGmlcAddress", "3019a00a800800010121436587f9a10404029121830503c0000201", "SriLcsResp.VGmlcAddress", gsn.ErrIPv4LengthInvalid},
-		{"HGmlcAddress", "3019a00a800800010121436587f9a10404029121840503c0000201", "SriLcsResp.HGmlcAddress", gsn.ErrIPv4LengthInvalid},
-		{"PprAddress", "3019a00a800800010121436587f9a10404029121850503c0000201", "SriLcsResp.PprAddress", gsn.ErrIPv4LengthInvalid},
-		{"AdditionalVGmlcAddress", "3019a00a800800010121436587f9a10404029121860503c0000201", "SriLcsResp.AdditionalVGmlcAddress", gsn.ErrIPv4LengthInvalid},
+		{"VGmlcAddress", "3019a00a800800010121436587f9a10404029121830503c0000201", "SriLcsRes.VGmlcAddress", gsn.ErrIPv4LengthInvalid},
+		{"HGmlcAddress", "3019a00a800800010121436587f9a10404029121840503c0000201", "SriLcsRes.HGmlcAddress", gsn.ErrIPv4LengthInvalid},
+		{"PprAddress", "3019a00a800800010121436587f9a10404029121850503c0000201", "SriLcsRes.PprAddress", gsn.ErrIPv4LengthInvalid},
+		{"AdditionalVGmlcAddress", "3019a00a800800010121436587f9a10404029121860503c0000201", "SriLcsRes.AdditionalVGmlcAddress", gsn.ErrIPv4LengthInvalid},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			var got *SriLcsResp
+			var got *SriLcsRes
 			var err error
 			if tc.wire == "" {
-				got, err = convertResToSriLcsResp(nil)
+				got, err = convertResToSriLcsRes(nil)
 			} else {
-				got, err = ParseSriLcsResp(mustHex(t, tc.wire))
+				got, err = ParseSriLcsRes(mustHex(t, tc.wire))
 			}
 			if got != nil || !errors.Is(err, tc.want) {
 				t.Fatalf("Parse = %+v, %v; want nil, %v", got, err, tc.want)
@@ -340,18 +340,18 @@ func TestSriLcsRespParseNegative(t *testing.T) {
 	}
 }
 
-// TestSriLcsRespInvalidGSNAddress: gsn.Build returns a plain (un-wrapped)
+// TestSriLcsResInvalidGSNAddress: gsn.Build returns a plain (un-wrapped)
 // error for a malformed IP, so there is no sentinel to assert via
 // errors.Is. Instead verify the converter attributes the failure to the
 // right field via its wrapping context.
-func TestSriLcsRespInvalidGSNAddress(t *testing.T) {
-	in := minimalSriLcsResp()
+func TestSriLcsResInvalidGSNAddress(t *testing.T) {
+	in := minimalSriLcsRes()
 	in.HGmlcAddress = "not-an-ip"
-	_, err := convertSriLcsRespToRes(in)
+	_, err := convertSriLcsResToRes(in)
 	if err == nil {
 		t.Fatal("want an error for malformed GSN address, got nil")
 	}
-	if !strings.Contains(err.Error(), "SriLcsResp.HGmlcAddress") {
+	if !strings.Contains(err.Error(), "SriLcsRes.HGmlcAddress") {
 		t.Errorf("error should name the offending field; got %v", err)
 	}
 }

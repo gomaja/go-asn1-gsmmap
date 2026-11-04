@@ -15,13 +15,13 @@ func ParseSriSm(data []byte) (*SriSm, error) {
 	return convertArgToSriSm(&arg)
 }
 
-// ParseSriSmResp decodes BER-encoded bytes into an SriSmResp.
-func ParseSriSmResp(data []byte) (*SriSmResp, error) {
+// ParseSriSmRes decodes BER-encoded bytes into an SriSmRes.
+func ParseSriSmRes(data []byte) (*SriSmRes, error) {
 	var res gsm_map.RoutingInfoForSMRes
 	if err := res.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding RoutingInfoForSMRes: %w", err)
 	}
-	return convertResToSriSmResp(&res)
+	return convertResToSriSmRes(&res)
 }
 
 // ParseMtFsm decodes BER-encoded bytes into an MtFsm.
@@ -33,13 +33,13 @@ func ParseMtFsm(data []byte) (*MtFsm, error) {
 	return convertArgToMtFsm(&arg)
 }
 
-// ParseMtFsmResp decodes BER-encoded bytes into an MtFsmResp.
-func ParseMtFsmResp(data []byte) (*MtFsmResp, error) {
+// ParseMtFsmRes decodes BER-encoded bytes into an MtFsmRes.
+func ParseMtFsmRes(data []byte) (*MtFsmRes, error) {
 	var res gsm_map.MTForwardSMRes
 	if err := res.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding MTForwardSMRes: %w", err)
 	}
-	return convertResToMtFsmResp(&res), nil
+	return convertResToMtFsmRes(&res), nil
 }
 
 // ParseMoFsm decodes BER-encoded bytes into an MoFsm.
@@ -51,13 +51,13 @@ func ParseMoFsm(data []byte) (*MoFsm, error) {
 	return convertArgToMoFsm(&arg)
 }
 
-// ParseMoFsmResp decodes BER-encoded bytes into an MoFsmResp.
-func ParseMoFsmResp(data []byte) (*MoFsmResp, error) {
+// ParseMoFsmRes decodes BER-encoded bytes into an MoFsmRes.
+func ParseMoFsmRes(data []byte) (*MoFsmRes, error) {
 	var res gsm_map.MOForwardSMRes
 	if err := res.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding MOForwardSMRes: %w", err)
 	}
-	return convertResToMoFsmResp(&res), nil
+	return convertResToMoFsmRes(&res), nil
 }
 
 // ParseUpdateLocation decodes BER-encoded bytes into an UpdateLocation.
@@ -143,13 +143,13 @@ func ParseSri(data []byte) (*Sri, error) {
 	return convertArgToSri(&arg)
 }
 
-// ParseSriResp decodes BER-encoded bytes into an SriResp.
-func ParseSriResp(data []byte) (*SriResp, error) {
+// ParseSriRes decodes BER-encoded bytes into an SriRes.
+func ParseSriRes(data []byte) (*SriRes, error) {
 	var res gsm_map.SendRoutingInfoRes
 	if err := res.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding SendRoutingInfoRes: %w", err)
 	}
-	return convertResToSriResp(&res)
+	return convertResToSriRes(&res)
 }
 
 // ParseInformServiceCentre decodes BER-encoded bytes into an InformServiceCentre.
@@ -239,9 +239,9 @@ func ParseCancelLocationRes(data []byte) (*CancelLocationRes, error) {
 	return convertWireToCancelLocationRes(&res), nil
 }
 
-// ParseInsertSubscriberData decodes BER-encoded bytes into an
+// ParseInsertSubscriberDataArg decodes BER-encoded bytes into an
 // InsertSubscriberDataArg (opCode 7).
-func ParseInsertSubscriberData(data []byte) (*InsertSubscriberDataArg, error) {
+func ParseInsertSubscriberDataArg(data []byte) (*InsertSubscriberDataArg, error) {
 	var arg gsm_map.InsertSubscriberDataArg
 	if err := arg.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding InsertSubscriberDataArg: %w", err)
@@ -261,9 +261,9 @@ func ParseInsertSubscriberDataRes(data []byte) (*InsertSubscriberDataRes, error)
 	return convertWireToInsertSubscriberDataRes(&res)
 }
 
-// ParseProvideSubscriberLocation decodes BER-encoded bytes into a
+// ParseProvideSubscriberLocationArg decodes BER-encoded bytes into a
 // ProvideSubscriberLocationArg (opCode 83).
-func ParseProvideSubscriberLocation(data []byte) (*ProvideSubscriberLocationArg, error) {
+func ParseProvideSubscriberLocationArg(data []byte) (*ProvideSubscriberLocationArg, error) {
 	var arg gsm_map.ProvideSubscriberLocationArg
 	if err := arg.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg: %w", err)
@@ -281,9 +281,9 @@ func ParseProvideSubscriberLocationRes(data []byte) (*ProvideSubscriberLocationR
 	return convertWireToProvideSubscriberLocationRes(&res)
 }
 
-// ParseSubscriberLocationReport decodes BER-encoded bytes into a
+// ParseSubscriberLocationReportArg decodes BER-encoded bytes into a
 // SubscriberLocationReportArg (opCode 86).
-func ParseSubscriberLocationReport(data []byte) (*SubscriberLocationReportArg, error) {
+func ParseSubscriberLocationReportArg(data []byte) (*SubscriberLocationReportArg, error) {
 	var arg gsm_map.SubscriberLocationReportArg
 	if err := arg.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding SubscriberLocationReportArg: %w", err)
@@ -311,14 +311,14 @@ func ParseSriLcs(data []byte) (*SriLcs, error) {
 	return convertArgToSriLcs(&arg)
 }
 
-// ParseSriLcsResp decodes BER-encoded bytes into a
-// SendRoutingInfoForLCS-Res (SriLcsResp, opCode 85).
-func ParseSriLcsResp(data []byte) (*SriLcsResp, error) {
+// ParseSriLcsRes decodes BER-encoded bytes into a
+// SendRoutingInfoForLCS-Res (SriLcsRes, opCode 85).
+func ParseSriLcsRes(data []byte) (*SriLcsRes, error) {
 	var res gsm_map.RoutingInfoForLCSRes
 	if err := res.UnmarshalBER(data); err != nil {
 		return nil, fmt.Errorf("decoding RoutingInfoForLCSRes: %w", err)
 	}
-	return convertResToSriLcsResp(&res)
+	return convertResToSriLcsRes(&res)
 }
 
 // ParseReportSMDeliveryStatus decodes BER-encoded bytes into a

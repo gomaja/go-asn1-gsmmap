@@ -116,56 +116,56 @@ func senderDiameterCases() []senderOctetCase {
 			v.NewMMEDiameterAddress = &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}
 			return v
 		}, asParser(ParseAlertServiceCentre)},
-		{"SriSmResp.LocationInfoWithLMSI.NetworkNodeDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		{"SriSmRes.LocationInfoWithLMSI.NetworkNodeDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.NetworkNodeDiameterAddress = &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
-		{"SriSmResp.LocationInfoWithLMSI.NetworkNodeDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriSmRes)},
+		{"SriSmRes.LocationInfoWithLMSI.NetworkNodeDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.NetworkNodeDiameterAddress = &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
-		{"SriSmResp.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriSmRes)},
+		{"SriSmRes.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress = &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
-		{"SriSmResp.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriSmRes)},
+		{"SriSmRes.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.AdditionalNetworkNodeDiameterAddress = &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
-		{"SriSmResp.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriSmRes)},
+		{"SriSmRes.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress = &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
-		{"SriSmResp.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriSmRes)},
+		{"SriSmRes.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.ThirdNetworkNodeDiameterAddress = &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
-		{"SriSmResp.LocationInfoWithLMSI.Smsf3gppDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriSmRes)},
+		{"SriSmRes.LocationInfoWithLMSI.Smsf3gppDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.Smsf3gppDiameterAddress = &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
-		{"SriSmResp.LocationInfoWithLMSI.Smsf3gppDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriSmRes)},
+		{"SriSmRes.LocationInfoWithLMSI.Smsf3gppDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.Smsf3gppDiameterAddress = &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
-		{"SriSmResp.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriSmRes)},
+		{"SriSmRes.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress = &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
-		{"SriSmResp.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
-			v := &SriSmResp{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriSmRes)},
+		{"SriSmRes.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
+			v := &SriSmRes{IMSI: "001010123456789", LocationInfoWithLMSI: LocationInfoWithLMSI{NetworkNodeNumber: "1"}}
 			v.LocationInfoWithLMSI.SmsfNon3gppDiameterAddress = &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}
 			return v
-		}, asParser(ParseSriSmResp)},
+		}, asParser(ParseSriSmRes)},
 		{"MtFsm.SmsGmscDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
 			v := semMtFsm(t)
 			v.SmsGmscDiameterAddress = &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}
@@ -176,40 +176,40 @@ func senderDiameterCases() []senderOctetCase {
 			v.SmsGmscDiameterAddress = &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}
 			return v
 		}, asParser(ParseMtFsm)},
-		{"SubscriberLocationReportArg.MmeName", func(_ *testing.T, b HexBytes) marshaler { v := semSLRArg(); v.LcsLocationInfo.MmeName = b; return v }, asParser(ParseSubscriberLocationReport)},
+		{"SubscriberLocationReportArg.MmeName", func(_ *testing.T, b HexBytes) marshaler { v := semSLRArg(); v.LcsLocationInfo.MmeName = b; return v }, asParser(ParseSubscriberLocationReportArg)},
 		{"SubscriberLocationReportArg.AaaServerName", func(_ *testing.T, b HexBytes) marshaler {
 			v := semSLRArg()
 			v.LcsLocationInfo.AaaServerName = b
 			return v
-		}, asParser(ParseSubscriberLocationReport)},
-		{"SubscriberLocationReportArg.SgsnName", func(_ *testing.T, b HexBytes) marshaler { v := semSLRArg(); v.LcsLocationInfo.SgsnName = b; return v }, asParser(ParseSubscriberLocationReport)},
-		{"SubscriberLocationReportArg.SgsnRealm", func(_ *testing.T, b HexBytes) marshaler { v := semSLRArg(); v.LcsLocationInfo.SgsnRealm = b; return v }, asParser(ParseSubscriberLocationReport)},
-		{"SriLcsResp.MmeName", func(_ *testing.T, b HexBytes) marshaler {
-			v := &SriLcsResp{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSubscriberLocationReportArg)},
+		{"SubscriberLocationReportArg.SgsnName", func(_ *testing.T, b HexBytes) marshaler { v := semSLRArg(); v.LcsLocationInfo.SgsnName = b; return v }, asParser(ParseSubscriberLocationReportArg)},
+		{"SubscriberLocationReportArg.SgsnRealm", func(_ *testing.T, b HexBytes) marshaler { v := semSLRArg(); v.LcsLocationInfo.SgsnRealm = b; return v }, asParser(ParseSubscriberLocationReportArg)},
+		{"SriLcsRes.MmeName", func(_ *testing.T, b HexBytes) marshaler {
+			v := &SriLcsRes{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "1"}}
 			v.LcsLocationInfo.MmeName = b
 			return v
-		}, asParser(ParseSriLcsResp)},
-		{"SriLcsResp.AaaServerName", func(_ *testing.T, b HexBytes) marshaler {
-			v := &SriLcsResp{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriLcsRes)},
+		{"SriLcsRes.AaaServerName", func(_ *testing.T, b HexBytes) marshaler {
+			v := &SriLcsRes{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "1"}}
 			v.LcsLocationInfo.AaaServerName = b
 			return v
-		}, asParser(ParseSriLcsResp)},
-		{"SriLcsResp.SgsnName", func(_ *testing.T, b HexBytes) marshaler {
-			v := &SriLcsResp{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriLcsRes)},
+		{"SriLcsRes.SgsnName", func(_ *testing.T, b HexBytes) marshaler {
+			v := &SriLcsRes{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "1"}}
 			v.LcsLocationInfo.SgsnName = b
 			return v
-		}, asParser(ParseSriLcsResp)},
-		{"SriLcsResp.SgsnRealm", func(_ *testing.T, b HexBytes) marshaler {
-			v := &SriLcsResp{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "1"}}
+		}, asParser(ParseSriLcsRes)},
+		{"SriLcsRes.SgsnRealm", func(_ *testing.T, b HexBytes) marshaler {
+			v := &SriLcsRes{TargetMS: SubscriberIdentity{IMSI: "001010123456789"}, LcsLocationInfo: LCSLocationInfo{NetworkNodeNumber: "1"}}
 			v.LcsLocationInfo.SgsnRealm = b
 			return v
-		}, asParser(ParseSriLcsResp)},
+		}, asParser(ParseSriLcsRes)},
 		{"ProvideSubscriberInfoRes.EPS.MmeName", func(_ *testing.T, b HexBytes) marshaler {
 			return &ProvideSubscriberInfoRes{SubscriberInfo: SubscriberInfo{LocationInformationEPS: &EPSLocationInformation{MmeName: b}}}
 		}, asParser(ParseProvideSubscriberInfoRes)},
-		{"SriResp.EPS.MmeName", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformationEPS: &EPSLocationInformation{MmeName: b}}}
-		}, asParser(ParseSriResp)},
+		{"SriRes.EPS.MmeName", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformationEPS: &EPSLocationInformation{MmeName: b}}}
+		}, asParser(ParseSriRes)},
 		{"UpdateLocation.MmeDiameterAddress.name", func(_ *testing.T, b HexBytes) marshaler {
 			v := senderUpdateLocation()
 			v.MmeDiameterAddress = &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("realm.test")}
@@ -226,7 +226,7 @@ func senderDiameterCases() []senderOctetCase {
 		{"UpdateGprsLocation.SgsnRealm", func(_ *testing.T, b HexBytes) marshaler {
 			return &UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "1", SGSNAddress: "127.0.0.1", SgsnRealm: b}
 		}, asParser(ParseUpdateGprsLocation)},
-		{"InsertSubscriberData.MmeName", func(_ *testing.T, b HexBytes) marshaler { return &InsertSubscriberDataArg{MmeName: b} }, asParser(ParseInsertSubscriberData)},
+		{"InsertSubscriberData.MmeName", func(_ *testing.T, b HexBytes) marshaler { return &InsertSubscriberDataArg{MmeName: b} }, asParser(ParseInsertSubscriberDataArg)},
 		{"ATI.EPS.MmeName", func(_ *testing.T, b HexBytes) marshaler {
 			return &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{LocationInformationEPS: &EPSLocationInformation{MmeName: b}}}
 		}, asParser(ParseAnyTimeInterrogationRes)},
@@ -360,42 +360,42 @@ func senderPLMNCases() []senderOctetCase {
 		{"ProvideSubscriberInfoRes.LocationInformation5GS.NrTrackingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
 			return &ProvideSubscriberInfoRes{SubscriberInfo: SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{NrTrackingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 3)...)}}}
 		}, asParser(ParseProvideSubscriberInfoRes)},
-		{"SriResp.LocationInformation.CellGlobalId", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformation: &CSLocationInformation{CellGlobalId: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformation.LAI", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformation: &CSLocationInformation{LAI: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformationGPRS.CellGlobalId", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformationGPRS: &GPRSLocationInformation{CellGlobalId: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformationGPRS.LAI", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformationGPRS: &GPRSLocationInformation{LAI: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformationGPRS.RouteingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformationGPRS: &GPRSLocationInformation{RouteingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 3)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformationEPS.EUtranCellGlobalIdentity", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformationEPS: &EPSLocationInformation{EUtranCellGlobalIdentity: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformationEPS.TrackingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformationEPS: &EPSLocationInformation{TrackingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformation5GS.NrCellGlobalIdentity", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{NrCellGlobalIdentity: append(append(HexBytes{}, b...), make(HexBytes, 5)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformation5GS.EUtranCellGlobalIdentity", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{EUtranCellGlobalIdentity: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformation5GS.TrackingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{TrackingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformation5GS.VplmnID", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{VplmnID: append(append(HexBytes{}, b...), make(HexBytes, 0)...)}}}
-		}, asParser(ParseSriResp)},
-		{"SriResp.LocationInformation5GS.NrTrackingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
-			return &SriResp{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{NrTrackingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 3)...)}}}
-		}, asParser(ParseSriResp)},
+		{"SriRes.LocationInformation.CellGlobalId", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformation: &CSLocationInformation{CellGlobalId: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformation.LAI", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformation: &CSLocationInformation{LAI: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformationGPRS.CellGlobalId", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformationGPRS: &GPRSLocationInformation{CellGlobalId: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformationGPRS.LAI", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformationGPRS: &GPRSLocationInformation{LAI: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformationGPRS.RouteingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformationGPRS: &GPRSLocationInformation{RouteingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 3)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformationEPS.EUtranCellGlobalIdentity", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformationEPS: &EPSLocationInformation{EUtranCellGlobalIdentity: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformationEPS.TrackingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformationEPS: &EPSLocationInformation{TrackingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformation5GS.NrCellGlobalIdentity", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{NrCellGlobalIdentity: append(append(HexBytes{}, b...), make(HexBytes, 5)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformation5GS.EUtranCellGlobalIdentity", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{EUtranCellGlobalIdentity: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformation5GS.TrackingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{TrackingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformation5GS.VplmnID", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{VplmnID: append(append(HexBytes{}, b...), make(HexBytes, 0)...)}}}
+		}, asParser(ParseSriRes)},
+		{"SriRes.LocationInformation5GS.NrTrackingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
+			return &SriRes{SubscriberInfo: &SubscriberInfo{LocationInformation5GS: &LocationInformation5GS{NrTrackingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 3)...)}}}
+		}, asParser(ParseSriRes)},
 		{"PSLRes.CellGlobalId", func(_ *testing.T, b HexBytes) marshaler {
 			return &ProvideSubscriberLocationRes{LocationEstimate: ExtGeographicalInformation{0, 0, 0, 0, 0, 0, 0}, CellGlobalId: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}
 		}, asParser(ParseProvideSubscriberLocationRes)},
@@ -404,7 +404,7 @@ func senderPLMNCases() []senderOctetCase {
 			v.IMSI = "001010123456789"
 			v.CellGlobalId = append(append(HexBytes{}, b...), make(HexBytes, 4)...)
 			return v
-		}, asParser(ParseSubscriberLocationReport)},
+		}, asParser(ParseSubscriberLocationReportArg)},
 		{"PSLRes.LAI", func(_ *testing.T, b HexBytes) marshaler {
 			return &ProvideSubscriberLocationRes{LocationEstimate: ExtGeographicalInformation{0, 0, 0, 0, 0, 0, 0}, LAI: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}
 		}, asParser(ParseProvideSubscriberLocationRes)},
@@ -413,43 +413,43 @@ func senderPLMNCases() []senderOctetCase {
 			v.IMSI = "001010123456789"
 			v.LAI = append(append(HexBytes{}, b...), make(HexBytes, 2)...)
 			return v
-		}, asParser(ParseSubscriberLocationReport)},
+		}, asParser(ParseSubscriberLocationReportArg)},
 		{"PSLArg.ReportingPLMNList[1]", func(_ *testing.T, b HexBytes) marshaler {
 			v := semPSLArg()
 			v.IMSI = "001010123456789"
 			v.ReportingPLMNList = &ReportingPLMNList{PlmnList: PLMNList{{PlmnId: HexBytes{0x21, 0xf3, 0x54}}, {PlmnId: b}}}
 			return v
-		}, asParser(ParseProvideSubscriberLocation)},
+		}, asParser(ParseProvideSubscriberLocationArg)},
 		{"PSLArg.Area.AreaTypePlmnId", func(_ *testing.T, b HexBytes) marshaler {
 			v := semPSLArg()
 			v.IMSI = "001010123456789"
 			v.AreaEventInfo = &AreaEventInfo{AreaDefinition: AreaDefinition{AreaList: AreaList{{AreaType: AreaTypePlmnId, AreaIdentification: append(append(HexBytes{}, b...), make(HexBytes, 0)...)}}}}
 			return v
-		}, asParser(ParseProvideSubscriberLocation)},
+		}, asParser(ParseProvideSubscriberLocationArg)},
 		{"PSLArg.Area.AreaTypeLocationAreaId", func(_ *testing.T, b HexBytes) marshaler {
 			v := semPSLArg()
 			v.IMSI = "001010123456789"
 			v.AreaEventInfo = &AreaEventInfo{AreaDefinition: AreaDefinition{AreaList: AreaList{{AreaType: AreaTypeLocationAreaId, AreaIdentification: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}}
 			return v
-		}, asParser(ParseProvideSubscriberLocation)},
+		}, asParser(ParseProvideSubscriberLocationArg)},
 		{"PSLArg.Area.AreaTypeRoutingAreaId", func(_ *testing.T, b HexBytes) marshaler {
 			v := semPSLArg()
 			v.IMSI = "001010123456789"
 			v.AreaEventInfo = &AreaEventInfo{AreaDefinition: AreaDefinition{AreaList: AreaList{{AreaType: AreaTypeRoutingAreaId, AreaIdentification: append(append(HexBytes{}, b...), make(HexBytes, 3)...)}}}}
 			return v
-		}, asParser(ParseProvideSubscriberLocation)},
+		}, asParser(ParseProvideSubscriberLocationArg)},
 		{"PSLArg.Area.AreaTypeCellGlobalId", func(_ *testing.T, b HexBytes) marshaler {
 			v := semPSLArg()
 			v.IMSI = "001010123456789"
 			v.AreaEventInfo = &AreaEventInfo{AreaDefinition: AreaDefinition{AreaList: AreaList{{AreaType: AreaTypeCellGlobalId, AreaIdentification: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}}
 			return v
-		}, asParser(ParseProvideSubscriberLocation)},
+		}, asParser(ParseProvideSubscriberLocationArg)},
 		{"PSLArg.Area.AreaTypeUtranCellId", func(_ *testing.T, b HexBytes) marshaler {
 			v := semPSLArg()
 			v.IMSI = "001010123456789"
 			v.AreaEventInfo = &AreaEventInfo{AreaDefinition: AreaDefinition{AreaList: AreaList{{AreaType: AreaTypeUtranCellId, AreaIdentification: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}}
 			return v
-		}, asParser(ParseProvideSubscriberLocation)},
+		}, asParser(ParseProvideSubscriberLocationArg)},
 		{"UpdateLocation.EplmnList[1]", func(_ *testing.T, b HexBytes) marshaler {
 			v := senderUpdateLocation()
 			v.EplmnList = []HexBytes{{0x21, 0xf3, 0x54}, b}
@@ -460,16 +460,16 @@ func senderPLMNCases() []senderOctetCase {
 		}, asParser(ParseSendAuthenticationInfo)},
 		{"ISD.AdjacentAccessRestrictionDataList", func(_ *testing.T, b HexBytes) marshaler {
 			return &InsertSubscriberDataArg{AdjacentAccessRestrictionDataList: AdjacentAccessRestrictionDataList{{PlmnId: b}}}
-		}, asParser(ParseInsertSubscriberData)},
+		}, asParser(ParseInsertSubscriberDataArg)},
 		{"ISD.ImsiGroupIdList", func(_ *testing.T, b HexBytes) marshaler {
 			return &InsertSubscriberDataArg{ImsiGroupIdList: IMSIGroupIdList{{PlmnId: b, LocalGroupID: HexBytes{1}}}}
-		}, asParser(ParseInsertSubscriberData)},
+		}, asParser(ParseInsertSubscriberDataArg)},
 		{"ISD.CsgSubscriptionDataList", func(_ *testing.T, b HexBytes) marshaler {
 			return &InsertSubscriberDataArg{CsgSubscriptionDataList: CSGSubscriptionDataList{{CsgID: HexBytes{0, 0, 0, 0}, CsgIDBits: 27, PlmnId: b}}}
-		}, asParser(ParseInsertSubscriberData)},
+		}, asParser(ParseInsertSubscriberDataArg)},
 		{"ISD.VplmnCsgSubscriptionDataList", func(_ *testing.T, b HexBytes) marshaler {
 			return &InsertSubscriberDataArg{VplmnCsgSubscriptionDataList: VPLMNCSGSubscriptionDataList{{CsgID: HexBytes{0, 0, 0, 0}, CsgIDBits: 27, PlmnId: b}}}
-		}, asParser(ParseInsertSubscriberData)},
+		}, asParser(ParseInsertSubscriberDataArg)},
 	}
 }
 
@@ -521,7 +521,7 @@ func TestSenderAreaCountryMCC(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		p, err := ParseProvideSubscriberLocation(wire)
+		p, err := ParseProvideSubscriberLocationArg(wire)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -587,7 +587,7 @@ func TestSenderAreaCountryIncludedMNC(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got, err := ParseProvideSubscriberLocation(data)
+			got, err := ParseProvideSubscriberLocationArg(data)
 			if err != nil {
 				t.Fatal(err)
 			}

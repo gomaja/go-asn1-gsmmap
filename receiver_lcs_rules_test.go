@@ -38,7 +38,7 @@ func TestReceiverBeingInsideAreaIsOneTimeEvent(t *testing.T) {
 				AreaDefinition: gsm_map.AreaDefinition{AreaList: &gsm_map.AreaList{Values: []gsm_map.Area{{AreaType: gsm_map.AreaTypeCountryCode, AreaIdentification: gsm_map.AreaIdentification{0x21, 0xf3}}}}},
 				OccurrenceInfo: occurrence,
 			}
-			got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+			got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,7 +67,7 @@ func TestReceiverBeingInsideAreaIsOneTimeEvent(t *testing.T) {
 			t.Fatal(bitsErr)
 		}
 		w.LocationType.DeferredLocationEventType = &eventsBits
-		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 		if err != nil || got.AreaEventInfo != nil {
 			t.Fatalf("absent area: got=%+v err=%v", got, err)
 		}
@@ -88,7 +88,7 @@ func TestReceiverBeingInsideAreaIsOneTimeEvent(t *testing.T) {
 			AreaDefinition: gsm_map.AreaDefinition{AreaList: &gsm_map.AreaList{Values: []gsm_map.Area{{AreaType: gsm_map.AreaTypeCountryCode, AreaIdentification: gsm_map.AreaIdentification{0x21, 0xf3}}}}},
 			OccurrenceInfo: new(gsm_map.OccurrenceInfoMultipleTimeEvent),
 		}
-		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -109,7 +109,7 @@ func TestReceiverLCSQoSAccuracyKept(t *testing.T) {
 			} else {
 				w.LcsQoS.HorizontalAccuracy = new(gsm_map.HorizontalAccuracy{v})
 			}
-			got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+			got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 			if err != nil {
 				t.Fatalf("vertical=%v code=%x: %v", vertical, v, err)
 			}
@@ -143,7 +143,7 @@ func TestReceiverPeriodicLDRProductKept(t *testing.T) {
 		periodic := &gsm_map.PeriodicLDRInfo{ReportingAmount: amount, ReportingInterval: interval}
 		w := lcsRulePSLArg(t)
 		w.PeriodicLDRInfo = periodic
-		got, err := ParseProvideSubscriberLocation(strictBER(t, w))
+		got, err := ParseProvideSubscriberLocationArg(strictBER(t, w))
 		if err != nil {
 			t.Fatalf("PSL: %v", err)
 		}
@@ -163,7 +163,7 @@ func TestReceiverPeriodicLDRProductKept(t *testing.T) {
 			t.Fatal(err)
 		}
 		slr.PeriodicLDRInfo = periodic
-		report, err := ParseSubscriberLocationReport(strictBER(t, slr))
+		report, err := ParseSubscriberLocationReportArg(strictBER(t, slr))
 		if err != nil {
 			t.Fatalf("SLR: %v", err)
 		}
@@ -197,7 +197,7 @@ func lcsRuleParseGeography(t *testing.T, slr bool, ext, add, velocity []byte, de
 		if velocity != nil {
 			w.VelocityEstimate = new(velocity)
 		}
-		got, err := ParseSubscriberLocationReport(strictBER(t, w))
+		got, err := ParseSubscriberLocationReportArg(strictBER(t, w))
 		if err != nil {
 			return nil, nil, err
 		}
@@ -642,7 +642,7 @@ func TestReceiverLCSCodecConstraints(t *testing.T) {
 	for _, amount := range []int64{0, PeriodicLDRProductMax + 1} {
 		w := lcsRulePSLArg(t)
 		w.PeriodicLDRInfo = &gsm_map.PeriodicLDRInfo{ReportingAmount: amount, ReportingInterval: 1}
-		_, err := ParseProvideSubscriberLocation(tolerantBER(t, w))
+		_, err := ParseProvideSubscriberLocationArg(tolerantBER(t, w))
 		var constraint *ber.ValidationError
 		if !errors.As(err, &constraint) {
 			t.Fatalf("amount%d: want codec constraint error, got %v", amount, err)
@@ -820,7 +820,7 @@ func TestSubscriberLocationReportArgAddLocationEstimateMarshals(t *testing.T) {
 		t.Fatal("locationEstimate absent beside add-LocationEstimate")
 	}
 	wantEqual(t, "locationEstimate", gsm_map.ExtGeographicalInformation{0x50}, *w.LocationEstimate)
-	got, err := ParseSubscriberLocationReport(data)
+	got, err := ParseSubscriberLocationReportArg(data)
 	if err != nil {
 		t.Fatalf("Parse: %v", err)
 	}

@@ -62,7 +62,7 @@ func TestAMBROverflowMatchesBothSentinels(t *testing.T) {
 		{"extended DL", "3016bf1f13a3118001018101018409008000000000000000", "AMBR.ExtendedMaxRequestedBandwidthDL"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ParseInsertSubscriberData(mustHex(t, tc.wire))
+			got, err := ParseInsertSubscriberDataArg(mustHex(t, tc.wire))
 			if got != nil {
 				t.Errorf("Parse = %+v, want nil", got)
 			}
@@ -508,7 +508,7 @@ func TestAMBRZeroBandwidth(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := ParseInsertSubscriberData(data)
+	out, err := ParseInsertSubscriberDataArg(data)
 	if err != nil {
 		t.Fatal(err)
 	}

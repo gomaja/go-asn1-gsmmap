@@ -13,7 +13,7 @@ func TestSLROptionals(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Marshal: %v", err)
 		}
-		got, err := ParseSubscriberLocationReport(data)
+		got, err := ParseSubscriberLocationReportArg(data)
 		if err != nil {
 			t.Fatalf("Parse: %v", err)
 		}

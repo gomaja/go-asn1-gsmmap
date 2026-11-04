@@ -43,7 +43,7 @@ func TestSSCodeElementSize(t *testing.T) {
 				w.VlrCamelSubscriptionInfo.SsCSI.SsCamelData.SsEventList.Values[1] = bad
 				return w
 			},
-			parse: elementSizeParser(ParseInsertSubscriberData),
+			parse: elementSizeParser(ParseInsertSubscriberDataArg),
 			path:  "vlrCamelSubscriptionInfo.ss-CSI.ss-CamelData.ss-EventList.element[1]",
 		},
 		{
@@ -57,20 +57,20 @@ func TestSSCodeElementSize(t *testing.T) {
 		},
 		{
 			name: "SendRoutingInfoRes ss-List",
-			msg:  func(codes []SsCode) marshaler { return &SriResp{SsList: codes} },
+			msg:  func(codes []SsCode) marshaler { return &SriRes{SsList: codes} },
 			wire: func(_ *testing.T, bad []byte) berMarshaler {
 				return &gsm_map.SendRoutingInfoRes{SsList: &gsm_map.SSList{Values: []gsm_map.SSCode{{byte(SsCodeECT)}, bad}}}
 			},
-			parse: elementSizeParser(ParseSriResp),
+			parse: elementSizeParser(ParseSriRes),
 			path:  "ss-List.element[1]",
 		},
 		{
 			name: "SendRoutingInfoRes ss-List2",
-			msg:  func(codes []SsCode) marshaler { return &SriResp{SsList2: codes} },
+			msg:  func(codes []SsCode) marshaler { return &SriRes{SsList2: codes} },
 			wire: func(_ *testing.T, bad []byte) berMarshaler {
 				return &gsm_map.SendRoutingInfoRes{SsList2: &gsm_map.SSList{Values: []gsm_map.SSCode{{byte(SsCodeECT)}, bad}}}
 			},
-			parse: elementSizeParser(ParseSriResp),
+			parse: elementSizeParser(ParseSriRes),
 			path:  "ss-List2.element[1]",
 		},
 	} {

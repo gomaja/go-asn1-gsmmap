@@ -366,7 +366,7 @@ func convertArgToSri(arg *gsm_map.SendRoutingInfoArg) (*Sri, error) {
 
 // --- SRI Response (SendRoutingInfoRes) full converters ---
 
-func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
+func convertSriResToRes(s *SriRes) (*gsm_map.SendRoutingInfoRes, error) {
 	if err := validateNumberPortabilityOutsideATI(s.NumberPortabilityStatus); err != nil {
 		return nil, err
 	}
@@ -563,8 +563,8 @@ func convertSriRespToRes(s *SriResp) (*gsm_map.SendRoutingInfoRes, error) {
 	return out, nil
 }
 
-func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
-	out := &SriResp{}
+func convertResToSriRes(res *gsm_map.SendRoutingInfoRes) (*SriRes, error) {
+	out := &SriRes{}
 
 	// Imsi
 	if res.Imsi != nil {
@@ -623,7 +623,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// VmscAddress
 	if res.VmscAddress != nil {
-		digits, nat, pl, err := decodeAddressWithDigits(*res.VmscAddress, ErrSriRespVmscAddressDecodedEmpty)
+		digits, nat, pl, err := decodeAddressWithDigits(*res.VmscAddress, ErrSriResVmscAddressDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding VmscAddress: %w", err)
 		}
@@ -644,7 +644,7 @@ func convertResToSriResp(res *gsm_map.SendRoutingInfoRes) (*SriResp, error) {
 
 	// Msisdn
 	if res.Msisdn != nil {
-		digits, nat, pl, err := decodeAddressWithDigits(*res.Msisdn, ErrSriRespMSISDNDecodedEmpty)
+		digits, nat, pl, err := decodeAddressWithDigits(*res.Msisdn, ErrSriResMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MSISDN: %w", err)
 		}

@@ -147,7 +147,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 
 // --- MT-ForwardSM Response ---
 
-func convertMtFsmRespToRes(r *MtFsmResp) *gsm_map.MTForwardSMRes {
+func convertMtFsmResToRes(r *MtFsmRes) *gsm_map.MTForwardSMRes {
 	out := &gsm_map.MTForwardSMRes{}
 	if len(r.SmRpUI) > 0 {
 		v := gsm_map.SignalInfo(r.SmRpUI)
@@ -156,8 +156,8 @@ func convertMtFsmRespToRes(r *MtFsmResp) *gsm_map.MTForwardSMRes {
 	return out
 }
 
-func convertResToMtFsmResp(res *gsm_map.MTForwardSMRes) *MtFsmResp {
-	out := &MtFsmResp{}
+func convertResToMtFsmRes(res *gsm_map.MTForwardSMRes) *MtFsmRes {
+	out := &MtFsmRes{}
 	if res.SmRPUI != nil {
 		out.SmRpUI = HexBytes(*res.SmRPUI)
 	}

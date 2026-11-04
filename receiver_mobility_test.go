@@ -154,7 +154,7 @@ func TestReceiverExtAccessRestrictionUnknownBits(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%x/%d", tc.raw, tc.bits), func(t *testing.T) {
 			bs := runtime.BitString{Bytes: tc.raw, BitLength: tc.bits}
-			got, err := ParseInsertSubscriberData(strictBER(t, &gsm_map.InsertSubscriberDataArg{ExtAccessRestrictionData: &bs}))
+			got, err := ParseInsertSubscriberDataArg(strictBER(t, &gsm_map.InsertSubscriberDataArg{ExtAccessRestrictionData: &bs}))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -278,7 +278,7 @@ func TestReceiverODBGeneralUnknownBits(t *testing.T) {
 					}
 					wantEqual(t, "reparsed ODBGeneralData", &tc.want, again.OdbGeneralData)
 				} else {
-					got, err := ParseInsertSubscriberData(mustHex(t, tc.arg))
+					got, err := ParseInsertSubscriberDataArg(mustHex(t, tc.arg))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -291,7 +291,7 @@ func TestReceiverODBGeneralUnknownBits(t *testing.T) {
 						t.Fatal(err)
 					}
 					wantEqual(t, "wire", mustHex(t, tc.sentArg), data)
-					again, err := ParseInsertSubscriberData(data)
+					again, err := ParseInsertSubscriberDataArg(data)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -326,7 +326,7 @@ func TestReceiverODBHPLMNUnknownBits(t *testing.T) {
 		{"none", "300ea80c030301000003050000000000", "300ba809030301000003020400", ODBHPLMNData{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ParseInsertSubscriberData(mustHex(t, tc.wire))
+			got, err := ParseInsertSubscriberDataArg(mustHex(t, tc.wire))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -340,7 +340,7 @@ func TestReceiverODBHPLMNUnknownBits(t *testing.T) {
 				t.Fatal(err)
 			}
 			wantEqual(t, "wire", mustHex(t, tc.sent), data)
-			again, err := ParseInsertSubscriberData(data)
+			again, err := ParseInsertSubscriberDataArg(data)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -356,9 +356,9 @@ func TestReceiverODBBitBeyondSize(t *testing.T) {
 		name, wire string
 		parse      func([]byte) error
 	}{
-		{"General in the argument", "300aa8080306008000000080", func(b []byte) error { _, err := ParseInsertSubscriberData(b); return err }},
+		{"General in the argument", "300aa8080306008000000080", func(b []byte) error { _, err := ParseInsertSubscriberDataArg(b); return err }},
 		{"General in the result", "30088406008000000080", func(b []byte) error { _, err := ParseInsertSubscriberDataRes(b); return err }},
-		{"HPLMN in the argument", "300fa80d03030100000306000000000080", func(b []byte) error { _, err := ParseInsertSubscriberData(b); return err }},
+		{"HPLMN in the argument", "300fa80d03030100000306000000000080", func(b []byte) error { _, err := ParseInsertSubscriberDataArg(b); return err }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := tc.parse(mustHex(t, tc.wire)); !errors.Is(err, ber.ErrInvalidValue) {
@@ -517,7 +517,7 @@ func TestReceiverPDPContextSenderDependencies(t *testing.T) {
 			}
 			tc.mut(w)
 			arg := &gsm_map.InsertSubscriberDataArg{GprsSubscriptionData: &gsm_map.GPRSSubscriptionData{GprsDataList: &gsm_map.GPRSDataList{Values: []gsm_map.PDPContext{*w}}}}
-			got, err := ParseInsertSubscriberData(strictBER(t, arg))
+			got, err := ParseInsertSubscriberDataArg(strictBER(t, arg))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -564,7 +564,7 @@ func TestReceiverDestinationNumberCriteriaListAbsence(t *testing.T) {
 				var senderErr error
 				if where == "ISD" {
 					w := &gsm_map.InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &gsm_map.VlrCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: criteria}}
-					got, err := ParseInsertSubscriberData(strictBER(t, w))
+					got, err := ParseInsertSubscriberDataArg(strictBER(t, w))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -572,7 +572,7 @@ func TestReceiverDestinationNumberCriteriaListAbsence(t *testing.T) {
 					_, senderErr = got.Marshal()
 				} else {
 					w := &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: new(gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: criteria}}))}
-					got, err := ParseSriResp(strictBER(t, w))
+					got, err := ParseSriRes(strictBER(t, w))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -614,7 +614,7 @@ func TestReceiverRepeatedTDPDescriptors(t *testing.T) {
 				l := w.SgsnCAMELSubscriptionInfo.GprsCSI.GprsCamelTDPDataList
 				l.Values = wireTDPList(l.Values[0], []int64{1, 1}, setGPRSWire)
 			}
-			got, err := ParseInsertSubscriberData(strictBER(t, w))
+			got, err := ParseInsertSubscriberDataArg(strictBER(t, w))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -660,9 +660,9 @@ func TestReceiverDestinationNumberCriteriaEmptyPresentLists(t *testing.T) {
 				l := &gsm_map.OBcsmCamelTDPCriteriaList{Values: []gsm_map.OBcsmCamelTDPCriteria{{OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo, DestinationNumberCriteria: d}}}
 				var err error
 				if where == "ISD" {
-					_, err = ParseInsertSubscriberData(tolerantBER(t, &gsm_map.InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &gsm_map.VlrCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: l}}))
+					_, err = ParseInsertSubscriberDataArg(tolerantBER(t, &gsm_map.InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &gsm_map.VlrCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: l}}))
 				} else {
-					_, err = ParseSriResp(tolerantBER(t, &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: new(gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: l}}))}))
+					_, err = ParseSriRes(tolerantBER(t, &gsm_map.SendRoutingInfoRes{ExtendedRoutingInfo: new(gsm_map.NewExtendedRoutingInfoCamelRoutingInfo(gsm_map.CamelRoutingInfo{GmscCamelSubscriptionInfo: gsm_map.GmscCamelSubscriptionInfo{OBcsmCamelTDPCriteriaList: l}}))}))
 				}
 				var constraint *ber.ValidationError
 				if !errors.As(err, &constraint) {

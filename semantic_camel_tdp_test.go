@@ -37,8 +37,8 @@ type tdpListCase struct {
 	parse   func(t *testing.T, tdps []int64) ([]int64, error)
 }
 
-func sriRespGmsc(g GmscCamelSubscriptionInfo) *SriResp {
-	return &SriResp{
+func sriResGmsc(g GmscCamelSubscriptionInfo) *SriRes {
+	return &SriRes{
 		IMSI:                "204080012345678",
 		ExtendedRoutingInfo: &ExtendedRoutingInfo{CamelRoutingInfo: &CamelRoutingInfo{GmscCamelSubscriptionInfo: g}},
 	}
@@ -129,7 +129,7 @@ func setGPRSWire(e *gsm_map.GPRSCamelTDPData, tdp, sk int64) {
 
 func parseISDBytes(t *testing.T, w *gsm_map.InsertSubscriberDataArg) (*InsertSubscriberDataArg, error) {
 	t.Helper()
-	return ParseInsertSubscriberData(strictBER(t, w))
+	return ParseInsertSubscriberDataArg(strictBER(t, w))
 }
 
 // smsTDPListCase is the SMS-CAMEL-TDP-DataList of one SMS-CSI of a
@@ -192,14 +192,14 @@ func tdpListCases() []tdpListCase {
 			marshal: func(tdps []int64) error {
 				g := gmscCamel()
 				g.OCSI.OBcsmCamelTDPDataList = oTDPList(tdps)
-				_, err := sriRespGmsc(g).Marshal()
+				_, err := sriResGmsc(g).Marshal()
 				return err
 			},
 			parse: func(t *testing.T, tdps []int64) ([]int64, error) {
-				w := sriRespWire(t, gmscCamel())
+				w := sriResWire(t, gmscCamel())
 				l := w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.OCSI.OBcsmCamelTDPDataList
 				l.Values = wireTDPList(l.Values[0], tdps, setOWire)
-				got, err := ParseSriResp(strictBER(t, w))
+				got, err := ParseSriRes(strictBER(t, w))
 				if err != nil {
 					return nil, err
 				}
@@ -234,14 +234,14 @@ func tdpListCases() []tdpListCase {
 			marshal: func(tdps []int64) error {
 				g := gmscCamel()
 				g.TCSI.TBcsmCamelTDPDataList = tTDPList(tdps)
-				_, err := sriRespGmsc(g).Marshal()
+				_, err := sriResGmsc(g).Marshal()
 				return err
 			},
 			parse: func(t *testing.T, tdps []int64) ([]int64, error) {
-				w := sriRespWire(t, gmscCamel())
+				w := sriResWire(t, gmscCamel())
 				l := w.ExtendedRoutingInfo.CamelRoutingInfo.GmscCamelSubscriptionInfo.TCSI.TBcsmCamelTDPDataList
 				l.Values = wireTDPList(l.Values[0], tdps, setTWire)
-				got, err := ParseSriResp(strictBER(t, w))
+				got, err := ParseSriRes(strictBER(t, w))
 				if err != nil {
 					return nil, err
 				}
