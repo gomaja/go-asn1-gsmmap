@@ -22,6 +22,10 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **ProvideSubscriberInfo** (PSI) | 70 | `ProvideSubscriberInfo` | `ProvideSubscriberInfoRes` |
 | **CancelLocation** | 3 | `CancelLocation` | `CancelLocationRes` |
 | **InsertSubscriberData** (ISD) | 7 | `InsertSubscriberDataArg` | `InsertSubscriberDataRes` |
+| **DeleteSubscriberData** | 8 | `DeleteSubscriberDataArg` | `DeleteSubscriberDataRes` |
+| **Reset** | 37 | `ResetArg` | — |
+| **CheckIMEI** | 43 | `CheckIMEIArg` | `CheckIMEIRes` |
+| **ReadyForSM** | 66 | `ReadyForSMArg` | `ReadyForSMRes` |
 | **ProvideSubscriberLocation** (PSL) | 83 | `ProvideSubscriberLocationArg` | `ProvideSubscriberLocationRes` |
 | **SendRoutingInfoForLCS** (SRI-LCS) | 85 | `SriLcs` | `SriLcsRes` |
 | **SubscriberLocationReport** (SLR) | 86 | `SubscriberLocationReportArg` | `SubscriberLocationReportRes` |
@@ -98,6 +102,11 @@ What that means for a consumer:
 
 **Receiver and sender rules**
 
+- `DeleteSubscriberDataArg.Marshal` rejects compound basic service groups, reserved bearer/teleservice octets 2..5, reserved SS codes (§§17.7.5, 17.7.9, 17.7.10), an empty `SpecificCSIWithdraw` (`ErrSpecificCSIWithdrawEmpty`, §8.8.2.3), and its T-CSI bit (`ErrSpecificCSIWithdrawTCSINotApplicable`, §17.7.1). Parse keeps unsupported basic service and SS codes for the caller to handle, keeps the T-CSI bit, and ignores SpecificCSI bits 11..31 (§17.7.1). `DeleteSubscriberDataRes.Marshal` permits only Network Node Area Restricted and Regional Subscription Not Supported (`ErrDeleteSubscriberDataResRegionalSubscriptionResponseInvalid`, §8.8.2.3); Parse keeps the other ASN.1 values. Zone Code binary coding is not checked; the codec enforces SIZE 2. Node roles, CSS applicability, peer support, and the recommendation against sending both CAMEL withdrawal parameters are caller responsibilities.
+- `ResetArg.Marshal` rejects `HLRList` with a CSS number (`ErrResetArgHLRListWithCSSNumber`) or with `ResetIdList` (`ErrResetArgHLRListWithResetIdList`), simultaneous insertion and deletion (`ErrResetArgSubscriptionDataConflict`), and either update without `ResetIdList` (`ErrResetArgSubscriptionDataWithoutResetIdList`, `ErrResetArgSubscriptionDataDeletionWithoutResetIdList`). Parse retains all these combinations (TS 29.002 V19.1.0 §8.10.1.3). `SendingNodeNumber` selects exactly one HLR or CSS address; Parse rejects a selected address without digits with its `ErrSendingNodeNumber*DecodedEmpty` sentinel. `HLRList` uses IMSI digit validation because HLR-Id is IMSI (§17.7.8). The caller checks Reset-ID support by both peers.
+- `CheckIMEIArg.Marshal` requires Equipment Status or BMUEF or both (`ErrCheckIMEIArgNoEquipmentInfoRequested`) and a 16-digit IMEISV when BMUEF is requested (`ErrCheckIMEIArgBMUEFRequiresIMEISV`); Parse retains those sender-invalid requests (§8.7.1.3) and discards unknown requested information bits (§17.7.1). On successful outcome, the caller includes each requested result parameter. `UESBIIu` preserves each unnamed BIT STRING's bit count and clears padding on send; the codec checks SIZE 1..128 and the non-extensible EquipmentStatus set.
+- `ReadyForSMArg` carries both independent NULL indicators and the optional four-octet `MaximumUEAvailabilityTime`. The caller sets the indicators only for a GPRS or IP-SM-GW alert, respectively (§17.7.6), and chooses the reachability timestamp (§§7.6.8.25, 12.4.3). The codec checks Time SIZE 4 and the non-extensible AlertReason set. DeleteSubscriberData and ReadyForSM results are optional; Reset has no result parameter.
+
 - `UpdateGprsLocation.Marshal` rejects SGSN LCS capability set1 (`ErrSGSNCapabilityLCSSet1NotAllowed`), PDN-GW updates lacking an identity or lacking both APN and ContextID (`ErrPdnGwUpdateMissingIdentity`, `ErrPdnGwUpdateMissingAPNOrContextID`). Parse retains SGSN set1 and identity-only updates; its existing PDN identity and ISR receiver rules still apply.
 - `InsertSubscriberDataArg.Marshal` requires PDN types 01..04 (`ErrPDNTypeInvalid`). Typed and opaque PDP contexts require base types F001/F002/F121/F157, extended type F18D and paired addresses of different IPv4/IPv6 families (`ErrPDPTypeInvalid`, `ErrExtPDPTypeInvalid`, `ErrPDPAddressFamilyCombinationInvalid`). Typed and opaque PDP contexts share the QoS predecessor and base address rules (`ErrExtQoSHierarchyViolated`, `ErrExtPDPAddressWithoutPDPAddress`); Parse preserves received values.
 - `ProvideSubscriberInfoRes.Marshal` rejects IMS voice-over-PS `unknown` (`ErrPSIResImsVoiceOverPSSessionsIndicationUnknown`). Number portability values 4/5 may be sent only by ATI responses; PSI responses and top-level or nested SRI results return `ErrNumberPortabilityStatusATIOnly`. Parse retains those received values.
@@ -114,7 +123,7 @@ What that means for a consumer:
 - `ODBGeneralData.UnknownBits` and `ODBHPLMNData.UnknownBits` keep unnamed set bits, 29..31 and 4..31, through Parse and Marshal. TS 29.002 V19.1.0 §17.7.1 treats them like unsupported ODB. Under §8.8.1.3 a VLR, SGSN or IWF returns the General Data it does not support in `InsertSubscriberDataRes.OdbGeneralData`, and the caller decides what to return; the result has no HPLMN parameter. Both structs now hold a slice, so `==` no longer compiles on them and a positional literal needs the new field.
 - `Marshal` rejects reserved SS-Code assignments outside the ISD result echo lists (`ErrSSCodeReserved`) and SRI ccbs-A/ccbs-B (`ErrSSCodeOperationInvalid`). Forwarding options (`ErrExtForwOptionsUnusedBits`), InterCUG restrictions (`ErrInterCUGRestrictionsUnusedBits`), ISDN subaddress headers (`ErrISDNSubaddressHeaderInvalid`), and Ext-SS-Status (`ErrExtSSStatusUnusedBits`) enforce their sender bit assignments; Ext-SS-Status and Ext-ForwOptions send one octet only (`ErrExtSSStatusReservedOctets`, `ErrExtForwOptionsReservedOctets`). Received reserved bits remain available where the receiver rules retain them.
 - ISD LCS privacy fields must match their SS-Code: notification and external clients use call-session codes, PLMN clients use `0xb4`, and service types use `0xb5`. Extended external clients require more than five clients in total. The new `ErrLCSPrivacy*` sentinels identify violations; callers ensure the required peer release and SCCP support. LCS service type 8 returns `ErrLCSServiceTypeIDReserved`, and SRI alerting patterns now share `ErrAlertingPatternReserved`.
-- Extended bearer and teleservice codes send one octet; later octets return `ErrExtBearerServiceCodeReservedOctets` or `ErrExtTeleserviceCodeReservedOctets`. ISD arguments and SRI reject compound service groups with `ErrCompoundBearerServiceCodeNotAllowed` or `ErrCompoundTeleserviceCodeNotAllowed`. Bearer codes with bit 8 set require the PLMN-specific `0xd0..0xdf` family (`ErrBearerServiceCodeUnusedBit`). ISD result lists echo unsupported SS, bearer and teleservice codes with only ASN.1 SIZE checks (TS 29.002 §8.8.1.3).
+- Extended bearer and teleservice codes send one octet; later octets return `ErrExtBearerServiceCodeReservedOctets` or `ErrExtTeleserviceCodeReservedOctets`. ISD arguments, DeleteSubscriberData and SRI reject compound service groups with `ErrCompoundBearerServiceCodeNotAllowed` or `ErrCompoundTeleserviceCodeNotAllowed`. Bearer codes with bit 8 set require the PLMN-specific `0xd0..0xdf` family (`ErrBearerServiceCodeUnusedBit`). ISD result lists echo unsupported SS, bearer and teleservice codes with only ASN.1 SIZE checks (TS 29.002 §8.8.1.3).
 - `MTSMSTPDUTypeSmsSUBMITREPORT` is removed: CAMEL phase 4 permits only `sms-DELIVER` and `sms-STATUS-REPORT` in MT-SMS TPDU criteria; the sender rejects that value and the receiver ignores the entire TPDU-TypeCriterion containing it.
 - `MtFsm` and `MoFsm` expose SM-RP-DA and SM-RP-OA through `SmRpDa` and `SmRpOa` CHOICE fields. Their former shorthand identity and service-centre fields, including nature/plan fields, are removed. `ErrMtFsmMissingIMSI` is gone: an `SmRpDa` with no alternative set returns `ErrSmRpDaNoAlternative`.
 - CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`, `GPRSCSI`, `MGCSI`) omit `NotificationToCSE` and `CsiActive`; Parse drops those wire fields. Segmented CSI and SRI presence rules that depend on other segments remain the caller's responsibility, so `ErrCamelSMSCSIMissingTDPData`, `ErrCamelSMSCSIMissingCapabilityHandling` and `ErrGPRSCSIRequiresTDPListAndPhase` are removed.
@@ -567,6 +576,85 @@ if err != nil {
 }
 _ = data // send the response bytes
 ```
+
+### DeleteSubscriberData, Reset, CheckIMEI and ReadyForSM (opCodes 8, 37, 43, 66)
+
+The following requests use synthetic identities. This deletion and reset
+withdraw GPRS subscription data; the operations also cover the other node roles
+and restart cases documented on each type, whose restrictions the caller
+applies. Each operation has `Parse<Type>` and `Marshal` entry points.
+
+```go
+deleteArg := &gsmmap.DeleteSubscriberDataArg{
+    IMSI: "001010123456789",
+    GprsSubscriptionDataWithdraw: &gsmmap.GPRSSubscriptionDataWithdraw{
+        ContextIDList: []int{1, 2},
+    },
+}
+deleteBER, err := deleteArg.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+parsedDelete, err := gsmmap.ParseDeleteSubscriberDataArg(deleteBER)
+if err != nil {
+    log.Fatal(err)
+}
+_ = parsedDelete
+
+// A shared deletion names the affected Reset-IDs; reset has no result.
+resetArg := &gsmmap.ResetArg{
+    SendingNodeNumber: gsmmap.SendingNodeNumber{
+        HLRNumber: "31612345678", HLRNumberNature: 0x10, HLRNumberPlan: 1,
+    },
+    ResetIdList: gsmmap.ResetIdList{{0x01}},
+    SubscriptionDataDeletion: deleteArg,
+}
+resetBER, err := resetArg.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+parsedReset, err := gsmmap.ParseResetArg(resetBER)
+if err != nil {
+    log.Fatal(err)
+}
+_ = parsedReset
+
+// BMUEF requires a 16-digit IMEISV; equipment status alone also accepts IMEI.
+checkArg := &gsmmap.CheckIMEIArg{
+    IMEI: "1234567890123456",
+    RequestedEquipmentInfo: gsmmap.RequestedEquipmentInfo{
+        EquipmentStatus: true, BMUEF: true,
+    },
+}
+checkBER, err := checkArg.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+parsedCheck, err := gsmmap.ParseCheckIMEIArg(checkBER)
+if err != nil {
+    log.Fatal(err)
+}
+_ = parsedCheck
+
+// A VLR reports the MS present without a GPRS or IP-SM-GW indicator.
+readyArg := &gsmmap.ReadyForSMArg{
+    IMSI: "001010123456789", AlertReason: gsmmap.AlertReasonMsPresent,
+}
+readyBER, err := readyArg.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+parsedReady, err := gsmmap.ParseReadyForSMArg(readyBER)
+if err != nil {
+    log.Fatal(err)
+}
+_ = parsedReady
+```
+
+`DeleteSubscriberDataRes` carries an optional `RegionalSubscriptionResponse`;
+`CheckIMEIRes` carries optional `EquipmentStatus` and `BMUEF` values;
+`ReadyForSMRes` is empty. Their matching Parse functions decode a result
+parameter when one is present. `ResetArg` has no result type.
 
 ### USSD (opCodes 59, 60, 61)
 

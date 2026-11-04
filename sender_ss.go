@@ -5,6 +5,7 @@ import "fmt"
 type senderOperation string
 
 const (
+	senderDeleteSubscriberData senderOperation = "DeleteSubscriberData"
 	senderInsertSubscriberData senderOperation = "InsertSubscriberData"
 	senderSendRoutingInfo      senderOperation = "SendRoutingInfo"
 )
@@ -12,7 +13,7 @@ const (
 // These mapped operations are outside call-independent supplementary services
 // (3GPP TS 29.002 V19.1.0 §17.7.9 and §17.7.10).
 func (operation senderOperation) excludesCompoundServices() bool {
-	return operation == senderInsertSubscriberData || operation == senderSendRoutingInfo
+	return operation == senderDeleteSubscriberData || operation == senderInsertSubscriberData || operation == senderSendRoutingInfo
 }
 
 // 3GPP TS 29.002 V19.1.0 §17.7.5 SS-Code reserves these assignments.

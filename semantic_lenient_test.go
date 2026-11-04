@@ -285,6 +285,7 @@ func semLenientCases() []semLenientCase {
 			return w
 		}},
 	}
+	cases = append(cases, hlrSemLenientCases()...)
 	cases = append(cases, senderCommonLenientCases()...)
 	cases = append(cases, ssSenderLenientCases()...)
 	cases = append(cases, returnErrorSemLenientCases()...)
