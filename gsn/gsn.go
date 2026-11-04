@@ -1,9 +1,17 @@
+// Package gsn encodes and decodes the GSN-Address of 3GPP TS 23.003 §5.1:
+// one octet holding the address type in its two most significant bits and
+// the address length in the other six, followed by the address octets.
+// Build sends a 4-octet address as IPv4 (type 0) and a 16-octet address,
+// IPv4-mapped ones included, as IPv6 (type 1). Parse renders each address
+// in the family it was coded in, so an IPv4-mapped address (RFC 4291
+// §2.5.5.2) reads "::ffff:a.b.c.d" (RFC 5952 §5) and builds back to the same
+// 17 octets.
 package gsn
 
 import (
 	"errors"
 	"fmt"
-	"net"
+	"net/netip"
 )
 
 // Rejection conditions for GSN address conversion.
@@ -21,21 +29,26 @@ var (
 // Format:
 //
 //	| Address Type (2 bits) | Address Length (6 bits) | ...address bytes...
+//
+// A dotted-quad string is sent as IPv4; an IPv6 string, including the
+// IPv4-mapped form ::ffff:a.b.c.d, is sent as IPv6. A zone is refused.
 func Build(ipStr string) ([]byte, error) {
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
+	ip, err := netip.ParseAddr(ipStr)
+	if err != nil || ip.Zone() != "" {
 		return nil, fmt.Errorf("%w: %s", ErrInvalidIP, ipStr)
 	}
 
 	var addrType uint8
 	var addrBytes []byte
 
-	if ipv4 := ip.To4(); ipv4 != nil {
+	if ip.Is4() {
 		addrType = 0
-		addrBytes = ipv4
+		b := ip.As4()
+		addrBytes = b[:]
 	} else {
 		addrType = 1
-		addrBytes = ip.To16()
+		b := ip.As16()
+		addrBytes = b[:]
 	}
 
 	addrLen := uint8(len(addrBytes))
@@ -49,6 +62,8 @@ func Build(ipStr string) ([]byte, error) {
 }
 
 // Parse decodes a GSN Address format byte slice into an IPv4/IPv6 string.
+// An IPv6 address that maps an IPv4 address is rendered as ::ffff:a.b.c.d,
+// so that Build sends it back in the family it arrived in.
 func Parse(data []byte) (string, error) {
 	if len(data) < 1 {
 		return "", fmt.Errorf("%w", ErrAddressTooShort)
@@ -69,12 +84,12 @@ func Parse(data []byte) (string, error) {
 		if addrLen != 4 {
 			return "", fmt.Errorf("%w: %d", ErrIPv4LengthInvalid, addrLen)
 		}
-		return net.IP(addrBytes).String(), nil
+		return netip.AddrFrom4([4]byte(addrBytes)).String(), nil
 	case 1:
 		if addrLen != 16 {
 			return "", fmt.Errorf("%w: %d", ErrIPv6LengthInvalid, addrLen)
 		}
-		return net.IP(addrBytes).String(), nil
+		return netip.AddrFrom16([16]byte(addrBytes)).String(), nil
 	default:
 		return "", fmt.Errorf("%w: %d", ErrAddressTypeInvalid, addrType)
 	}
