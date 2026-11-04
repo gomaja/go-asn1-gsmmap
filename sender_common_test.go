@@ -170,12 +170,12 @@ func senderDiameterCases() []senderOctetCase {
 			v := semMtFsm(t)
 			v.SmsGmscDiameterAddress = &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}
 			return v
-		}, asParser(ParseMtFsm)},
+		}, asParser(withoutParseOptions(ParseMtFsm))},
 		{"MtFsm.SmsGmscDiameterAddress.DiameterRealm", func(t *testing.T, b HexBytes) marshaler {
 			v := semMtFsm(t)
 			v.SmsGmscDiameterAddress = &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}
 			return v
-		}, asParser(ParseMtFsm)},
+		}, asParser(withoutParseOptions(ParseMtFsm))},
 		{"SubscriberLocationReportArg.MmeName", func(_ *testing.T, b HexBytes) marshaler { v := semSLRArg(); v.LcsLocationInfo.MmeName = b; return v }, asParser(ParseSubscriberLocationReportArg)},
 		{"SubscriberLocationReportArg.AaaServerName", func(_ *testing.T, b HexBytes) marshaler {
 			v := semSLRArg()

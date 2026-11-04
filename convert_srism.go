@@ -128,7 +128,9 @@ func convertArgToSriSm(arg *gsm_map.RoutingInfoForSMArg) (*SriSm, error) {
 		s.SmRpMti = &v
 	}
 
-	if arg.SmRPSMEA != nil {
+	// SM-RP-SMEA has SIZE (1..12) (3GPP TS 29.002 V19.1.0 §17.7.6); an empty
+	// one, which only a tolerant Parse admits, reads as absent.
+	if arg.SmRPSMEA != nil && len(*arg.SmRPSMEA) > 0 {
 		s.SmRpSmea = HexBytes(*arg.SmRPSMEA)
 	}
 

@@ -137,7 +137,7 @@ func extEnumCases() []extEnumCase {
 				w.SmDeliveryNotIntended = &n
 				return w
 			},
-			parse: asParser(ParseSriSm),
+			parse: asParser(withoutParseOptions(ParseSriSm)),
 			field: func(m marshaler) int64 { return int64(*m.(*SriSm).SmDeliveryNotIntended) },
 		},
 	}

@@ -6,8 +6,27 @@ import (
 	"errors"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 	"github.com/gomaja/go-sms/encoding/tpdu"
 )
+
+// ParseOption configures ParseSriSm, ParseMoFsm and ParseMtFsm.
+type ParseOption func(*parseConfig) error
+
+// Violation describes a constraint or protocol-rule violation admitted by WithTolerance.
+type Violation = ber.Violation
+
+// ViolationKind identifies a constraint or protocol-rule violation.
+type ViolationKind = ber.ViolationKind
+
+const (
+	ViolationKindASN1Constraint ViolationKind = ber.ASN1Constraint
+	ViolationKindProtocolRule   ViolationKind = ber.ProtocolRule
+)
+
+// ErrParseOptionInvalid reports a nil option, a nil violation destination,
+// or a repeated WithTolerance option.
+var ErrParseOptionInvalid = errors.New("parse: invalid option")
 
 // HexBytes is a []byte that marshals to/from hex strings in JSON
 // instead of the default base64 encoding.
@@ -4702,6 +4721,7 @@ var (
 
 	ErrCallBarredParamUnknownAlternative        = errors.New("callBarredParam: unknown CHOICE alternative")
 	ErrInt64Overflow                            = errors.New("integer does not fit int64")
+	ErrIntOverflow                              = errors.New("integer does not fit int")
 	ErrIntegerMissing                           = errors.New("integer value is missing")
 	ErrPdnGwIdentityAddressMissing              = errors.New("PdnGwIdentity has no address or name")
 	ErrPdnGwIdentityIPv4AddressInvalidLength    = errors.New("PdnGwIdentity IPv4Address has invalid length")
@@ -4841,6 +4861,7 @@ var (
 	ErrSMSRegisterRequestInvalid = errors.New("updateGprsLocation: SmsRegisterRequest must be sms-registration-required(0), sms-registration-not-preferred(1) or no-preference(2) per 3GPP TS 29.002 V19.1.0 §17.7.1 (extensible enum: unknown values preserved on decode)")
 
 	ErrSmRpDaServiceCentreAddressDADecodedEmpty = errors.New("smRpDa: present wire serviceCentreAddressDA decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpDaLMSIDecodedEmpty                   = errors.New("smRpDa: present wire LMSI has no octets; presence cannot round-trip through HexBytes")
 	ErrSmRpOaMSISDNDecodedEmpty                 = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpOaServiceCentreAddressOADecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
 

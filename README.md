@@ -79,7 +79,8 @@ What that means for a consumer:
 
 **Dependencies and errors**
 
-- The main branch requires the current `go-asn1`, `go-sms`, `go-tbcd`, `go-gad` and `go-3gpp-identity` modules. The MAP codec uses `ber` from `github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber`. Codec-enforced ASN.1 sizes (including SEQUENCE OF elements and named BIT STRINGs), integer ranges, non-extensible ENUMERATED sets and 3GPP TS 29.002 V19.1.0 §17.1.1 protocol rules return `*ber.ValidationError`; inspect them with `errors.As`. Those found while decoding octets, by `Parse` or by `Marshal` in the opaque PDP-ContextInfo and PagingArea entries, are wrapped in `*ber.ElementError`, which locates the failing element; those found while encoding a typed value are not. These errors also wrap `ber.ErrInvalidValue`, so check `ValidationError` before using `errors.Is(err, ber.ErrInvalidValue)` to identify other invalid representations. A BIT STRING whose octet count disagrees with its bit length also wraps `ber.ErrInvalidValue`, and this representation error takes precedence over a SIZE violation. Only the unnamed BIT STRINGs, `CsgID`/`CsgIDBits` and `AdditionalInfo`/`AdditionalInfoBits`, can be built that way. The underlying codec's `ber.WithTolerance(&log)` records violations in a `ber.ViolationLog`; gsmmap entry points remain strict. Every other ASN.1 decode failure in `Parse` is also wrapped in `*ber.ElementError` and matches one `ber` sentinel. It is `ber.ErrUnexpectedElement` for a well-formed element the MAP ASN.1 does not admit at its position (a wrong tag, or a missing, extra or misplaced component). It is also `ber.ErrUnexpectedElement` when an open value, such as a vendor extType, holds an EXTERNAL, EMBEDDED PDV or CHARACTER STRING whose explicit `[0]` (the EXTERNAL's `single-ASN1-type`, the others' `identification`) contains no value or more than one (ITU-T X.690 (02/2021) §8.14.3), or whose components are not those of its associated sequence type, once each and in order (X.680 (02/2021) §§36.5, 37.5, 44.5; X.690 §§8.17.1, 8.18.1, 8.24.1): an EXTERNAL's optional direct reference, indirect reference and descriptor followed by one encoding, an EMBEDDED PDV's or CHARACTER STRING's `identification` alternative `[0]` to `[5]` followed by one `data-value` or `string-value`, with no `data-value-descriptor`. An EXTERNAL without a direct or indirect reference (X.690 §8.18.4) and an identification alternative or arbitrary BIT STRING whose contents violate X.690, such as a non-minimal `presentation-context-id`, an empty OBJECT IDENTIFIER or BIT STRING or a NULL with contents, are refused with `ber.ErrInvalidValue`. Otherwise it is the sentinel of the X.690 violation, such as `ber.ErrTruncated`, `ber.ErrInvalidLength`, `ber.ErrInvalidTag` or, for octets after the complete value, `ber.ErrExtraData`. Package semantic checks return named `Err*` sentinels (`errors.Is`).
+- `ParseSriSm`, `ParseMoFsm` and `ParseMtFsm` take an optional `...ParseOption` parameter. Calls without options remain strict. A function value of the former `func([]byte) (*T, error)` type needs a wrapper, for example `func(data []byte) (*gsmmap.SriSm, error) { return gsmmap.ParseSriSm(data) }`. See [Tolerant decoding](#tolerant-decoding).
+- The main branch requires the current `go-asn1`, `go-sms`, `go-tbcd`, `go-gad` and `go-3gpp-identity` modules. The MAP codec uses `ber` from `github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber`. Codec-enforced ASN.1 sizes (including SEQUENCE OF elements and named BIT STRINGs), integer ranges, non-extensible ENUMERATED sets and 3GPP TS 29.002 V19.1.0 §17.1.1 protocol rules return `*ber.ValidationError`; inspect them with `errors.As`. Those found while decoding octets, by `Parse` or by `Marshal` in the opaque PDP-ContextInfo and PagingArea entries, are wrapped in `*ber.ElementError`, which locates the failing element; those found while encoding a typed value are not. These errors also wrap `ber.ErrInvalidValue`, so check `ValidationError` before using `errors.Is(err, ber.ErrInvalidValue)` to identify other invalid representations. A BIT STRING whose octet count disagrees with its bit length also wraps `ber.ErrInvalidValue`, and this representation error takes precedence over a SIZE violation. Only the unnamed BIT STRINGs, `CsgID`/`CsgIDBits` and `AdditionalInfo`/`AdditionalInfoBits`, can be built that way. The underlying codec's `ber.WithTolerance(&log)` records violations in a `ber.ViolationLog`; gsmmap entry points are strict by default. Every other ASN.1 decode failure in `Parse` is also wrapped in `*ber.ElementError` and matches one `ber` sentinel. It is `ber.ErrUnexpectedElement` for a well-formed element the MAP ASN.1 does not admit at its position (a wrong tag, or a missing, extra or misplaced component). It is also `ber.ErrUnexpectedElement` when an open value, such as a vendor extType, holds an EXTERNAL, EMBEDDED PDV or CHARACTER STRING whose explicit `[0]` (the EXTERNAL's `single-ASN1-type`, the others' `identification`) contains no value or more than one (ITU-T X.690 (02/2021) §8.14.3), or whose components are not those of its associated sequence type, once each and in order (X.680 (02/2021) §§36.5, 37.5, 44.5; X.690 §§8.17.1, 8.18.1, 8.24.1): an EXTERNAL's optional direct reference, indirect reference and descriptor followed by one encoding, an EMBEDDED PDV's or CHARACTER STRING's `identification` alternative `[0]` to `[5]` followed by one `data-value` or `string-value`, with no `data-value-descriptor`. An EXTERNAL without a direct or indirect reference (X.690 §8.18.4) and an identification alternative or arbitrary BIT STRING whose contents violate X.690, such as a non-minimal `presentation-context-id`, an empty OBJECT IDENTIFIER or BIT STRING or a NULL with contents, are refused with `ber.ErrInvalidValue`. Otherwise it is the sentinel of the X.690 violation, such as `ber.ErrTruncated`, `ber.ErrInvalidLength`, `ber.ErrInvalidTag` or, for octets after the complete value, `ber.ErrExtraData`. Package semantic checks return named `Err*` sentinels (`errors.Is`).
 - Removed constraint and bounds sentinels include `ErrSaiInvalidPLMNId`, `ErrIntervalTimeOutOfRange`, `ErrGPRSDataListSize`, and `ErrUtranBaroPressureMeasOutOfRange`. Sender rules retain dedicated sentinels for restrictions narrower than the ASN.1 constraints.
 - Element-size sentinels from v1.0.2 replaced by `*ber.ValidationError`: `ErrCamelInvalidCauseValueOctetLength`, `ErrZoneCodeInvalidSize`, `ErrAPNInvalidSize`, `ErrResetIdInvalidSize`, `ErrIsdBearerServiceCodeSize`, `ErrIsdTeleserviceCodeSize`, `ErrIsdResSsListSize`, `ErrMMCodeInvalidSize`.
 - Non-extensible ENUMERATED sentinels from v1.0.2 replaced by `*ber.ValidationError`: `ErrSriInvalidInterrogationType`, `ErrAscInvalidSmsGmscAlertEvent`, `ErrCamelInvalidCallTypeCriteria`, `ErrCamelInvalidMatchType`, `ErrIntraCUGOptionsInvalidValue`, `ErrCliRestrictionOptionInvalidValue`, `ErrOverrideCategoryInvalidValue`, `ErrSIPTOPermissionInvalid`, `ErrSIPTOLocalNetworkPermissionInvalid`, `ErrLIPAPermissionInvalid`, `ErrNIDDMechanismInvalid`, `ErrLSAOnlyAccessIndicatorInvalid`, `ErrPDNGWAllocationTypeInvalid`, `ErrPDNConnectionContinuityInvalid`, `ErrWLANOffloadabilityIndicationInvalid`, `ErrReportSMDeliveryStatusOutcomeInvalid`.
@@ -201,6 +202,46 @@ if err != nil {
 fmt.Println(mtFsm.SmRpDa.IMSI) // "001010123456789" when SM-RP-DA is an IMSI
 // mtFsm.TPDU contains the decoded SMS TPDU
 ```
+
+### Tolerant decoding
+
+`ParseSriSm`, `ParseMoFsm` and `ParseMtFsm` accept `WithTolerance(&violations)`.
+It uses go-asn1's `ber.WithTolerance` policy for representable constraint and
+protocol-rule violations, including the BER forms restricted by 3GPP TS 29.002
+V19.1.0 §17.1.1. `Violation`, `ViolationKind`, `ViolationKindASN1Constraint` and
+`ViolationKindProtocolRule` expose its reports without a go-asn1 import.
+
+```go
+// SRI-SM with a 10-octet msisdn holding 17 synthetic digits.
+data, err := hex.DecodeString("3018800a912143658709214365f78101008207912143658709f1")
+if err != nil {
+    log.Fatal(err)
+}
+var violations []gsmmap.Violation
+sriSm, err := gsmmap.ParseSriSm(data, gsmmap.WithTolerance(&violations))
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(sriSm.MSISDN) // 12345678901234567
+for _, violation := range violations {
+    fmt.Println(violation.Path, violation.Constraint) // msisdn SIZE (1..9)
+}
+```
+
+Parse appends reports to the supplied slice only when decoding and conversion
+both succeed; an error leaves its existing contents intact. Calls running at the
+same time need separate slices. A nil option, a nil
+slice pointer or a second `WithTolerance` returns `ErrParseOptionInvalid` before
+decoding. The package's own rules still apply: digitless addresses, an LMSI with no
+octets (`ErrSmRpDaLMSIDecodedEmpty`), identities rejected by TS 23.003 checks,
+and TPDUs go-sms cannot decode still fail. Addresses
+that the public types can represent retain all received digits, even beyond the
+ASN.1 SIZE (TS 29.002 V19.1.0 §§17.7.6, 17.7.8).
+
+Marshal stays strict: the codec refuses values that violate its constraints on
+encode. An empty sm-RP-SMEA, smDeliveryStartTime or maximumRetransmissionTime,
+whose SIZE excludes zero octets, reads as absent (nil), so it is not sent. A
+tolerated §17.1.1 BER form marshals in canonical form.
 
 ### Build and marshal MAP data
 

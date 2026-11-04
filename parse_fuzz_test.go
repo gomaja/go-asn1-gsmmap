@@ -36,16 +36,21 @@ func asParser[T any](parse func([]byte) (*T, error)) func([]byte) (marshaler, er
 	}
 }
 
+// withoutParseOptions adapts an optional parser to the strict function type.
+func withoutParseOptions[T any](parse func([]byte, ...ParseOption) (*T, error)) func([]byte) (*T, error) {
+	return func(data []byte) (*T, error) { return parse(data) }
+}
+
 // parsers lists every exported Parse function of the package.
 var parsers = []struct {
 	name  string
 	parse func([]byte) (marshaler, error)
 }{
-	{"SriSm", asParser(ParseSriSm)},
+	{"SriSm", asParser(withoutParseOptions(ParseSriSm))},
 	{"SriSmRes", asParser(ParseSriSmRes)},
-	{"MtFsm", asParser(ParseMtFsm)},
+	{"MtFsm", asParser(withoutParseOptions(ParseMtFsm))},
 	{"MtFsmRes", asParser(ParseMtFsmRes)},
-	{"MoFsm", asParser(ParseMoFsm)},
+	{"MoFsm", asParser(withoutParseOptions(ParseMoFsm))},
 	{"MoFsmRes", asParser(ParseMoFsmRes)},
 	{"UpdateLocation", asParser(ParseUpdateLocation)},
 	{"UpdateLocationRes", asParser(ParseUpdateLocationRes)},
@@ -97,7 +102,7 @@ func TestParsersCoverEveryParseFunction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	names := regexp.MustCompile(`(?m)^func Parse(\w+)\(data \[\]byte\) \(\*`).FindAllSubmatch(src, -1)
+	names := regexp.MustCompile(`(?m)^func Parse(\w+)\(data \[\]byte(?:, opts \.\.\.ParseOption)?\) \(\*`).FindAllSubmatch(src, -1)
 	listed := map[string]bool{}
 	for _, p := range parsers {
 		listed[p.name] = true

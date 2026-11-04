@@ -61,7 +61,11 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 		}
 		da.IMSI = imsi
 	case gsm_map.SMRPDAChoiceLmsi:
-
+		// A present LMSI with no octets would select no alternative. The codec
+		// checks SIZE (4) (3GPP TS 29.002 V19.1.0 §17.7.8) unless Parse tolerates it.
+		if len(*w.Lmsi) == 0 {
+			return nil, fmt.Errorf("decoding SmRpDa LMSI: %w", ErrSmRpDaLMSIDecodedEmpty)
+		}
 		da.LMSI = HexBytes(*w.Lmsi)
 	case gsm_map.SMRPDAChoiceServiceCentreAddressDA:
 		sca, nature, plan, err := decodeAddressWithDigits(*w.ServiceCentreAddressDA, ErrSmRpDaServiceCentreAddressDADecodedEmpty)

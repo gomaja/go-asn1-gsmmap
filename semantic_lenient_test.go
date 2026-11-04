@@ -131,7 +131,7 @@ func semLenientCases() []semLenientCase {
 			w.SmsRegisterRequest = &r
 			return w
 		}},
-		{ErrSMDeliveryNotIntendedInvalid, asParser(ParseSriSm), func(t *testing.T) semWire {
+		{ErrSMDeliveryNotIntendedInvalid, asParser(withoutParseOptions(ParseSriSm)), func(t *testing.T) semWire {
 			w := semMust(convertSriSmToArg(&SriSm{MSISDN: "31612345678", ServiceCentreAddress: "31611111111"}))
 			n := gsm_map.SMDeliveryNotIntended(2)
 			w.SmDeliveryNotIntended = &n

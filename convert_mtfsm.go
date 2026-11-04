@@ -112,10 +112,14 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 	// Optional fields (post-extension marker).
 	if arg.SmDeliveryTimer != nil {
 		v := int(*arg.SmDeliveryTimer)
-
+		if int64(v) != *arg.SmDeliveryTimer {
+			return nil, fmt.Errorf("decoding SmDeliveryTimer: %w: %d", ErrIntOverflow, *arg.SmDeliveryTimer)
+		}
 		mtFsm.SmDeliveryTimer = &v
 	}
-	if arg.SmDeliveryStartTime != nil {
+	// Time has SIZE (4) (3GPP TS 29.002 V19.1.0 §17.7.8); an empty one, which
+	// only a tolerant Parse admits, reads as absent.
+	if arg.SmDeliveryStartTime != nil && len(*arg.SmDeliveryStartTime) > 0 {
 		mtFsm.SmDeliveryStartTime = HexBytes(*arg.SmDeliveryStartTime)
 	}
 	mtFsm.SmsOverIPOnlyIndicator = nullPtrToBool(arg.SmsOverIPOnlyIndicator)
@@ -126,7 +130,7 @@ func convertArgToMtFsm(arg *gsm_map.MTForwardSMArg) (*MtFsm, error) {
 		}
 		mtFsm.CorrelationID = cid
 	}
-	if arg.MaximumRetransmissionTime != nil {
+	if arg.MaximumRetransmissionTime != nil && len(*arg.MaximumRetransmissionTime) > 0 {
 		mtFsm.MaximumRetransmissionTime = HexBytes(*arg.MaximumRetransmissionTime)
 	}
 	if arg.SmsGmscAddress != nil {

@@ -202,10 +202,10 @@ func semAddressCases() []semAddressCase {
 		}, semParse(ParseSriRes), ErrRoutingInfoRoamingNumberDecodedEmpty},
 		{"RoutingInfoForSM msisdn", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.RoutingInfoForSMArg{Msisdn: a, SmRPPRI: true, ServiceCentreAddress: semTwoDigits}
-		}, semParse(ParseSriSm), ErrSriSmMissingMSISDN},
+		}, semParse(withoutParseOptions(ParseSriSm)), ErrSriSmMissingMSISDN},
 		{"RoutingInfoForSM serviceCentreAddress", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.RoutingInfoForSMArg{Msisdn: semTwoDigits, SmRPPRI: true, ServiceCentreAddress: a}
-		}, semParse(ParseSriSm), ErrSriSmMissingServiceCentreAddress},
+		}, semParse(withoutParseOptions(ParseSriSm)), ErrSriSmMissingServiceCentreAddress},
 		{"RoutingInfoForSMRes networkNode-Number", func(_ *testing.T, a []byte) semWire {
 			return sriSmRes(a, nil, nil)
 		}, semParse(ParseSriSmRes), ErrSriSmResMissingNetworkNodeNumber},
