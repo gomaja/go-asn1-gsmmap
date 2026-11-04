@@ -351,8 +351,8 @@ func convertBitStringToBMSCEventList(bs runtime.BitString) *BMSCEventList {
 
 func convertMMEEventListToBitString(v *MMEEventList) (runtime.BitString, error) {
 	bits := []bool{
-		gsm_map.MMEEventListUeInitiatedPDNconectivityRequest:      v.UeInitiatedPDNconectivityRequest,
-		gsm_map.MMEEventListServiceRequestts:                      v.ServiceRequestts,
+		gsm_map.MMEEventListUeInitiatedPDNconectivityRequest:      v.UeInitiatedPDNConnectivityRequest,
+		gsm_map.MMEEventListServiceRequestts:                      v.ServiceRequest,
 		gsm_map.MMEEventListInitialAttachTrackingAreaUpdateDetach: v.InitialAttachTrackingAreaUpdateDetach,
 		gsm_map.MMEEventListUeInitiatedPDNdisconnection:           v.UeInitiatedPDNdisconnection,
 		gsm_map.MMEEventListBearerActivationModificationDeletion:  v.BearerActivationModificationDeletion,
@@ -364,8 +364,8 @@ func convertMMEEventListToBitString(v *MMEEventList) (runtime.BitString, error) 
 // 3GPP TS 29.002 V19.1.0 §17.7.2: "Other bits than listed above shall be discarded."
 func convertBitStringToMMEEventList(bs runtime.BitString) *MMEEventList {
 	return &MMEEventList{
-		UeInitiatedPDNconectivityRequest:      bs.Has(gsm_map.MMEEventListUeInitiatedPDNconectivityRequest),
-		ServiceRequestts:                      bs.Has(gsm_map.MMEEventListServiceRequestts),
+		UeInitiatedPDNConnectivityRequest:     bs.Has(gsm_map.MMEEventListUeInitiatedPDNconectivityRequest),
+		ServiceRequest:                        bs.Has(gsm_map.MMEEventListServiceRequestts),
 		InitialAttachTrackingAreaUpdateDetach: bs.Has(gsm_map.MMEEventListInitialAttachTrackingAreaUpdateDetach),
 		UeInitiatedPDNdisconnection:           bs.Has(gsm_map.MMEEventListUeInitiatedPDNdisconnection),
 		BearerActivationModificationDeletion:  bs.Has(gsm_map.MMEEventListBearerActivationModificationDeletion),

@@ -390,7 +390,7 @@ func traceFullArg() *ActivateTraceModeArg {
 			SgsnList: &SGSNEventList{PdpContext: true, MoMtSms: true, RauGprsAttachGprsDetach: true, MbmsContext: true},
 			GgsnList: &GGSNEventList{PdpContext: true, MbmsContext: true},
 			BmscList: &BMSCEventList{MbmsMulticastServiceActivation: true},
-			MmeList:  &MMEEventList{UeInitiatedPDNconectivityRequest: true, ServiceRequestts: true, InitialAttachTrackingAreaUpdateDetach: true, UeInitiatedPDNdisconnection: true, BearerActivationModificationDeletion: true, Handover: true},
+			MmeList:  &MMEEventList{UeInitiatedPDNConnectivityRequest: true, ServiceRequest: true, InitialAttachTrackingAreaUpdateDetach: true, UeInitiatedPDNdisconnection: true, BearerActivationModificationDeletion: true, Handover: true},
 			SgwList:  &SGWEventList{PdnConnectionCreation: true, PdnConnectionTermination: true, BearerActivationModificationDeletion: true},
 			PgwList:  &PGWEventList{PdnConnectionCreation: true, PdnConnectionTermination: true, BearerActivationModificationDeletion: true},
 		},

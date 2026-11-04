@@ -4562,8 +4562,8 @@ type BMSCEventList struct {
 // MMEEventList holds the named bits of 3GPP TS 29.002 V19.1.0 §17.7.2.
 // Other received bits are discarded.
 type MMEEventList struct {
-	UeInitiatedPDNconectivityRequest      bool
-	ServiceRequestts                      bool
+	UeInitiatedPDNConnectivityRequest     bool // ue-initiatedPDNconectivityRequest (0)
+	ServiceRequest                        bool // serviceRequestts (1)
 	InitialAttachTrackingAreaUpdateDetach bool
 	UeInitiatedPDNdisconnection           bool
 	BearerActivationModificationDeletion  bool
@@ -4589,7 +4589,7 @@ type PGWEventList struct {
 // MDTConfiguration carries MDT parameters (3GPP TS 29.002 V19.1.0 §§7.6.10.11,17.7.2).
 // The caller applies TS 32.422 coding and the conditional presence rules it defines;
 // this package checks only ASN.1 constraints and the shared PLMN digit coding.
-// Nil octets, lists and scalar pointers mean absent.
+// Empty octets and nil lists and scalar pointers mean absent.
 type MDTConfiguration struct {
 	JobType                 JobType
 	AreaScope               *AreaScope
