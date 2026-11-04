@@ -181,6 +181,33 @@ func namedBitPositions(bits []bool) []int {
 	return positions
 }
 
+// withUnknownBits appends to named the bits of unknown that lie beyond it, so
+// a named field wins over unknown at its own position.
+func withUnknownBits(named []bool, unknown HexBytes) []bool {
+	bits := make([]bool, max(len(named), len(unknown)*8))
+	copy(bits, named)
+	for i := len(named); i < len(bits); i++ {
+		bits[i] = unknown[i/8]&(0x80>>uint(i%8)) != 0
+	}
+	return bits
+}
+
+// unknownBitsFromWire returns the set bits of bs beyond its first named
+// positions, MSB first, without trailing zero octets, and nil if there are none.
+func unknownBitsFromWire(bs runtime.BitString, named int) HexBytes {
+	out := bitStringFromWire(bs)
+	for i := 0; i < named && i/8 < len(out); i++ {
+		out[i/8] &^= 0x80 >> uint(i%8)
+	}
+	for len(out) > 0 && out[len(out)-1] == 0 {
+		out = out[:len(out)-1]
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 // ODBGeneralData: 29 named bits (SIZE 15..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertODBGeneralDataToBitString(o *ODBGeneralData) (runtime.BitString, error) {
 	bits := []bool{
@@ -214,7 +241,7 @@ func convertODBGeneralDataToBitString(o *ODBGeneralData) (runtime.BitString, err
 		gsm_map.ODBGeneralDataRegistrationInterzonalCFNotToHPLMNBarred:                        o.RegistrationInterzonalCFNotToHPLMNBarred,
 		gsm_map.ODBGeneralDataRegistrationInternationalCFBarred:                               o.RegistrationInternationalCFBarred,
 	}
-	return gsm_map.NewODBGeneralData(namedBitPositions(bits)...)
+	return gsm_map.NewODBGeneralData(namedBitPositions(withUnknownBits(bits, o.UnknownBits))...)
 }
 
 func convertBitStringToODBGeneralData(bs runtime.BitString) *ODBGeneralData {
@@ -248,6 +275,7 @@ func convertBitStringToODBGeneralData(bs runtime.BitString) *ODBGeneralData {
 	o.RegistrationInterzonalCFBarred = bs.Has(gsm_map.ODBGeneralDataRegistrationInterzonalCFBarred)
 	o.RegistrationInterzonalCFNotToHPLMNBarred = bs.Has(gsm_map.ODBGeneralDataRegistrationInterzonalCFNotToHPLMNBarred)
 	o.RegistrationInternationalCFBarred = bs.Has(gsm_map.ODBGeneralDataRegistrationInternationalCFBarred)
+	o.UnknownBits = unknownBitsFromWire(bs, gsm_map.ODBGeneralDataRegistrationInternationalCFBarred+1)
 	return o
 }
 
@@ -259,7 +287,7 @@ func convertODBHPLMNDataToBitString(o *ODBHPLMNData) (runtime.BitString, error) 
 		gsm_map.ODBHPLMNDataPlmnSpecificBarringType3: o.PLMNSpecificBarringType3,
 		gsm_map.ODBHPLMNDataPlmnSpecificBarringType4: o.PLMNSpecificBarringType4,
 	}
-	return gsm_map.NewODBHPLMNData(namedBitPositions(bits)...)
+	return gsm_map.NewODBHPLMNData(namedBitPositions(withUnknownBits(bits, o.UnknownBits))...)
 }
 
 func convertBitStringToODBHPLMNData(bs runtime.BitString) *ODBHPLMNData {
@@ -268,6 +296,7 @@ func convertBitStringToODBHPLMNData(bs runtime.BitString) *ODBHPLMNData {
 		PLMNSpecificBarringType2: bs.Has(gsm_map.ODBHPLMNDataPlmnSpecificBarringType2),
 		PLMNSpecificBarringType3: bs.Has(gsm_map.ODBHPLMNDataPlmnSpecificBarringType3),
 		PLMNSpecificBarringType4: bs.Has(gsm_map.ODBHPLMNDataPlmnSpecificBarringType4),
+		UnknownBits:              unknownBitsFromWire(bs, gsm_map.ODBHPLMNDataPlmnSpecificBarringType4+1),
 	}
 }
 
@@ -301,32 +330,21 @@ func convertBitStringToAccessRestrictionData(bs runtime.BitString) *AccessRestri
 
 // ExtAccessRestrictionData: 2 named bits (SIZE 1..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 func convertExtAccessRestrictionDataToBitString(e *ExtAccessRestrictionData) (runtime.BitString, error) {
-	bits := make([]bool, max(2, len(e.UnknownBits)*8))
-	bits[gsm_map.ExtAccessRestrictionDataNrAsSecondaryRATNotAllowed], bits[gsm_map.ExtAccessRestrictionDataUnlicensedSpectrumAsSecondaryRATNotAllowed] = e.NrAsSecondaryRATNotAllowed, e.UnlicensedSpectrumAsSecondaryRATNotAllowed
-	for i := gsm_map.ExtAccessRestrictionDataUnlicensedSpectrumAsSecondaryRATNotAllowed + 1; i < len(bits); i++ {
-		bits[i] = e.UnknownBits[i/8]&(0x80>>uint(i%8)) != 0
+	bits := []bool{
+		gsm_map.ExtAccessRestrictionDataNrAsSecondaryRATNotAllowed:                 e.NrAsSecondaryRATNotAllowed,
+		gsm_map.ExtAccessRestrictionDataUnlicensedSpectrumAsSecondaryRATNotAllowed: e.UnlicensedSpectrumAsSecondaryRATNotAllowed,
 	}
-	return gsm_map.NewExtAccessRestrictionData(namedBitPositions(bits)...)
+	return gsm_map.NewExtAccessRestrictionData(namedBitPositions(withUnknownBits(bits, e.UnknownBits))...)
 }
 
 func convertBitStringToExtAccessRestrictionData(bs runtime.BitString) *ExtAccessRestrictionData {
-	out := &ExtAccessRestrictionData{
+	return &ExtAccessRestrictionData{
 		NrAsSecondaryRATNotAllowed:                 bs.Has(gsm_map.ExtAccessRestrictionDataNrAsSecondaryRATNotAllowed),
 		UnlicensedSpectrumAsSecondaryRATNotAllowed: bs.Has(gsm_map.ExtAccessRestrictionDataUnlicensedSpectrumAsSecondaryRATNotAllowed),
+		// TS 29.002 V19.1.0 §17.7.1 Ext-AccessRestrictionData allows
+		// unnamed bits within SIZE (1..32), with no receiver discard rule.
+		UnknownBits: unknownBitsFromWire(bs, gsm_map.ExtAccessRestrictionDataUnlicensedSpectrumAsSecondaryRATNotAllowed+1),
 	}
-	// TS 29.002 V19.1.0 §17.7.1 Ext-AccessRestrictionData allows
-	// unnamed bits within SIZE (1..32), with no receiver discard rule.
-	if len(bs.Bytes) > 0 {
-		out.UnknownBits = bitStringFromWire(bs)
-		out.UnknownBits[0] &^= 1<<(7-gsm_map.ExtAccessRestrictionDataNrAsSecondaryRATNotAllowed) | 1<<(7-gsm_map.ExtAccessRestrictionDataUnlicensedSpectrumAsSecondaryRATNotAllowed)
-		for len(out.UnknownBits) > 0 && out.UnknownBits[len(out.UnknownBits)-1] == 0 {
-			out.UnknownBits = out.UnknownBits[:len(out.UnknownBits)-1]
-		}
-		if len(out.UnknownBits) == 0 {
-			out.UnknownBits = nil
-		}
-	}
-	return out
 }
 
 // SupportedFeatures: 40 named bits (SIZE 26..40) per 3GPP TS 29.002 V19.1.0 §17.7.1.
@@ -425,32 +443,15 @@ func convertBitStringToSupportedFeatures(bs runtime.BitString) *SupportedFeature
 // ExtSupportedFeatures: bit 0 is named; positions 1..39 are
 // unnamed but valid (3GPP TS 29.002 V19.1.0 §17.7.1, SIZE (1..40)).
 func convertExtSupportedFeaturesToBitString(e *ExtSupportedFeatures) (runtime.BitString, error) {
-	bits := make([]bool, len(e.UnknownBits)*8)
-	if len(bits) == 0 {
-		bits = make([]bool, 1)
-	}
-	bits[gsm_map.ExtSupportedFeaturesUnlicensedSpectrumAsSecondaryRAT] = e.UnlicensedSpectrumAsSecondaryRAT
-	for i := gsm_map.ExtSupportedFeaturesUnlicensedSpectrumAsSecondaryRAT + 1; i < len(bits); i++ {
-		bits[i] = e.UnknownBits[i/8]&(0x80>>uint(i%8)) != 0
-	}
-	return gsm_map.NewExtSupportedFeatures(namedBitPositions(bits)...)
+	bits := []bool{gsm_map.ExtSupportedFeaturesUnlicensedSpectrumAsSecondaryRAT: e.UnlicensedSpectrumAsSecondaryRAT}
+	return gsm_map.NewExtSupportedFeatures(namedBitPositions(withUnknownBits(bits, e.UnknownBits))...)
 }
 
 func convertBitStringToExtSupportedFeatures(bs runtime.BitString) *ExtSupportedFeatures {
-	out := &ExtSupportedFeatures{
+	return &ExtSupportedFeatures{
 		UnlicensedSpectrumAsSecondaryRAT: bs.Has(gsm_map.ExtSupportedFeaturesUnlicensedSpectrumAsSecondaryRAT),
+		UnknownBits:                      unknownBitsFromWire(bs, gsm_map.ExtSupportedFeaturesUnlicensedSpectrumAsSecondaryRAT+1),
 	}
-	if len(bs.Bytes) > 0 {
-		out.UnknownBits = bitStringFromWire(bs)
-		out.UnknownBits[0] &^= 1 << (7 - gsm_map.ExtSupportedFeaturesUnlicensedSpectrumAsSecondaryRAT)
-		for len(out.UnknownBits) > 0 && out.UnknownBits[len(out.UnknownBits)-1] == 0 {
-			out.UnknownBits = out.UnknownBits[:len(out.UnknownBits)-1]
-		}
-		if len(out.UnknownBits) == 0 {
-			out.UnknownBits = nil
-		}
-	}
-	return out
 }
 
 // AdditionalSubscriptions: 3 named bits (SIZE 3..8) per 3GPP TS 29.002 V19.1.0 §17.7.1.

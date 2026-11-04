@@ -161,7 +161,7 @@ func TestISDBitStrings_RoundTrip(t *testing.T) {
 		{
 			name: "ODBHPLMNData/allSet",
 			encode: func() (runtime.BitString, any) {
-				in := &ODBHPLMNData{true, true, true, true}
+				in := &ODBHPLMNData{PLMNSpecificBarringType1: true, PLMNSpecificBarringType2: true, PLMNSpecificBarringType3: true, PLMNSpecificBarringType4: true}
 				bs, err := convertODBHPLMNDataToBitString(in)
 				if err != nil {
 					t.Fatal(err)
