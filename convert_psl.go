@@ -292,9 +292,9 @@ func convertLCSQoSToWire(q *LCSQoS) (*gsm_map.LCSQoS, error) {
 	return out, nil
 }
 
-func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
+func convertWireToLCSQoS(w *gsm_map.LCSQoS) *LCSQoS {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 	out := &LCSQoS{}
 	if w.HorizontalAccuracy != nil {
@@ -317,5 +317,5 @@ func convertWireToLCSQoS(w *gsm_map.LCSQoS) (*LCSQoS, error) {
 		}
 		out.LcsQosClass = &c
 	}
-	return out, nil
+	return out
 }

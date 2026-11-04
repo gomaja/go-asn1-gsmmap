@@ -257,12 +257,9 @@ func convertWireToDestinationNumberCriteria(w *gsm_map.DestinationNumberCriteria
 	if w.DestinationNumberList != nil && len(w.DestinationNumberList.Values) > 0 {
 		list := make([]ISDNNumber, len(w.DestinationNumberList.Values))
 		for i, n := range w.DestinationNumberList.Values {
-			digits, nature, plan, err := decodeAddressField(n)
+			digits, nature, plan, err := decodeAddressWithDigits(n, ErrCamelMissingDestinationNumber)
 			if err != nil {
 				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, err)
-			}
-			if digits == "" {
-				return nil, fmt.Errorf("DestinationNumberList[%d]: %w", i, ErrCamelMissingDestinationNumber)
 			}
 			list[i] = ISDNNumber{Digits: digits, Nature: nature, Plan: plan}
 		}

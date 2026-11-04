@@ -167,15 +167,15 @@ func convertPeriodicLDRInfoToWire(p *PeriodicLDRInfo) (*gsm_map.PeriodicLDRInfo,
 	}, nil
 }
 
-func convertWireToPeriodicLDRInfo(w *gsm_map.PeriodicLDRInfo) (*PeriodicLDRInfo, error) {
+func convertWireToPeriodicLDRInfo(w *gsm_map.PeriodicLDRInfo) *PeriodicLDRInfo {
 	if w == nil {
-		return nil, nil
+		return nil
 	}
 
 	return &PeriodicLDRInfo{
 		ReportingAmount:   w.ReportingAmount,
 		ReportingInterval: w.ReportingInterval,
-	}, nil
+	}
 }
 
 // ============================================================================

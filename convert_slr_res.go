@@ -11,8 +11,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-
-	"github.com/gomaja/go-asn1-gsmmap/gsn"
 )
 
 // convertSubscriberLocationReportResToWire builds the wire-form
@@ -51,13 +49,8 @@ func convertSubscriberLocationReportResToWire(r *SubscriberLocationReportRes) (*
 		out.NaESRD = &v
 	}
 	// [2] h-gmlc-Address
-	if r.HGmlcAddress != "" {
-		gsnAddr, err := gsn.Build(r.HGmlcAddress)
-		if err != nil {
-			return nil, fmt.Errorf("encoding SubscriberLocationReportRes.HGmlcAddress: %w", err)
-		}
-		v := gsnAddr
-		out.HGmlcAddress = &v
+	if err := encodeOptionalGSN(r.HGmlcAddress, "SubscriberLocationReportRes.HGmlcAddress", &out.HGmlcAddress); err != nil {
+		return nil, err
 	}
 	// [3] mo-lrShortCircuitIndicator (NULL flag)
 	out.MoLrShortCircuitIndicator = boolToNullPtr(r.MoLrShortCircuitIndicator)
@@ -119,13 +112,11 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 		out.NaESRDNature = nature
 		out.NaESRDPlan = plan
 	}
-	if w.HGmlcAddress != nil {
-		addr, err := gsn.Parse(*w.HGmlcAddress)
-		if err != nil {
-			return nil, fmt.Errorf("decoding SubscriberLocationReportRes.HGmlcAddress: %w", err)
-		}
-		out.HGmlcAddress = addr
+	addr, err := decodeOptionalGSN(w.HGmlcAddress, "SubscriberLocationReportRes.HGmlcAddress")
+	if err != nil {
+		return nil, err
 	}
+	out.HGmlcAddress = addr
 	out.MoLrShortCircuitIndicator = nullPtrToBool(w.MoLrShortCircuitIndicator)
 	if w.ReportingPLMNList != nil {
 		out.ReportingPLMNList = convertWireToReportingPLMNList(w.ReportingPLMNList)

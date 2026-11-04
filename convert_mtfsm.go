@@ -12,11 +12,11 @@ import (
 func convertMtFsmToArg(m *MtFsm) (*gsm_map.MTForwardSMArg, error) {
 	// sm-RP-DA and sm-RP-OA are non-OPTIONAL CHOICEs in MT-ForwardSM-Arg
 	// per 3GPP TS 29.002 v19.1.0 clause 17.7.6.
-	smRpDa, err := convertMtSmRpDaToWire(&m.SmRpDa)
+	smRpDa, err := convertSmRpDaToWire(&m.SmRpDa)
 	if err != nil {
 		return nil, err
 	}
-	smRpOa, err := convertMtSmRpOaToWire(&m.SmRpOa)
+	smRpOa, err := convertSmRpOaToWire(&m.SmRpOa)
 	if err != nil {
 		return nil, err
 	}

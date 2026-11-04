@@ -12,8 +12,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-
-	"github.com/gomaja/go-asn1-gsmmap/gsn"
 )
 
 // LcsEvent value bounds per 3GPP TS 29.002 V19.1.0 §17.7.13
@@ -185,13 +183,8 @@ func convertSubscriberLocationReportArgToWire(a *SubscriberLocationReportArg) (*
 	}
 	out.CellIdOrSai = cellChoice
 	// [14] h-gmlc-Address
-	if a.HGmlcAddress != "" {
-		gsnAddr, err := gsn.Build(a.HGmlcAddress)
-		if err != nil {
-			return nil, fmt.Errorf("encoding SubscriberLocationReportArg.HGmlcAddress: %w", err)
-		}
-		v := gsnAddr
-		out.HGmlcAddress = &v
+	if err := encodeOptionalGSN(a.HGmlcAddress, "SubscriberLocationReportArg.HGmlcAddress", &out.HGmlcAddress); err != nil {
+		return nil, err
 	}
 	// [15] lcsServiceTypeID
 	if a.LcsServiceTypeID != nil {
@@ -403,12 +396,8 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 	out.CellGlobalId = cgi
 	out.LAI = lai
 
-	if w.HGmlcAddress != nil {
-		addr, err := gsn.Parse(*w.HGmlcAddress)
-		if err != nil {
-			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.HGmlcAddress: %w", err)
-		}
-		out.HGmlcAddress = addr
+	if out.HGmlcAddress, err = decodeOptionalGSN(w.HGmlcAddress, "SubscriberLocationReportArg.HGmlcAddress"); err != nil {
+		return nil, err
 	}
 	if w.LcsServiceTypeID != nil {
 		v := *w.LcsServiceTypeID
@@ -430,13 +419,7 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 
 		out.SequenceNumber = &v
 	}
-	if w.PeriodicLDRInfo != nil {
-		v, err := convertWireToPeriodicLDRInfo(w.PeriodicLDRInfo)
-		if err != nil {
-			return nil, fmt.Errorf("SubscriberLocationReportArg.PeriodicLDRInfo: %w", err)
-		}
-		out.PeriodicLDRInfo = v
-	}
+	out.PeriodicLDRInfo = convertWireToPeriodicLDRInfo(w.PeriodicLDRInfo)
 	out.MoLrShortCircuitIndicator = nullPtrToBool(w.MoLrShortCircuitIndicator)
 	if w.GeranGANSSpositioningData != nil {
 		out.GeranGANSSpositioningData = GeranGANSSpositioningData(*w.GeranGANSSpositioningData)

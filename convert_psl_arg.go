@@ -11,8 +11,6 @@ import (
 	"fmt"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
-
-	"github.com/gomaja/go-asn1-gsmmap/gsn"
 )
 
 // lcsPriorityNormal is LCS-Priority 1, normal priority; 0 is the highest
@@ -148,13 +146,8 @@ func convertProvideSubscriberLocationArgToWire(a *ProvideSubscriberLocationArg) 
 		}
 		out.AreaEventInfo = v
 	}
-	if a.HGmlcAddress != "" {
-		gsnAddr, err := gsn.Build(a.HGmlcAddress)
-		if err != nil {
-			return nil, fmt.Errorf("encoding ProvideSubscriberLocationArg.HGmlcAddress: %w", err)
-		}
-		v := gsnAddr
-		out.HGmlcAddress = &v
+	if err := encodeOptionalGSN(a.HGmlcAddress, "ProvideSubscriberLocationArg.HGmlcAddress", &out.HGmlcAddress); err != nil {
+		return nil, err
 	}
 	out.MoLrShortCircuitIndicator = boolToNullPtr(a.MoLrShortCircuitIndicator)
 
@@ -286,13 +279,7 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 			out.LcsPriority = LCSPriority{lcsPriorityNormal}
 		}
 	}
-	if w.LcsQoS != nil {
-		v, err := convertWireToLCSQoS(w.LcsQoS)
-		if err != nil {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.LcsQoS: %w", err)
-		}
-		out.LcsQoS = v
-	}
+	out.LcsQoS = convertWireToLCSQoS(w.LcsQoS)
 	if w.SupportedGADShapes != nil {
 		out.SupportedGADShapes = convertBitStringToSupportedGADShapes(*w.SupportedGADShapes)
 	}
@@ -319,22 +306,12 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 			out.AreaEventInfo.OccurrenceInfo = new(OccurrenceOneTimeEvent)
 		}
 	}
-	if w.HGmlcAddress != nil {
-		addr, err := gsn.Parse(*w.HGmlcAddress)
-		if err != nil {
-			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.HGmlcAddress: %w", err)
-		}
-		out.HGmlcAddress = addr
+	if out.HGmlcAddress, err = decodeOptionalGSN(w.HGmlcAddress, "ProvideSubscriberLocationArg.HGmlcAddress"); err != nil {
+		return nil, err
 	}
 	out.MoLrShortCircuitIndicator = nullPtrToBool(w.MoLrShortCircuitIndicator)
 
-	if w.PeriodicLDRInfo != nil {
-		v, err := convertWireToPeriodicLDRInfo(w.PeriodicLDRInfo)
-		if err != nil {
-			return nil, fmt.Errorf("ProvideSubscriberLocationArg.PeriodicLDRInfo: %w", err)
-		}
-		out.PeriodicLDRInfo = v
-	}
+	out.PeriodicLDRInfo = convertWireToPeriodicLDRInfo(w.PeriodicLDRInfo)
 	if w.ReportingPLMNList != nil {
 		out.ReportingPLMNList = convertWireToReportingPLMNList(w.ReportingPLMNList)
 	}
