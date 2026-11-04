@@ -5,9 +5,10 @@
 // outcome and, for an absent subscriber, arms MNRF + the Message-Waiting
 // list so AlertServiceCentre fires when the subscriber returns. Reuses
 // the address helpers, the SriSmCorrelationID converter, the
-// AbsentSubscriberDiagnosticSM helpers (from InformServiceCentre), and
-// the NULL-flag helpers. Marshal/Parse entry points live in
-// marshal.go / parse.go.
+// AbsentSubscriberDiagnosticSM helpers (from InformServiceCentre), the
+// NetworkNodeDiameterAddress converters and the NULL-flag helpers, and
+// converts the SMServingNodeAddressList of both messages. Marshal/Parse
+// entry points live in marshal.go / parse.go.
 
 package gsmmap
 
@@ -108,6 +109,12 @@ func convertReportSMDeliveryStatusToArg(r *ReportSMDeliveryStatus) (*gsm_map.Rep
 		}
 		out.CorrelationID = cid
 	}
+	// [18] failedSMServingNodes.
+	nodes, err := convertSMServingNodeAddressListToWire(r.FailedSMServingNodes, "ReportSMDeliveryStatus.FailedSMServingNodes")
+	if err != nil {
+		return nil, err
+	}
+	out.FailedSMServingNodes = nodes
 
 	return out, nil
 }
@@ -174,6 +181,11 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 		}
 		out.CorrelationID = cid
 	}
+	nodes, err := convertWireToSMServingNodeAddressList(w.FailedSMServingNodes, "ReportSMDeliveryStatus.FailedSMServingNodes")
+	if err != nil {
+		return nil, err
+	}
+	out.FailedSMServingNodes = nodes
 
 	return out, nil
 }
@@ -195,6 +207,12 @@ func convertReportSMDeliveryStatusResToRes(r *ReportSMDeliveryStatusRes) (*gsm_m
 		v := enc
 		out.StoredMSISDN = &v
 	}
+	// [0] registeredSMServingNodes.
+	nodes, err := convertSMServingNodeAddressListToWire(r.RegisteredSMServingNodes, "ReportSMDeliveryStatusRes.RegisteredSMServingNodes")
+	if err != nil {
+		return nil, err
+	}
+	out.RegisteredSMServingNodes = nodes
 	return out, nil
 }
 
@@ -215,5 +233,97 @@ func convertResToReportSMDeliveryStatusRes(w *gsm_map.ReportSMDeliveryStatusRes)
 		out.StoredMSISDNNature = nature
 		out.StoredMSISDNPlan = plan
 	}
+	nodes, err := convertWireToSMServingNodeAddressList(w.RegisteredSMServingNodes, "ReportSMDeliveryStatusRes.RegisteredSMServingNodes")
+	if err != nil {
+		return nil, err
+	}
+	out.RegisteredSMServingNodes = nodes
 	return out, nil
+}
+
+// ============================================================================
+// SMServingNodeAddressList — 3GPP TS 29.002 V19.1.0 §17.7.6
+// ============================================================================
+
+// convertSMServingNodeAddressListToWire converts the SMServingNodeAddressList
+// field named by field. A nil list is absent; the codec enforces SEQUENCE
+// SIZE (1..5) on a present one.
+func convertSMServingNodeAddressListToWire(list []SMServingNodeAddress, field string) (*gsm_map.SMServingNodeAddressList, error) {
+	if list == nil {
+		return nil, nil
+	}
+	out := &gsm_map.SMServingNodeAddressList{Values: make([]gsm_map.SMServingNodeAddress, len(list))}
+	for i := range list {
+		v, err := convertSMServingNodeAddressToWire(&list[i])
+		if err != nil {
+			return nil, fmt.Errorf("%s[%d]: %w", field, i, err)
+		}
+		out.Values[i] = *v
+	}
+	return out, nil
+}
+
+// convertWireToSMServingNodeAddressList decodes the SMServingNodeAddressList
+// field named by field; nil when absent.
+func convertWireToSMServingNodeAddressList(w *gsm_map.SMServingNodeAddressList, field string) ([]SMServingNodeAddress, error) {
+	if w == nil {
+		return nil, nil
+	}
+	out := make([]SMServingNodeAddress, len(w.Values))
+	for i := range w.Values {
+		v, err := convertWireToSMServingNodeAddress(&w.Values[i])
+		if err != nil {
+			return nil, fmt.Errorf("%s[%d]: %w", field, i, err)
+		}
+		out[i] = *v
+	}
+	return out, nil
+}
+
+// convertSMServingNodeAddressToWire encodes the SMServingNodeAddress CHOICE:
+// exactly one of NetworkNodeNumber or DiameterAddress is set. The address
+// nature/plan and Diameter ASCII sender rules apply through the shared
+// helpers.
+func convertSMServingNodeAddressToWire(a *SMServingNodeAddress) (*gsm_map.SMServingNodeAddress, error) {
+	hasNumber := a.NetworkNodeNumber != ""
+	hasDiameter := a.DiameterAddress != nil
+	switch {
+	case hasNumber && hasDiameter:
+		return nil, ErrSMServingNodeAddressMultipleAlternatives
+	case hasNumber:
+		encoded, err := encodeAddressField(a.NetworkNodeNumber, a.NetworkNodeNumberNature, a.NetworkNodeNumberPlan)
+		if err != nil {
+			return nil, fmt.Errorf("encoding NetworkNodeNumber: %w", err)
+		}
+		v := gsm_map.NewSMServingNodeAddressNetworkNodeNumber(encoded)
+		return &v, nil
+	case hasDiameter:
+		node, err := convertNetworkNodeDiameterAddressToWire(a.DiameterAddress)
+		if err != nil {
+			return nil, fmt.Errorf("DiameterAddress: %w", err)
+		}
+		v := gsm_map.NewSMServingNodeAddressDiameterAddress(*node)
+		return &v, nil
+	default:
+		return nil, ErrSMServingNodeAddressNoAlternative
+	}
+}
+
+// convertWireToSMServingNodeAddress decodes the SMServingNodeAddress CHOICE,
+// keeping the received nature, plan and Diameter octets (3GPP TS 29.002
+// V19.1.0 §17.1.4). A networkNode-Number without digits would select
+// nothing in the public type and is rejected.
+func convertWireToSMServingNodeAddress(w *gsm_map.SMServingNodeAddress) (*SMServingNodeAddress, error) {
+	switch w.Choice {
+	case gsm_map.SMServingNodeAddressChoiceNetworkNodeNumber:
+		num, nature, plan, err := decodeAddressWithDigits(*w.NetworkNodeNumber, ErrSMServingNodeAddressNetworkNodeNumberDecodedEmpty)
+		if err != nil {
+			return nil, fmt.Errorf("decoding NetworkNodeNumber: %w", err)
+		}
+		return &SMServingNodeAddress{NetworkNodeNumber: num, NetworkNodeNumberNature: nature, NetworkNodeNumberPlan: plan}, nil
+	case gsm_map.SMServingNodeAddressChoiceDiameterAddress:
+		return &SMServingNodeAddress{DiameterAddress: convertWireToNetworkNodeDiameterAddress(w.DiameterAddress)}, nil
+	default:
+		return nil, ErrSMServingNodeAddressUnknownAlternative
+	}
 }

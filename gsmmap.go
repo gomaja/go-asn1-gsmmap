@@ -1563,6 +1563,29 @@ type AlertServiceCentre struct {
 	NewMSCNumberPlan          uint8
 }
 
+// SMServingNodeAddress is the SMServingNodeAddress CHOICE (3GPP TS 29.002
+// V19.1.0 §17.7.6): networkNode-Number [0] ISDN-AddressString or
+// diameterAddress [1] NetworkNodeDiameterAddress. It is the entry of the
+// SMServingNodeAddressList in ReportSMDeliveryStatus.FailedSMServingNodes
+// and ReportSMDeliveryStatusRes.RegisteredSMServingNodes.
+//
+// Following the existing CHOICE pattern (AdditionalNumber,
+// ServingNodeAddress), the selected alternative is inferred from which
+// field is set: empty NetworkNodeNumber digits and a nil DiameterAddress
+// mean "not selected". Set exactly one; Marshal returns
+// ErrSMServingNodeAddressNoAlternative or
+// ErrSMServingNodeAddressMultipleAlternatives otherwise, and applies the
+// address nature/plan and Diameter ASCII sender rules. Parse keeps the
+// received values (3GPP TS 29.002 V19.1.0 §17.1.4) and rejects a
+// networkNode-Number without digits, which would select nothing, with
+// ErrSMServingNodeAddressNetworkNodeNumberDecodedEmpty.
+type SMServingNodeAddress struct {
+	NetworkNodeNumber       string                      // [0] ISDN-AddressString digits; "" = alternative not selected
+	NetworkNodeNumberNature uint8                       // address nature indicator
+	NetworkNodeNumberPlan   uint8                       // numbering plan indicator
+	DiameterAddress         *NetworkNodeDiameterAddress // [1]; nil = alternative not selected
+}
+
 // ReportSMDeliveryStatus represents a ReportSM-DeliveryStatus request
 // (opCode 47) per 3GPP TS 29.002, sent from the SMS-GMSC to the HLR to
 // report the outcome of an MT-SMS delivery attempt. When SmDeliveryOutcome
@@ -1582,7 +1605,8 @@ type AlertServiceCentre struct {
 //
 // Field conventions: string addresses "" = absent (Nature/Plan default to
 // International/ISDN); *int diagnostics nil = absent; bool NULL flags
-// false = absent. ExtensionContainer (tag [1]) is opaque and not surfaced.
+// false = absent; the FailedSMServingNodes slice nil = absent.
+// ExtensionContainer (tag [1]) is opaque and not surfaced.
 type ReportSMDeliveryStatus struct {
 	// Mandatory.
 	MSISDN                     string // ISDN-AddressString digits
@@ -1617,15 +1641,32 @@ type ReportSMDeliveryStatus struct {
 	SmsfNon3gppDeliveryOutcomeIndicator     bool               // [15] NULL
 	SmsfNon3gppDeliveryOutcome              *SmDeliveryOutcome // [16]
 	SmsfNon3gppAbsentSubscriberDiagnosticSM *int               // [17] 0..255
+
+	// Optional (serving nodes). FailedSMServingNodes is the
+	// failedSMServingNodes [18] SMServingNodeAddressList of 3GPP TS 29.002
+	// V19.1.0 §17.7.6: SEQUENCE SIZE (1..5) OF SMServingNodeAddress, so
+	// Marshal and Parse reject an empty or longer list with the codec's
+	// *ber.ValidationError. It lists the serving nodes where delivery was
+	// attempted but failed; the caller sets it only if delivery of the SM
+	// was unsuccessful (§12.3.3).
+	FailedSMServingNodes []SMServingNodeAddress // [18]; nil = absent
 }
 
 // ReportSMDeliveryStatusRes represents a ReportSM-DeliveryStatus response
 // (opCode 47). StoredMSISDN, if present, is the MSISDN the HLR has on
-// record. ExtensionContainer is opaque and not surfaced.
+// record. RegisteredSMServingNodes is the registeredSMServingNodes [0]
+// SMServingNodeAddressList of 3GPP TS 29.002 V19.1.0 §17.7.6: SEQUENCE SIZE
+// (1..5) OF SMServingNodeAddress, so Marshal and Parse reject an empty or
+// longer list with the codec's *ber.ValidationError. It lists the registered
+// serving nodes where delivery has not been attempted. The caller sets it
+// only if the request carried FailedSMServingNodes and, where an SMS-Router
+// is deployed, restricts it to HPLMN serving nodes for a node outside the
+// HPLMN (§12.3.3). ExtensionContainer is opaque and not surfaced.
 type ReportSMDeliveryStatusRes struct {
-	StoredMSISDN       string // ISDN-AddressString digits; "" = absent
-	StoredMSISDNNature uint8
-	StoredMSISDNPlan   uint8
+	StoredMSISDN             string                 // ISDN-AddressString digits; "" = absent
+	StoredMSISDNNature       uint8                  // address nature indicator
+	StoredMSISDNPlan         uint8                  // numbering plan indicator
+	RegisteredSMServingNodes []SMServingNodeAddress // [0]; nil = absent
 }
 
 // InformServiceCentre represents an InformServiceCentre request (opCode 63).
@@ -4312,4 +4353,12 @@ var (
 	ErrReportSMDeliveryStatusServiceCentreAddressEmpty   = errors.New("reportSMDeliveryStatus: ServiceCentreAddress digits are mandatory on encode and decode")
 	ErrReportSMDeliveryStatusResNil                      = errors.New("reportSMDeliveryStatusRes: nil argument is not permitted")
 	ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty = errors.New("reportSMDeliveryStatusRes: present wire StoredMSISDN decoded to empty digits; presence cannot round-trip through string-based API")
+
+	// SMServingNodeAddress CHOICE (TS 29.002 §17.7.6), the entry of
+	// ReportSMDeliveryStatus.FailedSMServingNodes and
+	// ReportSMDeliveryStatusRes.RegisteredSMServingNodes.
+	ErrSMServingNodeAddressNoAlternative                 = errors.New("smServingNodeAddress: CHOICE has no alternative set; set exactly one of NetworkNodeNumber or DiameterAddress")
+	ErrSMServingNodeAddressMultipleAlternatives          = errors.New("smServingNodeAddress: CHOICE has multiple alternatives set; set exactly one of NetworkNodeNumber or DiameterAddress")
+	ErrSMServingNodeAddressUnknownAlternative            = errors.New("smServingNodeAddress: unknown CHOICE alternative")
+	ErrSMServingNodeAddressNetworkNodeNumberDecodedEmpty = errors.New("smServingNodeAddress: present wire networkNode-Number decoded to empty digits; presence cannot round-trip through string-based API")
 )
