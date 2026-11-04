@@ -460,10 +460,7 @@ func TestLCSQoSRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToLCSQoS(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToLCSQoS(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch: in=%+v out=%+v", tc.in, out)
 			}
@@ -508,9 +505,9 @@ func TestLCSQoSHorizontalAccuracyReservedBitRejected(t *testing.T) {
 		t.Errorf("want ErrHorizontalAccuracyReservedBit on encode (0xff), got %v", err)
 	}
 	w := &gsm_map.LCSQoS{HorizontalAccuracy: &gsm_map.HorizontalAccuracy{0x80}}
-	got, err := convertWireToLCSQoS(w)
-	if err != nil || !reflect.DeepEqual(got.HorizontalAccuracy, HexBytes{0x80}) {
-		t.Errorf("want received HorizontalAccuracy preserved, got %+v, %v", got, err)
+	got := convertWireToLCSQoS(w)
+	if !reflect.DeepEqual(got.HorizontalAccuracy, HexBytes{0x80}) {
+		t.Errorf("want received HorizontalAccuracy preserved, got %+v", got)
 	}
 }
 
@@ -520,9 +517,9 @@ func TestLCSQoSVerticalAccuracyReservedBitRejected(t *testing.T) {
 		t.Errorf("want ErrVerticalAccuracyReservedBit on encode, got %v", err)
 	}
 	w := &gsm_map.LCSQoS{VerticalAccuracy: &gsm_map.VerticalAccuracy{0xc0}}
-	got, err := convertWireToLCSQoS(w)
-	if err != nil || !reflect.DeepEqual(got.VerticalAccuracy, HexBytes{0xc0}) {
-		t.Errorf("want received VerticalAccuracy preserved, got %+v, %v", got, err)
+	got := convertWireToLCSQoS(w)
+	if !reflect.DeepEqual(got.VerticalAccuracy, HexBytes{0xc0}) {
+		t.Errorf("want received VerticalAccuracy preserved, got %+v", got)
 	}
 }
 
@@ -554,8 +551,9 @@ func TestLCSQoSAccuracyBoundaryAccepted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode 0x7f: %v", err)
 	}
-	if _, err := convertWireToLCSQoS(wire); err != nil {
-		t.Fatalf("decode 0x7f: %v", err)
+	got := convertWireToLCSQoS(wire)
+	if !reflect.DeepEqual(got.HorizontalAccuracy, HexBytes{0x7f}) || !reflect.DeepEqual(got.VerticalAccuracy, HexBytes{0x7f}) {
+		t.Errorf("decode 0x7f: got %+v", got)
 	}
 }
 
@@ -564,8 +562,7 @@ func TestLCSQoSNilPassesThrough(t *testing.T) {
 	if err != nil || wire != nil {
 		t.Errorf("nil → nil expected, got wire=%v err=%v", wire, err)
 	}
-	out, err := convertWireToLCSQoS(nil)
-	if err != nil || out != nil {
-		t.Errorf("nil → nil expected, got out=%v err=%v", out, err)
+	if out := convertWireToLCSQoS(nil); out != nil {
+		t.Errorf("nil → nil expected, got out=%v", out)
 	}
 }

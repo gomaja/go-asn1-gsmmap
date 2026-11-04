@@ -209,10 +209,7 @@ func TestPeriodicLDRInfoRoundTrip(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encode: %v", err)
 			}
-			out, err := convertWireToPeriodicLDRInfo(wire)
-			if err != nil {
-				t.Fatalf("decode: %v", err)
-			}
+			out := convertWireToPeriodicLDRInfo(wire)
 			if !reflect.DeepEqual(tc.in, out) {
 				t.Errorf("round-trip mismatch:\n in=%+v\nout=%+v", tc.in, out)
 			}
@@ -257,9 +254,9 @@ func TestPeriodicLDRInfoProductCapRejected(t *testing.T) {
 	}
 
 	w := &gsm_map.PeriodicLDRInfo{ReportingAmount: 1000, ReportingInterval: 10000}
-	got, err := convertWireToPeriodicLDRInfo(w)
-	if err != nil || !reflect.DeepEqual(got, in) {
-		t.Errorf("decode: want operands preserved, got %+v, %v", got, err)
+	got := convertWireToPeriodicLDRInfo(w)
+	if !reflect.DeepEqual(got, in) {
+		t.Errorf("decode: want operands preserved, got %+v", got)
 	}
 }
 
@@ -403,8 +400,8 @@ func TestPSLAreaPeriodicNilPassThrough(t *testing.T) {
 	if out := convertWireToAreaEventInfo(nil); out != nil {
 		t.Errorf("WireToAreaEventInfo nil: got out=%v", out)
 	}
-	if out, err := convertWireToPeriodicLDRInfo(nil); err != nil || out != nil {
-		t.Errorf("WireToPeriodicLDRInfo nil: got out=%v err=%v", out, err)
+	if out := convertWireToPeriodicLDRInfo(nil); out != nil {
+		t.Errorf("WireToPeriodicLDRInfo nil: got out=%v", out)
 	}
 	if out := convertWireToReportingPLMN(nil); out != nil {
 		t.Errorf("WireToReportingPLMN nil: got out=%v", out)

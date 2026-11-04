@@ -7,29 +7,9 @@ import (
 	sms "github.com/gomaja/go-sms"
 )
 
-// --- MO-ForwardSM SM-RP-DA/OA converters ---
+// --- SM-RP-DA/OA converters, shared by MO-ForwardSM and MT-ForwardSM ---
 
 func convertSmRpDaToWire(da *SmRpDa) (gsm_map.SMRPDA, error) {
-	return convertSmRpDaToWireWithErrors(
-		da,
-		ErrSmRpDaNoAlternative,
-		ErrSmRpDaMultipleAlternatives,
-	)
-}
-
-func convertMtSmRpDaToWire(da *SmRpDa) (gsm_map.SMRPDA, error) {
-	return convertSmRpDaToWireWithErrors(
-		da,
-		ErrSmRpDaNoAlternative,
-		ErrSmRpDaMultipleAlternatives,
-	)
-}
-
-func convertSmRpDaToWireWithErrors(
-	da *SmRpDa,
-	noAlternativeErr error,
-	multipleAlternativesErr error,
-) (gsm_map.SMRPDA, error) {
 	count := 0
 	if da.IMSI != "" {
 		count++
@@ -44,10 +24,10 @@ func convertSmRpDaToWireWithErrors(
 		count++
 	}
 	if count == 0 {
-		return gsm_map.SMRPDA{}, noAlternativeErr
+		return gsm_map.SMRPDA{}, ErrSmRpDaNoAlternative
 	}
 	if count > 1 {
-		return gsm_map.SMRPDA{}, multipleAlternativesErr
+		return gsm_map.SMRPDA{}, ErrSmRpDaMultipleAlternatives
 	}
 
 	switch {
@@ -103,26 +83,6 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 }
 
 func convertSmRpOaToWire(oa *SmRpOa) (gsm_map.SMRPOA, error) {
-	return convertSmRpOaToWireWithErrors(
-		oa,
-		ErrSmRpOaNoAlternative,
-		ErrSmRpOaMultipleAlternatives,
-	)
-}
-
-func convertMtSmRpOaToWire(oa *SmRpOa) (gsm_map.SMRPOA, error) {
-	return convertSmRpOaToWireWithErrors(
-		oa,
-		ErrSmRpOaNoAlternative,
-		ErrSmRpOaMultipleAlternatives,
-	)
-}
-
-func convertSmRpOaToWireWithErrors(
-	oa *SmRpOa,
-	noAlternativeErr error,
-	multipleAlternativesErr error,
-) (gsm_map.SMRPOA, error) {
 	count := 0
 	if oa.MSISDN != "" {
 		count++
@@ -134,10 +94,10 @@ func convertSmRpOaToWireWithErrors(
 		count++
 	}
 	if count == 0 {
-		return gsm_map.SMRPOA{}, noAlternativeErr
+		return gsm_map.SMRPOA{}, ErrSmRpOaNoAlternative
 	}
 	if count > 1 {
-		return gsm_map.SMRPOA{}, multipleAlternativesErr
+		return gsm_map.SMRPOA{}, ErrSmRpOaMultipleAlternatives
 	}
 
 	switch {

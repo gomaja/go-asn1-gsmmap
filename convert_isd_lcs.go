@@ -517,12 +517,9 @@ func convertWireToGMLCList(w *gsm_map.GMLCList) (GMLCList, error) {
 
 	out := make(GMLCList, len(w.Values))
 	for i, a := range w.Values {
-		s, nature, plan, err := decodeAddressField(a)
+		s, nature, plan, err := decodeAddressWithDigits(a, ErrGMLCListEntryEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("GMLCList[%d]: %w", i, err)
-		}
-		if s == "" {
-			return nil, fmt.Errorf("GMLCList[%d]: %w", i, ErrGMLCListEntryEmpty)
 		}
 		out[i] = ISDNNumber{Digits: s, Nature: nature, Plan: plan}
 	}
