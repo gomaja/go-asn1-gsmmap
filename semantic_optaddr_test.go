@@ -26,6 +26,19 @@ func semOptionalAddressCases() []semAddressCase {
 		return &v
 	}
 	return []semAddressCase{
+		// TS 29.002 V19.1.0 §17.7.6 uses an ISDN address in each list CHOICE.
+		{"ReportSMDeliveryStatus failedSMServingNodes networkNode-Number", func(t *testing.T, a []byte) semWire {
+			w := semMust(convertReportSMDeliveryStatusToArg(minimalReportSMDeliveryStatus()))
+			w.FailedSMServingNodes = &gsm_map.SMServingNodeAddressList{Values: []gsm_map.SMServingNodeAddress{gsm_map.NewSMServingNodeAddressNetworkNodeNumber(a)}}
+			return w
+		}, semParse(ParseReportSMDeliveryStatus), ErrSMServingNodeAddressNetworkNodeNumberDecodedEmpty},
+		{"ReportSMDeliveryStatusRes registeredSMServingNodes networkNode-Number", func(_ *testing.T, a []byte) semWire {
+			return &gsm_map.ReportSMDeliveryStatusRes{RegisteredSMServingNodes: &gsm_map.SMServingNodeAddressList{Values: []gsm_map.SMServingNodeAddress{gsm_map.NewSMServingNodeAddressNetworkNodeNumber(a)}}}
+		}, semParse(ParseReportSMDeliveryStatusRes), ErrSMServingNodeAddressNetworkNodeNumberDecodedEmpty},
+		{"ReportSMDeliveryStatusRes storedMSISDN", func(_ *testing.T, a []byte) semWire {
+			return &gsm_map.ReportSMDeliveryStatusRes{StoredMSISDN: ptr(a)}
+		}, semParse(ParseReportSMDeliveryStatusRes), ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty},
+
 		{"AlertServiceCentre newSGSN-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.AlertServiceCentreArg{Msisdn: semTwoDigits, ServiceCentreAddress: semTwoDigits, NewSGSNNumber: ptr(a)}
 		}, semParse(ParseAlertServiceCentre), ErrAscNewSGSNNumberDecodedEmpty},

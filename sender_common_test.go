@@ -64,6 +64,28 @@ func senderUpdateLocation() *UpdateLocation {
 
 func senderDiameterCases() []senderOctetCase {
 	return []senderOctetCase{
+		// TS 29.002 V19.1.0 §17.7.6 carries NetworkNodeDiameterAddress in each list.
+		{"ReportSMDeliveryStatus.FailedSMServingNodes.DiameterName", func(_ *testing.T, b HexBytes) marshaler {
+			v := minimalReportSMDeliveryStatus()
+			v.FailedSMServingNodes = []SMServingNodeAddress{{DiameterAddress: &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}}}
+			return v
+		}, asParser(ParseReportSMDeliveryStatus)},
+		{"ReportSMDeliveryStatus.FailedSMServingNodes.DiameterRealm", func(_ *testing.T, b HexBytes) marshaler {
+			v := minimalReportSMDeliveryStatus()
+			v.FailedSMServingNodes = []SMServingNodeAddress{{DiameterAddress: &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}}}
+			return v
+		}, asParser(ParseReportSMDeliveryStatus)},
+		{"ReportSMDeliveryStatusRes.RegisteredSMServingNodes.DiameterName", func(_ *testing.T, b HexBytes) marshaler {
+			v := &ReportSMDeliveryStatusRes{}
+			v.RegisteredSMServingNodes = []SMServingNodeAddress{{DiameterAddress: &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}}}
+			return v
+		}, asParser(ParseReportSMDeliveryStatusRes)},
+		{"ReportSMDeliveryStatusRes.RegisteredSMServingNodes.DiameterRealm", func(_ *testing.T, b HexBytes) marshaler {
+			v := &ReportSMDeliveryStatusRes{}
+			v.RegisteredSMServingNodes = []SMServingNodeAddress{{DiameterAddress: &NetworkNodeDiameterAddress{DiameterRealm: b, DiameterName: HexBytes("node.test")}}}
+			return v
+		}, asParser(ParseReportSMDeliveryStatusRes)},
+
 		{"AlertServiceCentre.SmsGmscDiameterAddress.DiameterName", func(t *testing.T, b HexBytes) marshaler {
 			v := &AlertServiceCentre{MSISDN: "1", ServiceCentreAddress: "2"}
 			v.SmsGmscDiameterAddress = &NetworkNodeDiameterAddress{DiameterName: b, DiameterRealm: HexBytes("node.test")}
