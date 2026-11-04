@@ -4136,7 +4136,7 @@ const (
 )
 
 // UESBIIu carries optional unnamed BIT STRINGs of SIZE 1..128 (§17.7.1).
-// Nil octets with a zero bit count mean absent.
+// Empty octets with a zero bit count mean absent.
 type UESBIIu struct {
 	UESBIIuA     HexBytes
 	UESBIIuABits int

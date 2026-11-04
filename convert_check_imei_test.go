@@ -50,6 +50,8 @@ func TestCheckIMEIPadding(t *testing.T) {
 	}
 	wantEqual(t, "A", HexBytes{0x80}, v.BMUEF.UESBIIuA)
 	wantEqual(t, "B", HexBytes{0}, v.BMUEF.UESBIIuB)
+	wantEqual(t, "A bits", 1, v.BMUEF.UESBIIuABits)
+	wantEqual(t, "B bits", 1, v.BMUEF.UESBIIuBBits)
 	input := &CheckIMEIRes{BMUEF: &UESBIIu{UESBIIuA: HexBytes{0xff}, UESBIIuABits: 1, UESBIIuB: HexBytes{0x7f}, UESBIIuBBits: 1}}
 	converted, err := convertCheckIMEIResToWire(input)
 	if err != nil {

@@ -102,7 +102,7 @@ What that means for a consumer:
 
 **Receiver and sender rules**
 
-- `DeleteSubscriberDataArg.Marshal` rejects compound basic service groups, reserved bearer/teleservice octets 2..5, reserved SS codes (§§17.7.5, 17.7.9, 17.7.10), an empty `SpecificCSIWithdraw` (`ErrSpecificCSIWithdrawEmpty`, §8.8.2.3), and its T-CSI bit (`ErrSpecificCSIWithdrawTCSINotApplicable`, §17.7.1). Parse ignores its bits 11..31. Parse keeps unsupported basic service and SS codes for the caller to handle, and ignores SpecificCSI bits 8 and 11..31 (§17.7.1). `DeleteSubscriberDataRes.Marshal` permits only Network Node Area Restricted and Regional Subscription Not Supported (`ErrDeleteSubscriberDataResRegionalSubscriptionResponseInvalid`, §8.8.2.3); Parse keeps the other ASN.1 values. Zone Code binary coding is not checked; the codec enforces SIZE 2. Node roles, CSS applicability, peer support, and the recommendation against sending both CAMEL withdrawal parameters are caller responsibilities.
+- `DeleteSubscriberDataArg.Marshal` rejects compound basic service groups, reserved bearer/teleservice octets 2..5, reserved SS codes (§§17.7.5, 17.7.9, 17.7.10), an empty `SpecificCSIWithdraw` (`ErrSpecificCSIWithdrawEmpty`, §8.8.2.3), and its T-CSI bit (`ErrSpecificCSIWithdrawTCSINotApplicable`, §17.7.1). Parse keeps unsupported basic service and SS codes for the caller to handle, keeps the T-CSI bit, and ignores SpecificCSI bits 11..31 (§17.7.1). `DeleteSubscriberDataRes.Marshal` permits only Network Node Area Restricted and Regional Subscription Not Supported (`ErrDeleteSubscriberDataResRegionalSubscriptionResponseInvalid`, §8.8.2.3); Parse keeps the other ASN.1 values. Zone Code binary coding is not checked; the codec enforces SIZE 2. Node roles, CSS applicability, peer support, and the recommendation against sending both CAMEL withdrawal parameters are caller responsibilities.
 - `ResetArg.Marshal` rejects `HLRList` with a CSS number (`ErrResetArgHLRListWithCSSNumber`) or with `ResetIdList` (`ErrResetArgHLRListWithResetIdList`), simultaneous insertion and deletion (`ErrResetArgSubscriptionDataConflict`), and either update without `ResetIdList` (`ErrResetArgSubscriptionDataWithoutResetIdList`, `ErrResetArgSubscriptionDataDeletionWithoutResetIdList`). Parse retains all these combinations (TS 29.002 V19.1.0 §8.10.1.3). `SendingNodeNumber` selects exactly one HLR or CSS address; Parse rejects a selected address without digits with its `ErrSendingNodeNumber*DecodedEmpty` sentinel. `HLRList` uses IMSI digit validation because HLR-Id is IMSI (§17.7.8). The caller checks Reset-ID support by both peers.
 - `CheckIMEIArg.Marshal` requires Equipment Status or BMUEF or both (`ErrCheckIMEIArgNoEquipmentInfoRequested`) and a 16-digit IMEISV when BMUEF is requested (`ErrCheckIMEIArgBMUEFRequiresIMEISV`); Parse retains those sender-invalid requests (§8.7.1.3) and discards unknown requested information bits (§17.7.1). On successful outcome, the caller includes each requested result parameter. `UESBIIu` preserves each unnamed BIT STRING's bit count and clears padding on send; the codec checks SIZE 1..128 and the non-extensible EquipmentStatus set.
 - `ReadyForSMArg` carries both independent NULL indicators and the optional four-octet `MaximumUEAvailabilityTime`. The caller sets the indicators only for a GPRS or IP-SM-GW alert, respectively (§17.7.6), and chooses the reachability timestamp (§§7.6.8.25, 12.4.3). The codec checks Time SIZE 4 and the non-extensible AlertReason set. DeleteSubscriberData and ReadyForSM results are optional; Reset has no result parameter.
@@ -579,9 +579,10 @@ _ = data // send the response bytes
 
 ### DeleteSubscriberData, Reset, CheckIMEI and ReadyForSM (opCodes 8, 37, 43, 66)
 
-The following requests use synthetic identities. The deletion and reset target
-an SGSN subscription; callers apply the node and peer restrictions documented
-on each type. Each operation has `Parse<Type>` and `Marshal` entry points.
+The following requests use synthetic identities. This deletion and reset
+withdraw GPRS subscription data; the operations also cover the other node roles
+and restart cases documented on each type, whose restrictions the caller
+applies. Each operation has `Parse<Type>` and `Marshal` entry points.
 
 ```go
 deleteArg := &gsmmap.DeleteSubscriberDataArg{
