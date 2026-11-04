@@ -235,6 +235,24 @@ func TestReceiverODBGeneralUnknownBits(t *testing.T) {
 			want: ODBGeneralData{RegistrationInternationalCFBarred: true},
 		},
 		{
+			name: "padding-bits-are-not-unknown-bits",
+			arg:  "3009a80703050300000007", res: "300784050300000007",
+			sentArg: "3007a8050303010000", sentRes: "30058403010000",
+			want: ODBGeneralData{},
+		},
+		{
+			name: "shortest-size",
+			arg:  "3007a8050303018000", res: "30058403018000",
+			sentArg: "3007a8050303018000", sentRes: "30058403018000",
+			want: ODBGeneralData{AllOGCallsBarred: true},
+		},
+		{
+			name: "zero-bits-beyond-size",
+			arg:  "300aa8080306008000000000", res: "30088406008000000000",
+			sentArg: "3007a8050303018000", sentRes: "30058403018000",
+			want: ODBGeneralData{AllOGCallsBarred: true},
+		},
+		{
 			name: "none",
 			arg:  "3009a80703050000000000", res: "300784050000000000",
 			sentArg: "3007a8050303010000", sentRes: "30058403010000",
@@ -303,6 +321,8 @@ func TestReceiverODBHPLMNUnknownBits(t *testing.T) {
 		{"only-last-unknown", "300ea80c030301000003050000000001", "300ea80c030301000003050000000001", ODBHPLMNData{UnknownBits: HexBytes{0, 0, 0, 1}}},
 		{"named-and-unknown", "300ea80c030301000003050098000001", "300ea80c030301000003050098000001", ODBHPLMNData{PLMNSpecificBarringType1: true, PLMNSpecificBarringType4: true, UnknownBits: HexBytes{8, 0, 0, 1}}},
 		{"named-only-trailing-zero-octets", "300ea80c030301000003050090000000", "300ba809030301000003020490", ODBHPLMNData{PLMNSpecificBarringType1: true, PLMNSpecificBarringType4: true}},
+		{"padding-bits-are-not-unknown-bits", "300ea80c03030100000305040000000f", "300ba809030301000003020400", ODBHPLMNData{}},
+		{"zero-bits-beyond-size", "300fa80d03030100000306009000000000", "300ba809030301000003020490", ODBHPLMNData{PLMNSpecificBarringType1: true, PLMNSpecificBarringType4: true}},
 		{"none", "300ea80c030301000003050000000000", "300ba809030301000003020400", ODBHPLMNData{}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -325,6 +345,25 @@ func TestReceiverODBHPLMNUnknownBits(t *testing.T) {
 				t.Fatal(err)
 			}
 			wantEqual(t, "reparsed ODBData", got.OdbData, again.OdbData)
+		})
+	}
+}
+
+// A set bit beyond 31 violates the SIZE of both types (TS 29.002 V19.1.0
+// §17.7.1), so these messages never reach UnknownBits.
+func TestReceiverODBBitBeyondSize(t *testing.T) {
+	for _, tc := range []struct {
+		name, wire string
+		parse      func([]byte) error
+	}{
+		{"General in the argument", "300aa8080306008000000080", func(b []byte) error { _, err := ParseInsertSubscriberData(b); return err }},
+		{"General in the result", "30088406008000000080", func(b []byte) error { _, err := ParseInsertSubscriberDataRes(b); return err }},
+		{"HPLMN in the argument", "300fa80d03030100000306000000000080", func(b []byte) error { _, err := ParseInsertSubscriberData(b); return err }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.parse(mustHex(t, tc.wire)); !errors.Is(err, ber.ErrInvalidValue) {
+				t.Errorf("err = %v, want %v", err, ber.ErrInvalidValue)
+			}
 		})
 	}
 }
