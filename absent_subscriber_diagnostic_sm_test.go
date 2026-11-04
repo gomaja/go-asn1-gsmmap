@@ -32,7 +32,11 @@ func TestAbsentSubscriberDiagnosticSMString(t *testing.T) {
 		{AbsentSubscriberDiagnosticMsPurgedForGPRS, "msPurged-ForGPRS"},
 		{AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheMSC, "unidentifiedSubscriberViaTheMSC"},
 		{AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheSGSN, "unidentifiedSubscriberViaTheSGSN"},
+		{AbsentSubscriberDiagnosticDeregisteredInTheHSSHLRForIMS, "deregisteredInTheHSS-HLR-ForIMS"},
+		{AbsentSubscriberDiagnosticNoResponseViaTheIPSMGW, "noResponseViaTheIP-SM-GW"},
+		{AbsentSubscriberDiagnosticMsTemporarilyUnavailable, "msTemporarilyUnavailable"},
 		// Out-of-set values map to "unknown" without rejection.
+		{AbsentSubscriberDiagnosticSM(14), "unknown"},
 		{AbsentSubscriberDiagnosticSM(99), "unknown"},
 		{AbsentSubscriberDiagnosticSM(255), "unknown"},
 	}
@@ -62,6 +66,9 @@ func TestAbsentSubscriberDiagnosticSMValues(t *testing.T) {
 		{"MsPurgedForGPRS", AbsentSubscriberDiagnosticMsPurgedForGPRS, 8},
 		{"UnidentifiedSubscriberViaTheMSC", AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheMSC, 9},
 		{"UnidentifiedSubscriberViaTheSGSN", AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheSGSN, 10},
+		{"DeregisteredInTheHSSHLRForIMS", AbsentSubscriberDiagnosticDeregisteredInTheHSSHLRForIMS, 11},
+		{"NoResponseViaTheIPSMGW", AbsentSubscriberDiagnosticNoResponseViaTheIPSMGW, 12},
+		{"MsTemporarilyUnavailable", AbsentSubscriberDiagnosticMsTemporarilyUnavailable, 13},
 	}
 	for _, tc := range cases {
 		if int64(tc.got) != tc.want {
@@ -75,7 +82,7 @@ func TestAbsentSubscriberDiagnosticSMValues(t *testing.T) {
 // boundary preserves the integer exactly. This test exercises the
 // cast that convertWireToAbsentSubscriberSMParam relies on.
 func TestAbsentSubscriberDiagnosticSMUpstreamCastRoundTrip(t *testing.T) {
-	for raw := int64(0); raw <= 10; raw++ {
+	for raw := int64(0); raw <= 13; raw++ {
 		upstream := raw
 		local := AbsentSubscriberDiagnosticSM(upstream)
 		back := gsm_map.AbsentSubscriberDiagnosticSM(local)

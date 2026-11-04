@@ -3202,7 +3202,8 @@ const (
 // (CallBarringCause, RoamingNotAllowedCause, NetworkResource, etc.).
 type AbsentSubscriberDiagnosticSM int64
 
-// AbsentSubscriberDiagnosticSM* values per 3GPP TS 23.040 §3.3.2.
+// AbsentSubscriberDiagnosticSM* values per 3GPP TS 23.040 V20.0.0 §3.3.2,
+// Table 1a.
 // Codes outside this set are valid wire values (the spec range
 // is 0..255); String() returns "unknown" for unrecognized codes
 // without rejecting them.
@@ -3218,6 +3219,9 @@ const (
 	AbsentSubscriberDiagnosticMsPurgedForGPRS                  AbsentSubscriberDiagnosticSM = 8
 	AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheMSC  AbsentSubscriberDiagnosticSM = 9
 	AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheSGSN AbsentSubscriberDiagnosticSM = 10
+	AbsentSubscriberDiagnosticDeregisteredInTheHSSHLRForIMS    AbsentSubscriberDiagnosticSM = 11
+	AbsentSubscriberDiagnosticNoResponseViaTheIPSMGW           AbsentSubscriberDiagnosticSM = 12
+	AbsentSubscriberDiagnosticMsTemporarilyUnavailable         AbsentSubscriberDiagnosticSM = 13
 )
 
 // String returns the spec value name for known diagnostic codes per
@@ -3248,6 +3252,12 @@ func (v AbsentSubscriberDiagnosticSM) String() string {
 		return "unidentifiedSubscriberViaTheMSC"
 	case AbsentSubscriberDiagnosticUnidentifiedSubscriberViaTheSGSN:
 		return "unidentifiedSubscriberViaTheSGSN"
+	case AbsentSubscriberDiagnosticDeregisteredInTheHSSHLRForIMS:
+		return "deregisteredInTheHSS-HLR-ForIMS"
+	case AbsentSubscriberDiagnosticNoResponseViaTheIPSMGW:
+		return "noResponseViaTheIP-SM-GW"
+	case AbsentSubscriberDiagnosticMsTemporarilyUnavailable:
+		return "msTemporarilyUnavailable"
 	default:
 		return "unknown"
 	}
