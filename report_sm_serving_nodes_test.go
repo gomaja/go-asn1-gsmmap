@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-tbcd"
 )
 
 func servingReportArg(nodes []SMServingNodeAddress) *ReportSMDeliveryStatus {
@@ -314,6 +315,32 @@ func TestReportSMServingNodesDigitlessWire(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// TS 29.002 V19.1.0 §17.7.8: a digit after a filler is not TBCD. Parse refuses
+// it for a list entry as for every other address, naming the entry, rather than
+// returning a shorter number.
+func TestReportSMServingNodesMalformedTBCD(t *testing.T) {
+	for _, tc := range servingNodeCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			wire := &gsm_map.SMServingNodeAddressList{Values: []gsm_map.SMServingNodeAddress{
+				gsm_map.NewSMServingNodeAddressNetworkNodeNumber([]byte{0x91, 0x21}),
+				gsm_map.NewSMServingNodeAddressNetworkNodeNumber([]byte{0x91, 0xf1, 0x21}),
+			}}
+			nodes, err := tc.fromWire(wire)
+			if nodes != nil || !errors.Is(err, tbcd.ErrMisplacedFiller) || !strings.Contains(err.Error(), "[1]") {
+				t.Fatalf("converter = %#v, %v; want nil, indexed %v", nodes, err, tbcd.ErrMisplacedFiller)
+			}
+			data, err := tc.wire(wire).MarshalBER()
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := tc.parse(data)
+			if got != nil || !errors.Is(err, tbcd.ErrMisplacedFiller) {
+				t.Fatalf("Parse = %#v, %v; want nil, %v", got, err, tbcd.ErrMisplacedFiller)
+			}
+		})
 	}
 }
 
