@@ -3284,6 +3284,12 @@ func (v AbsentSubscriberDiagnosticSM) String() string {
 // declared above (with String() per TS 23.040 §3.3.2) — distinct from
 // the bare int64 alias on the upstream gsm_map.AbsentSubscriberDiagnosticSM
 // type. Conversion happens in convertWireToAbsentSubscriberSMParam.
+// 3GPP TS 29.002 V19.1.0 §17.7.7: "when sent from HLR to IP-SM-GW, IMSI
+// shall be present if UNRI is not set to indicate that the absent condition
+// is met for CS and PS but not for IMS". The caller enforces this rule.
+// The caller interprets the diagnostics per the same clause: "if received,
+// additionalAbsentSubscriberDiagnosticSM is for GPRS and absentSubscriberDiagnosticSM
+// is for non-GPRS". Without the additional diagnostic, the primary can be for either.
 type AbsentSubscriberSMParam struct {
 	AbsentSubscriberDiagnosticSM           *AbsentSubscriberDiagnosticSM // untagged
 	AdditionalAbsentSubscriberDiagnosticSM *AbsentSubscriberDiagnosticSM // [0]
@@ -3305,6 +3311,8 @@ const (
 // Returned with errorCode 1 (unknownSubscriber). The diagnostic
 // distinguishes "we never had this MSISDN" from "this MSISDN is not
 // provisioned for the queried service".
+// The caller observes 3GPP TS 29.002 V19.1.0 §17.6.6: "UnknownSubscriberParam
+// must not be used in version <3".
 type UnknownSubscriberParam struct {
 	UnknownSubscriberDiagnostic *UnknownSubscriberDiagnostic
 }
@@ -3321,6 +3329,10 @@ const (
 // Returned with errorCode 13 (callBarred). The CHOICE is between a
 // bare CallBarringCause and the extensible variant. Decode populates
 // exactly one of CallBarringCause or ExtensibleCallBarredParam.
+// The application context selects the alternative (3GPP TS 29.002 V19.1.0
+// §17.1.4): "Operations used in a v2-application-context must consider only
+// the first alternative while operations used in a vn-application-context
+// (n>2) must consider only the second alternative." The caller applies it.
 type CallBarredParam struct {
 	CallBarringCause          *CallBarringCause          // bare alternative
 	ExtensibleCallBarredParam *ExtensibleCallBarredParam // extensible alternative
@@ -3355,6 +3367,10 @@ const (
 // exactly one of NetworkResource or ExtensibleSystemFailureParam.
 // NetworkResource is not extensible: Parse rejects a value other than plmn(0)
 // to rss(7) in either alternative with the codec's *ber.ValidationError.
+// The application context selects the alternative (3GPP TS 29.002 V19.1.0
+// §17.1.4): "Operations used in a v2-application-context must consider only
+// the first alternative while operations used in a vn-application-context
+// (n>2) must consider only the second alternative." The caller applies it.
 type SystemFailureParam struct {
 	NetworkResource              *NetworkResource              // bare alternative
 	ExtensibleSystemFailureParam *ExtensibleSystemFailureParam // extensible alternative
@@ -3423,13 +3439,14 @@ type RoamingNotAllowedParam struct {
 // UnauthorizedRequestingNetworkParam (SEQUENCE) per TS 29.002
 // §17.7.7. Returned with errorCode 52
 // (unauthorizedRequestingNetwork). Carries only ExtensionContainer
-// in the spec; the public type is empty (placeholder for opaque
-// pass-through callers).
+// in the spec; the public type is empty. Marshal encodes an empty SEQUENCE.
 type UnauthorizedRequestingNetworkParam struct{}
 
 // FacilityNotSupParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 21 (facilityNotSupported). Optional
 // indicators identify which sub-facility is unsupported.
+// The caller observes 3GPP TS 29.002 V19.1.0 §17.6.6: "FacilityNotSupParam
+// must not be used in version <3".
 type FacilityNotSupParam struct {
 	ShapeOfLocationEstimateNotSupported          bool // [0] NULL flag
 	NeededLcsCapabilityNotSupportedInServingNode bool // [1] NULL flag
@@ -3438,11 +3455,15 @@ type FacilityNotSupParam struct {
 // TeleservNotProvParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 11 (teleserviceNotProvisioned). Carries
 // only ExtensionContainer in the spec; the public type is empty.
+// The caller observes 3GPP TS 29.002 V19.1.0 §17.6.6: "TeleservNotProvParam
+// must not be used in version <3".
 type TeleservNotProvParam struct{}
 
 // DataMissingParam (SEQUENCE) per TS 29.002 §17.7.7.
 // Returned with errorCode 35 (dataMissing). Carries only
 // ExtensionContainer in the spec; the public type is empty.
+// The caller observes 3GPP TS 29.002 V19.1.0 §17.6.6: "DataMissingParam
+// must not be used in version <3".
 type DataMissingParam struct{}
 
 // AbsentSubscriberReason is extensible (3GPP TS 29.002 V19.1.0 §17.7.7).
@@ -3465,6 +3486,8 @@ const (
 // A caller forwarding a ProvideRoamingNumber response into a SendRoutingInfo
 // response maps purgedMS (3) to imsiDetach (0)
 // (3GPP TS 29.002 V19.1.0 §17.7.7).
+// The caller observes 3GPP TS 29.002 V19.1.0 §17.6.6: "AbsentSubscriberParam
+// must not be used in version <3".
 type AbsentSubscriberParam struct {
 	AbsentSubscriberReason *AbsentSubscriberReason // [0]
 }
@@ -3473,16 +3496,25 @@ type AbsentSubscriberParam struct {
 // errorCode 9 (illegalSubscriber), e.g. by unstructuredSS-Request and
 // unstructuredSS-Notify when the MS failed authentication (§11.10.3).
 // Carries only ExtensionContainer in the spec; the public type is empty.
+// The caller observes 3GPP TS 29.002 V19.1.0 §17.6.6: "IllegalSubscriberParam
+// must not be used in version <3".
 type IllegalSubscriberParam struct{}
 
 // IllegalEquipmentParam (SEQUENCE) per TS 29.002 §17.7.7. Returned with
 // errorCode 12 (illegalEquipment). Carries only ExtensionContainer in the
 // spec; the public type is empty.
+// The caller observes 3GPP TS 29.002 V19.1.0 §17.6.6: "IllegalEquipmentParam
+// must not be used in version <3".
 type IllegalEquipmentParam struct{}
 
 // UnexpectedDataParam (SEQUENCE) per TS 29.002 §17.7.7. Returned with
 // errorCode 36 (unexpectedDataValue), e.g. by the USSD operations when the
 // responder cannot deal with the contents of the USSD string (§11.9.3).
+// The caller enforces this operation rule (3GPP TS 29.002 V19.1.0 §17.7.7):
+// "the unexpectedSubscriber indication in the unexpectedDataValue error shall
+// not be used for operations that allow the unidentifiedSubscriber error".
+// The caller observes 3GPP TS 29.002 V19.1.0 §17.6.6: "UnexpectedDataParam
+// must not be used in version <3".
 type UnexpectedDataParam struct {
 	// UnexpectedSubscriber is the unexpectedSubscriber [0] NULL indication.
 	UnexpectedSubscriber bool
@@ -3998,13 +4030,26 @@ var (
 	ErrDeferredmtLrDataLocationInfoRequiresRestart    = errors.New("deferredmt-lrData: LcsLocationInfo may be included only with TerminationCause mt-lrRestart per 3GPP TS 29.002 V19.1.0 §17.7.13")
 	ErrSLRResRoutingIdentifiersMutuallyExclusive      = errors.New("subscriberLocationReportRes: NaESRK and NaESRD are mutually exclusive per 3GPP TS 29.002 V19.1.0 §17.7.13")
 
-	ErrRoamingNotAllowedParameterMissing        = errors.New("roamingNotAllowed: mandatory parameter missing per 3GPP TS 29.002 V19.1.0 §17.1.2 and §17.6.6")
-	ErrExtGeographicalInformationInvalidData    = errors.New("lcs: received ExtGeographicalInformation is invalid data per 3GPP TS 29.002 V19.1.0 §17.7.13")
-	ErrAddGeographicalInformationInvalidData    = errors.New("lcs: received AddGeographicalInformation is invalid data without a valid ExtGeographicalInformation per 3GPP TS 29.002 V19.1.0 §17.7.13")
-	ErrVelocityEstimateInvalidData              = errors.New("lcs: received VelocityEstimate has an invalid velocity type per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8.6")
-	ErrSLRResRoutingIdentifiersReturnError      = errors.New("subscriberLocationReportRes: receipt of both NaESRK and NaESRD is treated as a return error per 3GPP TS 29.002 V19.1.0 §17.7.13")
-	ErrLocationEstimateOneOctetWithoutAdd       = errors.New("lcs: a one-octet LocationEstimate is sent only beside AddLocationEstimate, or in a deferred PSL result, per 3GPP TS 29.002 V19.1.0 §17.7.13")
-	ErrLocationEstimateShapeMismatch            = errors.New("lcs: a one-octet LocationEstimate beside AddLocationEstimate holds its type of shape per 3GPP TS 29.002 V19.1.0 §7.6.11.11")
+	ErrRoamingNotAllowedParameterMissing     = errors.New("roamingNotAllowed: mandatory parameter missing per 3GPP TS 29.002 V19.1.0 §17.1.2 and §17.6.6")
+	ErrExtGeographicalInformationInvalidData = errors.New("lcs: received ExtGeographicalInformation is invalid data per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrAddGeographicalInformationInvalidData = errors.New("lcs: received AddGeographicalInformation is invalid data without a valid ExtGeographicalInformation per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrVelocityEstimateInvalidData           = errors.New("lcs: received VelocityEstimate has an invalid velocity type per 3GPP TS 29.002 V19.1.0 §17.7.13 and 3GPP TS 23.032 V19.0.0 §8.6")
+	ErrSLRResRoutingIdentifiersReturnError   = errors.New("subscriberLocationReportRes: receipt of both NaESRK and NaESRD is treated as a return error per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrLocationEstimateOneOctetWithoutAdd    = errors.New("lcs: a one-octet LocationEstimate is sent only beside AddLocationEstimate, or in a deferred PSL result, per 3GPP TS 29.002 V19.1.0 §17.7.13")
+	ErrLocationEstimateShapeMismatch         = errors.New("lcs: a one-octet LocationEstimate beside AddLocationEstimate holds its type of shape per 3GPP TS 29.002 V19.1.0 §7.6.11.11")
+
+	ErrReturnErrorParameterNil                              = errors.New("returnErrorParameter: nil argument is not permitted")
+	ErrCallBarredParamNoAlternative                         = errors.New("callBarredParam: CHOICE has no alternative set")
+	ErrCallBarredParamMultipleAlternatives                  = errors.New("callBarredParam: CHOICE has multiple alternatives set")
+	ErrSystemFailureParamNoAlternative                      = errors.New("systemFailureParam: CHOICE has no alternative set")
+	ErrSystemFailureParamMultipleAlternatives               = errors.New("systemFailureParam: CHOICE has multiple alternatives set")
+	ErrExtensibleCallBarredParamMutuallyExclusiveIndicators = errors.New("extensibleCallBarredParam: unauthorisedMessageOriginator and anonymousCallRejection are mutually exclusive per 3GPP TS 29.002 V19.1.0 §17.7.7")
+	ErrUnknownSubscriberDiagnosticInvalid                   = errors.New("unknownSubscriberDiagnostic: must be a defined value per 3GPP TS 29.002 V19.1.0 §17.7.7")
+	ErrAdditionalNetworkResourceInvalid                     = errors.New("additionalNetworkResource: must be a defined value per 3GPP TS 29.002 V19.1.0 §17.7.8")
+	ErrFailureCauseParamInvalid                             = errors.New("failureCauseParam: must be a defined value per 3GPP TS 29.002 V19.1.0 §17.7.7")
+	ErrAbsentSubscriberReasonInvalid                        = errors.New("absentSubscriberReason: must be a defined value per 3GPP TS 29.002 V19.1.0 §17.7.7")
+	ErrAdditionalRoamingNotAllowedCauseInvalid              = errors.New("additionalRoamingNotAllowedCause: must be a defined value per 3GPP TS 29.002 V19.1.0 §17.7.7")
+
 	ErrCallBarredParamUnknownAlternative        = errors.New("callBarredParam: unknown CHOICE alternative")
 	ErrInt64Overflow                            = errors.New("integer does not fit int64")
 	ErrIntegerMissing                           = errors.New("integer value is missing")

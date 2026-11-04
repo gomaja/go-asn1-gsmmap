@@ -1,7 +1,7 @@
 // convert_map_error.go
 //
-// Converters from the gsm_map.*Param wire forms of the MAP ReturnError
-// parameters to the public diagnostic types defined in gsmmap.go. The
+// Converters between the MAP ReturnError wire parameters and the public
+// diagnostic types defined in gsmmap.go. The
 // ParseReturnErrorParameter dispatcher lives in parse_map_error.go.
 
 package gsmmap
@@ -258,4 +258,180 @@ func convertWireToUnexpectedDataParam(w *gsm_map.UnexpectedDataParam) (*Unexpect
 		return nil, nil
 	}
 	return &UnexpectedDataParam{UnexpectedSubscriber: w.UnexpectedSubscriber != nil}, nil
+}
+
+func convertAbsentSubscriberSMParamToWire(p *AbsentSubscriberSMParam) (*gsm_map.AbsentSubscriberSMParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	w := &gsm_map.AbsentSubscriberSMParam{}
+	if p.AbsentSubscriberDiagnosticSM != nil {
+		w.AbsentSubscriberDiagnosticSM = new(int64(*p.AbsentSubscriberDiagnosticSM))
+	}
+	if p.AdditionalAbsentSubscriberDiagnosticSM != nil {
+		w.AdditionalAbsentSubscriberDiagnosticSM = new(int64(*p.AdditionalAbsentSubscriberDiagnosticSM))
+	}
+	if p.IMSI != "" {
+		v, err := encodeIdentityDigits(identityIMSI, p.IMSI)
+		if err != nil {
+			return nil, fmt.Errorf("encoding AbsentSubscriberSMParam.IMSI: %w", err)
+		}
+		w.Imsi = &v
+	}
+	if len(p.RequestedRetransmissionTime) > 0 {
+		v := gsm_map.Time(p.RequestedRetransmissionTime)
+		w.RequestedRetransmissionTime = &v
+	}
+	if p.UserIdentifierAlert != "" {
+		v, err := encodeIdentityDigits(identityIMSI, p.UserIdentifierAlert)
+		if err != nil {
+			return nil, fmt.Errorf("encoding AbsentSubscriberSMParam.UserIdentifierAlert: %w", err)
+		}
+		w.UserIdentifierAlert = &v
+	}
+	return w, nil
+}
+
+func convertUnknownSubscriberParamToWire(p *UnknownSubscriberParam) (*gsm_map.UnknownSubscriberParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	// 3GPP TS 29.002 V19.1.0 §17.7.7: send only defined UnknownSubscriberDiagnostic values.
+	if v := p.UnknownSubscriberDiagnostic; v != nil {
+		switch *v {
+		case UnknownSubscriberDiagnosticImsiUnknown, UnknownSubscriberDiagnosticGprsEpsSubscriptionUnknown, UnknownSubscriberDiagnosticNpdbMismatch:
+		default:
+			return nil, ErrUnknownSubscriberDiagnosticInvalid
+		}
+	}
+	return &gsm_map.UnknownSubscriberParam{UnknownSubscriberDiagnostic: p.UnknownSubscriberDiagnostic}, nil
+}
+
+func convertCallBarredParamToWire(p *CallBarredParam) (*gsm_map.CallBarredParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	// 3GPP TS 29.002 V19.1.0 §17.7.7 CallBarredParam CHOICE.
+	if p.CallBarringCause != nil && p.ExtensibleCallBarredParam != nil {
+		return nil, ErrCallBarredParamMultipleAlternatives
+	}
+	if p.CallBarringCause != nil {
+		w := gsm_map.NewCallBarredParamCallBarringCause(*p.CallBarringCause)
+		return &w, nil
+	}
+	if p.ExtensibleCallBarredParam == nil {
+		return nil, ErrCallBarredParamNoAlternative
+	}
+	ext := p.ExtensibleCallBarredParam
+	// 3GPP TS 29.002 V19.1.0 §17.7.7: the two indications shall be mutually exclusive.
+	if ext.UnauthorisedMessageOriginator && ext.AnonymousCallRejection {
+		return nil, ErrExtensibleCallBarredParamMutuallyExclusiveIndicators
+	}
+	w := gsm_map.NewCallBarredParamExtensibleCallBarredParam(gsm_map.ExtensibleCallBarredParam{
+		CallBarringCause:              ext.CallBarringCause,
+		UnauthorisedMessageOriginator: boolToNullPtr(ext.UnauthorisedMessageOriginator),
+		AnonymousCallRejection:        boolToNullPtr(ext.AnonymousCallRejection),
+	})
+	return &w, nil
+}
+
+func convertSystemFailureParamToWire(p *SystemFailureParam) (*gsm_map.SystemFailureParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	// 3GPP TS 29.002 V19.1.0 §17.7.7 SystemFailureParam CHOICE.
+	if p.NetworkResource != nil && p.ExtensibleSystemFailureParam != nil {
+		return nil, ErrSystemFailureParamMultipleAlternatives
+	}
+	if p.NetworkResource != nil {
+		w := gsm_map.NewSystemFailureParamNetworkResource(*p.NetworkResource)
+		return &w, nil
+	}
+	if p.ExtensibleSystemFailureParam == nil {
+		return nil, ErrSystemFailureParamNoAlternative
+	}
+	ext := p.ExtensibleSystemFailureParam
+	// 3GPP TS 29.002 V19.1.0 §17.7.8: send only defined AdditionalNetworkResource values.
+	if v := ext.AdditionalNetworkResource; v != nil && (*v < AdditionalNetworkResourceSgsn || *v > AdditionalNetworkResourceMme) {
+		return nil, ErrAdditionalNetworkResourceInvalid
+	}
+	// 3GPP TS 29.002 V19.1.0 §17.7.7: send only defined FailureCauseParam values.
+	if v := ext.FailureCauseParam; v != nil && *v != FailureCauseParamLimitReachedOnNumberOfConcurrentLocationRequests {
+		return nil, ErrFailureCauseParamInvalid
+	}
+	w := gsm_map.NewSystemFailureParamExtensibleSystemFailureParam(gsm_map.ExtensibleSystemFailureParam{
+		NetworkResource: ext.NetworkResource, AdditionalNetworkResource: ext.AdditionalNetworkResource, FailureCauseParam: ext.FailureCauseParam,
+	})
+	return &w, nil
+}
+
+func convertRoamingNotAllowedParamToWire(p *RoamingNotAllowedParam) (*gsm_map.RoamingNotAllowedParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	// 3GPP TS 29.002 V19.1.0 §17.7.7: send only defined AdditionalRoamingNotAllowedCause values.
+	if v := p.AdditionalRoamingNotAllowedCause; v != nil && *v != AdditionalRoamingNotAllowedCauseSupportedRATTypesNotAllowed {
+		return nil, ErrAdditionalRoamingNotAllowedCauseInvalid
+	}
+	return &gsm_map.RoamingNotAllowedParam{RoamingNotAllowedCause: p.RoamingNotAllowedCause, AdditionalRoamingNotAllowedCause: p.AdditionalRoamingNotAllowedCause}, nil
+}
+
+func convertAbsentSubscriberParamToWire(p *AbsentSubscriberParam) (*gsm_map.AbsentSubscriberParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	// 3GPP TS 29.002 V19.1.0 §17.7.7: send only defined AbsentSubscriberReason values.
+	if v := p.AbsentSubscriberReason; v != nil && (*v < AbsentSubscriberReasonImsiDetach || *v > AbsentSubscriberReasonBusySubscriber) {
+		return nil, ErrAbsentSubscriberReasonInvalid
+	}
+	return &gsm_map.AbsentSubscriberParam{AbsentSubscriberReason: p.AbsentSubscriberReason}, nil
+}
+
+func convertUnauthorizedRequestingNetworkParamToWire(p *UnauthorizedRequestingNetworkParam) (*gsm_map.UnauthorizedRequestingNetworkParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	return &gsm_map.UnauthorizedRequestingNetworkParam{}, nil
+}
+
+func convertTeleservNotProvParamToWire(p *TeleservNotProvParam) (*gsm_map.TeleservNotProvParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	return &gsm_map.TeleservNotProvParam{}, nil
+}
+
+func convertDataMissingParamToWire(p *DataMissingParam) (*gsm_map.DataMissingParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	return &gsm_map.DataMissingParam{}, nil
+}
+
+func convertIllegalSubscriberParamToWire(p *IllegalSubscriberParam) (*gsm_map.IllegalSubscriberParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	return &gsm_map.IllegalSubscriberParam{}, nil
+}
+
+func convertIllegalEquipmentParamToWire(p *IllegalEquipmentParam) (*gsm_map.IllegalEquipmentParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	return &gsm_map.IllegalEquipmentParam{}, nil
+}
+
+func convertFacilityNotSupParamToWire(p *FacilityNotSupParam) (*gsm_map.FacilityNotSupParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	return &gsm_map.FacilityNotSupParam{ShapeOfLocationEstimateNotSupported: boolToNullPtr(p.ShapeOfLocationEstimateNotSupported), NeededLcsCapabilityNotSupportedInServingNode: boolToNullPtr(p.NeededLcsCapabilityNotSupportedInServingNode)}, nil
+}
+
+func convertUnexpectedDataParamToWire(p *UnexpectedDataParam) (*gsm_map.UnexpectedDataParam, error) {
+	if p == nil {
+		return nil, ErrReturnErrorParameterNil
+	}
+	return &gsm_map.UnexpectedDataParam{UnexpectedSubscriber: boolToNullPtr(p.UnexpectedSubscriber)}, nil
 }

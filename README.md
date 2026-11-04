@@ -30,7 +30,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **unstructuredSS-Request** (USSD) | 60 | `USSDArg` | `USSDRes` |
 | **unstructuredSS-Notify** (USSD) | 61 | `USSDArg` | — |
 
-MAP ReturnError parameters are decoded with `ParseReturnErrorParameter` (see [MAP errors](#map-errors)).
+All 13 supported MAP ReturnError parameter types have `Marshal` methods and are decoded with `ParseReturnErrorParameter` (see [MAP errors](#map-errors)).
 
 ## Install
 
@@ -119,6 +119,8 @@ What that means for a consumer:
 - `MtFsm` and `MoFsm` expose SM-RP-DA and SM-RP-OA through `SmRpDa` and `SmRpOa` CHOICE fields. Their former shorthand identity and service-centre fields, including nature/plan fields, are removed. `ErrMtFsmMissingIMSI` is gone: an `SmRpDa` with no alternative set returns `ErrSmRpDaNoAlternative`.
 - CSI types (`OCSI`, `TCSI`, `DCSI`, `SSCSI`, `MCSI`, `SMSCSI`, `GPRSCSI`, `MGCSI`) omit `NotificationToCSE` and `CsiActive`; Parse drops those wire fields. Segmented CSI and SRI presence rules that depend on other segments remain the caller's responsibility, so `ErrCamelSMSCSIMissingTDPData`, `ErrCamelSMSCSIMissingCapabilityHandling` and `ErrGPRSCSIRequiresTDPListAndPhase` are removed.
 - `RoamingNotAllowedParam` returns both causes as received. An application acting as MSC/VLR or SGSN must ignore `RoamingNotAllowedCause` when `AdditionalRoamingNotAllowedCause` is present (3GPP TS 29.002 V19.1.0 §17.7.7); other receivers keep both. `LCSQoS.LcsQosClass` decodes unrecognized values as `LCSQoSClassBestEffort`.
+- ReturnError parameter types encode with their `Marshal` methods; a nil receiver returns `ErrReturnErrorParameterNil`. CallBarredParam and SystemFailureParam require exactly one CHOICE alternative (`Err*NoAlternative`, `Err*MultipleAlternatives`). Marshal rejects conflicting call-barred NULL indicators (`ErrExtensibleCallBarredParamMutuallyExclusiveIndicators`); Parse keeps both (TS 29.002 §17.7.7).
+- ReturnError Marshal rejects undefined extensible enum values with `ErrUnknownSubscriberDiagnosticInvalid`, `ErrAdditionalNetworkResourceInvalid`, `ErrFailureCauseParamInvalid`, `ErrAbsentSubscriberReasonInvalid`, or `ErrAdditionalRoamingNotAllowedCauseInvalid`. Parse discards the first four and retains the additional roaming cause (TS 29.002 §§17.7.7–17.7.8). SMS diagnostics remain INTEGER (0..255), checked by the codec. IMSI and UserIdentifierAlert use the same identity checks as other IMSI fields; retransmission time uses the codec's SIZE (4).
 - `ParseReturnErrorParameter(MapErrorCode, []byte)` replaces the per-error `Parse*Param` functions, and `MapErrorCode(code).String()` replaces `GetErrorString(code)`.
 - `ParseReturnErrorParameter(MapErrorRoamingNotAllowed, nil)` or an empty parameter returns `ErrRoamingNotAllowedParameterMissing`; the caller constructs the TCAP mistyped-parameter reject required by TS 29.002 §17.1.2.
 - Parse preserves both CancelLocation MTRF flags, TypeOfUpdate with any CancellationType, independent PDP QoS/address extensions, repeated CAMEL TDP entries, D-CSI capability without a list, DestinationNumberCriteria without either list, both short and long group IDs, QoS accuracy high bits, and periodic reporting operands whose product exceeds the sender cap. Marshal keeps its sender restrictions.
@@ -655,6 +657,41 @@ case *gsmmap.UnexpectedDataParam:
     fmt.Println(v.UnexpectedSubscriber)
 }
 ```
+
+Encode a parameter with its type's `Marshal` method, then place the bytes and
+the matching local error code in the TCAP ReturnError component:
+
+```go
+var errorCode gsmmap.MapErrorCode = gsmmap.MapErrorSystemFailure
+var resource gsmmap.NetworkResource = gsmmap.NetworkResourceHlr
+parameterValue := &gsmmap.SystemFailureParam{
+    ExtensibleSystemFailureParam: &gsmmap.ExtensibleSystemFailureParam{
+        NetworkResource: &resource,
+    },
+}
+parameter, err := parameterValue.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Printf("ReturnError %s parameter %x\n", errorCode, parameter)
+```
+
+Each of the 13 decoded types has a `Marshal` method. Types without public
+fields encode as `3000`. To omit an optional parameter, omit its bytes in the
+component; a nil receiver returns `ErrReturnErrorParameterNil`. Only
+roamingNotAllowed requires a parameter (§17.6.6, §17.1.2).
+
+The caller supplies dialogue and operation context. A v2 application context
+uses the bare alternative of CallBarredParam and SystemFailureParam, and a
+higher version the extensible one (§17.1.4). UnknownSubscriberParam,
+IllegalSubscriberParam, IllegalEquipmentParam, TeleservNotProvParam,
+FacilityNotSupParam, AbsentSubscriberParam, DataMissingParam and
+UnexpectedDataParam must not be used before version 3 (§17.6.6).
+UnexpectedSubscriber must not be used for operations allowing
+unidentifiedSubscriber. From HLR to IP-SM-GW, IMSI is required unless UNRI
+indicates absence for CS and PS but not IMS (§17.7.7). The caller also applies
+the roaming cause receiver role rule and the purgedMS forwarding mapping
+documented on their types.
 
 Error parameter enums and their named values are available from this package:
 `UnknownSubscriberDiagnostic`, `CallBarringCause`, `NetworkResource`,

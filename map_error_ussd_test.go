@@ -151,7 +151,8 @@ var dispatchedParamTypes = map[MapErrorCode]reflect.Type{
 // FuzzParseReturnErrorParameter feeds arbitrary error codes and parameters
 // to the dispatcher. It must never panic, a successful result must have the
 // documented type for its error code (or be nil for codes without a decoded
-// parameter), and a failure must never come with a result.
+// parameter), and a failure must never come with a result. A non-nil result
+// must marshal and parse to the same value, or report a strictEncodeErrors entry.
 func FuzzParseReturnErrorParameter(f *testing.F) {
 	seeds := []struct {
 		code int64
@@ -160,6 +161,12 @@ func FuzzParseReturnErrorParameter(f *testing.F) {
 		{36, "30028000"}, {36, "3000"}, {36, "300430008000"}, {9, "30023000"}, {12, "3000"},
 		{71, ""}, {72, "3000"}, {36, "30028001"}, {36, "3002"}, {34, "0a0102"}, {13, "0a0101"},
 		{6, "3000"}, {8, "30030a0100"}, {1, "3080"}, {27, "3000"}, {0, "30"}, {255, "3000"},
+	}
+	for _, c := range returnErrorMarshalCases() {
+		seeds = append(seeds, struct {
+			code int64
+			data string
+		}{int64(c.code), c.wire})
 	}
 	for _, s := range seeds {
 		data, err := hex.DecodeString(s.data)
@@ -187,6 +194,18 @@ func FuzzParseReturnErrorParameter(f *testing.F) {
 			t.Fatalf("code %v is not dispatched but returned %T", errorCode, got)
 		case reflect.TypeOf(got) != want:
 			t.Fatalf("code %v returned %T, want %v", errorCode, got, want)
+		}
+		if got != nil {
+			parse := func(b []byte) (marshaler, error) {
+				v, err := ParseReturnErrorParameter(errorCode, b)
+				if err != nil || v == nil {
+					return nil, err
+				}
+				return v.(marshaler), nil
+			}
+			if err := checkParseRoundTrip(errorCode.String(), parse, data); err != nil {
+				t.Fatal(err)
+			}
 		}
 	})
 }
