@@ -62,12 +62,9 @@ func convertWireToUSSDArg(w *gsm_map.USSDArg) (*USSDArg, error) {
 		out.AlertingPattern = &p
 	}
 	if w.Msisdn != nil {
-		digits, nature, plan, err := decodeAddressField(*w.Msisdn)
+		digits, nature, plan, err := decodeAddressWithDigits(*w.Msisdn, ErrUSSDMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding USSDArg.MSISDN: %w", err)
-		}
-		if digits == "" {
-			return nil, ErrUSSDMSISDNDecodedEmpty
 		}
 		out.MSISDN = digits
 		out.MSISDNNature = nature

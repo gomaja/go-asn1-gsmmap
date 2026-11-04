@@ -135,6 +135,54 @@ func semAddressCases() []semAddressCase {
 			w.SgsnCAMELSubscriptionInfo.MgCsi.GsmSCFAddress = a
 			return w
 		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		{"O-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
+			w := isdWire(t, semCamelAddressISD())
+			c := w.VlrCamelSubscriptionInfo
+			c.OCSI.OBcsmCamelTDPDataList.Values[0].GsmSCFAddress = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		{"O-BCSM destinationNumberList", func(t *testing.T, a []byte) semWire {
+			w := isdWire(t, semCamelAddressISD())
+			c := w.VlrCamelSubscriptionInfo
+			c.OBcsmCamelTDPCriteriaList.Values[0].DestinationNumberCriteria.DestinationNumberList.Values[0] = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingDestinationNumber},
+		{"VT-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
+			w := isdWire(t, semCamelAddressISD())
+			c := w.VlrCamelSubscriptionInfo
+			c.VtCSI.TBcsmCamelTDPDataList.Values[0].GsmSCFAddress = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		{"D-CSI dialledNumber", func(t *testing.T, a []byte) semWire {
+			w := isdWire(t, semCamelAddressISD())
+			c := w.VlrCamelSubscriptionInfo
+			c.DCSI.DpAnalysedInfoCriteriaList.Values[0].DialledNumber = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingDialledNumber},
+		{"D-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
+			w := isdWire(t, semCamelAddressISD())
+			c := w.VlrCamelSubscriptionInfo
+			c.DCSI.DpAnalysedInfoCriteriaList.Values[0].GsmSCFAddress = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		{"SS-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
+			w := isdWire(t, semCamelAddressISD())
+			c := w.VlrCamelSubscriptionInfo
+			c.SsCSI.SsCamelData.GsmSCFAddress = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		{"M-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
+			w := isdWire(t, semCamelAddressISD())
+			c := w.VlrCamelSubscriptionInfo
+			c.MCSI.GsmSCFAddress = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
+		{"MO-SMS-CSI gsmSCF-Address", func(t *testing.T, a []byte) semWire {
+			w := isdWire(t, semCamelAddressISD())
+			c := w.VlrCamelSubscriptionInfo
+			c.MoSmsCSI.SmsCAMELTDPDataList.Values[0].GsmSCFAddress = a
+			return w
+		}, semParse(ParseInsertSubscriberData), ErrCamelMissingGsmSCFAddress},
 		{"AlertServiceCentre msisdn", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.AlertServiceCentreArg{Msisdn: a, ServiceCentreAddress: semTwoDigits}
 		}, semParse(ParseAlertServiceCentre), ErrAscMissingMSISDN},
@@ -191,6 +239,29 @@ func semAddressCases() []semAddressCase {
 			}
 		}, semParse(ParseAnyTimeInterrogation), ErrAtiMissingGsmSCFAddress},
 	}
+}
+
+// semCamelAddressISD returns an InsertSubscriberData message with one entry in
+// each VLR CAMEL list whose elements hold a mandatory address.
+func semCamelAddressISD() *InsertSubscriberDataArg {
+	return &InsertSubscriberDataArg{VlrCamelSubscriptionInfo: &VlrCamelSubscriptionInfo{
+		OCSI: &OCSI{OBcsmCamelTDPDataList: []OBcsmCamelTDPData{{
+			OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo, ServiceKey: 1, GsmSCFAddress: "12", DefaultCallHandling: DefaultCallHandlingContinueCall,
+		}}},
+		OBcsmCamelTDPCriteriaList: []OBcsmCamelTDPCriteria{{
+			OBcsmTriggerDetectionPoint: OBcsmTriggerCollectedInfo,
+			DestinationNumberCriteria:  &DestinationNumberCriteria{MatchType: MatchTypeInhibiting, DestinationNumberList: []ISDNNumber{{Digits: "12"}}},
+		}},
+		VtCSI: &TCSI{TBcsmCamelTDPDataList: []TBcsmCamelTDPData{{
+			TBcsmTriggerDetectionPoint: TBcsmTriggerTermAttemptAuthorized, ServiceKey: 1, GsmSCFAddress: "12", DefaultCallHandling: DefaultCallHandlingContinueCall,
+		}}},
+		DCSI: &DCSI{DPAnalysedInfoCriteriaList: []DPAnalysedInfoCriterium{{
+			DialledNumber: "12", ServiceKey: 1, GsmSCFAddress: "12", DefaultCallHandling: DefaultCallHandlingContinueCall,
+		}}},
+		SsCSI:    &SSCSI{SsEventList: []SsCode{SsCodeECT}, GsmSCFAddress: "12"},
+		MCSI:     &MCSI{MobilityTriggers: []MMCode{MMCodeIMSIAttach}, ServiceKey: 1, GsmSCFAddress: "12"},
+		MoSmsCSI: &SMSCSI{SmsCAMELTDPDataList: []SMSCAMELTDPData{semSMSTDPData(SMSTriggerDetectionPointSmsCollectedInfo)}},
+	}}
 }
 
 func TestParseDigitlessMandatoryAddress(t *testing.T) {

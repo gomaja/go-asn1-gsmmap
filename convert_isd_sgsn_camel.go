@@ -64,12 +64,9 @@ func convertWireToGPRSCamelTDPData(w *gsm_map.GPRSCamelTDPData) (*GPRSCamelTDPDa
 		return nil, nil
 	}
 
-	addr, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
+	addr, nature, plan, err := decodeAddressWithDigits(w.GsmSCFAddress, ErrCamelMissingGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GPRSCamelTDPData.GsmSCFAddress: %w", err)
-	}
-	if addr == "" {
-		return nil, ErrCamelMissingGsmSCFAddress
 	}
 
 	sk := w.ServiceKey
@@ -218,12 +215,9 @@ func convertWireToMGCSI(w *gsm_map.MGCSI) (*MGCSI, error) {
 		return nil, nil
 	}
 
-	addr, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
+	addr, nature, plan, err := decodeAddressWithDigits(w.GsmSCFAddress, ErrCamelMissingGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding MGCSI.GsmSCFAddress: %w", err)
-	}
-	if addr == "" {
-		return nil, ErrCamelMissingGsmSCFAddress
 	}
 
 	sk := w.ServiceKey

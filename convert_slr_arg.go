@@ -313,12 +313,9 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 	}
 
 	if w.Msisdn != nil {
-		s, nature, plan, err := decodeAddressField(*w.Msisdn)
+		s, nature, plan, err := decodeAddressWithDigits(*w.Msisdn, ErrSLRArgMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.MSISDN: %w", err)
-		}
-		if s == "" {
-			return nil, ErrSLRArgMSISDNDecodedEmpty
 		}
 		out.MSISDN = s
 		out.MSISDNNature = nature
@@ -339,24 +336,18 @@ func convertWireToSubscriberLocationReportArg(w *gsm_map.SubscriberLocationRepor
 		out.IMEI = imei
 	}
 	if w.NaESRD != nil {
-		s, nature, plan, err := decodeAddressField(*w.NaESRD)
+		s, nature, plan, err := decodeAddressWithDigits(*w.NaESRD, ErrSLRArgNaESRDDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.NaESRD: %w", err)
-		}
-		if s == "" {
-			return nil, ErrSLRArgNaESRDDecodedEmpty
 		}
 		out.NaESRD = s
 		out.NaESRDNature = nature
 		out.NaESRDPlan = plan
 	}
 	if w.NaESRK != nil {
-		s, nature, plan, err := decodeAddressField(*w.NaESRK)
+		s, nature, plan, err := decodeAddressWithDigits(*w.NaESRK, ErrSLRArgNaESRKDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportArg.NaESRK: %w", err)
-		}
-		if s == "" {
-			return nil, ErrSLRArgNaESRKDecodedEmpty
 		}
 		out.NaESRK = s
 		out.NaESRKNature = nature

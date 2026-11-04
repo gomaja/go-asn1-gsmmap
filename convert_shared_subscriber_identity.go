@@ -52,12 +52,9 @@ func convertWireToSubscriberIdentity(w gsm_map.SubscriberIdentity) (SubscriberId
 		}
 		out.IMSI = imsi
 	case gsm_map.SubscriberIdentityChoiceMsisdn:
-		msisdn, nature, plan, err := decodeAddressField(*w.Msisdn)
+		msisdn, nature, plan, err := decodeAddressWithDigits(*w.Msisdn, ErrSubscriberIdentityMSISDNDecodedEmpty)
 		if err != nil {
 			return out, fmt.Errorf("decoding SubscriberIdentity.MSISDN: %w", err)
-		}
-		if msisdn == "" {
-			return out, ErrSubscriberIdentityMSISDNDecodedEmpty
 		}
 		out.MSISDN = msisdn
 		out.MSISDNNature = nature

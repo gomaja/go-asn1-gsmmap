@@ -220,15 +220,9 @@ func convertWireToLCSClientID(w *gsm_map.LCSClientID) (*LCSClientID, error) {
 		out.LcsClientExternalID = ext
 	}
 	if w.LcsClientDialedByMS != nil {
-		s, nature, plan, err := decodeAddressField(*w.LcsClientDialedByMS)
+		s, nature, plan, err := decodeAddressWithDigits(*w.LcsClientDialedByMS, ErrLCSClientIDDialedByMSDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding LCSClientID.LcsClientDialedByMS: %w", err)
-		}
-		// Per the project convention (e.g., ErrIsdMSISDNDecodedEmpty),
-		// an explicitly present wire AddressString that decodes to
-		// empty digits cannot round-trip through the string-based API.
-		if s == "" {
-			return nil, fmt.Errorf("LCSClientID.LcsClientDialedByMS: %w", ErrLCSClientIDDialedByMSDecodedEmpty)
 		}
 		out.LcsClientDialedByMS = s
 		out.LcsClientDialedByMSNature = nature

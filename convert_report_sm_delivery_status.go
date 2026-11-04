@@ -124,19 +124,13 @@ func convertArgToReportSMDeliveryStatus(w *gsm_map.ReportSMDeliveryStatusArg) (*
 		return nil, ErrReportSMDeliveryStatusNil
 	}
 
-	msisdn, mNature, mPlan, err := decodeAddressField(w.Msisdn)
+	msisdn, mNature, mPlan, err := decodeAddressWithDigits(w.Msisdn, ErrReportSMDeliveryStatusMSISDNEmpty)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.MSISDN: %w", err)
 	}
-	if msisdn == "" {
-		return nil, ErrReportSMDeliveryStatusMSISDNEmpty
-	}
-	sca, scaNature, scaPlan, err := decodeAddressField(w.ServiceCentreAddress)
+	sca, scaNature, scaPlan, err := decodeAddressWithDigits(w.ServiceCentreAddress, ErrReportSMDeliveryStatusServiceCentreAddressEmpty)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ReportSMDeliveryStatus.ServiceCentreAddress: %w", err)
-	}
-	if sca == "" {
-		return nil, ErrReportSMDeliveryStatusServiceCentreAddressEmpty
 	}
 
 	out := &ReportSMDeliveryStatus{
@@ -222,12 +216,9 @@ func convertResToReportSMDeliveryStatusRes(w *gsm_map.ReportSMDeliveryStatusRes)
 	}
 	out := &ReportSMDeliveryStatusRes{}
 	if w.StoredMSISDN != nil {
-		s, nature, plan, err := decodeAddressField(*w.StoredMSISDN)
+		s, nature, plan, err := decodeAddressWithDigits(*w.StoredMSISDN, ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ReportSMDeliveryStatusRes.StoredMSISDN: %w", err)
-		}
-		if s == "" {
-			return nil, ErrReportSMDeliveryStatusResStoredMSISDNDecodedEmpty
 		}
 		out.StoredMSISDN = s
 		out.StoredMSISDNNature = nature

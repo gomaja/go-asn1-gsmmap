@@ -104,6 +104,33 @@ func semOptionalAddressCases() []semAddressCase {
 			w.SmsGmscAddress = ptr(a)
 			return w
 		}, semParse(ParseMtFsm), ErrMtFsmSmsGmscAddressDecodedEmpty},
+		{"InsertSubscriberData msisdn", func(_ *testing.T, a []byte) semWire {
+			return &gsm_map.InsertSubscriberDataArg{Msisdn: ptr(a)}
+		}, semParse(ParseInsertSubscriberData), ErrIsdMSISDNDecodedEmpty},
+		{"SubscriberLocationReport msisdn", func(t *testing.T, a []byte) semWire {
+			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
+			if err != nil {
+				t.Fatalf("convertSubscriberLocationReportArgToWire: %v", err)
+			}
+			w.Msisdn = ptr(a)
+			return w
+		}, semParse(ParseSubscriberLocationReport), ErrSLRArgMSISDNDecodedEmpty},
+		{"SubscriberLocationReport na-ESRD", func(t *testing.T, a []byte) semWire {
+			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
+			if err != nil {
+				t.Fatalf("convertSubscriberLocationReportArgToWire: %v", err)
+			}
+			w.NaESRD = ptr(a)
+			return w
+		}, semParse(ParseSubscriberLocationReport), ErrSLRArgNaESRDDecodedEmpty},
+		{"SubscriberLocationReport na-ESRK", func(t *testing.T, a []byte) semWire {
+			w, err := convertSubscriberLocationReportArgToWire(semSLRArg())
+			if err != nil {
+				t.Fatalf("convertSubscriberLocationReportArgToWire: %v", err)
+			}
+			w.NaESRK = ptr(a)
+			return w
+		}, semParse(ParseSubscriberLocationReport), ErrSLRArgNaESRKDecodedEmpty},
 		{"InsertSubscriberData sgsn-Number", func(_ *testing.T, a []byte) semWire {
 			return &gsm_map.InsertSubscriberDataArg{SgsnNumber: ptr(a)}
 		}, semParse(ParseInsertSubscriberData), ErrIsdSgsnNumberDecodedEmpty},

@@ -64,12 +64,9 @@ func convertWireToSmRpDa(w *gsm_map.SMRPDA) (*SmRpDa, error) {
 
 		da.LMSI = HexBytes(*w.Lmsi)
 	case gsm_map.SMRPDAChoiceServiceCentreAddressDA:
-		sca, nature, plan, err := decodeAddressField(*w.ServiceCentreAddressDA)
+		sca, nature, plan, err := decodeAddressWithDigits(*w.ServiceCentreAddressDA, ErrSmRpDaServiceCentreAddressDADecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpDa ServiceCentreAddressDA: %w", err)
-		}
-		if sca == "" {
-			return nil, ErrSmRpDaServiceCentreAddressDADecodedEmpty
 		}
 		da.ServiceCentreAddressDA = sca
 		da.ServiceCentreAddressDANature = nature
@@ -122,23 +119,17 @@ func convertWireToSmRpOa(w *gsm_map.SMRPOA) (*SmRpOa, error) {
 	oa := &SmRpOa{}
 	switch w.Choice {
 	case gsm_map.SMRPOAChoiceMsisdn:
-		msisdn, nature, plan, err := decodeAddressField(*w.Msisdn)
+		msisdn, nature, plan, err := decodeAddressWithDigits(*w.Msisdn, ErrSmRpOaMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpOa MSISDN: %w", err)
-		}
-		if msisdn == "" {
-			return nil, ErrSmRpOaMSISDNDecodedEmpty
 		}
 		oa.MSISDN = msisdn
 		oa.MSISDNNature = nature
 		oa.MSISDNPlan = plan
 	case gsm_map.SMRPOAChoiceServiceCentreAddressOA:
-		sca, nature, plan, err := decodeAddressField(*w.ServiceCentreAddressOA)
+		sca, nature, plan, err := decodeAddressWithDigits(*w.ServiceCentreAddressOA, ErrSmRpOaServiceCentreAddressOADecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SmRpOa ServiceCentreAddressOA: %w", err)
-		}
-		if sca == "" {
-			return nil, ErrSmRpOaServiceCentreAddressOADecodedEmpty
 		}
 		oa.ServiceCentreAddressOA = sca
 		oa.ServiceCentreAddressOANature = nature

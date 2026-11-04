@@ -341,12 +341,9 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.IMSI = imsi
 	}
 	if w.Msisdn != nil {
-		s, nature, plan, err := decodeAddressField(*w.Msisdn)
+		s, nature, plan, err := decodeAddressWithDigits(*w.Msisdn, ErrIsdMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding MSISDN: %w", err)
-		}
-		if s == "" {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.MSISDN: %w", ErrIsdMSISDNDecodedEmpty)
 		}
 		out.MSISDN = s
 		out.MSISDNNature = nature
@@ -481,12 +478,9 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.CsgSubscriptionDataList = l
 	}
 	if w.SgsnNumber != nil {
-		s, nature, plan, err := decodeAddressField(*w.SgsnNumber)
+		s, nature, plan, err := decodeAddressWithDigits(*w.SgsnNumber, ErrIsdSgsnNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
-		}
-		if s == "" {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.SgsnNumber: %w", ErrIsdSgsnNumberDecodedEmpty)
 		}
 		out.SgsnNumber = s
 		out.SgsnNumberNature = nature
@@ -512,12 +506,9 @@ func convertWireToInsertSubscriberDataArg(w *gsm_map.InsertSubscriberDataArg) (*
 		out.VplmnCsgSubscriptionDataList = l
 	}
 	if w.AdditionalMSISDN != nil {
-		s, nature, plan, err := decodeAddressField(*w.AdditionalMSISDN)
+		s, nature, plan, err := decodeAddressWithDigits(*w.AdditionalMSISDN, ErrIsdAdditionalMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding AdditionalMSISDN: %w", err)
-		}
-		if s == "" {
-			return nil, fmt.Errorf("InsertSubscriberDataArg.AdditionalMSISDN: %w", ErrIsdAdditionalMSISDNDecodedEmpty)
 		}
 		out.AdditionalMSISDN = s
 		out.AdditionalMSISDNNature = nature
