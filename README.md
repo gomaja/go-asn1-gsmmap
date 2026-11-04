@@ -661,7 +661,9 @@ ENUMERATED types. For example, compare a system failure's network resource with
 `gsmmap.NetworkResourceHlr`.
 
 It returns `(nil, nil)` for errors without a parameter (unknownAlphabet 71,
-ussd-Busy 72), for codes it does not decode, and for an empty parameter.
+ussd-Busy 72), for codes it does not decode, and for an empty parameter, except
+roamingNotAllowed, whose empty parameter returns
+`ErrRoamingNotAllowedParameterMissing`.
 
 ## Design
 

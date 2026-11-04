@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
@@ -46,6 +47,34 @@ func TestAMBR_NegativeRejected(t *testing.T) {
 		if !errors.Is(err, ErrAMBRBandwidthOutOfRange) {
 			t.Fatalf("case %d: want ErrAMBRBandwidthOutOfRange, got %v", i, err)
 		}
+	}
+}
+
+// A bandwidth beyond int64 matches both ErrAMBRBandwidthOutOfRange and
+// ErrInt64Overflow, for each INTEGER of AMBR (3GPP TS 29.002 V19.1.0 §17.7.1).
+// Each wire is an InsertSubscriberDataArg with eps-SubscriptionData [31] holding
+// ambr [3]. The value 2^63 takes nine content octets.
+func TestAMBROverflowMatchesBothSentinels(t *testing.T) {
+	for _, tc := range []struct{ name, wire, field string }{
+		{"UL", "3013bf1f10a30e8009008000000000000000810101", "AMBR.MaxRequestedBandwidthUL"},
+		{"DL", "3013bf1f10a30e8001018109008000000000000000", "AMBR.MaxRequestedBandwidthDL"},
+		{"extended UL", "3016bf1f13a3118001018101018309008000000000000000", "AMBR.ExtendedMaxRequestedBandwidthUL"},
+		{"extended DL", "3016bf1f13a3118001018101018409008000000000000000", "AMBR.ExtendedMaxRequestedBandwidthDL"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ParseInsertSubscriberData(mustHex(t, tc.wire))
+			if got != nil {
+				t.Errorf("Parse = %+v, want nil", got)
+			}
+			for _, want := range []error{ErrAMBRBandwidthOutOfRange, ErrInt64Overflow} {
+				if !errors.Is(err, want) {
+					t.Errorf("err = %v, want %v", err, want)
+				}
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.field) {
+				t.Errorf("err = %v, must name %s", err, tc.field)
+			}
+		})
 	}
 }
 
