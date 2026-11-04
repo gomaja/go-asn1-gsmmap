@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -400,5 +401,48 @@ func TestReportSMServingNodesAddressLenient(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// Both lists appear in JSON: null when absent, and each entry with its one
+// alternative set, Diameter octets as hex like every other byte field.
+func TestReportSMServingNodesJSON(t *testing.T) {
+	const entries = `[{"NetworkNodeNumber":"12","NetworkNodeNumberNature":16,"NetworkNodeNumberPlan":1,"DiameterAddress":null},` +
+		`{"NetworkNodeNumber":"","NetworkNodeNumberNature":0,"NetworkNodeNumberPlan":0,"DiameterAddress":{"DiameterName":"6e","DiameterRealm":"72"}}]`
+	nodes := []SMServingNodeAddress{
+		{NetworkNodeNumber: "12", NetworkNodeNumberNature: 0x10, NetworkNodeNumberPlan: 1},
+		{DiameterAddress: &NetworkNodeDiameterAddress{DiameterName: HexBytes("n"), DiameterRealm: HexBytes("r")}},
+	}
+	for _, tc := range []struct {
+		name, key string
+		present   any
+		absent    any
+		decoded   any
+	}{
+		{"failedSMServingNodes", "FailedSMServingNodes", &ReportSMDeliveryStatus{FailedSMServingNodes: nodes}, &ReportSMDeliveryStatus{}, &ReportSMDeliveryStatus{}},
+		{"registeredSMServingNodes", "RegisteredSMServingNodes", &ReportSMDeliveryStatusRes{RegisteredSMServingNodes: nodes}, &ReportSMDeliveryStatusRes{}, &ReportSMDeliveryStatusRes{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := json.Marshal(tc.absent)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := `"` + tc.key + `":null`; !strings.Contains(string(got), want) {
+				t.Errorf("absent JSON %s lacks %s", got, want)
+			}
+			got, err = json.Marshal(tc.present)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := `"` + tc.key + `":` + entries; !strings.Contains(string(got), want) {
+				t.Errorf("JSON %s lacks %s", got, want)
+			}
+			if err := json.Unmarshal(got, tc.decoded); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(tc.decoded, tc.present) {
+				t.Errorf("round trip = %#v, want %#v", tc.decoded, tc.present)
+			}
+		})
 	}
 }
