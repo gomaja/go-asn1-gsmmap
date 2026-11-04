@@ -45,7 +45,7 @@ jobs:
           if [ -n "$base" ] && [ "$base" != "$zero_sha" ] && git merge-base "$base" HEAD >/dev/null 2>&1; then
             git diff --check "$base...HEAD"
           else
-            git diff-tree --check --root --no-commit-id -r HEAD
+            git diff-tree --check --root --no-commit-id -r --diff-merges=first-parent HEAD
           fi
 
   build-test:
