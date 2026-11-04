@@ -79,3 +79,28 @@ func TestUpdateGprsParseEpsInfoWithoutPDNGWIdentity(t *testing.T) {
 		})
 	}
 }
+
+// TS 29.002 V19.1.0 §17.7.8 lets a GSN-Address hold 17 octets, while an IPv4
+// address takes 5 (TS 23.003 V20.1.0 §5.1). Parse keeps the address and
+// ignores the octets after it, and Marshal sends the address alone. Each wire
+// is IMSI 001010123456789, sgsn-Number 31623456789 and sgsn-Address 192.0.2.1.
+func TestUpdateGprsLocationGSNAddressExtraOctets(t *testing.T) {
+	const sent = "301a040800010121436587f90407911326436587f9040504c0000201"
+	for _, received := range []string{
+		"301c040800010121436587f90407911326436587f9040704c0000201ffff",                     // two octets after the address
+		"3026040800010121436587f90407911326436587f9041104c0000201000000000000000000000000", // zeros up to 17 octets
+	} {
+		got, err := ParseUpdateGprsLocation(mustHex(t, received))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.SGSNAddress != "192.0.2.1" {
+			t.Errorf("SGSNAddress = %q, want 192.0.2.1", got.SGSNAddress)
+		}
+		data, err := got.Marshal()
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantEqual(t, "wire", mustHex(t, sent), data)
+	}
+}

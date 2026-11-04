@@ -146,3 +146,33 @@ func TestGSNAddressHeaderInvalid(t *testing.T) {
 		})
 	}
 }
+
+// TS 23.003 V20.1.0 §5.1 defines no octets after the address. Parse ignores
+// them, and Build sends the address alone.
+func TestParseIgnoresOctetsAfterAddress(t *testing.T) {
+	for _, tc := range []struct {
+		name, wire, want, built string
+	}{
+		{"IPv4 and two octets", "04c0000201ffff", "192.0.2.1", "04c0000201"},
+		{"IPv4 padded with zeros to 17 octets", "04c0000201000000000000000000000000", "192.0.2.1", "04c0000201"},
+		{"IPv6 and one octet", "5020010db800000000000000000000000100", "2001:db8::1", "5020010db8000000000000000000000001"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := hex.DecodeString(tc.wire)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := Parse(data)
+			if err != nil || got != tc.want {
+				t.Fatalf("Parse = %q, %v; want %q", got, err, tc.want)
+			}
+			built, err := Build(got)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if hex.EncodeToString(built) != tc.built {
+				t.Errorf("Build = %x, want %s", built, tc.built)
+			}
+		})
+	}
+}
