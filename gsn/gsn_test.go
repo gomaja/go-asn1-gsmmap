@@ -118,3 +118,31 @@ func TestGSNTruncatedAddress(t *testing.T) {
 		})
 	}
 }
+
+// TS 29.002 V19.1.0 §17.7.8 delegates the GSN header to TS 23.003
+// V20.1.0 §5.1: type 0 requires length 4, type 1 requires length 16.
+func TestGSNAddressHeaderInvalid(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		header byte
+		want   error
+	}{
+		{"IPv4 length 3", 0x03, ErrIPv4LengthInvalid},
+		{"IPv4 length 5", 0x05, ErrIPv4LengthInvalid},
+		{"IPv6 length 15", 0x4f, ErrIPv6LengthInvalid},
+		{"IPv6 length 17", 0x51, ErrIPv6LengthInvalid},
+		{"reserved type 2", 0x80, ErrAddressTypeInvalid},
+		{"reserved type 3", 0xc0, ErrAddressTypeInvalid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// Supply every octet declared by the six-bit length so the
+			// failure concerns the header, rather than truncated data.
+			data := make([]byte, 1+int(tc.header&0x3f))
+			data[0] = tc.header
+			got, err := Parse(data)
+			if got != "" || !errors.Is(err, tc.want) {
+				t.Fatalf("Parse = %q, %v; want empty, %v", got, err, tc.want)
+			}
+		})
+	}
+}

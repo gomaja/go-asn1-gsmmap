@@ -6,6 +6,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime"
+
 	"github.com/gomaja/go-asn1-gsmmap/address"
 	"github.com/google/go-cmp/cmp"
 )
@@ -262,6 +265,123 @@ func TestSriCamelInfoRoundTrip(t *testing.T) {
 	}
 	if got.SupportedCamelPhases != in.SupportedCamelPhases {
 		t.Errorf("SupportedCamelPhases: got %+v want %+v", got.SupportedCamelPhases, in.SupportedCamelPhases)
+	}
+}
+
+// TS 29.002 V19.1.0 §§17.7.1, 17.7.3: CamelInfo carries the seven named
+// OfferedCamel4CSIs bits; SupportedCamelPhases has SIZE (1..16).
+func TestSriCamelInfoOfferedCamel4CSIs(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		offer  OfferedCamel4CSIs
+		bits   byte
+		phase4 bool
+	}{
+		{"none", OfferedCamel4CSIs{}, 0x00, true},
+		{"o-csi", OfferedCamel4CSIs{OCSI: true}, 0x80, true},
+		{"d-csi", OfferedCamel4CSIs{DCSI: true}, 0x40, true},
+		{"vt-csi", OfferedCamel4CSIs{VTCSI: true}, 0x20, true},
+		{"t-csi", OfferedCamel4CSIs{TCSI: true}, 0x10, true},
+		{"mt-sms-csi", OfferedCamel4CSIs{MTSMSCSI: true}, 0x08, true},
+		{"mg-csi", OfferedCamel4CSIs{MGCSI: true}, 0x04, true},
+		{"psi-enhancements", OfferedCamel4CSIs{PsiEnhancements: true}, 0x02, true},
+		{"all", OfferedCamel4CSIs{true, true, true, true, true, true, true}, 0xfe, true},
+		{"no supported phase", OfferedCamel4CSIs{}, 0x00, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := &Sri{
+				MSISDN: "12345", MSISDNNature: address.NatureInternational, MSISDNPlan: address.PlanISDN,
+				GmscOrGsmSCFAddress: "67890", GmscOrGsmSCFAddressNature: address.NatureInternational, GmscOrGsmSCFAddressPlan: address.PlanISDN,
+				CamelInfo: &SriCamelInfo{SupportedCamelPhases: SupportedCamelPhases{Phase4: tc.phase4}, OfferedCamel4CSIs: &tc.offer},
+			}
+			data, err := in.Marshal()
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			var wire gsm_map.SendRoutingInfoArg
+			if err := wire.UnmarshalBER(data); err != nil {
+				t.Fatalf("UnmarshalBER: %v", err)
+			}
+			if wire.CamelInfo == nil {
+				t.Fatal("CamelInfo absent")
+			}
+			wantEqual(t, "offered bits", &runtime.BitString{Bytes: []byte{tc.bits}, BitLength: 7}, wire.CamelInfo.OfferedCamel4CSIs)
+			phases := runtime.BitString{Bytes: []byte{0}, BitLength: 1}
+			if tc.phase4 {
+				phases = runtime.BitString{Bytes: []byte{0x10}, BitLength: 4}
+			}
+			wantEqual(t, "supported phase bits", phases, wire.CamelInfo.SupportedCamelPhases)
+			got, err := ParseSri(data)
+			if err != nil {
+				t.Fatalf("ParseSri: %v", err)
+			}
+			wantEqual(t, "Sri", in, got)
+		})
+	}
+}
+
+// TS 29.002 V19.1.0 §17.7.8: NAEA-CIC is exactly three octets. It is
+// carried by ISD [15] (§17.7.1) and the SRI result [10] (§17.7.3).
+func TestNaeaPreferredCI(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		marshal   func(*NaeaPreferredCI) ([]byte, error)
+		parse     func([]byte) (*NaeaPreferredCI, error)
+		wire      string
+		shortWire string
+	}{
+		{
+			"ISD",
+			func(ci *NaeaPreferredCI) ([]byte, error) {
+				return (&InsertSubscriberDataArg{NaeaPreferredCI: ci}).Marshal()
+			},
+			func(data []byte) (*NaeaPreferredCI, error) {
+				got, err := ParseInsertSubscriberData(data)
+				if err != nil {
+					return nil, err
+				}
+				return got.NaeaPreferredCI, nil
+			},
+			// Outer content 7 = [15] header 2 + content 5; [0] is 2+3.
+			"3007af058003012345",
+			"3006af0480020123",
+		},
+		{
+			"SRI result",
+			func(ci *NaeaPreferredCI) ([]byte, error) {
+				return (&SriResp{IMSI: "001010123456789", NaeaPreferredCI: ci}).Marshal()
+			},
+			func(data []byte) (*NaeaPreferredCI, error) {
+				got, err := ParseSriResp(data)
+				if err != nil {
+					return nil, err
+				}
+				return got.NaeaPreferredCI, nil
+			},
+			// [3] content 17 = IMSI TLV 10 + [10] TLV 7.
+			"a311890800010121436587f9aa058003012345",
+			"a310890800010121436587f9aa0480020123",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := &NaeaPreferredCI{NaeaPreferredCIC: HexBytes{0x01, 0x23, 0x45}}
+			data, err := tc.marshal(in)
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+			wantEqual(t, "wire", mustHex(t, tc.wire), data)
+			got, err := tc.parse(data)
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			wantEqual(t, "NAEA-CIC", in, got)
+			for _, invalid := range []HexBytes{{0x01, 0x23}, {0x01, 0x23, 0x45, 0x67}} {
+				_, err := tc.marshal(&NaeaPreferredCI{NaeaPreferredCIC: invalid})
+				wantValidationError(t, err, "naea-PreferredCI.naea-PreferredCIC", "SIZE (3)", len(invalid))
+			}
+			_, err = tc.parse(mustHex(t, tc.shortWire))
+			wantValidationError(t, err, "naea-PreferredCI.naea-PreferredCIC", "SIZE (3)", 2)
+		})
 	}
 }
 
