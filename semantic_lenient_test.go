@@ -86,6 +86,18 @@ func semLenientCases() []semLenientCase {
 		}}
 	}
 	cases := []semLenientCase{
+		// TS 29.002 V19.1.0 §17.7.1: EPS excludes the outer age field.
+		// Decode preserves both; only the sender enforces their exclusion.
+		{ErrCSLocationInformationEPSConflictingFields, asParser(ParseAnyTimeInterrogationRes), func(*testing.T) semWire {
+			return &gsm_map.AnyTimeInterrogationRes{SubscriberInfo: gsm_map.SubscriberInfo{
+				LocationInformation: &gsm_map.LocationInformation{
+					AgeOfLocationInformation: new(gsm_map.AgeOfLocationInformation(1)),
+					LocationInformationEPS: &gsm_map.LocationInformationEPS{
+						TrackingAreaIdentity: new(gsm_map.TAId{0x62, 0xf2, 0x20, 0x12, 0x34}),
+					},
+				},
+			}}
+		}},
 		{ErrAlertingPatternReserved, asParser(ParseUSSDArg), func(t *testing.T) semWire {
 			w := semMust(convertUSSDArgToWire(&USSDArg{DataCodingScheme: USSDDataCodingSchemeGSM7, USSDString: HexBytes{0x41}}))
 			w.AlertingPattern = &gsm_map.AlertingPattern{0x03}

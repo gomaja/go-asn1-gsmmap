@@ -546,9 +546,9 @@ type ProvideSubscriberInfoRes struct {
 // An HLR caller discards LocationInformation, SubscriberState and
 // MsClassmark2 received from an SGSN or MME (via an IWF), and
 // LocationInformationGPRS, PsSubscriberState, GprsMSClass and
-// LocationInformationEPS (not the one in LocationInformation) received from a
-// VLR. It also discards parameters it did not request (3GPP TS 29.002 V19.1.0
-// §17.7.1).
+// LocationInformationEPS outside LocationInformation received from a VLR
+// (CSLocationInformation.LocationInformationEPS is not discarded). It also
+// discards parameters it did not request (3GPP TS 29.002 V19.1.0 §17.7.1).
 type SubscriberInfo struct {
 	LocationInformation              *CSLocationInformation            // [0]
 	SubscriberState                  *SubscriberStateInfo              // [1]
@@ -675,7 +675,18 @@ const (
 	NotReachableReasonNotRegistered  NotReachableReason = gsm_map.NotReachableReasonNotRegistered
 )
 
-// CSLocationInformation contains CS domain location data (opCode 71).
+// CSLocationInformation is the LocationInformation SEQUENCE of 3GPP TS 29.002
+// V19.1.0 §17.7.1: the CS domain location in SubscriberInfo (ATI, PSI and
+// SRI results) and in PurgeMS. LocationInformationEPS [10] carries the
+// E-UTRAN cell, tracking area and MME name beside the CS fields. §17.7.1
+// requires CellGlobalId, LAI, AgeOfLocationInformation,
+// GeographicalInformation, GeodeticInformation and CurrentLocationRetrieved
+// to be absent beside it, so Marshal returns
+// ErrCSLocationInformationEPSConflictingFields otherwise; the clause's
+// exception, an LAI in a MAP-NOTE-MM-EVENT, is not an operation this package
+// implements. Parse keeps what it receives. The caller omits
+// LocationInformationEPS when locationInformationEPS-Supported was not
+// requested.
 type CSLocationInformation struct {
 	AgeOfLocationInformation *int   // minutes; nil if absent
 	VlrNumber                string // decoded; empty if absent
@@ -684,13 +695,14 @@ type CSLocationInformation struct {
 	MscNumber                string // decoded; empty if absent
 	MscNumberNature          uint8
 	MscNumberPlan            uint8
-	GeographicalInformation  HexBytes            // raw 8 octets, TS 23.032 ellipsoid point with uncertainty circle; nil if absent
-	GeodeticInformation      HexBytes            // raw 10 octets; nil if absent
-	CellGlobalId             HexBytes            // raw fixed-length cell ID or SAI; empty if absent
-	LAI                      HexBytes            // raw 5-octet LAI; empty if absent
-	LocationNumber           HexBytes            // raw octets; nil if absent
-	SelectedLSAId            HexBytes            // [5] LSAIdentity; nil if absent
-	UserCSGInformation       *UserCSGInformation // [11]
+	GeographicalInformation  HexBytes                // raw 8 octets, TS 23.032 ellipsoid point with uncertainty circle; nil if absent
+	GeodeticInformation      HexBytes                // raw 10 octets; nil if absent
+	CellGlobalId             HexBytes                // raw fixed-length cell ID or SAI; empty if absent
+	LAI                      HexBytes                // raw 5-octet LAI; empty if absent
+	LocationNumber           HexBytes                // raw octets; nil if absent
+	SelectedLSAId            HexBytes                // [5] LSAIdentity; nil if absent
+	LocationInformationEPS   *EPSLocationInformation // [10]; nil if absent
+	UserCSGInformation       *UserCSGInformation     // [11]
 	// The caller sets CurrentLocationRetrieved when location information was
 	// retrieved after successful paging (3GPP TS 29.002 V19.1.0 §17.7.1).
 	CurrentLocationRetrieved bool
@@ -3905,6 +3917,7 @@ var (
 	ErrRequestedInfoServingNodeWithCurrentLocation            = errors.New("requestedInfo: ServingNodeIndication is forbidden with CurrentLocation per 3GPP TS 29.002 V19.1.0 §17.7.1 RequestedInfo")
 	ErrGeographicalInformationInvalid                         = errors.New("geographicalInformation: only an ellipsoid point with uncertainty circle coded per 3GPP TS 23.032 V19.0.0 §7.3.2 is allowed per 3GPP TS 29.002 V19.1.0 §17.7.1 GeographicalInformation")
 	ErrGeodeticInformationShapeInvalid                        = errors.New("geodeticInformation: only ellipsoid point with uncertainty circle is allowed per 3GPP TS 29.002 V19.1.0 §17.7.1 GeodeticInformation and Q.763 (1999) §3.88(c)")
+	ErrCSLocationInformationEPSConflictingFields              = errors.New("csLocationInformation: LocationInformationEPS excludes CellGlobalId, LAI, AgeOfLocationInformation, GeographicalInformation, GeodeticInformation and CurrentLocationRetrieved per 3GPP TS 29.002 V19.1.0 §17.7.1")
 	ErrRouteingNumberTBCDInvalid                              = errors.New("mnpInfoRes: RouteingNumber filler is permitted only in the final high nibble per 3GPP TS 29.002 V19.1.0 §17.7.8 TBCD-STRING")
 
 	ErrSriSmRespNodeIndicatorsMutuallyExclusive       = errors.New("sriSmResp: at most one network node indicator may be present per 3GPP TS 29.002 V19.1.0 §17.7.6")

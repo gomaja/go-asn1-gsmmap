@@ -201,6 +201,8 @@ var strictEncodeErrors = []error{
 	ErrGeographicalInformationInvalid,
 	// Parse retains the sender-invalid value (TS 29.002 V19.1.0 §17.7.1 GeodeticInformation).
 	ErrGeodeticInformationShapeInvalid,
+	// Fields locationInformationEPS excludes are a sender rule (TS 29.002 §17.7.1).
+	ErrCSLocationInformationEPSConflictingFields,
 	// Sender restriction; Parse retains this value (TS 29.002 V19.1.0 §17.7.8 TBCD-STRING).
 	ErrRouteingNumberTBCDInvalid,
 
