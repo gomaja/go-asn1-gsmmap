@@ -229,10 +229,12 @@ for _, violation := range violations {
 ```
 
 Parse appends reports to the supplied slice only when decoding and conversion
-both succeed; an error leaves its existing contents intact. A nil option, a nil
+both succeed; an error leaves its existing contents intact. Calls running at the
+same time need separate slices. A nil option, a nil
 slice pointer or a second `WithTolerance` returns `ErrParseOptionInvalid` before
-decoding. The package's own rules still apply: digitless addresses, identities
-rejected by TS 23.003 checks, and TPDUs go-sms cannot decode still fail. Addresses
+decoding. The package's own rules still apply: digitless addresses, an LMSI with no
+octets (`ErrSmRpDaLMSIDecodedEmpty`), identities rejected by TS 23.003 checks,
+and TPDUs go-sms cannot decode still fail. Addresses
 that the public types can represent retain all received digits, even beyond the
 ASN.1 SIZE (TS 29.002 V19.1.0 §§17.7.6, 17.7.8).
 

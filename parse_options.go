@@ -14,6 +14,8 @@ type parseConfig struct {
 // Package conversion rules still apply. Marshal remains strict; present empty
 // optional octet strings encode as absent when presence is determined by length.
 // A nil destination or a repeated WithTolerance returns ErrParseOptionInvalid.
+// Parse appends without synchronization, so calls running at the same time
+// need separate slices.
 func WithTolerance(violations *[]Violation) ParseOption {
 	return func(config *parseConfig) error {
 		if violations == nil || config.violations != nil {

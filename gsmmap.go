@@ -4861,6 +4861,7 @@ var (
 	ErrSMSRegisterRequestInvalid = errors.New("updateGprsLocation: SmsRegisterRequest must be sms-registration-required(0), sms-registration-not-preferred(1) or no-preference(2) per 3GPP TS 29.002 V19.1.0 §17.7.1 (extensible enum: unknown values preserved on decode)")
 
 	ErrSmRpDaServiceCentreAddressDADecodedEmpty = errors.New("smRpDa: present wire serviceCentreAddressDA decoded to empty digits; presence cannot round-trip through string-based API")
+	ErrSmRpDaLMSIDecodedEmpty                   = errors.New("smRpDa: present wire LMSI has no octets; presence cannot round-trip through HexBytes")
 	ErrSmRpOaMSISDNDecodedEmpty                 = errors.New("smRpOa: present wire MSISDN decoded to empty digits; presence cannot round-trip through string-based API")
 	ErrSmRpOaServiceCentreAddressOADecodedEmpty = errors.New("smRpOa: present wire serviceCentreAddressOA decoded to empty digits; presence cannot round-trip through string-based API")
 

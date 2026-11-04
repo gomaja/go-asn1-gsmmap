@@ -9,8 +9,11 @@ import (
 	"testing"
 
 	identity "github.com/gomaja/go-3gpp-identity"
+	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 	"github.com/gomaja/go-sms/encoding/tpdu"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 // TS 29.002 V19.1.0 §§17.7.6, 17.7.8: SRI-SM with two 7-octet
@@ -40,14 +43,32 @@ func asTolerantParser[T any](parse func([]byte, ...ParseOption) (*T, error)) fun
 	}
 }
 
+// directTolerant decodes with go-asn1's tolerance and converts without the
+// option code, as an oracle for Parse with WithTolerance.
+func directTolerant[W, T any](decode func(*W, []byte, ...ber.DecodeOption) error, convert func(*W) (*T, error)) func([]byte) (marshaler, []Violation, error) {
+	return func(data []byte) (marshaler, []Violation, error) {
+		var log ber.ViolationLog
+		var w W
+		if err := decode(&w, data, ber.WithTolerance(&log)); err != nil {
+			return nil, nil, err
+		}
+		v, err := convert(&w)
+		if err != nil {
+			return nil, nil, err
+		}
+		return any(v).(marshaler), log.Snapshot(), nil
+	}
+}
+
 var tolerantParsers = []struct {
-	name  string
-	parse func([]byte, ...ParseOption) (marshaler, error)
-	wire  string
+	name   string
+	parse  func([]byte, ...ParseOption) (marshaler, error)
+	direct func([]byte) (marshaler, []Violation, error)
+	wire   string
 }{
-	{"SriSm", asTolerantParser(ParseSriSm), toleranceSriValid},
-	{"MoFsm", asTolerantParser(ParseMoFsm), toleranceMoValid},
-	{"MtFsm", asTolerantParser(ParseMtFsm), toleranceMtValid},
+	{"SriSm", asTolerantParser(ParseSriSm), directTolerant((*gsm_map.RoutingInfoForSMArg).UnmarshalBER, convertArgToSriSm), toleranceSriValid},
+	{"MoFsm", asTolerantParser(ParseMoFsm), directTolerant((*gsm_map.MOForwardSMArg).UnmarshalBER, convertArgToMoFsm), toleranceMoValid},
+	{"MtFsm", asTolerantParser(ParseMtFsm), directTolerant((*gsm_map.MTForwardSMArg).UnmarshalBER, convertArgToMtFsm), toleranceMtValid},
 }
 
 func TestParseToleranceConstraints(t *testing.T) {
@@ -63,6 +84,20 @@ func TestParseToleranceConstraints(t *testing.T) {
 		{"SriSm msisdn", 0, toleranceSriLong, "msisdn", "SIZE (1..9)", 10, func(t *testing.T, v marshaler) {
 			if got := v.(*SriSm).MSISDN; got != "12345678901234567" {
 				t.Fatalf("MSISDN = %q", got)
+			}
+		}},
+		// SRI: 11-octet msisdn with 20 digits, sm-RP-PRI and a 7-octet
+		// service-centre address; SEQUENCE length = 13 + 3 + 9 = 25.
+		{"SriSm msisdn 20 digits", 0, "3019800b91214365870921436587098101008207912143658709f1", "msisdn", "SIZE (1..9)", 11, func(t *testing.T, v marshaler) {
+			if got := v.(*SriSm).MSISDN; got != "12345678901234567890" {
+				t.Fatalf("MSISDN = %q", got)
+			}
+		}},
+		// SRI: 7-octet msisdn, sm-RP-PRI and a 21-octet service-centre address
+		// with 40 digits, over AddressString SIZE (1..20); length = 9 + 3 + 23 = 35.
+		{"SriSm service centre", 0, "30238007912143658709f18101008215912143658709214365870921436587092143658709", "serviceCentreAddress", "SIZE (1..20)", 21, func(t *testing.T, v marshaler) {
+			if got := v.(*SriSm).ServiceCentreAddress; got != strings.Repeat("1234567890", 4) {
+				t.Fatalf("ServiceCentreAddress = %q", got)
 			}
 		}},
 		// MO: 10-octet msisdn OA; SEQUENCE length = 4 + 12 + 11 = 27.
@@ -287,18 +322,17 @@ func TestParseToleranceMultipleViolations(t *testing.T) {
 func TestParseToleranceEmptyLMSI(t *testing.T) {
 	// MO: present zero-octet LMSI DA [1], msisdn OA and SMS-SUBMIT.
 	// SEQUENCE length = 2 + 4 + 11 = 17. LMSI has SIZE (4)
-	// (TS 29.002 V19.1.0 §17.7.8); an empty public slice selects no DA.
+	// (TS 29.002 V19.1.0 §17.7.8); an empty LMSI would select no DA.
 	data := mustHex(t, "30118100820291210409010002912100000141")
-	var violations []Violation
+	_, err := ParseMoFsm(data)
+	wantValidationError(t, err, "sm-RP-DA.lmsi", "SIZE (4)")
+	violations := []Violation{{Path: "existing"}}
 	v, err := ParseMoFsm(data, WithTolerance(&violations))
-	if err != nil {
-		t.Fatal(err)
+	if v != nil || !errors.Is(err, ErrSmRpDaLMSIDecodedEmpty) {
+		t.Fatalf("Parse = %+v, %v; want nil, %v", v, err, ErrSmRpDaLMSIDecodedEmpty)
 	}
-	if len(v.SmRpDa.LMSI) != 0 || len(violations) != 1 || violations[0].Path != "sm-RP-DA.lmsi" {
-		t.Fatalf("DA = %+v; violations = %+v", v.SmRpDa, violations)
-	}
-	if _, err := v.Marshal(); !errors.Is(err, ErrSmRpDaNoAlternative) {
-		t.Fatalf("Marshal = %v, want ErrSmRpDaNoAlternative", err)
+	if len(violations) != 1 || violations[0].Path != "existing" {
+		t.Fatalf("violations = %+v, want the existing report only", violations)
 	}
 }
 
@@ -320,7 +354,9 @@ func TestParseToleranceTimerRepresentation(t *testing.T) {
 }
 
 // FuzzParseTolerant compares strict and tolerant decoding without requiring
-// tolerated values to satisfy the encoder's strict constraints.
+// tolerated values to satisfy the encoder's strict constraints, and compares
+// tolerant Parse with go-asn1's tolerant decode followed by the same
+// conversion: the same outcome, the same value and the same reports.
 func FuzzParseTolerant(f *testing.F) {
 	for _, seed := range berSeeds(f) {
 		for i := range tolerantParsers {
@@ -342,6 +378,18 @@ func FuzzParseTolerant(f *testing.F) {
 		} else {
 			// A tolerated value may be refused by strict Marshal, but may not panic.
 			_, _ = tolerant.Marshal()
+		}
+		want, wantViolations, directErr := p.direct(data)
+		if (directErr == nil) != (tolerantErr == nil) {
+			t.Fatalf("%s: direct tolerant decode err = %v, Parse err = %v", p.name, directErr, tolerantErr)
+		}
+		if directErr == nil {
+			if !reflect.DeepEqual(want, tolerant) {
+				t.Fatalf("%s: direct = %+v, Parse = %+v", p.name, want, tolerant)
+			}
+			if diff := cmp.Diff(wantViolations, violations[1:], cmpopts.IgnoreUnexported(Violation{}), cmpopts.EquateEmpty()); diff != "" {
+				t.Fatalf("%s reports (-direct +Parse):\n%s", p.name, diff)
+			}
 		}
 		if strictErr == nil || (tolerantErr == nil && len(violations) == 1) {
 			if strictErr != nil || tolerantErr != nil || len(violations) != 1 || !reflect.DeepEqual(strict, tolerant) {
