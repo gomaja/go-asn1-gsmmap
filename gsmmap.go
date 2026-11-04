@@ -1900,49 +1900,60 @@ const (
 
 // ODBGeneralData (BIT STRING SIZE 15..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
 // 29 named bits covering operator-determined barring of outgoing calls,
-// explicit call transfer, packet-oriented services, and roaming. Unknown
-// bits received from peers are treated as unsupported-ODB per spec
-// exception handling.
+// explicit call transfer, packet-oriented services, and roaming.
+// UnknownBits retains unnamed set bits: "reception of unknown bit assignments
+// in the ODB-GeneralData type shall be treated like unsupported
+// ODB-GeneralData". A VLR, SGSN or IWF returns General Data showing the
+// categories it does not support in InsertSubscriberDataRes (§8.8.1.3); the
+// caller decides what to return. go-asn1 chooses the shortest encoded length
+// SIZE permits (ITU-T X.680 (02/2021) §22.7). Marshal rejects a set bit beyond
+// 31 with the codec's *ber.ValidationError.
 type ODBGeneralData struct {
-	AllOGCallsBarred                                                bool // bit 0
-	InternationalOGCallsBarred                                      bool // bit 1
-	InternationalOGCallsNotToHPLMNCountryBarred                     bool // bit 2
-	PremiumRateInformationOGCallsBarred                             bool // bit 3
-	PremiumRateEntertainmentOGCallsBarred                           bool // bit 4
-	SSAccessBarred                                                  bool // bit 5
-	InterzonalOGCallsBarred                                         bool // bit 6
-	InterzonalOGCallsNotToHPLMNCountryBarred                        bool // bit 7
-	InterzonalOGCallsAndInternationalOGCallsNotToHPLMNCountryBarred bool // bit 8
-	AllECTBarred                                                    bool // bit 9
-	ChargeableECTBarred                                             bool // bit 10
-	InternationalECTBarred                                          bool // bit 11
-	InterzonalECTBarred                                             bool // bit 12
-	DoublyChargeableECTBarred                                       bool // bit 13
-	MultipleECTBarred                                               bool // bit 14
-	AllPacketOrientedServicesBarred                                 bool // bit 15
-	RoamerAccessToHPLMNAPBarred                                     bool // bit 16
-	RoamerAccessToVPLMNAPBarred                                     bool // bit 17
-	RoamingOutsidePLMNOGCallsBarred                                 bool // bit 18
-	AllICCallsBarred                                                bool // bit 19
-	RoamingOutsidePLMNICCallsBarred                                 bool // bit 20
-	RoamingOutsidePLMNICountryICCallsBarred                         bool // bit 21
-	RoamingOutsidePLMNBarred                                        bool // bit 22
-	RoamingOutsidePLMNCountryBarred                                 bool // bit 23
-	RegistrationAllCFBarred                                         bool // bit 24
-	RegistrationCFNotToHPLMNBarred                                  bool // bit 25
-	RegistrationInterzonalCFBarred                                  bool // bit 26
-	RegistrationInterzonalCFNotToHPLMNBarred                        bool // bit 27
-	RegistrationInternationalCFBarred                               bool // bit 28
+	AllOGCallsBarred                                                bool     // bit 0
+	InternationalOGCallsBarred                                      bool     // bit 1
+	InternationalOGCallsNotToHPLMNCountryBarred                     bool     // bit 2
+	PremiumRateInformationOGCallsBarred                             bool     // bit 3
+	PremiumRateEntertainmentOGCallsBarred                           bool     // bit 4
+	SSAccessBarred                                                  bool     // bit 5
+	InterzonalOGCallsBarred                                         bool     // bit 6
+	InterzonalOGCallsNotToHPLMNCountryBarred                        bool     // bit 7
+	InterzonalOGCallsAndInternationalOGCallsNotToHPLMNCountryBarred bool     // bit 8
+	AllECTBarred                                                    bool     // bit 9
+	ChargeableECTBarred                                             bool     // bit 10
+	InternationalECTBarred                                          bool     // bit 11
+	InterzonalECTBarred                                             bool     // bit 12
+	DoublyChargeableECTBarred                                       bool     // bit 13
+	MultipleECTBarred                                               bool     // bit 14
+	AllPacketOrientedServicesBarred                                 bool     // bit 15
+	RoamerAccessToHPLMNAPBarred                                     bool     // bit 16
+	RoamerAccessToVPLMNAPBarred                                     bool     // bit 17
+	RoamingOutsidePLMNOGCallsBarred                                 bool     // bit 18
+	AllICCallsBarred                                                bool     // bit 19
+	RoamingOutsidePLMNICCallsBarred                                 bool     // bit 20
+	RoamingOutsidePLMNICountryICCallsBarred                         bool     // bit 21
+	RoamingOutsidePLMNBarred                                        bool     // bit 22
+	RoamingOutsidePLMNCountryBarred                                 bool     // bit 23
+	RegistrationAllCFBarred                                         bool     // bit 24
+	RegistrationCFNotToHPLMNBarred                                  bool     // bit 25
+	RegistrationInterzonalCFBarred                                  bool     // bit 26
+	RegistrationInterzonalCFNotToHPLMNBarred                        bool     // bit 27
+	RegistrationInternationalCFBarred                               bool     // bit 28
+	UnknownBits                                                     HexBytes // positions 29..31, MSB first, without trailing zero octets; bits 0..28 are ignored
 }
 
 // ODBHPLMNData (BIT STRING SIZE 4..32) per 3GPP TS 29.002 V19.1.0 §17.7.1.
-// Carries HPLMN-specific ODB barring types. Unknown bits received from
-// peers are treated as unsupported-ODB per spec exception handling.
+// Carries HPLMN-specific ODB barring types. UnknownBits retains unnamed set
+// bits: "reception of unknown bit assignments in the ODB-HPLMN-Data type shall
+// be treated like unsupported ODB-HPLMN-Data". InsertSubscriberDataRes has no
+// parameter to return this type (§17.7.1). go-asn1 chooses the shortest encoded
+// length SIZE permits (ITU-T X.680 (02/2021) §22.7). Marshal rejects a set bit
+// beyond 31 with the codec's *ber.ValidationError.
 type ODBHPLMNData struct {
-	PLMNSpecificBarringType1 bool // bit 0
-	PLMNSpecificBarringType2 bool // bit 1
-	PLMNSpecificBarringType3 bool // bit 2
-	PLMNSpecificBarringType4 bool // bit 3
+	PLMNSpecificBarringType1 bool     // bit 0
+	PLMNSpecificBarringType2 bool     // bit 1
+	PLMNSpecificBarringType3 bool     // bit 2
+	PLMNSpecificBarringType4 bool     // bit 3
+	UnknownBits              HexBytes // positions 4..31, MSB first, without trailing zero octets; bits 0..3 are ignored
 }
 
 // AccessRestrictionData (BIT STRING SIZE 2..8) per 3GPP TS 29.002 V19.1.0
