@@ -9,6 +9,14 @@ import (
 // --- CS Location conversion ---
 
 func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInformation, error) {
+	// TS 29.002 V19.1.0 §17.7.1: these shall be absent beside
+	// locationInformationEPS.
+	if loc.LocationInformationEPS != nil && (len(loc.CellGlobalId) > 0 || len(loc.LAI) > 0 ||
+		loc.AgeOfLocationInformation != nil || loc.GeographicalInformation != nil ||
+		loc.GeodeticInformation != nil || loc.CurrentLocationRetrieved) {
+		return nil, ErrCSLocationInformationEPSConflictingFields
+	}
+
 	li := &gsm_map.LocationInformation{}
 
 	if loc.AgeOfLocationInformation != nil {
@@ -64,6 +72,14 @@ func convertCSLocationToAsn1(loc *CSLocationInformation) (*gsm_map.LocationInfor
 	if loc.SelectedLSAId != nil {
 		lsa := gsm_map.LSAIdentity(loc.SelectedLSAId)
 		li.SelectedLSAId = &lsa
+	}
+
+	if loc.LocationInformationEPS != nil {
+		eps, err := convertEPSLocationToAsn1(loc.LocationInformationEPS)
+		if err != nil {
+			return nil, fmt.Errorf("LocationInformationEPS: %w", err)
+		}
+		li.LocationInformationEPS = eps
 	}
 
 	if loc.UserCSGInformation != nil {
@@ -140,6 +156,14 @@ func convertAsn1ToCSLocation(li *gsm_map.LocationInformation) (*CSLocationInform
 
 	if li.SelectedLSAId != nil {
 		loc.SelectedLSAId = *li.SelectedLSAId
+	}
+
+	if li.LocationInformationEPS != nil {
+		eps, err := convertAsn1ToEPSLocation(li.LocationInformationEPS)
+		if err != nil {
+			return nil, fmt.Errorf("LocationInformationEPS: %w", err)
+		}
+		loc.LocationInformationEPS = eps
 	}
 
 	if li.UserCSGInformation != nil {

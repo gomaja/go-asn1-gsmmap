@@ -242,6 +242,14 @@ func TestSenderDiameterASCII(t *testing.T) {
 
 func senderPLMNCases() []senderOctetCase {
 	return []senderOctetCase{
+		// TS 29.002 V19.1.0 §17.7.1: nested EPS uses E-UTRAN-CGI and
+		// TA-Id, including their PLMN digits (§17.7.8).
+		{"AnyTimeInterrogationRes.LocationInformation.LocationInformationEPS.EUtranCellGlobalIdentity", func(_ *testing.T, b HexBytes) marshaler {
+			return &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{LocationInformation: &CSLocationInformation{LocationInformationEPS: &EPSLocationInformation{EUtranCellGlobalIdentity: append(append(HexBytes{}, b...), make(HexBytes, 4)...)}}}}
+		}, asParser(ParseAnyTimeInterrogationRes)},
+		{"AnyTimeInterrogationRes.LocationInformation.LocationInformationEPS.TrackingAreaIdentity", func(_ *testing.T, b HexBytes) marshaler {
+			return &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{LocationInformation: &CSLocationInformation{LocationInformationEPS: &EPSLocationInformation{TrackingAreaIdentity: append(append(HexBytes{}, b...), make(HexBytes, 2)...)}}}}
+		}, asParser(ParseAnyTimeInterrogationRes)},
 		{"UpdateGprsLocation.EplmnList[1]", func(_ *testing.T, b HexBytes) marshaler {
 			return &UpdateGprsLocation{IMSI: "001010123456789", SgsnNumber: "1", SGSNAddress: "127.0.0.1", EplmnList: []HexBytes{{0x21, 0xf3, 0x54}, b}}
 		}, asParser(ParseUpdateGprsLocation)},
