@@ -435,3 +435,43 @@ func ParseReadyForSMRes(data []byte) (*ReadyForSMRes, error) {
 	}
 	return convertWireToReadyForSMRes(&wire)
 }
+
+// ParseActivateTraceModeArg decodes the BER ActivateTraceModeArg parameter (opCode 50).
+func ParseActivateTraceModeArg(data []byte) (*ActivateTraceModeArg, error) {
+	var w gsm_map.ActivateTraceModeArg
+	if err := w.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ActivateTraceModeArg: %w", err)
+	}
+	return convertWireToActivateTraceModeArg(&w)
+}
+
+// ParseActivateTraceModeRes decodes the BER ActivateTraceModeRes parameter (opCode 50).
+// The result is optional (3GPP TS 29.002 V19.1.0 §17.6.2); a return
+// result may carry no parameter to parse.
+func ParseActivateTraceModeRes(data []byte) (*ActivateTraceModeRes, error) {
+	var w gsm_map.ActivateTraceModeRes
+	if err := w.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ActivateTraceModeRes: %w", err)
+	}
+	return convertWireToActivateTraceModeRes(&w), nil
+}
+
+// ParseDeactivateTraceModeArg decodes the BER DeactivateTraceModeArg parameter (opCode 51).
+func ParseDeactivateTraceModeArg(data []byte) (*DeactivateTraceModeArg, error) {
+	var w gsm_map.DeactivateTraceModeArg
+	if err := w.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding DeactivateTraceModeArg: %w", err)
+	}
+	return convertWireToDeactivateTraceModeArg(&w)
+}
+
+// ParseDeactivateTraceModeRes decodes the BER DeactivateTraceModeRes parameter (opCode 51).
+// The result is optional (3GPP TS 29.002 V19.1.0 §17.6.2); a return
+// result may carry no parameter to parse.
+func ParseDeactivateTraceModeRes(data []byte) (*DeactivateTraceModeRes, error) {
+	var w gsm_map.DeactivateTraceModeRes
+	if err := w.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding DeactivateTraceModeRes: %w", err)
+	}
+	return convertWireToDeactivateTraceModeRes(&w), nil
+}

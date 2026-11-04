@@ -26,6 +26,8 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **Reset** | 37 | `ResetArg` | — |
 | **CheckIMEI** | 43 | `CheckIMEIArg` | `CheckIMEIRes` |
 | **ReadyForSM** | 66 | `ReadyForSMArg` | `ReadyForSMRes` |
+| **ActivateTraceMode** | 50 | `ActivateTraceModeArg` | `ActivateTraceModeRes` |
+| **DeactivateTraceMode** | 51 | `DeactivateTraceModeArg` | `DeactivateTraceModeRes` |
 | **ProvideSubscriberLocation** (PSL) | 83 | `ProvideSubscriberLocationArg` | `ProvideSubscriberLocationRes` |
 | **SendRoutingInfoForLCS** (SRI-LCS) | 85 | `SriLcs` | `SriLcsRes` |
 | **SubscriberLocationReport** (SLR) | 86 | `SubscriberLocationReportArg` | `SubscriberLocationReportRes` |
@@ -106,6 +108,9 @@ What that means for a consumer:
 - `ResetArg.Marshal` rejects `HLRList` with a CSS number (`ErrResetArgHLRListWithCSSNumber`) or with `ResetIdList` (`ErrResetArgHLRListWithResetIdList`), simultaneous insertion and deletion (`ErrResetArgSubscriptionDataConflict`), and either update without `ResetIdList` (`ErrResetArgSubscriptionDataWithoutResetIdList`, `ErrResetArgSubscriptionDataDeletionWithoutResetIdList`). Parse retains all these combinations (TS 29.002 V19.1.0 §8.10.1.3). `SendingNodeNumber` selects exactly one HLR or CSS address; Parse rejects a selected address without digits with its `ErrSendingNodeNumber*DecodedEmpty` sentinel. `HLRList` uses IMSI digit validation because HLR-Id is IMSI (§17.7.8). The caller checks Reset-ID support by both peers.
 - `CheckIMEIArg.Marshal` requires Equipment Status or BMUEF or both (`ErrCheckIMEIArgNoEquipmentInfoRequested`) and a 16-digit IMEISV when BMUEF is requested (`ErrCheckIMEIArgBMUEFRequiresIMEISV`); Parse retains those sender-invalid requests (§8.7.1.3) and discards unknown requested information bits (§17.7.1). On successful outcome, the caller includes each requested result parameter. `UESBIIu` preserves each unnamed BIT STRING's bit count and clears padding on send; the codec checks SIZE 1..128 and the non-extensible EquipmentStatus set.
 - `ReadyForSMArg` carries both independent NULL indicators and the optional four-octet `MaximumUEAvailabilityTime`. The caller sets the indicators only for a GPRS or IP-SM-GW alert, respectively (§17.7.6), and chooses the reachability timestamp (§§7.6.8.25, 12.4.3). The codec checks Time SIZE 4 and the non-extensible AlertReason set. DeleteSubscriberData and ReadyForSM results are optional; Reset has no result parameter.
+- `ActivateTraceModeArg` and `DeactivateTraceModeArg` carry optional IMSI, trace references and the activation parameters of TS 29.002 V19.1.0 §17.7.2. `ParseActivateTraceModeArg` maps non-RNC `medium` depths to `minimum`, including the extension enumeration. It keeps undefined enumeration values and inconsistent base/extension pairs; Marshal rejects them with `ErrTraceDepthInvalid`, `ErrTraceDepthExtensionInvalid` and `ErrTraceDepthExtensionMismatch`. Marshal also refuses non-RNC medium depths (`ErrTraceDepthMediumNonRNC`, `ErrTraceDepthExtensionMediumNonRNC`). `TraceDepthList` keeps both depths so the caller can ignore the base when it supports the extension, as §17.7.2 requires.
+- Trace NE, interface and event lists expose only the named bool flags: Parse discards every other bit (§17.7.2). `MDTConfiguration` and `AreaScope` expose all MDT parameters; nil lists and scalar pointers and empty octets are absent, while an empty non-nil list reaches the codec's SIZE check. Their identities use `HexBytes` and the same sender-only PLMN digit check as other fields of those ASN.1 types (§17.7.8). A present OMCID without digits fails Parse with `ErrActivateTraceModeArgOMCIDDecodedEmpty`; address and GSN helpers apply their existing rules.
+- The caller supplies mandatory IMSI in a stand-alone trace operation (§§9.1.1.3,9.1.2.3), supplies the listed UMTS activation parameters and trace support indicator (§9.1.1.3), and applies the UMTS-only trace type rule (§7.6.10.3). TS 52.008 TraceType coding and TS 32.422 trace/MDT coding and conditional presence stay with the caller. Both trace results are optional (§17.6.2); an omitted parameter has nothing to parse.
 
 - `UpdateGprsLocation.Marshal` rejects SGSN LCS capability set1 (`ErrSGSNCapabilityLCSSet1NotAllowed`), PDN-GW updates lacking an identity or lacking both APN and ContextID (`ErrPdnGwUpdateMissingIdentity`, `ErrPdnGwUpdateMissingAPNOrContextID`). Parse retains SGSN set1 and identity-only updates; its existing PDN identity and ISR receiver rules still apply.
 - `InsertSubscriberDataArg.Marshal` requires PDN types 01..04 (`ErrPDNTypeInvalid`). Typed and opaque PDP contexts require base types F001/F002/F121/F157, extended type F18D and paired addresses of different IPv4/IPv6 families (`ErrPDPTypeInvalid`, `ErrExtPDPTypeInvalid`, `ErrPDPAddressFamilyCombinationInvalid`). Typed and opaque PDP contexts share the QoS predecessor and base address rules (`ErrExtQoSHierarchyViolated`, `ErrExtPDPAddressWithoutPDPAddress`); Parse preserves received values.
@@ -319,6 +324,40 @@ if err != nil {
     log.Fatal(err)
 }
 fmt.Println("SMS retry triggered for MSISDN:", parsed.MSISDN)
+```
+
+### Trace mode (opCodes 50 and 51)
+
+The IMSI is required in a stand-alone operation. Set `TraceType` according to TS 52.008; UMTS trace and MDT configuration also require the caller rules described above.
+
+```go
+activate := &gsmmap.ActivateTraceModeArg{
+    IMSI:           "001010123456789",
+    TraceReference: gsmmap.HexBytes{0x12, 0x34},
+    TraceType:      0,
+}
+activateBytes, err := activate.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+decodedActivate, err := gsmmap.ParseActivateTraceModeArg(activateBytes)
+if err != nil {
+    log.Fatal(err)
+}
+
+deactivate := &gsmmap.DeactivateTraceModeArg{
+    IMSI:           decodedActivate.IMSI,
+    TraceReference: decodedActivate.TraceReference,
+}
+deactivateBytes, err := deactivate.Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+decodedDeactivate, err := gsmmap.ParseDeactivateTraceModeArg(deactivateBytes)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(decodedDeactivate.IMSI)
 ```
 
 ### PurgeMS (opCode 67)

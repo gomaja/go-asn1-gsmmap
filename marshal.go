@@ -574,3 +574,55 @@ func (v *ReadyForSMRes) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes ActivateTraceModeArg (opCode 50) into BER.
+func (v *ActivateTraceModeArg) Marshal() ([]byte, error) {
+	w, err := convertActivateTraceModeArgToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting ActivateTraceModeArg: %w", err)
+	}
+	b, err := w.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding ActivateTraceModeArg: %w", err)
+	}
+	return b, nil
+}
+
+// Marshal encodes ActivateTraceModeRes (opCode 50) into BER.
+func (v *ActivateTraceModeRes) Marshal() ([]byte, error) {
+	w, err := convertActivateTraceModeResToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting ActivateTraceModeRes: %w", err)
+	}
+	b, err := w.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding ActivateTraceModeRes: %w", err)
+	}
+	return b, nil
+}
+
+// Marshal encodes DeactivateTraceModeArg (opCode 51) into BER.
+func (v *DeactivateTraceModeArg) Marshal() ([]byte, error) {
+	w, err := convertDeactivateTraceModeArgToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting DeactivateTraceModeArg: %w", err)
+	}
+	b, err := w.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding DeactivateTraceModeArg: %w", err)
+	}
+	return b, nil
+}
+
+// Marshal encodes DeactivateTraceModeRes (opCode 51) into BER.
+func (v *DeactivateTraceModeRes) Marshal() ([]byte, error) {
+	w, err := convertDeactivateTraceModeResToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting DeactivateTraceModeRes: %w", err)
+	}
+	b, err := w.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding DeactivateTraceModeRes: %w", err)
+	}
+	return b, nil
+}

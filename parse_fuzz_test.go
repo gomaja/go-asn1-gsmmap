@@ -82,6 +82,10 @@ var parsers = []struct {
 	{"CheckIMEIRes", asParser(ParseCheckIMEIRes)},
 	{"ReadyForSMArg", asParser(ParseReadyForSMArg)},
 	{"ReadyForSMRes", asParser(ParseReadyForSMRes)},
+	{"ActivateTraceModeArg", asParser(ParseActivateTraceModeArg)},
+	{"ActivateTraceModeRes", asParser(ParseActivateTraceModeRes)},
+	{"DeactivateTraceModeArg", asParser(ParseDeactivateTraceModeArg)},
+	{"DeactivateTraceModeRes", asParser(ParseDeactivateTraceModeRes)},
 	{"USSDArg", asParser(ParseUSSDArg)},
 	{"USSDRes", asParser(ParseUSSDRes)},
 }
@@ -152,6 +156,10 @@ var strictEncodeErrors = []error{
 	ErrCheckIMEIArgBMUEFRequiresIMEISV,
 	ErrCheckIMEIArgNoEquipmentInfoRequested,
 
+	// TS 29.002 V19.1.0 §17.7.2: Parse retains undefined depths and inconsistent pairs.
+	ErrTraceDepthInvalid,
+	ErrTraceDepthExtensionInvalid,
+	ErrTraceDepthExtensionMismatch,
 	// ASCII DiameterIdentity is a sender rule (RFC 6733 §4.3.1; TS 29.002 §17.7.8).
 	ErrDiameterIdentityNotASCII,
 	// Decimal MCC/MNC coding is a sender rule (TS 29.002 §§17.7.8,17.7.13).
