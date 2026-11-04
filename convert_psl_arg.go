@@ -219,12 +219,9 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 	}
 
 	loc := convertWireToLocationType(&w.LocationType)
-	mlcStr, mlcNature, mlcPlan, err := decodeAddressField(w.MlcNumber)
+	mlcStr, mlcNature, mlcPlan, err := decodeAddressWithDigits(w.MlcNumber, ErrPSLArgMlcNumberEmpty)
 	if err != nil {
 		return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.MlcNumber: %w", err)
-	}
-	if mlcStr == "" {
-		return nil, ErrPSLArgMlcNumberEmpty
 	}
 
 	out := &ProvideSubscriberLocationArg{
@@ -251,12 +248,9 @@ func convertWireToProvideSubscriberLocationArg(w *gsm_map.ProvideSubscriberLocat
 		out.IMSI = imsi
 	}
 	if w.Msisdn != nil {
-		s, nature, plan, err := decodeAddressField(*w.Msisdn)
+		s, nature, plan, err := decodeAddressWithDigits(*w.Msisdn, ErrPSLArgMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ProvideSubscriberLocationArg.MSISDN: %w", err)
-		}
-		if s == "" {
-			return nil, ErrPSLArgMSISDNDecodedEmpty
 		}
 		out.MSISDN = s
 		out.MSISDNNature = nature

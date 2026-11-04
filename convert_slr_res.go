@@ -89,24 +89,18 @@ func convertWireToSubscriberLocationReportRes(w *gsm_map.SubscriberLocationRepor
 	out := &SubscriberLocationReportRes{}
 
 	if w.NaESRK != nil {
-		s, nature, plan, err := decodeAddressField(*w.NaESRK)
+		s, nature, plan, err := decodeAddressWithDigits(*w.NaESRK, ErrSLRResNaESRKDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportRes.NaESRK: %w", err)
-		}
-		if s == "" {
-			return nil, ErrSLRResNaESRKDecodedEmpty
 		}
 		out.NaESRK = s
 		out.NaESRKNature = nature
 		out.NaESRKPlan = plan
 	}
 	if w.NaESRD != nil {
-		s, nature, plan, err := decodeAddressField(*w.NaESRD)
+		s, nature, plan, err := decodeAddressWithDigits(*w.NaESRD, ErrSLRResNaESRDDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding SubscriberLocationReportRes.NaESRD: %w", err)
-		}
-		if s == "" {
-			return nil, ErrSLRResNaESRDDecodedEmpty
 		}
 		out.NaESRD = s
 		out.NaESRDNature = nature

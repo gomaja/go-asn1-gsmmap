@@ -180,12 +180,9 @@ func convertArgToUpdateGprsLocation(arg *gsm_map.UpdateGprsLocationArg) (*Update
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 
-	sgsnNum, sgsnNature, sgsnPlan, err := decodeAddressField(arg.SgsnNumber)
+	sgsnNum, sgsnNature, sgsnPlan, err := decodeAddressWithDigits(arg.SgsnNumber, ErrUpdateGprsLocationMissingSgsnNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SgsnNumber: %w", err)
-	}
-	if sgsnNum == "" {
-		return nil, ErrUpdateGprsLocationMissingSgsnNumber
 	}
 
 	sgsnAddr, err := gsn.Parse(arg.SgsnAddress)
@@ -626,12 +623,9 @@ func convertUpdateGprsLocationResToRes(u *UpdateGprsLocationRes) (*gsm_map.Updat
 }
 
 func convertResToUpdateGprsLocationRes(res *gsm_map.UpdateGprsLocationRes) (*UpdateGprsLocationRes, error) {
-	hlr, nature, plan, err := decodeAddressField(res.HlrNumber)
+	hlr, nature, plan, err := decodeAddressWithDigits(res.HlrNumber, ErrUpdateGprsLocationResMissingHlrNumber)
 	if err != nil {
 		return nil, fmt.Errorf("decoding HlrNumber: %w", err)
-	}
-	if hlr == "" {
-		return nil, ErrUpdateGprsLocationResMissingHlrNumber
 	}
 
 	return &UpdateGprsLocationRes{

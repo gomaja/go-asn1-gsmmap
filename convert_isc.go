@@ -96,12 +96,9 @@ func convertArgToInformServiceCentre(arg *gsm_map.InformServiceCentreArg) (*Info
 	out := &InformServiceCentre{}
 
 	if arg.StoredMSISDN != nil {
-		digits, nature, plan, err := decodeAddressField(*arg.StoredMSISDN)
+		digits, nature, plan, err := decodeAddressWithDigits(*arg.StoredMSISDN, ErrIscStoredMSISDNDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding StoredMSISDN: %w", err)
-		}
-		if digits == "" {
-			return nil, ErrIscStoredMSISDNDecodedEmpty
 		}
 		out.StoredMSISDN = digits
 		out.StoredMSISDNNature = nature

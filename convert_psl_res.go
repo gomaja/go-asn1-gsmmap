@@ -81,23 +81,17 @@ func convertWireToServingNodeAddress(w *gsm_map.ServingNodeAddress) (*ServingNod
 	out := &ServingNodeAddress{}
 	switch w.Choice {
 	case gsm_map.ServingNodeAddressChoiceMscNumber:
-		s, nature, plan, err := decodeAddressField(*w.MscNumber)
+		s, nature, plan, err := decodeAddressWithDigits(*w.MscNumber, ErrServingNodeAddressMscNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ServingNodeAddress.MscNumber: %w", err)
-		}
-		if s == "" {
-			return nil, ErrServingNodeAddressMscNumberDecodedEmpty
 		}
 		out.MscNumber = s
 		out.MscNumberNature = nature
 		out.MscNumberPlan = plan
 	case gsm_map.ServingNodeAddressChoiceSgsnNumber:
-		s, nature, plan, err := decodeAddressField(*w.SgsnNumber)
+		s, nature, plan, err := decodeAddressWithDigits(*w.SgsnNumber, ErrServingNodeAddressSgsnNumberDecodedEmpty)
 		if err != nil {
 			return nil, fmt.Errorf("decoding ServingNodeAddress.SgsnNumber: %w", err)
-		}
-		if s == "" {
-			return nil, ErrServingNodeAddressSgsnNumberDecodedEmpty
 		}
 		out.SgsnNumber = s
 		out.SgsnNumberNature = nature

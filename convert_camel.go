@@ -145,12 +145,9 @@ func convertWireToOBcsmTDPData(w *gsm_map.OBcsmCamelTDPData) (*OBcsmCamelTDPData
 	}
 	sk := w.ServiceKey
 	dch := defaultCallHandlingFromWire(w.DefaultCallHandling)
-	digits, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
+	digits, nature, plan, err := decodeAddressWithDigits(w.GsmSCFAddress, ErrCamelMissingGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GsmSCFAddress: %w", err)
-	}
-	if digits == "" {
-		return nil, ErrCamelMissingGsmSCFAddress
 	}
 	return &OBcsmCamelTDPData{
 		OBcsmTriggerDetectionPoint: w.OBcsmTriggerDetectionPoint,
@@ -198,12 +195,9 @@ func convertWireToTBcsmTDPData(w *gsm_map.TBcsmCamelTDPData) (*TBcsmCamelTDPData
 	}
 	sk := w.ServiceKey
 	dch := defaultCallHandlingFromWire(w.DefaultCallHandling)
-	digits, nature, plan, err := decodeAddressField(w.GsmSCFAddress)
+	digits, nature, plan, err := decodeAddressWithDigits(w.GsmSCFAddress, ErrCamelMissingGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding GsmSCFAddress: %w", err)
-	}
-	if digits == "" {
-		return nil, ErrCamelMissingGsmSCFAddress
 	}
 	return &TBcsmCamelTDPData{
 		TBcsmTriggerDetectionPoint: w.TBcsmTriggerDetectionPoint,
@@ -559,19 +553,13 @@ func convertDPAnalysedInfoCriteriumToWire(c *DPAnalysedInfoCriterium) (gsm_map.D
 func convertWireToDPAnalysedInfoCriterium(w *gsm_map.DPAnalysedInfoCriterium) (DPAnalysedInfoCriterium, error) {
 	sk := w.ServiceKey
 	dch := defaultCallHandlingFromWire(w.DefaultCallHandling)
-	dnDigits, dnNature, dnPlan, err := decodeAddressField(w.DialledNumber)
+	dnDigits, dnNature, dnPlan, err := decodeAddressWithDigits(w.DialledNumber, ErrCamelMissingDialledNumber)
 	if err != nil {
 		return DPAnalysedInfoCriterium{}, fmt.Errorf("decoding DialledNumber: %w", err)
 	}
-	if dnDigits == "" {
-		return DPAnalysedInfoCriterium{}, ErrCamelMissingDialledNumber
-	}
-	scDigits, scNature, scPlan, err := decodeAddressField(w.GsmSCFAddress)
+	scDigits, scNature, scPlan, err := decodeAddressWithDigits(w.GsmSCFAddress, ErrCamelMissingGsmSCFAddress)
 	if err != nil {
 		return DPAnalysedInfoCriterium{}, fmt.Errorf("decoding GsmSCFAddress: %w", err)
-	}
-	if scDigits == "" {
-		return DPAnalysedInfoCriterium{}, ErrCamelMissingGsmSCFAddress
 	}
 	return DPAnalysedInfoCriterium{
 		DialledNumber:       dnDigits,
@@ -810,12 +798,9 @@ func convertSSCSIToWire(s *SSCSI) (*gsm_map.SSCSI, error) {
 func convertWireToSSCSI(w *gsm_map.SSCSI) (*SSCSI, error) {
 	events := w.SsCamelData.SsEventList
 
-	digits, nat, plan, err := decodeAddressField(w.SsCamelData.GsmSCFAddress)
+	digits, nat, plan, err := decodeAddressWithDigits(w.SsCamelData.GsmSCFAddress, ErrCamelMissingGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SS-CSI.GsmSCFAddress: %w", err)
-	}
-	if digits == "" {
-		return nil, ErrCamelMissingGsmSCFAddress
 	}
 	var ssList []SsCode
 	for _, b := range events.Values {
@@ -894,12 +879,9 @@ func convertMCSIToWire(m *MCSI) (*gsm_map.MCSI, error) {
 // holds no M-CSI.
 func convertWireToMCSI(w *gsm_map.MCSI) (*MCSI, error) {
 	sk := w.ServiceKey
-	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
+	digits, nat, plan, err := decodeAddressWithDigits(w.GsmSCFAddress, ErrCamelMissingGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding M-CSI.GsmSCFAddress: %w", err)
-	}
-	if digits == "" {
-		return nil, ErrCamelMissingGsmSCFAddress
 	}
 	triggers := mmCodesFromWire(w.MobilityTriggers, isCSMMCode)
 	if triggers == nil {
@@ -1004,12 +986,9 @@ func convertWireToSMSCAMELTDPData(w *gsm_map.SMSCAMELTDPData, tdp SMSTriggerDete
 		return nil, nil
 	}
 	sk := w.ServiceKey
-	digits, nat, plan, err := decodeAddressField(w.GsmSCFAddress)
+	digits, nat, plan, err := decodeAddressWithDigits(w.GsmSCFAddress, ErrCamelMissingGsmSCFAddress)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SMS-CAMEL-TDP-Data.GsmSCFAddress: %w", err)
-	}
-	if digits == "" {
-		return nil, ErrCamelMissingGsmSCFAddress
 	}
 	// DefaultSMS-Handling exception handling, 3GPP TS 29.002 V19.1.0
 	// §17.7.1: values 2..31 are treated as continueTransaction and values

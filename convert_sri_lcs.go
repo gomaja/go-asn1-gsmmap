@@ -47,12 +47,9 @@ func convertArgToSriLcs(w *gsm_map.RoutingInfoForLCSArg) (*SriLcs, error) {
 	if w == nil {
 		return nil, ErrSriLcsNil
 	}
-	mlc, nature, plan, err := decodeAddressField(w.MlcNumber)
+	mlc, nature, plan, err := decodeAddressWithDigits(w.MlcNumber, ErrSriLcsMlcNumberEmpty)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SriLcs.MlcNumber: %w", err)
-	}
-	if mlc == "" {
-		return nil, ErrSriLcsMlcNumberEmpty
 	}
 	target, err := convertWireToSubscriberIdentity(w.TargetMS)
 	if err != nil {
