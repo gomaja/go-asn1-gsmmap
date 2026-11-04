@@ -681,7 +681,7 @@ Phone numbers are stored as digit strings in the TBCD alphabet of TS 29.002 §17
 | Package | Purpose |
 |---|---|
 | `address` | MAP AddressString encoding/decoding |
-| `gsn` | GSN address (IPv4/IPv6) encoding per 3GPP TS 23.003 |
+| `gsn` | GSN address (IPv4/IPv6) encoding per 3GPP TS 23.003; a 16-octet address keeps its IPv6 coding, so an IPv4-mapped one reads and builds as `::ffff:a.b.c.d` |
 
 ## Requirements
 
