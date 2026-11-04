@@ -38,9 +38,12 @@ jobs:
         run: |
           zero_sha="0000000000000000000000000000000000000000"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git diff --check "${{ github.event.pull_request.base.sha }}...HEAD"
-          elif [ -n "${{ github.event.before }}" ] && [ "${{ github.event.before }}" != "$zero_sha" ] && git merge-base "${{ github.event.before }}" HEAD >/dev/null 2>&1; then
-            git diff --check "${{ github.event.before }}...HEAD"
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if [ -n "$base" ] && [ "$base" != "$zero_sha" ] && git merge-base "$base" HEAD >/dev/null 2>&1; then
+            git diff --check "$base...HEAD"
           else
             git diff-tree --check --root --no-commit-id -r HEAD
           fi
