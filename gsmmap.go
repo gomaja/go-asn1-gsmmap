@@ -3972,6 +3972,206 @@ type InsertSubscriberDataRes struct {
 	ExtSupportedFeatures         *ExtSupportedFeatures         // [10] optional
 }
 
+// DeleteSubscriberDataArg (opCode 8) withdraws subscription data
+// (3GPP TS 29.002 V19.1.0 §§8.8.2.3, 17.7.1).
+// BasicServiceList is used by VLR/SGSN; the caller ignores unsupported values
+// and the IWF ignores the list. SsList is used by VLR, and by SGSN/IWF for
+// Call Barring and LCS; otherwise SGSN/IWF ignore it.
+// RoamingRestrictionDueToUnsupportedFeature and VbsGroupIndication are VLR-only;
+// SGSN/IWF ignore them. VgcsGroupIndication is VLR-only; SGSN ignores it.
+// The caller ignores VBS/VGCS deletion if the service is unsupported or no
+// corresponding Group Ids are stored.
+// CamelSubscriptionInfoWithdraw, SpecificCSIWithdraw and LsaInformationWithdraw
+// are used by VLR/SGSN; IWF ignores the CAMEL withdrawal parameters.
+// GprsSubscriptionDataWithdraw is SGSN-only; VLR ignores it.
+// EpsSubscriptionDataWithdraw is used by SGSN/MME; VLR ignores it.
+// RoamingRestrictedInSgsnDueToUnsupportedFeature, ChargingCharacteristicsWithdraw,
+// ApnOiReplacementWithdraw, StnSrWithdraw and SubscribedPeriodicTAURAUTimerWithdraw
+// are used by SGSN/IWF; VLR ignores them. SubscribedVsrvccWithdraw is used by
+// MME/IWF; SGSN/VLR ignore it. SubscribedPeriodicLAUTimerWithdraw is VLR-only;
+// MME/SGSN ignore it. AdditionalMSISDNWithdraw is used by SGSN/IWF.
+// RegionalSubscriptionIdentifier is used by VLR/SGSN/MME; GmlcListWithdraw
+// and CsgSubscriptionDeleted are used by VLR/SGSN/IWF.
+// These parameters and IstInformationWithdraw are not applicable for CSS;
+// VLR/SGSN/IWF ignore them when received from CSS. VplmnCsgSubscriptionDeleted
+// is used by VLR/SGSN, is not applicable for HLR/HSS and is ignored when
+// received from HLR/HSS. UeUsageTypeWithdraw is not applicable for VLRs;
+// the HLR sends it to SGSN/MME supporting Dedicated Core Network functionality.
+// The caller applies these node and peer restrictions.
+type DeleteSubscriberDataArg struct {
+	IMSI             string
+	BasicServiceList []ExtBasicServiceCode
+	SsList           []SsCode
+	// The Zone Code's binary coding "shall not be checked" (§8.8.2.3); the
+	// codec checks SIZE 2. The caller sends it only to networks supporting
+	// Regional Subscription. A receiver "shall check for its location areas
+	// whether they are allowed or not", and returns Network Node Area Restricted
+	// if the whole area is, or Regional Subscription Not Supported. With no
+	// Zone Codes stored, the request is ignored "and no Regional Subscription
+	// Response shall be returned".
+	RegionalSubscriptionIdentifier ZoneCode
+	// "This parameter should not be sent in the same message as" Specific
+	// CSI Withdraw (§8.8.2.3).
+	CamelSubscriptionInfoWithdraw bool
+	// "This parameter should not be sent in the same message as" CAMEL
+	// Subscription Info Withdraw. "It shall not be sent to VLRs that do not
+	// support CAMEL phase 3 or higher" (§8.8.2.3).
+	SpecificCSIWithdraw          *SpecificCSIWithdraw
+	GprsSubscriptionDataWithdraw *GPRSSubscriptionDataWithdraw
+	EpsSubscriptionDataWithdraw  *EPSSubscriptionDataWithdraw
+	LsaInformationWithdraw       *LSAInformationWithdraw
+	// If sent, "the VLR shall check if the current Location Area is possibly
+	// allowed now" (§8.8.2.3).
+	RoamingRestrictionDueToUnsupportedFeature bool
+	VbsGroupIndication                        bool
+	VgcsGroupIndication                       bool
+	// If sent, "the SGSN shall check if the current Location Area is possibly
+	// allowed now" (§8.8.2.3).
+	RoamingRestrictedInSgsnDueToUnsupportedFeature bool
+	GmlcListWithdraw                               bool
+	IstInformationWithdraw                         bool
+	ChargingCharacteristicsWithdraw                bool
+	StnSrWithdraw                                  bool
+	ApnOiReplacementWithdraw                       bool
+	CsgSubscriptionDeleted                         bool
+	SubscribedPeriodicTAURAUTimerWithdraw          bool
+	SubscribedPeriodicLAUTimerWithdraw             bool
+	SubscribedVsrvccWithdraw                       bool
+	VplmnCsgSubscriptionDeleted                    bool
+	AdditionalMSISDNWithdraw                       bool
+	CsToPsSRVCCWithdraw                            bool
+	ImsiGroupIdListWithdraw                        bool
+	UserPlaneIntegrityProtectionWithdraw           bool
+	DlBufferingSuggestedPacketCountWithdraw        bool
+	UeUsageTypeWithdraw                            bool
+	ResetIdsWithdraw                               bool
+	IabOperationWithdraw                           bool
+}
+
+// DeleteSubscriberDataRes is the optional result parameter of opCode 8.
+// RegionalSubscriptionResponse is used by VLR/SGSN/IWF and is not applicable
+// for CSS; the caller ignores it when received from CSS (§8.8.2.3).
+type DeleteSubscriberDataRes struct {
+	RegionalSubscriptionResponse *RegionalSubscriptionResponse
+}
+
+// GPRSSubscriptionDataWithdraw selects all data or a context list (§17.7.1).
+// A nil list is unselected; an empty non-nil list is checked by the codec.
+type GPRSSubscriptionDataWithdraw struct {
+	AllGPRSData   bool
+	ContextIDList []int
+}
+
+// EPSSubscriptionDataWithdraw selects all data or a context list (§17.7.1).
+// A nil list is unselected; an empty non-nil list is checked by the codec.
+type EPSSubscriptionDataWithdraw struct {
+	AllEPSData    bool
+	ContextIDList []int
+}
+
+// LSAInformationWithdraw selects all data or an identity list (§17.7.1).
+// A nil list is unselected; an empty non-nil list is checked by the codec.
+type LSAInformationWithdraw struct {
+	AllLSAData      bool
+	LSAIdentityList []HexBytes
+}
+
+// SpecificCSIWithdraw names elements withdrawable by DeleteSubscriberData
+// (3GPP TS 29.002 V19.1.0 §8.8.2.3). Parse ignores bits 11..31, since "bits 11
+// to 31 shall be ignored if received by a non-IP Multimedia Core Network
+// entity" (§17.7.1) and this operation's receivers are a VLR, SGSN or IWF.
+// TCSI is bit 8, kept as received: "Bit 8 and bits 11-13 are only applicable
+// for the NoteSubscriberDataModified operation" (§17.7.1), so Marshal refuses
+// it with ErrSpecificCSIWithdrawTCSINotApplicable.
+type SpecificCSIWithdraw struct {
+	OCSI, SsCSI, TifCSI, DCSI, VtCSI, MoSmsCSI, MCSI, GprsCSI, TCSI, MtSmsCSI, MgCSI bool
+}
+
+// ResetArg (opCode 37) carries a restart or shared subscription update
+// (3GPP TS 29.002 V19.1.0 §§8.10.1.3, 17.7.1). The caller ensures that
+// ResetIdList "shall not be present if Reset-IDs are not supported by the
+// HLR/HSS and by the VLR or SGSN or MME".
+type ResetArg struct {
+	SendingNodeNumber        SendingNodeNumber
+	HLRList                  []string
+	ResetIdList              ResetIdList
+	SubscriptionData         *InsertSubscriberDataArg
+	SubscriptionDataDeletion *DeleteSubscriberDataArg
+}
+
+// SendingNodeNumber selects exactly one address (TS 29.002 §17.7.1).
+type SendingNodeNumber struct {
+	HLRNumber                      string
+	HLRNumberNature, HLRNumberPlan uint8
+	CSSNumber                      string
+	CSSNumberNature, CSSNumberPlan uint8
+}
+
+// CheckIMEIArg (opCode 43) requests equipment information
+// (3GPP TS 29.002 V19.1.0 §§8.7.1.3, 17.7.1).
+type CheckIMEIArg struct {
+	IMEI                   string // 15 digits with spare digit 0, or a 16-digit IMEISV.
+	RequestedEquipmentInfo RequestedEquipmentInfo
+}
+
+// RequestedEquipmentInfo names the requested information. Parse discards
+// unknown bit assignments (3GPP TS 29.002 V19.1.0 §17.7.1).
+type RequestedEquipmentInfo struct{ EquipmentStatus, BMUEF bool }
+
+// CheckIMEIRes (opCode 43) carries equipment information. The caller sends
+// each parameter "if Equipment status was requested" or "if BMUEF was
+// requested", respectively (3GPP TS 29.002 V19.1.0 §8.7.1.3).
+type CheckIMEIRes struct {
+	EquipmentStatus *EquipmentStatus
+	BMUEF           *UESBIIu
+}
+
+// EquipmentStatus is the equipment listing status (TS 29.002 §17.7.1).
+type EquipmentStatus = gsm_map.EquipmentStatus
+
+const (
+	EquipmentStatusPermittedListed  EquipmentStatus = gsm_map.EquipmentStatusPermittedListed
+	EquipmentStatusProhibitedListed EquipmentStatus = gsm_map.EquipmentStatusProhibitedListed
+	EquipmentStatusTrackingListed   EquipmentStatus = gsm_map.EquipmentStatusTrackingListed
+)
+
+// UESBIIu carries optional unnamed BIT STRINGs of SIZE 1..128 (§17.7.1).
+// Nil octets with a zero bit count mean absent.
+type UESBIIu struct {
+	UESBIIuA     HexBytes
+	UESBIIuABits int
+	UESBIIuB     HexBytes
+	UESBIIuBBits int
+}
+
+// ReadyForSMArg (opCode 66) reports SM reachability
+// (3GPP TS 29.002 V19.1.0 §§12.4.3, 17.7.6).
+type ReadyForSMArg struct {
+	IMSI        string
+	AlertReason AlertReason
+	// "set only when" the alert sent to HLR is for GPRS (§17.7.6).
+	AlertReasonIndicator bool
+	// "set only when" the alert sent to HLR is for IP-SM-GW (§17.7.6).
+	AdditionalAlertReasonIndicator bool
+	// Time: four octets of NTP seconds since 1900-01-01 UTC; 2036 era wrap
+	// (RFC 6733 §4.3.1; TS 29.002 §17.7.8); nil if absent.
+	// The UTC timestamp until which a UE using a power saving mechanism is
+	// expected to be reachable for SM delivery (§7.6.8.25). The SGSN or MSC
+	// may include it when notifying the HLR that the MS is reachable (§12.4.3).
+	MaximumUEAvailabilityTime HexBytes
+}
+
+// ReadyForSMRes is the optional empty result parameter of opCode 66.
+type ReadyForSMRes struct{}
+
+// AlertReason indicates presence or available memory (TS 29.002 §17.7.6).
+type AlertReason = gsm_map.AlertReason
+
+const (
+	AlertReasonMsPresent       AlertReason = gsm_map.AlertReasonMsPresent
+	AlertReasonMemoryAvailable AlertReason = gsm_map.AlertReasonMemoryAvailable
+)
+
 // MAP operation sentinel errors.
 var (
 	// 3GPP TS 29.002 V19.1.0 §17.7.8; RFC 6733 §4.3.1.
@@ -4428,4 +4628,37 @@ var (
 	ErrSMServingNodeAddressMultipleAlternatives          = errors.New("smServingNodeAddress: CHOICE has multiple alternatives set; set exactly one of NetworkNodeNumber or DiameterAddress")
 	ErrSMServingNodeAddressUnknownAlternative            = errors.New("smServingNodeAddress: unknown CHOICE alternative")
 	ErrSMServingNodeAddressNetworkNodeNumberDecodedEmpty = errors.New("smServingNodeAddress: present wire networkNode-Number decoded to empty digits; presence cannot round-trip through string-based API")
+
+	// DeleteSubscriberData, Reset, CheckIMEI and ReadyForSM.
+	ErrDeleteSubscriberDataArgNil                                 = errors.New("deleteSubscriberDataArg: nil argument is not permitted")
+	ErrDeleteSubscriberDataResNil                                 = errors.New("deleteSubscriberDataRes: nil argument is not permitted")
+	ErrResetArgNil                                                = errors.New("resetArg: nil argument is not permitted")
+	ErrCheckIMEIArgNil                                            = errors.New("checkIMEIArg: nil argument is not permitted")
+	ErrCheckIMEIResNil                                            = errors.New("checkIMEIRes: nil argument is not permitted")
+	ErrReadyForSMArgNil                                           = errors.New("readyForSMArg: nil argument is not permitted")
+	ErrReadyForSMResNil                                           = errors.New("readyForSMRes: nil argument is not permitted")
+	ErrGPRSSubscriptionDataWithdrawNoAlternative                  = errors.New("gprsSubscriptionDataWithdraw: CHOICE has no alternative set")
+	ErrGPRSSubscriptionDataWithdrawMultipleAlternatives           = errors.New("gprsSubscriptionDataWithdraw: CHOICE has multiple alternatives set")
+	ErrGPRSSubscriptionDataWithdrawUnknownAlternative             = errors.New("gprsSubscriptionDataWithdraw: unknown CHOICE alternative")
+	ErrEPSSubscriptionDataWithdrawNoAlternative                   = errors.New("epsSubscriptionDataWithdraw: CHOICE has no alternative set")
+	ErrEPSSubscriptionDataWithdrawMultipleAlternatives            = errors.New("epsSubscriptionDataWithdraw: CHOICE has multiple alternatives set")
+	ErrEPSSubscriptionDataWithdrawUnknownAlternative              = errors.New("epsSubscriptionDataWithdraw: unknown CHOICE alternative")
+	ErrLSAInformationWithdrawNoAlternative                        = errors.New("lsaInformationWithdraw: CHOICE has no alternative set")
+	ErrLSAInformationWithdrawMultipleAlternatives                 = errors.New("lsaInformationWithdraw: CHOICE has multiple alternatives set")
+	ErrLSAInformationWithdrawUnknownAlternative                   = errors.New("lsaInformationWithdraw: unknown CHOICE alternative")
+	ErrSendingNodeNumberNoAlternative                             = errors.New("sendingNodeNumber: CHOICE has no alternative set")
+	ErrSendingNodeNumberMultipleAlternatives                      = errors.New("sendingNodeNumber: CHOICE has multiple alternatives set")
+	ErrSendingNodeNumberUnknownAlternative                        = errors.New("sendingNodeNumber: unknown CHOICE alternative")
+	ErrSendingNodeNumberHLRNumberDecodedEmpty                     = errors.New("sendingNodeNumber: present wire HLRNumber decoded to empty digits")
+	ErrSendingNodeNumberCSSNumberDecodedEmpty                     = errors.New("sendingNodeNumber: present wire CSSNumber decoded to empty digits")
+	ErrSpecificCSIWithdrawTCSINotApplicable                       = errors.New("specificCSIWithdraw: T-CSI applies only to NoteSubscriberDataModified per 3GPP TS 29.002 V19.1.0 §17.7.1")
+	ErrSpecificCSIWithdrawEmpty                                   = errors.New("specificCSIWithdraw: at least one element must be withdrawn per 3GPP TS 29.002 V19.1.0 §8.8.2.3")
+	ErrDeleteSubscriberDataResRegionalSubscriptionResponseInvalid = errors.New("deleteSubscriberDataRes: only Network Node Area Restricted or Regional Subscription Not Supported may be sent per 3GPP TS 29.002 V19.1.0 §8.8.2.3")
+	ErrResetArgHLRListWithCSSNumber                               = errors.New("resetArg: HLRList applies only to HSS/HLR restart per 3GPP TS 29.002 V19.1.0 §8.10.1.3")
+	ErrResetArgHLRListWithResetIdList                             = errors.New("resetArg: HLRList shall not be present with ResetIdList per 3GPP TS 29.002 V19.1.0 §8.10.1.3")
+	ErrResetArgSubscriptionDataConflict                           = errors.New("resetArg: SubscriptionData and SubscriptionDataDeletion shall not be present together per 3GPP TS 29.002 V19.1.0 §8.10.1.3")
+	ErrResetArgSubscriptionDataWithoutResetIdList                 = errors.New("resetArg: SubscriptionData requires ResetIdList per 3GPP TS 29.002 V19.1.0 §8.10.1.3")
+	ErrResetArgSubscriptionDataDeletionWithoutResetIdList         = errors.New("resetArg: SubscriptionDataDeletion requires ResetIdList per 3GPP TS 29.002 V19.1.0 §8.10.1.3")
+	ErrCheckIMEIArgBMUEFRequiresIMEISV                            = errors.New("checkIMEIArg: BMUEF requires a 16-digit IMEISV per 3GPP TS 29.002 V19.1.0 §8.7.1.3")
+	ErrCheckIMEIArgNoEquipmentInfoRequested                       = errors.New("checkIMEIArg: EquipmentStatus or BMUEF or both must be requested per 3GPP TS 29.002 V19.1.0 §8.7.1.3")
 )

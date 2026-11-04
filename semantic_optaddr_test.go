@@ -26,6 +26,13 @@ func semOptionalAddressCases() []semAddressCase {
 		return &v
 	}
 	return []semAddressCase{
+		{"Reset SendingNodeNumber HLR", func(_ *testing.T, a []byte) semWire {
+			return &gsm_map.ResetArg{SendingNodenumber: gsm_map.NewSendingNodeNumberHlrNumber(a)}
+		}, semParse(ParseResetArg), ErrSendingNodeNumberHLRNumberDecodedEmpty},
+		{"Reset SendingNodeNumber CSS", func(_ *testing.T, a []byte) semWire {
+			return &gsm_map.ResetArg{SendingNodenumber: gsm_map.NewSendingNodeNumberCssNumber(a)}
+		}, semParse(ParseResetArg), ErrSendingNodeNumberCSSNumberDecodedEmpty},
+
 		// TS 29.002 V19.1.0 §17.7.6 uses an ISDN address in each list CHOICE.
 		{"ReportSMDeliveryStatus failedSMServingNodes networkNode-Number", func(t *testing.T, a []byte) semWire {
 			w := semMust(convertReportSMDeliveryStatusToArg(minimalReportSMDeliveryStatus()))

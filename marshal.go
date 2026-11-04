@@ -483,3 +483,94 @@ func (r *USSDRes) Marshal() ([]byte, error) {
 	}
 	return data, nil
 }
+
+// Marshal encodes DeleteSubscriberDataArg into BER-encoded bytes.
+func (v *DeleteSubscriberDataArg) Marshal() ([]byte, error) {
+	wire, err := convertDeleteSubscriberDataArgToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting DeleteSubscriberDataArg: %w", err)
+	}
+	data, err := wire.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding DeleteSubscriberDataArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes DeleteSubscriberDataRes into BER-encoded bytes.
+func (v *DeleteSubscriberDataRes) Marshal() ([]byte, error) {
+	wire, err := convertDeleteSubscriberDataResToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting DeleteSubscriberDataRes: %w", err)
+	}
+	data, err := wire.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding DeleteSubscriberDataRes: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes ResetArg into BER-encoded bytes.
+func (v *ResetArg) Marshal() ([]byte, error) {
+	wire, err := convertResetArgToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting ResetArg: %w", err)
+	}
+	data, err := wire.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding ResetArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes CheckIMEIArg into BER-encoded bytes.
+func (v *CheckIMEIArg) Marshal() ([]byte, error) {
+	wire, err := convertCheckIMEIArgToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting CheckIMEIArg: %w", err)
+	}
+	data, err := wire.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding CheckIMEIArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes CheckIMEIRes into BER-encoded bytes.
+func (v *CheckIMEIRes) Marshal() ([]byte, error) {
+	wire, err := convertCheckIMEIResToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting CheckIMEIRes: %w", err)
+	}
+	data, err := wire.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding CheckIMEIRes: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes ReadyForSMArg into BER-encoded bytes.
+func (v *ReadyForSMArg) Marshal() ([]byte, error) {
+	wire, err := convertReadyForSMArgToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting ReadyForSMArg: %w", err)
+	}
+	data, err := wire.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding ReadyForSMArg: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes ReadyForSMRes into BER-encoded bytes.
+func (v *ReadyForSMRes) Marshal() ([]byte, error) {
+	wire, err := convertReadyForSMResToWire(v)
+	if err != nil {
+		return nil, fmt.Errorf("converting ReadyForSMRes: %w", err)
+	}
+	data, err := wire.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding ReadyForSMRes: %w", err)
+	}
+	return data, nil
+}

@@ -370,3 +370,68 @@ func ParseUSSDRes(data []byte) (*USSDRes, error) {
 	}
 	return convertWireToUSSDRes(&res)
 }
+
+// ParseDeleteSubscriberDataArg decodes BER-encoded bytes into DeleteSubscriberDataArg.
+func ParseDeleteSubscriberDataArg(data []byte) (*DeleteSubscriberDataArg, error) {
+	var wire gsm_map.DeleteSubscriberDataArg
+	if err := wire.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding DeleteSubscriberDataArg: %w", err)
+	}
+	return convertWireToDeleteSubscriberDataArg(&wire)
+}
+
+// ParseDeleteSubscriberDataRes decodes BER-encoded bytes into DeleteSubscriberDataRes.
+// The result parameter is optional, so there may be nothing to parse.
+func ParseDeleteSubscriberDataRes(data []byte) (*DeleteSubscriberDataRes, error) {
+	var wire gsm_map.DeleteSubscriberDataRes
+	if err := wire.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding DeleteSubscriberDataRes: %w", err)
+	}
+	return convertWireToDeleteSubscriberDataRes(&wire)
+}
+
+// ParseResetArg decodes BER-encoded bytes into ResetArg.
+func ParseResetArg(data []byte) (*ResetArg, error) {
+	var wire gsm_map.ResetArg
+	if err := wire.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ResetArg: %w", err)
+	}
+	return convertWireToResetArg(&wire)
+}
+
+// ParseCheckIMEIArg decodes BER-encoded bytes into CheckIMEIArg.
+func ParseCheckIMEIArg(data []byte) (*CheckIMEIArg, error) {
+	var wire gsm_map.CheckIMEIArg
+	if err := wire.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding CheckIMEIArg: %w", err)
+	}
+	return convertWireToCheckIMEIArg(&wire)
+}
+
+// ParseCheckIMEIRes decodes BER-encoded bytes into CheckIMEIRes.
+func ParseCheckIMEIRes(data []byte) (*CheckIMEIRes, error) {
+	var wire gsm_map.CheckIMEIRes
+	if err := wire.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding CheckIMEIRes: %w", err)
+	}
+	return convertWireToCheckIMEIRes(&wire)
+}
+
+// ParseReadyForSMArg decodes BER-encoded bytes into ReadyForSMArg.
+func ParseReadyForSMArg(data []byte) (*ReadyForSMArg, error) {
+	var wire gsm_map.ReadyForSMArg
+	if err := wire.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ReadyForSMArg: %w", err)
+	}
+	return convertWireToReadyForSMArg(&wire)
+}
+
+// ParseReadyForSMRes decodes BER-encoded bytes into ReadyForSMRes.
+// The result parameter is optional, so there may be nothing to parse.
+func ParseReadyForSMRes(data []byte) (*ReadyForSMRes, error) {
+	var wire gsm_map.ReadyForSMRes
+	if err := wire.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding ReadyForSMRes: %w", err)
+	}
+	return convertWireToReadyForSMRes(&wire)
+}
