@@ -2,11 +2,13 @@ package gsmmap
 
 import (
 	"errors"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // ----------------------------------------------------------------------------
@@ -28,6 +30,51 @@ func TestAllocationRetentionPriority_RoundTrip(t *testing.T) {
 	}
 	if !reflect.DeepEqual(in, out) {
 		t.Fatalf("mismatch:\nin=%+v\nout=%+v", in, out)
+	}
+}
+
+// TS 29.002 V19.1.0 §17.7.1: priority-level is a mandatory, unconstrained
+// INTEGER. Parse must preserve values fitting the public int64 and report
+// overflow for larger values, rather than truncate or impose a QoS range.
+func TestAllocationRetentionPriority_PriorityLevelParse(t *testing.T) {
+	for _, tc := range []struct {
+		name, wire string
+		want       error
+	}{
+		// Inside ISD [31], EPS [4] contains defaultContext and epsDataList
+		// [1], whose APN-Configuration has contextId, pdn-Type, apn and QoS.
+		// 2^63: INTEGER content 9, ARP content 11, QoS content 16,
+		// APN content 28, list content 30, profile content 35,
+		// EPS content 37, outer content 40 (three-octet [31] header).
+		{"overflow", "3028bf1f25a423020101a11e301c80010181010183026170a410800101a10b8009008000000000000000", ErrInt64Overflow},
+		// MaxInt64 is one octet shorter at every enclosing length.
+		{"largest int64", "3027bf1f24a422020101a11d301b80010181010183026170a40f800101a10a80087fffffffffffffff", nil},
+		// Missing INTEGER: ARP content 0, QoS 5, APN 17, list 19,
+		// profile 24, EPS 26, outer 29. The codec rejects the absence
+		// before int64FromBigInt can receive a nil priority-level.
+		{"absent priority-level", "301dbf1f1aa418020101a113301180010181010183026170a405800101a100", ber.ErrUnexpectedElement},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ParseInsertSubscriberData(mustHex(t, tc.wire))
+			if tc.want != nil {
+				if got != nil || !errors.Is(err, tc.want) {
+					t.Fatalf("Parse = %+v, %v; want nil, %v", got, err, tc.want)
+				}
+				if tc.want == ErrInt64Overflow && !strings.Contains(err.Error(), "AllocationRetentionPriority.PriorityLevel") {
+					t.Errorf("error must name priority-level: %v", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			wantEqual(t, "ISD", &InsertSubscriberDataArg{EpsSubscriptionData: &EPSSubscriptionData{
+				ApnConfigurationProfile: &APNConfigurationProfile{DefaultContext: 1, EpsDataList: EPSDataList{{
+					ContextId: 1, PdnType: HexBytes{1}, Apn: HexBytes("ap"),
+					EpsQosSubscribed: EPSQoSSubscribed{QosClassIdentifier: 1, AllocationRetentionPriority: AllocationRetentionPriority{PriorityLevel: math.MaxInt64}},
+				}}},
+			}}, got)
+		})
 	}
 }
 

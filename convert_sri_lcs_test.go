@@ -13,6 +13,9 @@ import (
 	"testing"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	"github.com/gomaja/go-tbcd"
+
+	"github.com/gomaja/go-asn1-gsmmap/gsn"
 )
 
 // =============================================================================
@@ -172,6 +175,39 @@ func TestSriLcsEncodeNegative(t *testing.T) {
 	}
 }
 
+// TS 29.002 V19.1.0 §17.7.13: mlcNumber and targetMS are mandatory;
+// §17.7.8 defines their ISDN-AddressString/TBCD encodings.
+func TestSriLcsParseNegative(t *testing.T) {
+	for _, tc := range []struct {
+		name, wire, field string
+		want              error
+	}{
+		{"nil converter", "", "sriLcs", ErrSriLcsNil},
+		// Target [1] has 10 content octets (IMSI TLV 2+8). MLC TLVs
+		// are 4 and 3 octets respectively: outer lengths 16 and 15.
+		{"MlcNumber decode", "30108002911fa10a800800010121436587f9", "SriLcs.MlcNumber", tbcd.ErrMisplacedFiller},
+		{"MlcNumber empty", "300f800191a10a800800010121436587f9", "MlcNumber", ErrSriLcsMlcNumberEmpty},
+		// MLC TLV 4 + target wrapper 2 + digitless MSISDN TLV 3 = 9.
+		{"TargetMS", "300980029121a103810191", "SriLcs.TargetMS", ErrSubscriberIdentityMSISDNDecodedEmpty},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got *SriLcs
+			var err error
+			if tc.wire == "" {
+				got, err = convertArgToSriLcs(nil)
+			} else {
+				got, err = ParseSriLcs(mustHex(t, tc.wire))
+			}
+			if got != nil || !errors.Is(err, tc.want) {
+				t.Fatalf("Parse = %+v, %v; want nil, %v", got, err, tc.want)
+			}
+			if !strings.Contains(err.Error(), tc.field) {
+				t.Errorf("error must name %s: %v", tc.field, err)
+			}
+		})
+	}
+}
+
 // =============================================================================
 // SriLcsResp (Res)
 // =============================================================================
@@ -261,6 +297,44 @@ func TestSriLcsRespEncodeNegative(t *testing.T) {
 			_, err := convertSriLcsRespToRes(in)
 			if !errors.Is(err, tc.want) {
 				t.Errorf("want %v, got %v", tc.want, err)
+			}
+		})
+	}
+}
+
+// TS 29.002 V19.1.0 §17.7.13: targetMS and lcsLocationInfo are mandatory;
+// the four optional GSN addresses use §17.7.8 (TS 23.003 V20.1.0 §5.1).
+func TestSriLcsRespParseNegative(t *testing.T) {
+	for _, tc := range []struct {
+		name, wire, field string
+		want              error
+	}{
+		{"nil converter", "", "sriLcsResp", ErrSriLcsRespNil},
+		// Digitless target TLV 5 + location TLV 6 = 11.
+		{"TargetMS", "300ba003810191a10404029121", "SriLcsResp.TargetMS", ErrSubscriberIdentityMSISDNDecodedEmpty},
+		// Valid IMSI target TLV 12 + location TLV 6 or 5 = 18 or 17.
+		{"LCSLocationInfo decode", "3012a00a800800010121436587f9a1040402911f", "SriLcsResp.LcsLocationInfo", tbcd.ErrMisplacedFiller},
+		{"LCSLocationInfo empty", "3011a00a800800010121436587f9a103040191", "SriLcsResp.LcsLocationInfo", ErrLCSLocationInfoNetworkNodeNumberEmpty},
+		// Target TLV 12 + location TLV 6 + GSN TLV 7 = 25. Five GSN
+		// octets pass SIZE (5..17), but header 03 declares IPv4 length 3.
+		{"VGmlcAddress", "3019a00a800800010121436587f9a10404029121830503c0000201", "SriLcsResp.VGmlcAddress", gsn.ErrIPv4LengthInvalid},
+		{"HGmlcAddress", "3019a00a800800010121436587f9a10404029121840503c0000201", "SriLcsResp.HGmlcAddress", gsn.ErrIPv4LengthInvalid},
+		{"PprAddress", "3019a00a800800010121436587f9a10404029121850503c0000201", "SriLcsResp.PprAddress", gsn.ErrIPv4LengthInvalid},
+		{"AdditionalVGmlcAddress", "3019a00a800800010121436587f9a10404029121860503c0000201", "SriLcsResp.AdditionalVGmlcAddress", gsn.ErrIPv4LengthInvalid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got *SriLcsResp
+			var err error
+			if tc.wire == "" {
+				got, err = convertResToSriLcsResp(nil)
+			} else {
+				got, err = ParseSriLcsResp(mustHex(t, tc.wire))
+			}
+			if got != nil || !errors.Is(err, tc.want) {
+				t.Fatalf("Parse = %+v, %v; want nil, %v", got, err, tc.want)
+			}
+			if !strings.Contains(err.Error(), tc.field) {
+				t.Errorf("error must name %s: %v", tc.field, err)
 			}
 		})
 	}
