@@ -337,6 +337,15 @@ func TestDialoguePDUCodecRules(t *testing.T) {
 		{"a600", ber.ErrUnexpectedElement},     // Unknown PDU alternative [6].
 		{"8000", ber.ErrInvalidTag},            // Open in primitive form.
 		{"a4028400", ber.ErrUnexpectedElement}, // Unknown UserAbort alternative [4].
+		// §17.4: reason, map-UserAbortChoice and map-ProviderAbortReason are
+		// mandatory, so no decoder may default them to zero.
+		{"a300", ber.ErrUnexpectedElement},           // Refuse without a reason.
+		{"a3023000", ber.ErrUnexpectedElement},       // Refuse with only an extension container.
+		{"a30506032a0304", ber.ErrUnexpectedElement}, // Refuse with only an alternativeApplicationContext, 1.2.3.4.
+		{"a400", ber.ErrUnexpectedElement},           // UserAbort without a choice.
+		{"a4023000", ber.ErrUnexpectedElement},       // UserAbort with only an extension container.
+		{"a500", ber.ErrUnexpectedElement},           // ProviderAbort without a reason.
+		{"a5023000", ber.ErrUnexpectedElement},       // ProviderAbort with only an extension container.
 	} {
 		p, err := ParseDialoguePDU(dialogueHex(t, tc.wire))
 		if p != nil || !errors.Is(err, tc.want) || !strings.HasPrefix(err.Error(), "decoding MAPDialoguePDU: ") {
