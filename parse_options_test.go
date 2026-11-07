@@ -431,3 +431,84 @@ func FuzzParseTolerant(f *testing.F) {
 		}
 	})
 }
+
+// X.680 (02/2021) §41.2 Table 9 and X.690 (02/2021) §8.23.4:
+// NumericString admits digits and space. An open extType containing 'A'
+// is refused strictly and reported once under tolerance.
+func TestParseToleranceOpenNumericString(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		parser int
+		wire   string
+		offset int
+	}{
+		// PrivateExtension = OID TLV 5 + NumericString TLV 3 = 8;
+		// list = SEQUENCE TLV 10, container = [0] TLV 12, [6] TLV 14.
+		// SRI-SM SEQUENCE length = mandatory fields 21 + 14 = 35.
+		{"SriSm", 0, "30238007912143658709f18101008207912143658709f1a60ca00a300806032a0304120141", 34},
+		// The same container: MO-ForwardSM length = 19 + 14 = 33.
+		{"MoFsm", 1, "302184029121820291210409010002912100000141300ca00a300806032a0304120141", 32},
+		// The same container: MT-ForwardSM length = 31 + 14 = 45.
+		{"MtFsm", 2, "302d800800010121436587f984029121040f000291210000621010000000000141300ca00a300806032a0304120141", 44},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := tolerantParsers[tc.parser].parse
+			data := mustHex(t, tc.wire)
+			_, err := p(data)
+			var element *ber.ElementError
+			if !errors.Is(err, ber.ErrInvalidValue) || !errors.As(err, &element) {
+				t.Errorf("strict error = %v, want ErrInvalidValue in *ber.ElementError", err)
+			} else if element.Offset() != tc.offset || !reflect.DeepEqual(element.ChildIndexes(), []int{3, 0, 0, 1}) {
+				t.Errorf("strict location = %d %v", element.Offset(), element.ChildIndexes())
+			}
+			violations := []Violation{{Path: "existing"}}
+			value, err := p(data, WithTolerance(&violations))
+			if err != nil || value == nil {
+				t.Fatalf("tolerant Parse = %v, %v", value, err)
+			}
+			if len(violations) != 2 || violations[0].Path != "existing" {
+				t.Fatalf("violations = %+v, want one appended report", violations)
+			}
+			got := violations[1]
+			if got.Kind != ViolationKindASN1Constraint || got.Rule != (ber.RuleRef{Document: "ITU-T X.690", Edition: "02/2021", Clause: "8.23.4"}) ||
+				got.Source != "MAP-ExtensionDataTypes.PrivateExtension.extType" ||
+				got.Path != "extensionContainer.privateExtensionList.element[0].extType" ||
+				got.Constraint != "NumericString digits and space (X.680 (02/2021) §41.2 Table 9; X.690 (02/2021) §8.23.4)" ||
+				got.Offset == nil || *got.Offset != tc.offset || !reflect.DeepEqual(got.ChildIndexes, []int{3, 0, 0, 1}) ||
+				got.ObservedLength != nil || got.ObservedValue != "41" || got.ObservedValueLength != 2 || got.OctetOffset == nil || *got.OctetOffset != 0 {
+				t.Fatalf("violation = %+v", got)
+			}
+		})
+	}
+}
+
+// A constructed NumericString is checked as its concatenated contents "A1B"
+// (X.690 (02/2021) §§8.23.3, 8.23.6), and tolerance reports each offending
+// octet: 'A' at contents offset 0 and 'B' at 2.
+func TestParseToleranceOpenSegmentedNumericString(t *testing.T) {
+	// Segments TLV 4 "A1" and TLV 3 "B": payload 9=2+7. PrivateExtension
+	// 14=5+9, list TLV 16, container [6] content 18, SRI-SM length 21+20=41.
+	data := mustHex(t, "30298007912143658709f18101008207912143658709f1a612a010300e06032a0304320704024131040142")
+	_, err := ParseSriSm(data)
+	var element *ber.ElementError
+	if !errors.Is(err, ber.ErrInvalidValue) || !errors.As(err, &element) || element.Offset() != 34 {
+		t.Fatalf("strict error = %v, want ErrInvalidValue in a *ber.ElementError at offset 34", err)
+	}
+	var violations []Violation
+	if _, err := ParseSriSm(data, WithTolerance(&violations)); err != nil {
+		t.Fatalf("tolerant Parse = %v", err)
+	}
+	if len(violations) != 2 {
+		t.Fatalf("violations = %+v, want two reports", violations)
+	}
+	for i, want := range []struct {
+		value  string
+		offset int
+	}{{"41", 0}, {"42", 2}} {
+		got := violations[i]
+		if got.Path != "extensionContainer.privateExtensionList.element[0].extType" || got.ObservedValue != want.value ||
+			got.OctetOffset == nil || *got.OctetOffset != want.offset || got.Offset == nil || *got.Offset != 34 {
+			t.Errorf("violation %d = %+v, want %s at contents offset %d", i, got, want.value, want.offset)
+		}
+	}
+}

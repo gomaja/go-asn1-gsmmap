@@ -98,8 +98,8 @@ func TestParseDecodeErrorSentinel(t *testing.T) {
 
 // Marshal applies the same checks to an opaque PDP-ContextInfo entry (3GPP
 // TS 29.002 V19.1.0 §17.7.1) whose private extension, extId 1.2.3.4, holds
-// such an extType, and returns the sentinel Parse returns for it in a
-// *ber.ElementError. Each entry is also parsed inside an
+// such an extType or a restricted string or time with invalid contents, and
+// returns the sentinel Parse returns for it in a *ber.ElementError. Each entry is also parsed inside an
 // AnyTimeInterrogationRes, in ps-PDP-ActiveReachableForPaging.
 func TestMarshalOpaqueOpenValueSentinel(t *testing.T) {
 	sentinels := []error{
@@ -122,6 +122,18 @@ func TestMarshalOpaqueOpenValueSentinel(t *testing.T) {
 		{"CHARACTER STRING with a data-value-descriptor",
 			"301f8001018202f121b116a014301206032a03043d0ba00581032a030481008200",
 			"30273025a423a521301f8001018202f121b116a014301206032a03043d0ba00581032a030481008200", ber.ErrUnexpectedElement},
+		// Restricted string and time contents (X.680 (02/2021) §§41, 47.3;
+		// X.690 (02/2021) §§8.23.4, 8.23.8, 8.25), as in
+		// TestParseRestrictedOpenValueSentinel's opaque PDP entry.
+		{"NumericString outside digits and space",
+			"30158001018202f121b10ca00a300806032a0304120141",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a0304120141", ber.ErrInvalidValue},
+		{"BMPString with a surrogate",
+			"30168001018202f121b10da00b300906032a03041e02d800",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02d800", ber.ErrInvalidValue},
+		{"UTCTime with an impossible date",
+			"301f8001018202f121b116a014301206032a0304170b323630323330303330345a",
+			"30273025a423a521301f8001018202f121b116a014301206032a0304170b323630323330303330345a", ber.ErrInvalidValue},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{PsSubscriberState: &PsSubscriberState{
@@ -151,6 +163,239 @@ func TestMarshalOpaqueOpenValueSentinel(t *testing.T) {
 				if !errors.As(op.err, &ee) {
 					t.Errorf("%s: err = %v, want a *ber.ElementError", op.name, op.err)
 				}
+			}
+		})
+	}
+}
+
+// The checked string and time contents in open values follow X.680 (02/2021)
+// §41 Tables 8–10, §§46.3, 47.3 and X.690 (02/2021) §§8.23.3–8.23.8,
+// 8.25. Constructed strings use OCTET STRING segments; a segment may
+// split a character's octets or a time spelling. The unchecked controls pin
+// the existing behavior without asserting that their contents are valid text.
+func TestParseRestrictedOpenValueSentinel(t *testing.T) {
+	sentinels := []error{
+		ber.ErrUnexpectedElement, ber.ErrTruncated, ber.ErrInvalidLength,
+		ber.ErrInvalidTag, ber.ErrExtraData, ber.ErrInvalidValue,
+	}
+	// For a payload TLV of P octets, the private SEQUENCE content is 5+P
+	// (extId is a 5-octet OID TLV), its a0 list is 7+P, and the enclosing
+	// extensionContainer is 9+P. The HLR number TLV is 8, so that response
+	// content is 19+P. The unknown-addition response content is 10+P.
+	// The PDP entry content is 18+P: 7 for its base fields, then 2+2+2+5
+	// for b1, a0, private SEQUENCE and OID. Its four enclosing TLVs add 8,
+	// giving response content 26+P. Every length below is short form.
+	for _, tc := range []struct {
+		name, privateExtType, unknownAddition, opaquePDP string
+		accept                                           bool
+	}{
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"NumericString letter",
+			"301604069113265476f8300ca00a300806032a0304120141",
+			"300d04069113265476f8be03120141",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a0304120141", false},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"PrintableString at sign",
+			"301604069113265476f8300ca00a300806032a0304130140",
+			"300d04069113265476f8be03130140",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a0304130140", false},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"IA5String high octet",
+			"301604069113265476f8300ca00a300806032a0304160180",
+			"300d04069113265476f8be03160180",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a0304160180", false},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"VisibleString control",
+			"301604069113265476f8300ca00a300806032a03041a011f",
+			"300d04069113265476f8be031a011f",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03041a011f", false},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"BMPString odd width",
+			"301604069113265476f8300ca00a300806032a03041e0100",
+			"300d04069113265476f8be031e0100",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03041e0100", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString surrogate",
+			"301704069113265476f8300da00b300906032a03041e02d800",
+			"300e04069113265476f8be041e02d800",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02d800", false},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"UniversalString three octets",
+			"301804069113265476f8300ea00c300a06032a03041c03000041",
+			"300f04069113265476f8be051c03000041",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a03041c03000041", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString surrogate",
+			"301904069113265476f8300fa00d300b06032a03041c040000d800",
+			"301004069113265476f8be061c040000d800",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040000d800", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString above U+10FFFF",
+			"301904069113265476f8300fa00d300b06032a03041c0400110000",
+			"301004069113265476f8be061c0400110000",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c0400110000", false},
+		// Payload 12=2+10; response contents: 31=19+12, 22=10+12, 38=26+12 octets.
+		{"UTCTime missing zone",
+			"301f04069113265476f83015a013301106032a0304170a32363031303230333034",
+			"301604069113265476f8be0c170a32363031303230333034",
+			"30263024a422a520301e8001018202f121b115a013301106032a0304170a32363031303230333034", false},
+		// Payload 13=2+11; response contents: 32=19+13, 23=10+13, 39=26+13 octets.
+		{"UTCTime impossible date",
+			"302004069113265476f83016a014301206032a0304170b323630323330303330345a",
+			"301704069113265476f8be0d170b323630323330303330345a",
+			"30273025a423a521301f8001018202f121b116a014301206032a0304170b323630323330303330345a", false},
+		// Payload 15=2+13; response contents: 34=19+15, 25=10+15, 41=26+15 octets.
+		{"UTCTime second 60",
+			"302204069113265476f83018a016301406032a0304170d3236303130323033303436305a",
+			"301904069113265476f8be0f170d3236303130323033303436305a",
+			"30293027a425a52330218001018202f121b118a016301406032a0304170d3236303130323033303436305a", false},
+		// Payload 13=2+11; response contents: 32=19+13, 23=10+13, 39=26+13 octets.
+		{"GeneralizedTime empty fraction",
+			"302004069113265476f83016a014301206032a0304180b323032363031303230332e",
+			"301704069113265476f8be0d180b323032363031303230332e",
+			"30273025a423a521301f8001018202f121b116a014301206032a0304180b323032363031303230332e", false},
+		// Payload 17=2+15; response contents: 36=19+17, 27=10+17, 43=26+17 octets.
+		{"GeneralizedTime impossible date",
+			"302404069113265476f8301aa018301606032a0304180f32303236303233303033303430355a",
+			"301b04069113265476f8be11180f32303236303233303033303430355a",
+			"302b3029a427a52530238001018202f121b11aa018301606032a0304180f32303236303233303033303430355a", false},
+		// Two OCTET STRING TLVs occupy 6=3+3 octets, the second holding 'A'.
+		// Payload 8=2+6; response contents: 27=19+8, 18=10+8, 34=26+8 octets.
+		{"constructed NumericString letter",
+			"301b04069113265476f83011a00f300d06032a03043206040131040141",
+			"301204069113265476f8be083206040131040141",
+			"30223020a41ea51c301a8001018202f121b111a00f300d06032a03043206040131040141", false},
+		// Segments d8 and 00 reassemble U+D800; content 6=3+3.
+		// Payload 8=2+6; response contents: 27=19+8, 18=10+8, 34=26+8 octets.
+		{"split BMPString surrogate",
+			"301b04069113265476f83011a00f300d06032a03043e060401d8040100",
+			"301204069113265476f8be083e060401d8040100",
+			"30223020a41ea51c301a8001018202f121b111a00f300d06032a03043e060401d8040100", false},
+		// Segments "26023" and "00304Z" reassemble 2602300304Z, 30 February; content 15=7+8.
+		// Payload 17=2+15; response contents: 36=19+17, 27=10+17, 43=26+17 octets.
+		{"split UTCTime impossible date",
+			"302404069113265476f8301aa018301606032a0304370f04053236303233040630303330345a",
+			"301b04069113265476f8be11370f04053236303233040630303330345a",
+			"302b3029a427a52530238001018202f121b11aa018301606032a0304370f04053236303233040630303330345a", false},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"valid NumericString",
+			"301804069113265476f8300ea00c300a06032a03041203312032",
+			"300f04069113265476f8be051203312032",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a03041203312032", true},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"valid PrintableString",
+			"301804069113265476f8300ea00c300a06032a03041303412b3f",
+			"300f04069113265476f8be051303412b3f",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a03041303412b3f", true},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"valid IA5String",
+			"301804069113265476f8300ea00c300a06032a0304160300417f",
+			"300f04069113265476f8be05160300417f",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a0304160300417f", true},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"valid VisibleString",
+			"301704069113265476f8300da00b300906032a03041a02207e",
+			"300e04069113265476f8be041a02207e",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041a02207e", true},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"valid BMPString",
+			"301704069113265476f8300da00b300906032a03041e020041",
+			"300e04069113265476f8be041e020041",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e020041", true},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"valid UniversalString",
+			"301904069113265476f8300fa00d300b06032a03041c040001f600",
+			"301004069113265476f8be061c040001f600",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040001f600", true},
+		// Payload 17=2+15; response contents: 36=19+17, 27=10+17, 43=26+17 octets.
+		{"valid UTCTime",
+			"302404069113265476f8301aa018301606032a0304170f323630313032303330342b30323030",
+			"301b04069113265476f8be11170f323630313032303330342b30323030",
+			"302b3029a427a52530238001018202f121b11aa018301606032a0304170f323630313032303330342b30323030", true},
+		// Payload 14=2+12; response contents: 33=19+14, 24=10+14, 40=26+14 octets.
+		{"valid GeneralizedTime",
+			"302104069113265476f83017a015301306032a0304180c323032363031303230332c35",
+			"301804069113265476f8be0e180c323032363031303230332c35",
+			"30283026a424a52230208001018202f121b117a015301306032a0304180c323032363031303230332c35", true},
+		// Two OCTET STRING TLVs occupy 7=3+4 octets.
+		// Payload 9=2+7; response contents: 28=19+9, 19=10+9, 35=26+9 octets.
+		{"constructed NumericString",
+			"301c04069113265476f83012a010300e06032a0304320704013104023220",
+			"301304069113265476f8be09320704013104023220",
+			"30233021a41fa51d301b8001018202f121b112a010300e06032a0304320704013104023220", true},
+		// Each OCTET STRING segment is 3=2+1 octets, so content is 6.
+		// Payload 8=2+6; response contents: 27=19+8, 18=10+8, 34=26+8 octets.
+		{"split BMPString character",
+			"301b04069113265476f83011a00f300d06032a03043e06040100040141",
+			"301204069113265476f8be083e06040100040141",
+			"30223020a41ea51c301a8001018202f121b111a00f300d06032a03043e06040100040141", true},
+		// OCTET STRING segments occupy 15=(2+5)+(2+6) octets.
+		// Payload 17=2+15; response contents: 36=19+17, 27=10+17, 43=26+17 octets.
+		{"split UTCTime spelling",
+			"302404069113265476f8301aa018301606032a0304370f04053236303130040632303330345a",
+			"301b04069113265476f8be11370f04053236303130040632303330345a",
+			"302b3029a427a52530238001018202f121b11aa018301606032a0304370f04053236303130040632303330345a", true},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"UTF8String control",
+			"301704069113265476f8300da00b300906032a03040c02c3a9",
+			"300e04069113265476f8be040c02c3a9",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03040c02c3a9", true},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"GeneralString unchecked control",
+			"301604069113265476f8300ca00a300806032a03041b01ff",
+			"300d04069113265476f8be031b01ff",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03041b01ff", true},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"GraphicString unchecked control",
+			"301604069113265476f8300ca00a300806032a03041901ff",
+			"300d04069113265476f8be031901ff",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03041901ff", true},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"TeletexString unchecked control",
+			"301604069113265476f8300ca00a300806032a03041401ff",
+			"300d04069113265476f8be031401ff",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03041401ff", true},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"VideotexString unchecked control",
+			"301604069113265476f8300ca00a300806032a03041501ff",
+			"300d04069113265476f8be031501ff",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03041501ff", true},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"ObjectDescriptor unchecked control",
+			"301604069113265476f8300ca00a300806032a03040701ff",
+			"300d04069113265476f8be030701ff",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03040701ff", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, position := range []struct {
+				name, wire string
+				parse      func([]byte) error
+			}{
+				{"private extType", tc.privateExtType, func(data []byte) error { _, err := ParseUpdateLocationRes(data); return err }},
+				{"unknown addition", tc.unknownAddition, func(data []byte) error { _, err := ParseUpdateLocationRes(data); return err }},
+				{"opaque PDP entry", tc.opaquePDP, func(data []byte) error { _, err := ParseAnyTimeInterrogationRes(data); return err }},
+			} {
+				t.Run(position.name, func(t *testing.T) {
+					err := position.parse(mustHex(t, position.wire))
+					if tc.accept {
+						if err != nil {
+							t.Fatalf("Parse = %v, want accepted", err)
+						}
+						return
+					}
+					if !errors.Is(err, ber.ErrInvalidValue) {
+						t.Fatalf("Parse = %v, want %v", err, ber.ErrInvalidValue)
+					}
+					for _, sentinel := range sentinels {
+						if sentinel != ber.ErrInvalidValue && errors.Is(err, sentinel) {
+							t.Errorf("err = %v also matches %v", err, sentinel)
+						}
+					}
+					var element *ber.ElementError
+					if !errors.As(err, &element) {
+						t.Errorf("err = %v, want a *ber.ElementError", err)
+					}
+				})
 			}
 		})
 	}
