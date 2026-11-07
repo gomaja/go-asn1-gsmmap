@@ -25,6 +25,7 @@ const (
 	saiV2FiveHex = "3081b430220410101112131415161718191a1b1c1d1e1f0404a1a1a1a10408b1b1b1b1b1b1b1b130220410202122232425262728292a2b2c2d2e2f0404a2a2a2a20408b2b2b2b2b2b2b2b230220410303132333435363738393a3b3c3d3e3f0404a3a3a3a30408b3b3b3b3b3b3b3b330220410404142434445464748494a4b4c4d4e4f0404a4a4a4a40408b4b4b4b4b4b4b4b430220410505152535455565758595a5b5c5d5e5f0404a5a5a5a50408b5b5b5b5b5b5b5b5"
 )
 
+// saiV2Bytes decodes a hex wire literal and fails the test if it is malformed.
 func saiV2Bytes(t *testing.T, wire string) []byte {
 	t.Helper()
 	b, err := hex.DecodeString(wire)
@@ -34,6 +35,8 @@ func saiV2Bytes(t *testing.T, wire string) []byte {
 	return b
 }
 
+// saiV2Triplet returns the one set of saiV2ResHex: RAND 00 to 0f, SRES a1 to
+// a4 and Kc b1 to b8.
 func saiV2Triplet() AuthenticationTriplet {
 	return AuthenticationTriplet{
 		RAND: HexBytes{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
@@ -58,6 +61,8 @@ func saiV2DistinctTriplet(n byte) AuthenticationTriplet {
 	return t
 }
 
+// SendAuthenticationInfoArg ::= IMSI (TS 09.02 V7.15.0 §17.7.1): eight TBCD
+// octets decode to fifteen digits and encode back to the same wire.
 func TestSAIV2Argument(t *testing.T) {
 	want := &SendAuthenticationInfoV2{IMSI: "001010123456789"}
 	got, err := ParseSendAuthenticationInfoV2(saiV2Bytes(t, saiV2ArgHex))
@@ -117,6 +122,10 @@ func TestSAIV2ArgumentSeeded(t *testing.T) {
 	t.Fatalf("berSeeds lacks %s", saiV2ArgHex)
 }
 
+// Each version's parsers refuse the other's wire with ber.ErrUnexpectedElement.
+// The v3 argument is a SEQUENCE and the v3 result a [3] SEQUENCE (TS 29.002
+// V19.1.0 §17.7.1). The v2 argument is an IMSI and the v2 result a SEQUENCE OF
+// (TS 09.02 V7.15.0 §17.7.1). The v3 result wire is checked first.
 func TestSAIV2VersionSeparation(t *testing.T) {
 	arg, err := (&SendAuthenticationInfo{IMSI: "001010123456789", NumberOfRequestedVectors: 1}).Marshal()
 	if err != nil {
@@ -189,6 +198,9 @@ func TestSAIV2DecodeSizes(t *testing.T) {
 	}
 }
 
+// Marshal leaves the sizes to the codec. An empty list breaks SIZE (1..5) and
+// a three-octet SRES breaks SIZE (4) (TS 09.02 V7.15.0 §17.7.1); both errors
+// keep the public encoding context.
 func TestSAIV2EncodeSizes(t *testing.T) {
 	for _, tc := range []struct {
 		name, path, constraint string
@@ -223,6 +235,10 @@ func TestSAIV2ArgumentProfile(t *testing.T) {
 	}
 }
 
+// The IMSI follows the package's digit rules. Parse refuses an all-filler, a
+// three-digit and a sixteen-digit IMSI and accepts the five-digit MCC+MNC form.
+// Marshal refuses an empty IMSI. Parse's and Marshal's errors keep their
+// conversion context.
 func TestSAIV2IdentityErrors(t *testing.T) {
 	for _, tc := range []struct {
 		wire, want string

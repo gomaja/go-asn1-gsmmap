@@ -43,6 +43,7 @@ const semMtFsmHex = "3077800832140080803138f684069169318488880463040b91697110117
 // IMSI (3GPP TS 09.02 V7.15.0 §17.7.1), with go-asn1's standalone codec.
 type semStandaloneIMSI gsm_map.BERValue[gsm_map.IMSI]
 
+// MarshalBER encodes the IMSI as the bare v2 argument.
 func (s *semStandaloneIMSI) MarshalBER(opts ...ber.EncodeOption) ([]byte, error) {
 	return gsm_map.MarshalBERIMSI((*gsm_map.BERValue[gsm_map.IMSI])(s), opts...)
 }

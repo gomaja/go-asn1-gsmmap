@@ -497,11 +497,12 @@ if err != nil {
     log.Fatal(err)
 }
 
-// It answers with the one to five triplets it holds for the subscriber or,
+// It answers with up to five of the triplets it holds for the subscriber or,
 // holding none, with a return result that has no parameter.
 var held map[string][]gsmmap.AuthenticationTriplet // RAND, SRES and Kc by IMSI
 var v2ResBytes []byte                              // the result parameter, if any
 if triplets := held[v2Req.IMSI]; len(triplets) > 0 {
+    triplets = triplets[:min(len(triplets), 5)] // SIZE (1..5)
     v2ResBytes, err = (&gsmmap.SendAuthenticationInfoV2Res{Triplets: triplets}).Marshal()
     if err != nil {
         log.Fatal(err)
