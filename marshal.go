@@ -3,6 +3,7 @@ package gsmmap
 import (
 	"fmt"
 
+	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
@@ -293,6 +294,29 @@ func (s *SendAuthenticationInfoRes) Marshal() ([]byte, error) {
 	data, err := res.MarshalBER(ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding SendAuthenticationInfoRes: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes the v2 bare IMSI argument (TS 09.02 V7.15.0 §17.7.1).
+func (s *SendAuthenticationInfoV2) Marshal() ([]byte, error) {
+	arg, err := convertSendAuthenticationInfoV2ToArg(s)
+	if err != nil {
+		return nil, fmt.Errorf("converting SendAuthenticationInfoV2: %w", err)
+	}
+	data, err := gsm_map.MarshalBERIMSI(arg, ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding SendAuthenticationInfoV2: %w", err)
+	}
+	return data, nil
+}
+
+// Marshal encodes the v2 AuthenticationSetList (TS 09.02 V7.15.0 §17.7.1).
+func (s *SendAuthenticationInfoV2Res) Marshal() ([]byte, error) {
+	list := convertTripletsToWire(s.Triplets)
+	data, err := gsm_map.MarshalBERTripletList(&list, ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding SendAuthenticationInfoV2Res: %w", err)
 	}
 	return data, nil
 }

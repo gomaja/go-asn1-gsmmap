@@ -247,6 +247,28 @@ func ParseSendAuthenticationInfoRes(data []byte) (*SendAuthenticationInfoRes, er
 	return convertResToSendAuthenticationInfoRes(&res)
 }
 
+// ParseSendAuthenticationInfoV2 decodes the mandatory bare IMSI argument for
+// infoRetrievalContext-v2 (TS 09.02 V7.15.0 §§17.6.1, 17.7.1;
+// TS 29.002 V19.1.0 §17.3.2.15).
+func ParseSendAuthenticationInfoV2(data []byte) (*SendAuthenticationInfoV2, error) {
+	arg, err := gsm_map.UnmarshalBERIMSI(data)
+	if err != nil {
+		return nil, fmt.Errorf("decoding SendAuthenticationInfoV2: %w", err)
+	}
+	return convertArgToSendAuthenticationInfoV2(arg)
+}
+
+// ParseSendAuthenticationInfoV2Res decodes a v2 AuthenticationSetList
+// (TS 09.02 V7.15.0 §17.7.1). A return result without a parameter has nothing
+// to parse (§8.5.2.1).
+func ParseSendAuthenticationInfoV2Res(data []byte) (*SendAuthenticationInfoV2Res, error) {
+	list, err := gsm_map.UnmarshalBERTripletList(data)
+	if err != nil {
+		return nil, fmt.Errorf("decoding SendAuthenticationInfoV2Res: %w", err)
+	}
+	return &SendAuthenticationInfoV2Res{Triplets: convertWireToTriplets(list)}, nil
+}
+
 // ParseCancelLocation decodes BER-encoded bytes into a CancelLocation
 // (opCode 3). CancelLocation is sent by the HLR to the VLR/SGSN/MME.
 func ParseCancelLocation(data []byte) (*CancelLocation, error) {

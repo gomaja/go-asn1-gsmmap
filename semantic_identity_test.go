@@ -59,6 +59,14 @@ func semIMSICases() []semIdentityCase {
 				v, err := ParseSendAuthenticationInfo(d)
 				return semField(v, err, func() string { return v.IMSI })
 			}},
+		{"SendAuthenticationInfoV2",
+			func(_ *testing.T, id string) ([]byte, error) {
+				return (&SendAuthenticationInfoV2{IMSI: id}).Marshal()
+			},
+			func(d []byte) (string, error) {
+				v, err := ParseSendAuthenticationInfoV2(d)
+				return semField(v, err, func() string { return v.IMSI })
+			}},
 		{"UpdateLocation",
 			func(_ *testing.T, id string) ([]byte, error) {
 				return (&UpdateLocation{IMSI: id, MscNumber: msisdn, VlrNumber: msisdn}).Marshal()

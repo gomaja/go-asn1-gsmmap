@@ -19,6 +19,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **AlertServiceCentre** (ASC) | 64 | `AlertServiceCentre` | — |
 | **PurgeMS** | 67 | `PurgeMS` | `PurgeMSRes` |
 | **SendAuthenticationInfo** (SAI) | 56 | `SendAuthenticationInfo` | `SendAuthenticationInfoRes` |
+| **SendAuthenticationInfo** (SAI, MAP v2) | 56 | `SendAuthenticationInfoV2` | `SendAuthenticationInfoV2Res` |
 | **ProvideSubscriberInfo** (PSI) | 70 | `ProvideSubscriberInfo` | `ProvideSubscriberInfoRes` |
 | **CancelLocation** | 3 | `CancelLocation` | `CancelLocationRes` |
 | **InsertSubscriberData** (ISD) | 7 | `InsertSubscriberDataArg` | `InsertSubscriberDataRes` |
@@ -479,6 +480,36 @@ if resp.AuthenticationSetList != nil {
         fmt.Println("Got 2G GSM triplets:", len(resp.AuthenticationSetList.Triplets))
     }
 }
+```
+
+The example above is the v3 form, for `infoRetrievalContext-v3`. In
+`infoRetrievalContext-v2` the argument is a bare IMSI and the result one to
+five triplets (TS 09.02 V7.15.0 §§17.6.1, 17.7.1). The dialogue's application
+context selects the version, and the caller uses the matching types (TS 29.002
+V19.1.0 §17.3.2.15). An HLR without triplets returns a result with no parameter
+(TS 09.02 V7.15.0 §8.5.2.1).
+
+```go
+// An HLR in infoRetrievalContext-v2 parses the bare IMSI it received.
+var v2ArgBytes []byte // BER argument of the invoke
+v2Req, err := gsmmap.ParseSendAuthenticationInfoV2(v2ArgBytes)
+if err != nil {
+    log.Fatal(err)
+}
+
+// It answers with one to five triplets it holds for the subscriber.
+var held map[string][]gsmmap.AuthenticationTriplet // RAND, SRES and Kc by IMSI
+v2ResBytes, err := (&gsmmap.SendAuthenticationInfoV2Res{Triplets: held[v2Req.IMSI]}).Marshal()
+if err != nil {
+    log.Fatal(err)
+}
+
+// The VLR or SGSN parses the result.
+v2Res, err := gsmmap.ParseSendAuthenticationInfoV2Res(v2ResBytes)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("Got 2G GSM triplets:", len(v2Res.Triplets))
 ```
 
 ### ProvideSubscriberInfo (opCode 70)
