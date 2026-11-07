@@ -1,6 +1,6 @@
 # go-asn1-gsmmap
 
-High-level Go library for GSM MAP (3GPP TS 29.002) — parse, build, and marshal MAP operations using clean Go types.
+High-level Go library for GSM MAP (3GPP TS 29.002) — parse, build, and marshal MAP operations and [dialogue PDUs](#map-dialogue-pdu) using clean Go types.
 
 Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs for correct BER encoding/decoding, with [go-sms](https://github.com/gomaja/go-sms) for SMS TPDU handling.
 
@@ -863,6 +863,83 @@ any decodable coding yields `ErrUSSDTextEmpty`. `Encode` also rejects empty
 text, invalid UTF-8 for UCS2 (`ErrUSSDInvalidUTF8`), and results over 160 octets
 (`ErrUSSDTextTooLong`, TS 29.002 V19.1.0 §17.7.4). Coding errors precede empty
 text. Alphabet errors from go-sms remain wrapped and matchable.
+
+### MAP dialogue PDU
+
+`DialoguePDU` carries MAP dialogue information: open, accept, close, refuse,
+user abort or provider abort (TS 29.002 V19.1.0 §17.4). It is the
+single-ASN1-type of an EXTERNAL in TCAP dialogue user information, with
+`MapDialogueAS()` as its direct reference (§§17.1, 16.1.2.3).
+
+The caller applies the service restrictions and reference contents in
+§7.3.1 Tables 7.3/2 and 7.3/3: only the listed services may use destination
+and originating references; they hold IMSI or MSISDN and ISDN addresses,
+respectively. Empty digits omit a reference, ignoring its nature and plan.
+The application context version belongs to the caller;
+`DialogueRefuse.AlternativeApplicationContext` must not be used in version 2
+(§17.4). Parse accepts unknown extension additions, which §17.1.4 forbids
+rejecting; like the rest of this package, it drops them and extension
+containers, and Marshal never sends either. User-abort reasons and diagnostics
+are defined in §7.3.4; provider abort is defined in §7.3.5.
+
+Build map-open with both references and place it in an AARQ with
+[go-asn1-tcap](https://github.com/gomaja/go-asn1-tcap):
+
+```go
+import (
+	"fmt"
+	"log"
+
+	gsmmap "github.com/gomaja/go-asn1-gsmmap"
+	"github.com/gomaja/go-asn1-gsmmap/address"
+	tcap "github.com/gomaja/go-asn1-tcap"
+	tcapmap "github.com/gomaja/go-asn1-tcap/gsmmap"
+)
+
+pdu := &gsmmap.DialoguePDU{Open: &gsmmap.DialogueOpen{
+	DestinationReference:       "001010123456789",
+	DestinationReferenceNature: address.NatureInternational,
+	DestinationReferencePlan:   address.PlanLandMobile,
+	OriginationReference:       "31612345678",
+	OriginationReferenceNature: address.NatureInternational,
+	OriginationReferencePlan:   address.PlanISDN,
+}}
+data, err := pdu.Marshal()
+if err != nil {
+	log.Fatal(err)
+}
+begin := &tcap.Begin{
+	OTID: tcap.TransactionID{1},
+	Dialogue: &tcap.Dialogue{Request: &tcap.AARQ{
+		ApplicationContextName: tcapmap.NetworkUnstructuredSsContextV2,
+		UserInformation: []tcap.External{{
+			DirectReference: tcap.OID(gsmmap.MapDialogueAS()),
+			Encoding:        tcap.ExternalSingleASN1Type,
+			SingleASN1Type:  data,
+		}},
+	}},
+}
+tcapData, err := begin.Marshal()
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Printf("TC-BEGIN: %x\n", tcapData)
+```
+
+Parse a received map-refuse from the EXTERNAL's single-ASN1-type:
+
+```go
+// The single-ASN1-type extracted from a received map-DialogueAS EXTERNAL.
+refuseData := []byte{0xa3, 0x03, 0x0a, 0x01, 0x01}
+received, err := gsmmap.ParseDialoguePDU(refuseData)
+if err != nil {
+	log.Fatal(err)
+}
+if received.Refuse != nil {
+	fmt.Printf("MAP refuse: %v, alternative context: %s\n",
+		received.Refuse.Reason, received.Refuse.AlternativeApplicationContext)
+}
+```
 
 ### MAP errors
 

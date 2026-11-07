@@ -650,3 +650,17 @@ func (v *DeactivateTraceModeRes) Marshal() ([]byte, error) {
 	}
 	return b, nil
 }
+
+// Marshal encodes MAP-DialoguePDU (TS 29.002 V19.1.0 §17.4) with minimal
+// definite lengths (§17.1.1), omitting extension containers and additions.
+func (p *DialoguePDU) Marshal() ([]byte, error) {
+	wire, err := convertDialoguePDUToWire(p)
+	if err != nil {
+		return nil, fmt.Errorf("converting DialoguePDU: %w", err)
+	}
+	data, err := wire.MarshalBER(ber.WithoutBERReplay())
+	if err != nil {
+		return nil, fmt.Errorf("encoding MAPDialoguePDU: %w", err)
+	}
+	return data, nil
+}

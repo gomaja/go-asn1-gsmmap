@@ -93,6 +93,7 @@ var parsers = []struct {
 	{"ActivateTraceModeRes", asParser(ParseActivateTraceModeRes)},
 	{"DeactivateTraceModeArg", asParser(ParseDeactivateTraceModeArg)},
 	{"DeactivateTraceModeRes", asParser(ParseDeactivateTraceModeRes)},
+	{"DialoguePDU", asParser(ParseDialoguePDU)},
 	{"USSDArg", asParser(ParseUSSDArg)},
 	{"USSDRes", asParser(ParseUSSDRes)},
 }
@@ -125,7 +126,7 @@ func berSeeds(tb testing.TB) [][]byte {
 	if err != nil {
 		tb.Fatal(err)
 	}
-	re := regexp.MustCompile(`"((?:30|a[0-9a-f]|3081|04)[0-9a-fA-F]{6,})"`)
+	re := regexp.MustCompile(`"((?:30|a[0-9a-f]|3081|04)[0-9a-fA-F]{2,})"`)
 	seen := map[string]bool{}
 	var seeds [][]byte
 	for _, f := range files {

@@ -527,3 +527,14 @@ func ParseDeactivateTraceModeRes(data []byte) (*DeactivateTraceModeRes, error) {
 	}
 	return convertWireToDeactivateTraceModeRes(&w), nil
 }
+
+// ParseDialoguePDU decodes MAP-DialoguePDU (TS 29.002 V19.1.0 §17.4),
+// applying the BER profile in §17.1.1. It accepts unknown extension additions
+// (§17.1.4) and drops them, and any extension container.
+func ParseDialoguePDU(data []byte) (*DialoguePDU, error) {
+	var wire gsm_map.MAPDialoguePDU
+	if err := wire.UnmarshalBER(data); err != nil {
+		return nil, fmt.Errorf("decoding MAPDialoguePDU: %w", err)
+	}
+	return convertWireToDialoguePDU(&wire)
+}
