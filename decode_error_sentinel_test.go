@@ -3,6 +3,8 @@ package gsmmap
 import (
 	"encoding/hex"
 	"errors"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
@@ -131,6 +133,14 @@ func TestMarshalOpaqueOpenValueSentinel(t *testing.T) {
 		{"BMPString with a surrogate",
 			"30168001018202f121b10da00b300906032a03041e02d800",
 			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02d800", ber.ErrInvalidValue},
+		// BMPString payload 4=2+2; entry content 22=18+4, response content 30=26+4.
+		{"BMPString U+FFFE",
+			"30168001018202f121b10da00b300906032a03041e02fffe",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02fffe", ber.ErrInvalidValue},
+		// IA5String payload 5=2+3; entry content 23=18+5, response content 31=26+5.
+		{"IA5String designating escape",
+			"30178001018202f121b10ea00c300a06032a030416031b2842",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a030416031b2842", ber.ErrInvalidValue},
 		{"UTCTime with an impossible date",
 			"301f8001018202f121b116a014301206032a0304170b323630323330303330345a",
 			"30273025a423a521301f8001018202f121b116a014301206032a0304170b323630323330303330345a", ber.ErrInvalidValue},
@@ -169,9 +179,10 @@ func TestMarshalOpaqueOpenValueSentinel(t *testing.T) {
 }
 
 // The checked string and time contents in open values follow X.680 (02/2021)
-// §41 Tables 8–10, §§46.3, 47.3 and X.690 (02/2021) §§8.23.3–8.23.8,
-// 8.25. Constructed strings use OCTET STRING segments; a segment may
-// split a character's octets or a time spelling. The unchecked controls pin
+// §41 Tables 8–10, §41.15, §§46.3, 47.3 and X.690 (02/2021)
+// §§8.23.3–8.23.10, 8.25. Constructed strings use OCTET STRING segments;
+// a segment may split a character's octets or a time spelling. The unchecked
+// controls pin
 // the existing behavior without asserting that their contents are valid text.
 func TestParseRestrictedOpenValueSentinel(t *testing.T) {
 	sentinels := []error{
@@ -277,6 +288,160 @@ func TestParseRestrictedOpenValueSentinel(t *testing.T) {
 			"302404069113265476f8301aa018301606032a0304370f04053236303233040630303330345a",
 			"301b04069113265476f8be11370f04053236303233040630303330345a",
 			"302b3029a427a52530238001018202f121b11aa018301606032a0304370f04053236303233040630303330345a", false},
+		// X.680 (02/2021) §41.15; X.690 (02/2021) §§8.23.5.3, 8.23.9–8.23.10.
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString U+FFFE",
+			"301704069113265476f8300da00b300906032a03041e02fffe",
+			"300e04069113265476f8be041e02fffe",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02fffe", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString U+FFFF",
+			"301704069113265476f8300da00b300906032a03041e02ffff",
+			"300e04069113265476f8be041e02ffff",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02ffff", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString SO",
+			"301704069113265476f8300da00b300906032a03041e02000e",
+			"300e04069113265476f8be041e02000e",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02000e", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString SI",
+			"301704069113265476f8300da00b300906032a03041e02000f",
+			"300e04069113265476f8be041e02000f",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02000f", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString SS2",
+			"301704069113265476f8300da00b300906032a03041e02008e",
+			"300e04069113265476f8be041e02008e",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02008e", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString SS3",
+			"301704069113265476f8300da00b300906032a03041e02008f",
+			"300e04069113265476f8be041e02008f",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02008f", false},
+		// Payload 8=2+6; response contents: 27=19+8, 18=10+8, 34=26+8 octets.
+		{"BMPString designating escape",
+			"301b04069113265476f83011a00f300d06032a03041e06001b00280042",
+			"301204069113265476f8be081e06001b00280042",
+			"30223020a41ea51c301a8001018202f121b111a00f300d06032a03041e06001b00280042", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString SI",
+			"301904069113265476f8300fa00d300b06032a03041c040000000f",
+			"301004069113265476f8be061c040000000f",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040000000f", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString SO",
+			"301904069113265476f8300fa00d300b06032a03041c040000000e",
+			"301004069113265476f8be061c040000000e",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040000000e", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString SS2",
+			"301904069113265476f8300fa00d300b06032a03041c040000008e",
+			"301004069113265476f8be061c040000008e",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040000008e", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString SS3",
+			"301904069113265476f8300fa00d300b06032a03041c040000008f",
+			"301004069113265476f8be061c040000008f",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040000008f", false},
+		// Payload 14=2+12; response contents: 33=19+14, 24=10+14, 40=26+14 octets.
+		{"UniversalString designating escape",
+			"302104069113265476f83017a015301306032a03041c0c0000001b0000002800000042",
+			"301804069113265476f8be0e1c0c0000001b0000002800000042",
+			"30283026a424a52230208001018202f121b117a015301306032a03041c0c0000001b0000002800000042", false},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"UTF8String escape sequence",
+			"301804069113265476f8300ea00c300a06032a03040c031b2842",
+			"300f04069113265476f8be050c031b2842",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a03040c031b2842", false},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"UTF8String SO",
+			"301604069113265476f8300ca00a300806032a03040c010e",
+			"300d04069113265476f8be030c010e",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03040c010e", false},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"UTF8String SI",
+			"301604069113265476f8300ca00a300806032a03040c010f",
+			"300d04069113265476f8be030c010f",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03040c010f", false},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"IA5String designating escape",
+			"301804069113265476f8300ea00c300a06032a030416031b2842",
+			"300f04069113265476f8be0516031b2842",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a030416031b2842", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"IA5String ESC N",
+			"301704069113265476f8300da00b300906032a030416021b4e",
+			"300e04069113265476f8be0416021b4e",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a030416021b4e", false},
+		// OCTET STRING segments concatenate before the contents check (X.690 §8.23.6).
+		// Payload 8=2+6; response contents: 27=19+8, 18=10+8, 34=26+8 octets.
+		{"split BMPString U+FFFE",
+			"301b04069113265476f83011a00f300d06032a03043e060401ff0401fe",
+			"301204069113265476f8be083e060401ff0401fe",
+			"30223020a41ea51c301a8001018202f121b111a00f300d06032a03043e060401ff0401fe", false},
+		// OCTET STRING segments concatenate before the contents check (X.690 §8.23.6).
+		// Payload 12=2+10; response contents: 31=19+12, 22=10+12, 38=26+12 octets.
+		{"split BMPString designating escape",
+			"301f04069113265476f83015a013301106032a03043e0a0403001b000403280042",
+			"301604069113265476f8be0c3e0a0403001b000403280042",
+			"30263024a422a520301e8001018202f121b115a013301106032a03043e0a0403001b000403280042", false},
+		// OCTET STRING segments concatenate before the contents check (X.690 §8.23.6).
+		// Payload 10=2+8; response contents: 29=19+10, 20=10+10, 36=26+10 octets.
+		{"split UniversalString SI",
+			"301d04069113265476f83013a011300f06032a03043c08040200000402000f",
+			"301404069113265476f8be0a3c08040200000402000f",
+			"30243022a420a51e301c8001018202f121b113a011300f06032a03043c08040200000402000f", false},
+		// OCTET STRING segments concatenate before the contents check (X.690 §8.23.6).
+		// Payload 9=2+7; response contents: 28=19+9, 19=10+9, 35=26+9 octets.
+		{"split UTF8String escape sequence",
+			"301c04069113265476f83012a010300e06032a03042c0704011b04022842",
+			"301304069113265476f8be092c0704011b04022842",
+			"30233021a41fa51d301b8001018202f121b112a010300e06032a03042c0704011b04022842", false},
+		// OCTET STRING segments concatenate before the contents check (X.690 §8.23.6).
+		// Payload 9=2+7; response contents: 28=19+9, 19=10+9, 35=26+9 octets.
+		{"split IA5String designating escape",
+			"301c04069113265476f83012a010300e06032a0304360704011b04022842",
+			"301304069113265476f8be09360704011b04022842",
+			"30233021a41fa51d301b8001018202f121b112a010300e06032a0304360704011b04022842", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString LF",
+			"301704069113265476f8300da00b300906032a03041e02000a",
+			"300e04069113265476f8be041e02000a",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02000a", true},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString U+FFFD",
+			"301704069113265476f8300da00b300906032a03041e02fffd",
+			"300e04069113265476f8be041e02fffd",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02fffd", true},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"UTF8String CR",
+			"301604069113265476f8300ca00a300806032a03040c010d",
+			"300d04069113265476f8be030c010d",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a03040c010d", true},
+		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
+		{"IA5String LF",
+			"301604069113265476f8300ca00a300806032a030416010a",
+			"300d04069113265476f8be0316010a",
+			"301d301ba419a51730158001018202f121b10ca00a300806032a030416010a", true},
+		// OCTET STRING segments concatenate before the contents check (X.690 §8.23.6).
+		// Payload 8=2+6; response contents: 27=19+8, 18=10+8, 34=26+8 octets.
+		{"split BMPString LF",
+			"301b04069113265476f83011a00f300d06032a03043e0604010004010a",
+			"301204069113265476f8be083e0604010004010a",
+			"30223020a41ea51c301a8001018202f121b111a00f300d06032a03043e0604010004010a", true},
+		// OCTET STRING segments concatenate before the contents check (X.690 §8.23.6).
+		// Payload 7=2+5; response contents: 26=19+7, 17=10+7, 33=26+7 octets.
+		{"split UTF8String CR",
+			"301a04069113265476f83010a00e300c06032a03042c05040004010d",
+			"301104069113265476f8be072c05040004010d",
+			"3021301fa41da51b30198001018202f121b110a00e300c06032a03042c05040004010d", true},
+		// OCTET STRING segments concatenate before the contents check (X.690 §8.23.6).
+		// Payload 7=2+5; response contents: 26=19+7, 17=10+7, 33=26+7 octets.
+		{"split IA5String LF",
+			"301a04069113265476f83010a00e300c06032a03043605040004010a",
+			"301104069113265476f8be073605040004010a",
+			"3021301fa41da51b30198001018202f121b110a00e300c06032a03043605040004010a", true},
 		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
 		{"valid NumericString",
 			"301804069113265476f8300ea00c300a06032a03041203312032",
@@ -398,5 +563,31 @@ func TestParseRestrictedOpenValueSentinel(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+// X.690 (02/2021) §8.23.5 prohibits the IA5String high octet. At a
+// closed CHOICE, the contents error still names the unclaimed position once
+// (go-asn1#273), with its original identifier offset and child indexes.
+func TestParseRestrictedContentsPathOnce(t *testing.T) {
+	// UpdateLocation base fields occupy 10+8+8=26 octets; pagingArea
+	// contains an IA5String TLV of 3 octets, so length is 26+2+3=31.
+	const wire = "301f040800010121436587f981069113265476f804069113265476f9ae03160180"
+	_, err := ParseUpdateLocation(mustHex(t, wire))
+	var element *ber.ElementError
+	if !errors.Is(err, ber.ErrInvalidValue) || !errors.As(err, &element) {
+		t.Fatalf("Parse = %v, want ErrInvalidValue in *ber.ElementError", err)
+	}
+	for _, other := range []error{ber.ErrUnexpectedElement, ber.ErrTruncated, ber.ErrInvalidLength, ber.ErrInvalidTag, ber.ErrExtraData} {
+		if errors.Is(err, other) {
+			t.Errorf("Parse = %v also matches %v", err, other)
+		}
+	}
+	const path = "pagingArea.element[0]"
+	if strings.Count(err.Error(), path) != 1 {
+		t.Errorf("error = %v, want path %q once", err, path)
+	}
+	if element.Offset() != 30 || !reflect.DeepEqual(element.ChildIndexes(), []int{3, 0}) {
+		t.Errorf("location = %d %v, want 30 [3 0]", element.Offset(), element.ChildIndexes())
 	}
 }

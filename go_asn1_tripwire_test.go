@@ -7,48 +7,11 @@ import (
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
-// These tests pin go-asn1 behaviour that the README's Encoding bullet
-// describes and that upstream issues track. Each fails once go-asn1 changes
-// it: then move its wires to TestParseRestrictedOpenValueSentinel and update
-// the README. The wires are UpdateLocationRes messages whose private extType
+// This test pins the go-asn1 behaviour that the README's Encoding bullet
+// describes and upstream issue #271 tracks. It fails once go-asn1 changes it:
+// then move its wire to TestParseRestrictedOpenValueSentinel and update the
+// README. The wires are UpdateLocationRes messages whose private extType
 // holds the value; for a payload TLV of P octets the response content is 19+P.
-
-// https://github.com/gomaja/go-asn1/issues/272: X.680 (02/2021) §41.15 limits
-// BMPString to the first 64K-2 cells less the surrogates, so U+FFFE and U+FFFF
-// are not BMPString characters, yet go-asn1 accepts them in an open value.
-func TestGoASN1Issue272BMPNoncharactersAccepted(t *testing.T) {
-	for _, wire := range []string{
-		"301704069113265476f8300da00b300906032a03041e02fffe", // U+FFFE; payload 4=2+2, content 23
-		"301704069113265476f8300da00b300906032a03041e02ffff", // U+FFFF; payload 4=2+2, content 23
-	} {
-		_, err := ParseUpdateLocationRes(mustHex(t, wire))
-		switch {
-		case errors.Is(err, ber.ErrInvalidValue):
-			t.Errorf("Parse(%s) = %v; go-asn1#272 looks fixed: move the wire to the refusals and update the README", wire, err)
-		case err != nil:
-			t.Errorf("Parse(%s) = %v, want accepted", wire, err)
-		}
-	}
-}
-
-// https://github.com/gomaja/go-asn1/issues/274: X.690 (02/2021) §8.23.9 c)
-// forbids SHIFT OUT in a BMPString, and §8.23.5.3 with Table 3 forbids an
-// explicit escape sequence in an IA5String, yet go-asn1 accepts both in an
-// open value.
-func TestGoASN1Issue274EscapeAndShiftAccepted(t *testing.T) {
-	for _, wire := range []string{
-		"301704069113265476f8300da00b300906032a03041e02000e", // BMPString SHIFT OUT; payload 4=2+2, content 23
-		"301704069113265476f8300da00b300906032a030416021b4e", // IA5String ESC N; payload 4=2+2, content 23
-	} {
-		_, err := ParseUpdateLocationRes(mustHex(t, wire))
-		switch {
-		case errors.Is(err, ber.ErrInvalidValue):
-			t.Errorf("Parse(%s) = %v; go-asn1#274 looks fixed: move the wire to the refusals and update the README", wire, err)
-		case err != nil:
-			t.Errorf("Parse(%s) = %v, want accepted", wire, err)
-		}
-	}
-}
 
 // https://github.com/gomaja/go-asn1/issues/271: go-asn1 refuses a
 // GeneralizedTime whose seconds are 60, a leap second, although X.680
