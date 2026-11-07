@@ -39,6 +39,14 @@ func semTBCD(t *testing.T, digits string) []byte {
 // semMtFsmHex is an MT-ForwardSM-Arg whose SM-RP-DA is an IMSI.
 const semMtFsmHex = "3077800832140080803138f684069169318488880463040b916971101174f40000422182612464805bd2e2b1252d467ff6de6c47efd96eb6a1d056cb0d69b49a10269c098537586e96931965b260d15613da72c29b91261bde72c6a1ad2623d682b5996d58331271375a0d1733eee4bd98ec768bd966b41c0d"
 
+// semStandaloneIMSI encodes the v2 sendAuthenticationInfo argument, a bare
+// IMSI (3GPP TS 09.02 V7.15.0 §17.7.1), with go-asn1's standalone codec.
+type semStandaloneIMSI gsm_map.BERValue[gsm_map.IMSI]
+
+func (s *semStandaloneIMSI) MarshalBER(opts ...ber.EncodeOption) ([]byte, error) {
+	return gsm_map.MarshalBERIMSI((*gsm_map.BERValue[gsm_map.IMSI])(s), opts...)
+}
+
 type semIdentityCase struct {
 	name string
 	// marshal builds a valid message carrying id in the field under test and
@@ -412,6 +420,12 @@ func TestParseIdentityDigitCount(t *testing.T) {
 		build func(t *testing.T, imsi gsm_map.IMSI) wire
 		parse func([]byte) (string, error)
 	}{
+		{"SendAuthenticationInfoV2", func(_ *testing.T, imsi gsm_map.IMSI) wire {
+			return &semStandaloneIMSI{Value: imsi}
+		}, func(d []byte) (string, error) {
+			v, err := ParseSendAuthenticationInfoV2(d)
+			return semField(v, err, func() string { return v.IMSI })
+		}},
 		{"SendAuthenticationInfo", func(_ *testing.T, imsi gsm_map.IMSI) wire {
 			return &gsm_map.SendAuthenticationInfoArg{Imsi: imsi, NumberOfRequestedVectors: 1}
 		}, func(d []byte) (string, error) {

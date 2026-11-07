@@ -497,19 +497,25 @@ if err != nil {
     log.Fatal(err)
 }
 
-// It answers with one to five triplets it holds for the subscriber.
+// It answers with the one to five triplets it holds for the subscriber or,
+// holding none, with a return result that has no parameter.
 var held map[string][]gsmmap.AuthenticationTriplet // RAND, SRES and Kc by IMSI
-v2ResBytes, err := (&gsmmap.SendAuthenticationInfoV2Res{Triplets: held[v2Req.IMSI]}).Marshal()
-if err != nil {
-    log.Fatal(err)
+var v2ResBytes []byte                              // the result parameter, if any
+if triplets := held[v2Req.IMSI]; len(triplets) > 0 {
+    v2ResBytes, err = (&gsmmap.SendAuthenticationInfoV2Res{Triplets: triplets}).Marshal()
+    if err != nil {
+        log.Fatal(err)
+    }
 }
 
-// The VLR or SGSN parses the result.
-v2Res, err := gsmmap.ParseSendAuthenticationInfoV2Res(v2ResBytes)
-if err != nil {
-    log.Fatal(err)
+// The VLR or SGSN parses the parameter of a result that has one.
+if len(v2ResBytes) > 0 {
+    v2Res, err := gsmmap.ParseSendAuthenticationInfoV2Res(v2ResBytes)
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Println("Got 2G GSM triplets:", len(v2Res.Triplets))
 }
-fmt.Println("Got 2G GSM triplets:", len(v2Res.Triplets))
 ```
 
 ### ProvideSubscriberInfo (opCode 70)

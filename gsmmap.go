@@ -1837,7 +1837,8 @@ type SendAuthenticationInfoV2 struct {
 // SendAuthenticationInfoV2Res is the MAP v2 result (opCode 56). It carries only
 // triplets: TS 09.02 V7.15.0 §17.7.1 names each element AuthenticationSet,
 // with the components of TS 29.002 V19.1.0 §17.7.1 AuthenticationTriplet.
-// Codec errors name TripletList, the wire-identical TS 29.002 type used here.
+// Its SIZE (1..5) errors name TripletList, the wire-identical TS 29.002 type
+// used here; errors in a set give its path, such as element[0].sres.
 // An HLR without triplets returns an empty response (TS 09.02 V7.15.0 §8.5.2.1),
 // a return result with no parameter to parse.
 type SendAuthenticationInfoV2Res struct {

@@ -20,8 +20,9 @@ const (
 	saiV2ArgHex = "040800010121436587f9"
 	// One set; outer content 36 octets.
 	saiV2ResHex = "302430220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b8"
-	// Five sets: 5*36 = 180 (0xb4) content octets.
-	saiV2FiveHex = "3081b430220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b8"
+	// Five distinct sets, saiV2DistinctTriplet(1) to (5) in order: 5*36 = 180
+	// (0xb4) content octets.
+	saiV2FiveHex = "3081b430220410101112131415161718191a1b1c1d1e1f0404a1a1a1a10408b1b1b1b1b1b1b1b130220410202122232425262728292a2b2c2d2e2f0404a2a2a2a20408b2b2b2b2b2b2b2b230220410303132333435363738393a3b3c3d3e3f0404a3a3a3a30408b3b3b3b3b3b3b3b330220410404142434445464748494a4b4c4d4e4f0404a4a4a4a40408b4b4b4b4b4b4b4b430220410505152535455565758595a5b5c5d5e5f0404a5a5a5a50408b5b5b5b5b5b5b5b5"
 )
 
 func saiV2Bytes(t *testing.T, wire string) []byte {
@@ -39,6 +40,22 @@ func saiV2Triplet() AuthenticationTriplet {
 		SRES: HexBytes{0xa1, 0xa2, 0xa3, 0xa4},
 		Kc:   HexBytes{0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8},
 	}
+}
+
+// saiV2DistinctTriplet returns set n of saiV2FiveHex: RAND n0 to nf, SRES
+// four octets a0+n and Kc eight octets b0+n.
+func saiV2DistinctTriplet(n byte) AuthenticationTriplet {
+	t := AuthenticationTriplet{RAND: make(HexBytes, 16), SRES: make(HexBytes, 4), Kc: make(HexBytes, 8)}
+	for i := range t.RAND {
+		t.RAND[i] = n<<4 | byte(i)
+	}
+	for i := range t.SRES {
+		t.SRES[i] = 0xa0 + n
+	}
+	for i := range t.Kc {
+		t.Kc[i] = 0xb0 + n
+	}
+	return t
 }
 
 func TestSAIV2Argument(t *testing.T) {
@@ -59,15 +76,18 @@ func TestSAIV2Argument(t *testing.T) {
 	}
 }
 
+// The sets keep their order in both directions (TS 09.02 V7.15.0 §17.7.1,
+// SEQUENCE OF AuthenticationSet).
 func TestSAIV2Result(t *testing.T) {
+	five := make([]AuthenticationTriplet, 5)
+	for i := range five {
+		five[i] = saiV2DistinctTriplet(byte(i + 1))
+	}
 	for _, tc := range []struct {
-		wire string
-		n    int
-	}{{saiV2ResHex, 1}, {saiV2FiveHex, 5}} {
-		want := &SendAuthenticationInfoV2Res{}
-		for range tc.n {
-			want.Triplets = append(want.Triplets, saiV2Triplet())
-		}
+		wire     string
+		triplets []AuthenticationTriplet
+	}{{saiV2ResHex, []AuthenticationTriplet{saiV2Triplet()}}, {saiV2FiveHex, five}} {
+		want := &SendAuthenticationInfoV2Res{Triplets: tc.triplets}
 		got, err := ParseSendAuthenticationInfoV2Res(saiV2Bytes(t, tc.wire))
 		if err != nil {
 			t.Fatal(err)
@@ -228,11 +248,43 @@ func TestSAIV2IdentityErrors(t *testing.T) {
 	}
 }
 
+// An entity supporting v2 "shall not reject an unsupported extension following
+// '...'", and v2 private extensions follow the extension marker with PRIVATE
+// tags up to and including 29 (TS 09.02 V7.15.0 §17.1.4). Each wire is one
+// AuthenticationSet of 34 base octets plus a three-octet addition: set content
+// 37, outer content 39 (§17.7.1).
 func TestSAIV2ExtensionDiscarded(t *testing.T) {
-	// One extensible AuthenticationSet: base 34 octets plus unknown [1] TLV
-	// 81 01 ff (three); set content 37, outer content 39 (TS 09.02 §17.7.1).
-	const extended = "302730250410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b88101ff"
-	v, err := ParseSendAuthenticationInfoV2Res(saiV2Bytes(t, extended))
+	for _, tc := range []struct{ name, wire string }{
+		{"context [1]", "302730250410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b88101ff"},
+		{"PRIVATE [1]", "302730250410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b8c101ff"},
+		{"PRIVATE [29]", "302730250410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b8dd01ff"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			v, err := ParseSendAuthenticationInfoV2Res(saiV2Bytes(t, tc.wire))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diff := cmp.Diff([]AuthenticationTriplet{saiV2Triplet()}, v.Triplets); diff != "" {
+				t.Fatal(diff)
+			}
+			out, err := v.Marshal()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if hex.EncodeToString(out) != saiV2ResHex {
+				t.Fatalf("Marshal = %x, want %s", out, saiV2ResHex)
+			}
+		})
+	}
+}
+
+// X.690 (02/2021) §8.1.3.2 b) lets the sender of a constructed encoding use
+// the indefinite form, and TS 09.02 V7.15.0 §17.1.1 restricts only definite
+// lengths. Parse accepts it; Marshal sends the definite form.
+func TestSAIV2IndefiniteLength(t *testing.T) {
+	// The one-set result with an indefinite outer length, ended by 00 00.
+	const indefinite = "308030220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b80000"
+	v, err := ParseSendAuthenticationInfoV2Res(saiV2Bytes(t, indefinite))
 	if err != nil {
 		t.Fatal(err)
 	}
