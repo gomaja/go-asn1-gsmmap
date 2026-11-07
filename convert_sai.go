@@ -67,14 +67,7 @@ func convertAuthenticationSetListToWire(a *AuthenticationSetList) (*gsm_map.Auth
 		return nil, ErrAuthenticationSetListNoAlternative
 	}
 	if hasTriplets {
-		list := gsm_map.TripletList{Values: make([]gsm_map.AuthenticationTriplet, len(a.Triplets))}
-		for i := range a.Triplets {
-			list.Values[i] = gsm_map.AuthenticationTriplet{
-				Rand: gsm_map.RAND(a.Triplets[i].RAND),
-				Sres: gsm_map.SRES(a.Triplets[i].SRES),
-				Kc:   gsm_map.Kc(a.Triplets[i].Kc),
-			}
-		}
+		list := convertTripletsToWire(a.Triplets)
 		v := gsm_map.NewAuthenticationSetListTripletList(&list)
 		return &v, nil
 	}
@@ -100,16 +93,7 @@ func convertWireToAuthenticationSetList(w *gsm_map.AuthenticationSetList) (*Auth
 	}
 	switch w.Choice {
 	case gsm_map.AuthenticationSetListChoiceTripletList:
-		triplets := w.TripletList
-		out := make([]AuthenticationTriplet, len(triplets.Values))
-		for i, t := range triplets.Values {
-			out[i] = AuthenticationTriplet{
-				RAND: HexBytes(t.Rand),
-				SRES: HexBytes(t.Sres),
-				Kc:   HexBytes(t.Kc),
-			}
-		}
-		return &AuthenticationSetList{Triplets: out}, nil
+		return &AuthenticationSetList{Triplets: convertWireToTriplets(w.TripletList)}, nil
 	case gsm_map.AuthenticationSetListChoiceQuintupletList:
 		quintuplets := w.QuintupletList
 		out := make([]AuthenticationQuintuplet, len(quintuplets.Values))
@@ -307,4 +291,49 @@ func convertResToSendAuthenticationInfoRes(res *gsm_map.SendAuthenticationInfoRe
 	}
 
 	return out, nil
+}
+
+// convertTripletsToWire maps the shared components of TS 09.02 V7.15.0
+// §17.7.1 AuthenticationSet and TS 29.002 V19.1.0 §17.7.1 AuthenticationTriplet.
+func convertTripletsToWire(triplets []AuthenticationTriplet) gsm_map.TripletList {
+	list := gsm_map.TripletList{Values: make([]gsm_map.AuthenticationTriplet, len(triplets))}
+	for i, t := range triplets {
+		list.Values[i] = gsm_map.AuthenticationTriplet{
+			Rand: gsm_map.RAND(t.RAND),
+			Sres: gsm_map.SRES(t.SRES),
+			Kc:   gsm_map.Kc(t.Kc),
+		}
+	}
+	return list
+}
+
+// convertWireToTriplets keeps only the public triplet components.
+func convertWireToTriplets(list *gsm_map.TripletList) []AuthenticationTriplet {
+	out := make([]AuthenticationTriplet, len(list.Values))
+	for i, t := range list.Values {
+		out[i] = AuthenticationTriplet{
+			RAND: HexBytes(t.Rand),
+			SRES: HexBytes(t.Sres),
+			Kc:   HexBytes(t.Kc),
+		}
+	}
+	return out
+}
+
+// convertSendAuthenticationInfoV2ToArg encodes the v2 bare IMSI.
+func convertSendAuthenticationInfoV2ToArg(s *SendAuthenticationInfoV2) (*gsm_map.BERValue[gsm_map.IMSI], error) {
+	imsi, err := encodeIdentityDigits(identityIMSI, s.IMSI)
+	if err != nil {
+		return nil, fmt.Errorf(errEncodingIMSI, err)
+	}
+	return &gsm_map.BERValue[gsm_map.IMSI]{Value: imsi}, nil
+}
+
+// convertArgToSendAuthenticationInfoV2 decodes the v2 bare IMSI.
+func convertArgToSendAuthenticationInfoV2(arg *gsm_map.BERValue[gsm_map.IMSI]) (*SendAuthenticationInfoV2, error) {
+	imsi, err := decodeIdentityDigits(identityIMSI, arg.Value)
+	if err != nil {
+		return nil, fmt.Errorf("decoding IMSI: %w", err)
+	}
+	return &SendAuthenticationInfoV2{IMSI: imsi}, nil
 }

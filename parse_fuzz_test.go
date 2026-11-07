@@ -68,6 +68,8 @@ var parsers = []struct {
 	{"PurgeMSRes", asParser(ParsePurgeMSRes)},
 	{"SendAuthenticationInfo", asParser(ParseSendAuthenticationInfo)},
 	{"SendAuthenticationInfoRes", asParser(ParseSendAuthenticationInfoRes)},
+	{"SendAuthenticationInfoV2", asParser(ParseSendAuthenticationInfoV2)},
+	{"SendAuthenticationInfoV2Res", asParser(ParseSendAuthenticationInfoV2Res)},
 	{"CancelLocation", asParser(ParseCancelLocation)},
 	{"CancelLocationRes", asParser(ParseCancelLocationRes)},
 	{"InsertSubscriberDataArg", asParser(ParseInsertSubscriberDataArg)},
@@ -123,7 +125,7 @@ func berSeeds(tb testing.TB) [][]byte {
 	if err != nil {
 		tb.Fatal(err)
 	}
-	re := regexp.MustCompile(`"((?:30|a[0-9a-f]|3081)[0-9a-fA-F]{6,})"`)
+	re := regexp.MustCompile(`"((?:30|a[0-9a-f]|3081|04)[0-9a-fA-F]{6,})"`)
 	seen := map[string]bool{}
 	var seeds [][]byte
 	for _, f := range files {

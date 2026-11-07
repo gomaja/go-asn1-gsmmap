@@ -1792,6 +1792,8 @@ type AuthenticationSetList struct {
 // SendAuthenticationInfo represents a SendAuthenticationInfo request
 // (opCode 56) per 3GPP TS 29.002. Sent by the VLR/SGSN/MME to the HLR/HSS
 // to retrieve authentication vectors for subscriber authentication.
+// This is the v3 form for infoRetrievalContext-v3; infoRetrievalContext-v2 uses
+// SendAuthenticationInfoV2 (3GPP TS 29.002 V19.1.0 §17.3.2.15).
 // The caller omits the argument in subsequent invokes within a dialogue
 // and discards any argument received in those invokes before decoding
 // (3GPP TS 29.002 V19.1.0 §17.6.1).
@@ -1816,10 +1818,31 @@ type SendAuthenticationInfo struct {
 
 // SendAuthenticationInfoRes represents a SendAuthenticationInfo response
 // (opCode 56) per 3GPP TS 29.002.
+// This is the v3 form for infoRetrievalContext-v3; infoRetrievalContext-v2 uses
+// SendAuthenticationInfoV2Res (3GPP TS 29.002 V19.1.0 §17.3.2.15).
 type SendAuthenticationInfoRes struct {
 	AuthenticationSetList    *AuthenticationSetList // CHOICE: Triplets | Quintuplets
 	EpsAuthenticationSetList []EpcAV                // [2] EPS-AuthenticationSetList
 	UeUsageType              HexBytes               // [3] UE-UsageType, exactly 4 octets
+}
+
+// SendAuthenticationInfoV2 is the MAP v2 request (opCode 56), sent by the VLR
+// or SGSN to the HLR: a mandatory bare IMSI (3GPP TS 09.02 V7.15.0 §§8.5.2,
+// 17.6.1, 17.7.1), for infoRetrievalContext-v2 (3GPP TS 29.002 V19.1.0
+// §17.3.2.15).
+type SendAuthenticationInfoV2 struct {
+	IMSI string // TBCD
+}
+
+// SendAuthenticationInfoV2Res is the MAP v2 result (opCode 56). It carries only
+// triplets: TS 09.02 V7.15.0 §17.7.1 names each element AuthenticationSet,
+// with the components of TS 29.002 V19.1.0 §17.7.1 AuthenticationTriplet.
+// Its SIZE (1..5) errors name TripletList, the wire-identical TS 29.002 type
+// used here; errors in a set give its path, such as element[0].sres.
+// An HLR without triplets returns an empty response (TS 09.02 V7.15.0 §8.5.2.1),
+// a return result with no parameter to parse.
+type SendAuthenticationInfoV2Res struct {
+	Triplets []AuthenticationTriplet // 1..5
 }
 
 // CancellationType per 3GPP TS 29.002 (opCode 3). Indicates why the HLR
