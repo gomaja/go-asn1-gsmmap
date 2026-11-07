@@ -21,8 +21,12 @@ func TestGoASN1Issue272BMPNoncharactersAccepted(t *testing.T) {
 		"301704069113265476f8300da00b300906032a03041e02fffe", // U+FFFE; payload 4=2+2, content 23
 		"301704069113265476f8300da00b300906032a03041e02ffff", // U+FFFF; payload 4=2+2, content 23
 	} {
-		if _, err := ParseUpdateLocationRes(mustHex(t, wire)); err != nil {
-			t.Errorf("Parse(%s) = %v; go-asn1#272 looks fixed: expect ber.ErrInvalidValue and update the README", wire, err)
+		_, err := ParseUpdateLocationRes(mustHex(t, wire))
+		switch {
+		case errors.Is(err, ber.ErrInvalidValue):
+			t.Errorf("Parse(%s) = %v; go-asn1#272 looks fixed: move the wire to the refusals and update the README", wire, err)
+		case err != nil:
+			t.Errorf("Parse(%s) = %v, want accepted", wire, err)
 		}
 	}
 }
@@ -36,8 +40,12 @@ func TestGoASN1Issue274EscapeAndShiftAccepted(t *testing.T) {
 		"301704069113265476f8300da00b300906032a03041e02000e", // BMPString SHIFT OUT; payload 4=2+2, content 23
 		"301704069113265476f8300da00b300906032a030416021b4e", // IA5String ESC N; payload 4=2+2, content 23
 	} {
-		if _, err := ParseUpdateLocationRes(mustHex(t, wire)); err != nil {
-			t.Errorf("Parse(%s) = %v; go-asn1#274 looks fixed: expect ber.ErrInvalidValue and update the README", wire, err)
+		_, err := ParseUpdateLocationRes(mustHex(t, wire))
+		switch {
+		case errors.Is(err, ber.ErrInvalidValue):
+			t.Errorf("Parse(%s) = %v; go-asn1#274 looks fixed: move the wire to the refusals and update the README", wire, err)
+		case err != nil:
+			t.Errorf("Parse(%s) = %v, want accepted", wire, err)
 		}
 	}
 }

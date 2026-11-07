@@ -512,3 +512,53 @@ func TestParseToleranceOpenSegmentedNumericString(t *testing.T) {
 		}
 	}
 }
+
+// Under tolerance the other alphabet types are reported like NumericString,
+// while width, scalar and time errors are refused in every mode (X.680
+// (02/2021) §41 Tables 8–10, §§46.3, 47.3; X.690 (02/2021) §§8.23.4–8.23.8,
+// 8.25). Each wire is an SRI-SM whose private extType holds the value; the
+// string TLV starts at offset 34.
+func TestParseToleranceOpenRestrictedTypes(t *testing.T) {
+	for _, tc := range []struct {
+		name, wire, alphabet, clause, observed string
+	}{
+		// Payload 3; SRI-SM length 32+3=35.
+		{"PrintableString at sign", "30238007912143658709f18101008207912143658709f1a60ca00a300806032a0304130140", "PrintableString", "8.23.4", "40"},
+		// Payload 3; SRI-SM length 32+3=35.
+		{"IA5String high octet", "30238007912143658709f18101008207912143658709f1a60ca00a300806032a0304160180", "IA5String", "8.23.5", "80"},
+		// Payload 3; SRI-SM length 32+3=35.
+		{"VisibleString control", "30238007912143658709f18101008207912143658709f1a60ca00a300806032a03041a011f", "VisibleString", "8.23.5", "1f"},
+		// Payload 3; SRI-SM length 32+3=35.
+		{"BMPString odd width", "30238007912143658709f18101008207912143658709f1a60ca00a300806032a03041e0100", "", "", ""},
+		// Payload 6; SRI-SM length 32+6=38.
+		{"UniversalString above U+10FFFF", "30268007912143658709f18101008207912143658709f1a60fa00d300b06032a03041c0400110000", "", "", ""},
+		// Payload 13; SRI-SM length 32+13=45.
+		{"UTCTime impossible date", "302d8007912143658709f18101008207912143658709f1a616a014301206032a0304170b323630323330303330345a", "", "", ""},
+		// Payload 17; SRI-SM length 32+17=49.
+		{"GeneralizedTime impossible date", "30318007912143658709f18101008207912143658709f1a61aa018301606032a0304180f32303236303233303033303430355a", "", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data := mustHex(t, tc.wire)
+			if _, err := ParseSriSm(data); !errors.Is(err, ber.ErrInvalidValue) {
+				t.Fatalf("strict Parse = %v, want ErrInvalidValue", err)
+			}
+			var violations []Violation
+			_, err := ParseSriSm(data, WithTolerance(&violations))
+			if tc.alphabet == "" {
+				if !errors.Is(err, ber.ErrInvalidValue) || len(violations) != 0 {
+					t.Fatalf("tolerant Parse = %v with %d reports, want ErrInvalidValue and none", err, len(violations))
+				}
+				return
+			}
+			if err != nil || len(violations) != 1 {
+				t.Fatalf("tolerant Parse = %v with reports %+v, want one report", err, violations)
+			}
+			got := violations[0]
+			if got.Kind != ViolationKindASN1Constraint || got.Rule.Clause != tc.clause || !strings.HasPrefix(got.Constraint, tc.alphabet+" ") ||
+				got.ObservedValue != tc.observed || got.Offset == nil || *got.Offset != 34 ||
+				got.Path != "extensionContainer.privateExtensionList.element[0].extType" {
+				t.Errorf("violation = %+v", got)
+			}
+		})
+	}
+}
