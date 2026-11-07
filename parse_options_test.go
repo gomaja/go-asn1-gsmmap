@@ -431,3 +431,134 @@ func FuzzParseTolerant(f *testing.F) {
 		}
 	})
 }
+
+// X.680 (02/2021) §41.2 Table 9 and X.690 (02/2021) §8.23.4:
+// NumericString admits digits and space. An open extType containing 'A'
+// is refused strictly and reported once under tolerance.
+func TestParseToleranceOpenNumericString(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		parser int
+		wire   string
+		offset int
+	}{
+		// PrivateExtension = OID TLV 5 + NumericString TLV 3 = 8;
+		// list = SEQUENCE TLV 10, container = [0] TLV 12, [6] TLV 14.
+		// SRI-SM SEQUENCE length = mandatory fields 21 + 14 = 35.
+		{"SriSm", 0, "30238007912143658709f18101008207912143658709f1a60ca00a300806032a0304120141", 34},
+		// The same container: MO-ForwardSM length = 19 + 14 = 33.
+		{"MoFsm", 1, "302184029121820291210409010002912100000141300ca00a300806032a0304120141", 32},
+		// The same container: MT-ForwardSM length = 31 + 14 = 45.
+		{"MtFsm", 2, "302d800800010121436587f984029121040f000291210000621010000000000141300ca00a300806032a0304120141", 44},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := tolerantParsers[tc.parser].parse
+			data := mustHex(t, tc.wire)
+			_, err := p(data)
+			var element *ber.ElementError
+			if !errors.Is(err, ber.ErrInvalidValue) || !errors.As(err, &element) {
+				t.Errorf("strict error = %v, want ErrInvalidValue in *ber.ElementError", err)
+			} else if element.Offset() != tc.offset || !reflect.DeepEqual(element.ChildIndexes(), []int{3, 0, 0, 1}) {
+				t.Errorf("strict location = %d %v", element.Offset(), element.ChildIndexes())
+			}
+			violations := []Violation{{Path: "existing"}}
+			value, err := p(data, WithTolerance(&violations))
+			if err != nil || value == nil {
+				t.Fatalf("tolerant Parse = %v, %v", value, err)
+			}
+			if len(violations) != 2 || violations[0].Path != "existing" {
+				t.Fatalf("violations = %+v, want one appended report", violations)
+			}
+			got := violations[1]
+			if got.Kind != ViolationKindASN1Constraint || got.Rule != (ber.RuleRef{Document: "ITU-T X.690", Edition: "02/2021", Clause: "8.23.4"}) ||
+				got.Source != "MAP-ExtensionDataTypes.PrivateExtension.extType" ||
+				got.Path != "extensionContainer.privateExtensionList.element[0].extType" ||
+				got.Constraint != "NumericString digits and space (X.680 (02/2021) §41.2 Table 9; X.690 (02/2021) §8.23.4)" ||
+				got.Offset == nil || *got.Offset != tc.offset || !reflect.DeepEqual(got.ChildIndexes, []int{3, 0, 0, 1}) ||
+				got.ObservedLength != nil || got.ObservedValue != "41" || got.ObservedValueLength != 2 || got.OctetOffset == nil || *got.OctetOffset != 0 {
+				t.Fatalf("violation = %+v", got)
+			}
+		})
+	}
+}
+
+// A constructed NumericString is checked as its concatenated contents "A1B"
+// (X.690 (02/2021) §§8.23.3, 8.23.6), and tolerance reports each offending
+// octet: 'A' at contents offset 0 and 'B' at 2.
+func TestParseToleranceOpenSegmentedNumericString(t *testing.T) {
+	// Segments TLV 4 "A1" and TLV 3 "B": payload 9=2+7. PrivateExtension
+	// 14=5+9, list TLV 16, container [6] content 18, SRI-SM length 21+20=41.
+	data := mustHex(t, "30298007912143658709f18101008207912143658709f1a612a010300e06032a0304320704024131040142")
+	_, err := ParseSriSm(data)
+	var element *ber.ElementError
+	if !errors.Is(err, ber.ErrInvalidValue) || !errors.As(err, &element) || element.Offset() != 34 {
+		t.Fatalf("strict error = %v, want ErrInvalidValue in a *ber.ElementError at offset 34", err)
+	}
+	var violations []Violation
+	if _, err := ParseSriSm(data, WithTolerance(&violations)); err != nil {
+		t.Fatalf("tolerant Parse = %v", err)
+	}
+	if len(violations) != 2 {
+		t.Fatalf("violations = %+v, want two reports", violations)
+	}
+	for i, want := range []struct {
+		value  string
+		offset int
+	}{{"41", 0}, {"42", 2}} {
+		got := violations[i]
+		if got.Path != "extensionContainer.privateExtensionList.element[0].extType" || got.ObservedValue != want.value ||
+			got.OctetOffset == nil || *got.OctetOffset != want.offset || got.Offset == nil || *got.Offset != 34 {
+			t.Errorf("violation %d = %+v, want %s at contents offset %d", i, got, want.value, want.offset)
+		}
+	}
+}
+
+// Under tolerance the other alphabet types are reported like NumericString,
+// while width, scalar and time errors are refused in every mode (X.680
+// (02/2021) §41 Tables 8–10, §§46.3, 47.3; X.690 (02/2021) §§8.23.4–8.23.8,
+// 8.25). Each wire is an SRI-SM whose private extType holds the value; the
+// string TLV starts at offset 34.
+func TestParseToleranceOpenRestrictedTypes(t *testing.T) {
+	for _, tc := range []struct {
+		name, wire, alphabet, clause, observed string
+	}{
+		// Payload 3; SRI-SM length 32+3=35.
+		{"PrintableString at sign", "30238007912143658709f18101008207912143658709f1a60ca00a300806032a0304130140", "PrintableString", "8.23.4", "40"},
+		// Payload 3; SRI-SM length 32+3=35.
+		{"IA5String high octet", "30238007912143658709f18101008207912143658709f1a60ca00a300806032a0304160180", "IA5String", "8.23.5", "80"},
+		// Payload 3; SRI-SM length 32+3=35.
+		{"VisibleString control", "30238007912143658709f18101008207912143658709f1a60ca00a300806032a03041a011f", "VisibleString", "8.23.5", "1f"},
+		// Payload 3; SRI-SM length 32+3=35.
+		{"BMPString odd width", "30238007912143658709f18101008207912143658709f1a60ca00a300806032a03041e0100", "", "", ""},
+		// Payload 6; SRI-SM length 32+6=38.
+		{"UniversalString above U+10FFFF", "30268007912143658709f18101008207912143658709f1a60fa00d300b06032a03041c0400110000", "", "", ""},
+		// Payload 13; SRI-SM length 32+13=45.
+		{"UTCTime impossible date", "302d8007912143658709f18101008207912143658709f1a616a014301206032a0304170b323630323330303330345a", "", "", ""},
+		// Payload 17; SRI-SM length 32+17=49.
+		{"GeneralizedTime impossible date", "30318007912143658709f18101008207912143658709f1a61aa018301606032a0304180f32303236303233303033303430355a", "", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			data := mustHex(t, tc.wire)
+			if _, err := ParseSriSm(data); !errors.Is(err, ber.ErrInvalidValue) {
+				t.Fatalf("strict Parse = %v, want ErrInvalidValue", err)
+			}
+			var violations []Violation
+			_, err := ParseSriSm(data, WithTolerance(&violations))
+			if tc.alphabet == "" {
+				if !errors.Is(err, ber.ErrInvalidValue) || len(violations) != 0 {
+					t.Fatalf("tolerant Parse = %v with %d reports, want ErrInvalidValue and none", err, len(violations))
+				}
+				return
+			}
+			if err != nil || len(violations) != 1 {
+				t.Fatalf("tolerant Parse = %v with reports %+v, want one report", err, violations)
+			}
+			got := violations[0]
+			if got.Kind != ViolationKindASN1Constraint || got.Rule.Clause != tc.clause || !strings.HasPrefix(got.Constraint, tc.alphabet+" ") ||
+				got.ObservedValue != tc.observed || got.Offset == nil || *got.Offset != 34 ||
+				got.Path != "extensionContainer.privateExtensionList.element[0].extType" {
+				t.Errorf("violation = %+v", got)
+			}
+		})
+	}
+}
