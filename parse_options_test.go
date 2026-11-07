@@ -571,10 +571,11 @@ func TestParseToleranceOpenRestrictedTypes(t *testing.T) {
 // contents offset (X.690 §8.23.6).
 func TestParseToleranceOpenStringControls(t *testing.T) {
 	for _, tc := range []struct {
-		name               string
-		wires              [3]string
-		alphabet, observed string
-		octetOffset        int
+		name         string
+		wires        [3]string
+		alphabet     string
+		observed     []string // one report per entry, in order
+		octetOffsets []int
 	}{
 		// Payload 4=2+2; private SEQUENCE content 5+4=9, list TLV 13, container TLV 15.
 		// Message contents: SRI 21+15=36, MO 19+15=34, MT 31+15=46 octets.
@@ -582,84 +583,107 @@ func TestParseToleranceOpenStringControls(t *testing.T) {
 			"30248007912143658709f18101008207912143658709f1a60da00b300906032a03041e02fffe",
 			"302284029121820291210409010002912100000141300da00b300906032a03041e02fffe",
 			"302e800800010121436587f984029121040f000291210000621010000000000141300da00b300906032a03041e02fffe",
-		}, "", "", 0},
+		}, "", nil, nil},
 		// Payload 4=2+2; private SEQUENCE content 5+4=9, list TLV 13, container TLV 15.
 		// Message contents: SRI 21+15=36, MO 19+15=34, MT 31+15=46 octets.
 		{"BMPString U+FFFF", [3]string{
 			"30248007912143658709f18101008207912143658709f1a60da00b300906032a03041e02ffff",
 			"302284029121820291210409010002912100000141300da00b300906032a03041e02ffff",
 			"302e800800010121436587f984029121040f000291210000621010000000000141300da00b300906032a03041e02ffff",
-		}, "", "", 0},
+		}, "", nil, nil},
 		// Payload 4=2+2; private SEQUENCE content 5+4=9, list TLV 13, container TLV 15.
 		// Message contents: SRI 21+15=36, MO 19+15=34, MT 31+15=46 octets.
 		{"BMPString SO", [3]string{
 			"30248007912143658709f18101008207912143658709f1a60da00b300906032a03041e02000e",
 			"302284029121820291210409010002912100000141300da00b300906032a03041e02000e",
 			"302e800800010121436587f984029121040f000291210000621010000000000141300da00b300906032a03041e02000e",
-		}, "", "", 0},
+		}, "", nil, nil},
 		// Payload 6=2+4; private SEQUENCE content 5+6=11, list TLV 15, container TLV 17.
 		// Message contents: SRI 21+17=38, MO 19+17=36, MT 31+17=48 octets.
 		{"UniversalString SI", [3]string{
 			"30268007912143658709f18101008207912143658709f1a60fa00d300b06032a03041c040000000f",
 			"302484029121820291210409010002912100000141300fa00d300b06032a03041c040000000f",
 			"3030800800010121436587f984029121040f000291210000621010000000000141300fa00d300b06032a03041c040000000f",
-		}, "", "", 0},
+		}, "", nil, nil},
 		// Payload 8=2+6; private SEQUENCE content 5+8=13, list TLV 17, container TLV 19.
 		// Message contents: SRI 21+19=40, MO 19+19=38, MT 31+19=50 octets.
 		{"BMPString designating escape", [3]string{
 			"30288007912143658709f18101008207912143658709f1a611a00f300d06032a03041e06001b00280042",
 			"3026840291218202912104090100029121000001413011a00f300d06032a03041e06001b00280042",
 			"3032800800010121436587f984029121040f0002912100006210100000000001413011a00f300d06032a03041e06001b00280042",
-		}, "", "", 0},
+		}, "", nil, nil},
 		// Payload 14=2+12; private SEQUENCE content 5+14=19, list TLV 23, container TLV 25.
 		// Message contents: SRI 21+25=46, MO 19+25=44, MT 31+25=56 octets.
 		{"UniversalString designating escape", [3]string{
 			"302e8007912143658709f18101008207912143658709f1a617a015301306032a03041c0c0000001b0000002800000042",
 			"302c840291218202912104090100029121000001413017a015301306032a03041c0c0000001b0000002800000042",
 			"3038800800010121436587f984029121040f0002912100006210100000000001413017a015301306032a03041c0c0000001b0000002800000042",
-		}, "", "", 0},
+		}, "", nil, nil},
 		// Payload 5=2+3; private SEQUENCE content 5+5=10, list TLV 14, container TLV 16.
 		// Message contents: SRI 21+16=37, MO 19+16=35, MT 31+16=47 octets.
 		{"UTF8String escape sequence", [3]string{
 			"30258007912143658709f18101008207912143658709f1a60ea00c300a06032a03040c031b2842",
 			"302384029121820291210409010002912100000141300ea00c300a06032a03040c031b2842",
 			"302f800800010121436587f984029121040f000291210000621010000000000141300ea00c300a06032a03040c031b2842",
-		}, "UTF8String", "42", 2},
+		}, "UTF8String", []string{"42"}, []int{2}},
 		// Payload 3=2+1; private SEQUENCE content 5+3=8, list TLV 12, container TLV 14.
 		// Message contents: SRI 21+14=35, MO 19+14=33, MT 31+14=45 octets.
 		{"UTF8String SO", [3]string{
 			"30238007912143658709f18101008207912143658709f1a60ca00a300806032a03040c010e",
 			"302184029121820291210409010002912100000141300ca00a300806032a03040c010e",
 			"302d800800010121436587f984029121040f000291210000621010000000000141300ca00a300806032a03040c010e",
-		}, "UTF8String", "0e", 0},
+		}, "UTF8String", []string{"0e"}, []int{0}},
 		// Payload 5=2+3; private SEQUENCE content 5+5=10, list TLV 14, container TLV 16.
 		// Message contents: SRI 21+16=37, MO 19+16=35, MT 31+16=47 octets.
 		{"IA5String designating escape", [3]string{
 			"30258007912143658709f18101008207912143658709f1a60ea00c300a06032a030416031b2842",
 			"302384029121820291210409010002912100000141300ea00c300a06032a030416031b2842",
 			"302f800800010121436587f984029121040f000291210000621010000000000141300ea00c300a06032a030416031b2842",
-		}, "IA5String", "42", 2},
+		}, "IA5String", []string{"42"}, []int{2}},
 		// Payload 4=2+2; private SEQUENCE content 5+4=9, list TLV 13, container TLV 15.
 		// Message contents: SRI 21+15=36, MO 19+15=34, MT 31+15=46 octets.
 		{"IA5String ESC N", [3]string{
 			"30248007912143658709f18101008207912143658709f1a60da00b300906032a030416021b4e",
 			"302284029121820291210409010002912100000141300da00b300906032a030416021b4e",
 			"302e800800010121436587f984029121040f000291210000621010000000000141300da00b300906032a030416021b4e",
-		}, "IA5String", "4e", 1},
+		}, "IA5String", []string{"4e"}, []int{1}},
 		// Payload 9=2+7; private SEQUENCE content 5+9=14, list TLV 18, container TLV 20.
 		// Message contents: SRI 21+20=41, MO 19+20=39, MT 31+20=51 octets.
 		{"split UTF8String escape sequence", [3]string{
 			"30298007912143658709f18101008207912143658709f1a612a010300e06032a03042c0704011b04022842",
 			"3027840291218202912104090100029121000001413012a010300e06032a03042c0704011b04022842",
 			"3033800800010121436587f984029121040f0002912100006210100000000001413012a010300e06032a03042c0704011b04022842",
-		}, "UTF8String", "42", 2},
+		}, "UTF8String", []string{"42"}, []int{2}},
 		// Payload 9=2+7; private SEQUENCE content 5+9=14, list TLV 18, container TLV 20.
 		// Message contents: SRI 21+20=41, MO 19+20=39, MT 31+20=51 octets.
 		{"split IA5String designating escape", [3]string{
 			"30298007912143658709f18101008207912143658709f1a612a010300e06032a0304360704011b04022842",
 			"3027840291218202912104090100029121000001413012a010300e06032a0304360704011b04022842",
 			"3033800800010121436587f984029121040f0002912100006210100000000001413012a010300e06032a0304360704011b04022842",
-		}, "IA5String", "42", 2},
+		}, "IA5String", []string{"42"}, []int{2}},
+		// Payload 3=2+1; private SEQUENCE content 5+3=8, list TLV 12, container TLV 14.
+		// Message contents: SRI 21+14=35, MO 19+14=33, MT 31+14=45 octets.
+		{"UTF8String SI", [3]string{
+			"30238007912143658709f18101008207912143658709f1a60ca00a300806032a03040c010f",
+			"302184029121820291210409010002912100000141300ca00a300806032a03040c010f",
+			"302d800800010121436587f984029121040f000291210000621010000000000141300ca00a300806032a03040c010f",
+		}, "UTF8String", []string{"0f"}, []int{0}},
+		// Two shifts give two reports. Payload 4=2+2; private SEQUENCE content
+		// 5+4=9, list TLV 13, container TLV 15.
+		// Message contents: SRI 21+15=36, MO 19+15=34, MT 31+15=46 octets.
+		{"UTF8String SO and SI", [3]string{
+			"30248007912143658709f18101008207912143658709f1a60da00b300906032a03040c020e0f",
+			"302284029121820291210409010002912100000141300da00b300906032a03040c020e0f",
+			"302e800800010121436587f984029121040f000291210000621010000000000141300da00b300906032a03040c020e0f",
+		}, "UTF8String", []string{"0e", "0f"}, []int{0, 1}},
+		// Two escape sequences give two reports, each at its final octet.
+		// Payload 8=2+6; private SEQUENCE content 5+8=13, list TLV 17, container TLV 19.
+		// Message contents: SRI 21+19=40, MO 19+19=38, MT 31+19=50 octets.
+		{"IA5String two designating escapes", [3]string{
+			"30288007912143658709f18101008207912143658709f1a611a00f300d06032a030416061b28421b2842",
+			"3026840291218202912104090100029121000001413011a00f300d06032a030416061b28421b2842",
+			"3032800800010121436587f984029121040f0002912100006210100000000001413011a00f300d06032a030416061b28421b2842",
+		}, "IA5String", []string{"42", "42"}, []int{2, 5}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for i, parser := range tolerantParsers {
@@ -688,8 +712,8 @@ func TestParseToleranceOpenStringControls(t *testing.T) {
 						}
 						return
 					}
-					if err != nil || value == nil || len(violations) != 2 || violations[0].Path != "existing" {
-						t.Fatalf("tolerant Parse = %+v, %v; reports %+v, want one appended report", value, err, violations)
+					if err != nil || value == nil || len(violations) != 1+len(tc.observed) || violations[0].Path != "existing" {
+						t.Fatalf("tolerant Parse = %+v, %v; reports %+v, want %d appended reports", value, err, violations, len(tc.observed))
 					}
 					offset := []int{34, 32, 44}[i]
 					clause := "8.23.10"
@@ -698,16 +722,19 @@ func TestParseToleranceOpenStringControls(t *testing.T) {
 						clause = "8.23.5.3"
 						constraint = "IA5String forbids explicit escape sequences (X.690 (02/2021) §8.23.5.3/Table 3)"
 					}
-					want := Violation{
-						Kind:       ViolationKindASN1Constraint,
-						Rule:       ber.RuleRef{Document: "ITU-T X.690", Edition: "02/2021", Clause: clause},
-						Source:     "MAP-ExtensionDataTypes.PrivateExtension.extType",
-						Path:       "extensionContainer.privateExtensionList.element[0].extType",
-						Constraint: constraint, Offset: &offset, ChildIndexes: []int{3, 0, 0, 1},
-						ObservedValue: tc.observed, ObservedValueLength: 2, OctetOffset: &tc.octetOffset,
-					}
-					if diff := cmp.Diff(want, violations[1], cmpopts.IgnoreUnexported(Violation{})); diff != "" {
-						t.Errorf("violation (-want +got):\n%s", diff)
+					for j, observed := range tc.observed {
+						octetOffset := tc.octetOffsets[j]
+						want := Violation{
+							Kind:       ViolationKindASN1Constraint,
+							Rule:       ber.RuleRef{Document: "ITU-T X.690", Edition: "02/2021", Clause: clause},
+							Source:     "MAP-ExtensionDataTypes.PrivateExtension.extType",
+							Path:       "extensionContainer.privateExtensionList.element[0].extType",
+							Constraint: constraint, Offset: &offset, ChildIndexes: []int{3, 0, 0, 1},
+							ObservedValue: observed, ObservedValueLength: 2, OctetOffset: &octetOffset,
+						}
+						if diff := cmp.Diff(want, violations[1+j], cmpopts.IgnoreUnexported(Violation{})); diff != "" {
+							t.Errorf("violation %d (-want +got):\n%s", j, diff)
+						}
 					}
 				})
 			}
