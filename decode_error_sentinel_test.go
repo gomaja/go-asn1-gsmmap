@@ -29,6 +29,8 @@ func TestParseDecodeErrorSentinel(t *testing.T) {
 	sentinels := []error{
 		ber.ErrUnexpectedElement, ber.ErrTruncated, ber.ErrInvalidLength,
 		ber.ErrInvalidTag, ber.ErrExtraData, ber.ErrInvalidValue,
+		ber.ErrIndefiniteLength, ber.ErrUnsupported, ber.ErrResourceLimit,
+		ber.ErrInvalidCodec, ber.ErrInvalidBinding,
 	}
 	for _, tc := range []struct {
 		name, wire string
@@ -107,6 +109,8 @@ func TestMarshalOpaqueOpenValueSentinel(t *testing.T) {
 	sentinels := []error{
 		ber.ErrUnexpectedElement, ber.ErrTruncated, ber.ErrInvalidLength,
 		ber.ErrInvalidTag, ber.ErrExtraData, ber.ErrInvalidValue,
+		ber.ErrIndefiniteLength, ber.ErrUnsupported, ber.ErrResourceLimit,
+		ber.ErrInvalidCodec, ber.ErrInvalidBinding,
 	}
 	for _, tc := range []struct {
 		name, entry, res string
@@ -141,6 +145,14 @@ func TestMarshalOpaqueOpenValueSentinel(t *testing.T) {
 		{"IA5String designating escape",
 			"30178001018202f121b10ea00c300a06032a030416031b2842",
 			"301f301da41ba51930178001018202f121b10ea00c300a06032a030416031b2842", ber.ErrInvalidValue},
+		// Payload 4=2+2; entry content 22=18+4, response content 30=26+4.
+		{"BMPString U+FDD0",
+			"30168001018202f121b10da00b300906032a03041e02fdd0",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02fdd0", ber.ErrInvalidValue},
+		// Payload 5=2+3; entry content 23=18+5, response content 31=26+5.
+		{"UTF8String U+FFFE",
+			"30178001018202f121b10ea00c300a06032a03040c03efbfbe",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a03040c03efbfbe", ber.ErrInvalidValue},
 		{"UTCTime with an impossible date",
 			"301f8001018202f121b116a014301206032a0304170b323630323330303330345a",
 			"30273025a423a521301f8001018202f121b116a014301206032a0304170b323630323330303330345a", ber.ErrInvalidValue},
@@ -179,15 +191,17 @@ func TestMarshalOpaqueOpenValueSentinel(t *testing.T) {
 }
 
 // The checked string and time contents in open values follow X.680 (02/2021)
-// §41 Tables 8–10, §41.15, §§46.3, 47.3 and X.690 (02/2021)
-// §§8.23.3–8.23.10, 8.25. Constructed strings use OCTET STRING segments;
-// a segment may split a character's octets or a time spelling. The unchecked
-// controls pin
-// the existing behavior without asserting that their contents are valid text.
+// §41 Tables 8–10, §§41.6, 41.15, 41.16, 46.3, 47.3, X.690 (02/2021)
+// §§8.23.3–8.23.10, 8.25 and, for the noncharacters, Unicode 3.2.0 (UAX #27
+// D7b). Constructed strings use OCTET STRING segments; a segment may split a
+// character's octets or a time spelling. The unchecked controls pin the
+// existing behavior without asserting that their contents are valid text.
 func TestParseRestrictedOpenValueSentinel(t *testing.T) {
 	sentinels := []error{
 		ber.ErrUnexpectedElement, ber.ErrTruncated, ber.ErrInvalidLength,
 		ber.ErrInvalidTag, ber.ErrExtraData, ber.ErrInvalidValue,
+		ber.ErrIndefiniteLength, ber.ErrUnsupported, ber.ErrResourceLimit,
+		ber.ErrInvalidCodec, ber.ErrInvalidBinding,
 	}
 	// For a payload TLV of P octets, the private SEQUENCE content is 5+P
 	// (extId is a 5-octet OID TLV), its a0 list is 7+P, and the enclosing
@@ -200,6 +214,134 @@ func TestParseRestrictedOpenValueSentinel(t *testing.T) {
 		name, privateExtType, unknownAddition, opaquePDP string
 		accept                                           bool
 	}{
+		// GeneralizedTime admits second 60, a leap second (X.680 (02/2021)
+		// §§3.7 h), 46.3 a) 2)); UTCTime seconds stay 00–59 (§47.3 b) 2)).
+		// BMPString, UniversalString and UTF8String exclude the 66
+		// noncharacters (X.680 §§2, 41.6, 41.15, 41.16; Unicode 3.2.0, UAX #27
+		// D7b); their neighbours and U+2FFFD, which is not one, stay valid.
+		// Payload 17=2+15; response contents: 36=19+17, 27=10+17, 43=26+17 octets.
+		{"GeneralizedTime leap second UTC",
+			"302404069113265476f8301aa018301606032a0304180f32303136313233313233353936305a",
+			"301b04069113265476f8be11180f32303136313233313233353936305a",
+			"302b3029a427a52530238001018202f121b11aa018301606032a0304180f32303136313233313233353936305a", true},
+		// Payload 19=2+17; response contents: 38=19+19, 29=10+19, 45=26+19 octets.
+		{"GeneralizedTime leap second fraction",
+			"302604069113265476f8301ca01a301806032a0304181132303136313233313233353936302e355a",
+			"301d04069113265476f8be13181132303136313233313233353936302e355a",
+			"302d302ba429a52730258001018202f121b11ca01a301806032a0304181132303136313233313233353936302e355a", true},
+		// Payload 16=2+14; response contents: 35=19+16, 26=10+16, 42=26+16 octets.
+		{"GeneralizedTime leap second local",
+			"302304069113265476f83019a017301506032a0304180e3230313631323331323335393630",
+			"301a04069113265476f8be10180e3230313631323331323335393630",
+			"302a3028a426a52430228001018202f121b119a017301506032a0304180e3230313631323331323335393630", true},
+		// Payload 21=2+19; response contents: 40=19+21, 31=10+21, 47=26+21 octets.
+		{"GeneralizedTime leap second time difference",
+			"302804069113265476f8301ea01c301a06032a0304181332303137303130313030353936302b30313030",
+			"301f04069113265476f8be15181332303137303130313030353936302b30313030",
+			"302f302da42ba52930278001018202f121b11ea01c301a06032a0304181332303137303130313030353936302b30313030", true},
+		// Segments 15=2+13 and 4=2+2 split seconds 6 | 0 (X.690 §8.23.6).
+		// Payload 21=2+19; response contents: 40=19+21, 31=10+21, 47=26+21 octets.
+		{"split GeneralizedTime leap second",
+			"302804069113265476f8301ea01c301a06032a03043813040d323031363132333132333539360402305a",
+			"301f04069113265476f8be153813040d323031363132333132333539360402305a",
+			"302f302da42ba52930278001018202f121b11ea01c301a06032a03043813040d323031363132333132333539360402305a", true},
+		// Payload 17=2+15; response contents: 36=19+17, 27=10+17, 43=26+17 octets.
+		{"GeneralizedTime second 61",
+			"302404069113265476f8301aa018301606032a0304180f32303136313233313233353936315a",
+			"301b04069113265476f8be11180f32303136313233313233353936315a",
+			"302b3029a427a52530238001018202f121b11aa018301606032a0304180f32303136313233313233353936315a", false},
+		// Payload 15=2+13; response contents: 34=19+15, 25=10+15, 41=26+15 octets.
+		{"UTCTime leap second",
+			"302204069113265476f83018a016301406032a0304170d3136313233313233353936305a",
+			"301904069113265476f8be0f170d3136313233313233353936305a",
+			"30293027a425a52330218001018202f121b118a016301406032a0304170d3136313233313233353936305a", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString U+FDD0",
+			"301704069113265476f8300da00b300906032a03041e02fdd0",
+			"300e04069113265476f8be041e02fdd0",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02fdd0", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString U+FDEF",
+			"301704069113265476f8300da00b300906032a03041e02fdef",
+			"300e04069113265476f8be041e02fdef",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02fdef", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString U+FDD0",
+			"301904069113265476f8300fa00d300b06032a03041c040000fdd0",
+			"301004069113265476f8be061c040000fdd0",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040000fdd0", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString U+1FFFE",
+			"301904069113265476f8300fa00d300b06032a03041c040001fffe",
+			"301004069113265476f8be061c040001fffe",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040001fffe", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString U+10FFFF",
+			"301904069113265476f8300fa00d300b06032a03041c040010ffff",
+			"301004069113265476f8be061c040010ffff",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040010ffff", false},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"UTF8String U+FDD0",
+			"301804069113265476f8300ea00c300a06032a03040c03efb790",
+			"300f04069113265476f8be050c03efb790",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a03040c03efb790", false},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"UTF8String U+FFFE",
+			"301804069113265476f8300ea00c300a06032a03040c03efbfbe",
+			"300f04069113265476f8be050c03efbfbe",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a03040c03efbfbe", false},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UTF8String U+10FFFF",
+			"301904069113265476f8300fa00d300b06032a03040c04f48fbfbf",
+			"301004069113265476f8be060c04f48fbfbf",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03040c04f48fbfbf", false},
+		// Segments 3=2+1 and 3=2+1 split the two BMP octets (X.690 §8.23.6).
+		// Payload 8=2+6; response contents: 27=19+8, 18=10+8, 34=26+8 octets.
+		{"split BMPString U+FDD0",
+			"301b04069113265476f83011a00f300d06032a03043e060401fd0401d0",
+			"301204069113265476f8be083e060401fd0401d0",
+			"30223020a41ea51c301a8001018202f121b111a00f300d06032a03043e060401fd0401d0", false},
+		// Segments 3=2+1 and 4=2+2 split the UTF-8 octets (X.690 §8.23.6).
+		// Payload 9=2+7; response contents: 28=19+9, 19=10+9, 35=26+9 octets.
+		{"split UTF8String U+FFFE",
+			"301c04069113265476f83012a010300e06032a03042c070401ef0402bfbe",
+			"301304069113265476f8be092c070401ef0402bfbe",
+			"30233021a41fa51d301b8001018202f121b112a010300e06032a03042c070401ef0402bfbe", false},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString U+FDCF",
+			"301704069113265476f8300da00b300906032a03041e02fdcf",
+			"300e04069113265476f8be041e02fdcf",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02fdcf", true},
+		// Payload 4=2+2; response contents: 23=19+4, 14=10+4, 30=26+4 octets.
+		{"BMPString U+FDF0",
+			"301704069113265476f8300da00b300906032a03041e02fdf0",
+			"300e04069113265476f8be041e02fdf0",
+			"301e301ca41aa51830168001018202f121b10da00b300906032a03041e02fdf0", true},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UniversalString U+1FFFD",
+			"301904069113265476f8300fa00d300b06032a03041c040001fffd",
+			"301004069113265476f8be061c040001fffd",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03041c040001fffd", true},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"UTF8String U+FDCF",
+			"301804069113265476f8300ea00c300a06032a03040c03efb78f",
+			"300f04069113265476f8be050c03efb78f",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a03040c03efb78f", true},
+		// Payload 5=2+3; response contents: 24=19+5, 15=10+5, 31=26+5 octets.
+		{"UTF8String U+FDF0",
+			"301804069113265476f8300ea00c300a06032a03040c03efb7b0",
+			"300f04069113265476f8be050c03efb7b0",
+			"301f301da41ba51930178001018202f121b10ea00c300a06032a03040c03efb7b0", true},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UTF8String U+10FFFD",
+			"301904069113265476f8300fa00d300b06032a03040c04f48fbfbd",
+			"301004069113265476f8be060c04f48fbfbd",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03040c04f48fbfbd", true},
+		// Payload 6=2+4; response contents: 25=19+6, 16=10+6, 32=26+6 octets.
+		{"UTF8String U+2FFFD",
+			"301904069113265476f8300fa00d300b06032a03040c04f0afbfbd",
+			"301004069113265476f8be060c04f0afbfbd",
+			"3020301ea41ca51a30188001018202f121b10fa00d300b06032a03040c04f0afbfbd", true},
 		// Payload 3=2+1; response contents: 22=19+3, 13=10+3, 29=26+3 octets.
 		{"NumericString letter",
 			"301604069113265476f8300ca00a300806032a0304120141",
