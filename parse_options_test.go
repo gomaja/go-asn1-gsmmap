@@ -563,12 +563,13 @@ func TestParseToleranceOpenRestrictedTypes(t *testing.T) {
 	}
 }
 
-// X.680 (02/2021) §41.15 and X.690 (02/2021) §§8.23.5.3,
-// 8.23.9–8.23.10: BMPString repertoire and BMPString/UniversalString control
-// errors remain fatal under tolerance. UTF8String shifts and escapes and
-// IA5String escapes produce one report at the offending character; for an
-// escape sequence that is its final character. Segmentation preserves the
-// contents offset (X.690 §8.23.6).
+// X.680 (02/2021) §§41.15, 41.16, X.690 (02/2021) §§8.23.5.3, 8.23.9–8.23.10
+// and Unicode 3.2.0 (UAX #27 D7b): the BMPString repertoire, noncharacters in
+// BMPString and UniversalString, and BMPString/UniversalString control errors
+// remain fatal under tolerance. UTF8String shifts, escapes and noncharacters
+// and IA5String escapes produce one report at the offending character; for an
+// escape sequence that is its final character, for a noncharacter its first
+// octet. Segmentation preserves the contents offset (X.690 §8.23.6).
 func TestParseToleranceOpenStringControls(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
@@ -577,6 +578,48 @@ func TestParseToleranceOpenStringControls(t *testing.T) {
 		observed     []string // one report per entry, in order
 		octetOffsets []int
 	}{
+		// Payload 4=2+2; private SEQUENCE content 9=5+4, list TLV 13, container TLV 15.
+		// Message contents: SRI 36=21+15, MO 34=19+15, MT 46=31+15.
+		{"BMPString U+FDD0", [3]string{
+			"30248007912143658709f18101008207912143658709f1a60da00b300906032a03041e02fdd0",
+			"302284029121820291210409010002912100000141300da00b300906032a03041e02fdd0",
+			"302e800800010121436587f984029121040f000291210000621010000000000141300da00b300906032a03041e02fdd0",
+		}, "", nil, nil},
+		// Payload 6=2+4; private SEQUENCE content 11=5+6, list TLV 15, container TLV 17.
+		// Message contents: SRI 38=21+17, MO 36=19+17, MT 48=31+17.
+		{"UniversalString U+1FFFE", [3]string{
+			"30268007912143658709f18101008207912143658709f1a60fa00d300b06032a03041c040001fffe",
+			"302484029121820291210409010002912100000141300fa00d300b06032a03041c040001fffe",
+			"3030800800010121436587f984029121040f000291210000621010000000000141300fa00d300b06032a03041c040001fffe",
+		}, "", nil, nil},
+		// Payload 5=2+3; private SEQUENCE content 10=5+5, list TLV 14, container TLV 16.
+		// Message contents: SRI 37=21+16, MO 35=19+16, MT 47=31+16.
+		{"UTF8String noncharacter U+FDD0", [3]string{
+			"30258007912143658709f18101008207912143658709f1a60ea00c300a06032a03040c03efb790",
+			"302384029121820291210409010002912100000141300ea00c300a06032a03040c03efb790",
+			"302f800800010121436587f984029121040f000291210000621010000000000141300ea00c300a06032a03040c03efb790",
+		}, "noncharacter", []string{"ef"}, []int{0}},
+		// Payload 5=2+3; private SEQUENCE content 10=5+5, list TLV 14, container TLV 16.
+		// Message contents: SRI 37=21+16, MO 35=19+16, MT 47=31+16.
+		{"UTF8String noncharacter U+FFFE", [3]string{
+			"30258007912143658709f18101008207912143658709f1a60ea00c300a06032a03040c03efbfbe",
+			"302384029121820291210409010002912100000141300ea00c300a06032a03040c03efbfbe",
+			"302f800800010121436587f984029121040f000291210000621010000000000141300ea00c300a06032a03040c03efbfbe",
+		}, "noncharacter", []string{"ef"}, []int{0}},
+		// Payload 9=2+7; private SEQUENCE content 14=5+9, list TLV 18, container TLV 20.
+		// Message contents: SRI 41=21+20, MO 39=19+20, MT 51=31+20.
+		{"UTF8String two noncharacters", [3]string{
+			"30298007912143658709f18101008207912143658709f1a612a010300e06032a03040c07efb790f48fbfbf",
+			"3027840291218202912104090100029121000001413012a010300e06032a03040c07efb790f48fbfbf",
+			"3033800800010121436587f984029121040f0002912100006210100000000001413012a010300e06032a03040c07efb790f48fbfbf",
+		}, "noncharacter", []string{"ef", "f4"}, []int{0, 3}},
+		// Payload 9=2+7; private SEQUENCE content 14=5+9, list TLV 18, container TLV 20.
+		// Message contents: SRI 41=21+20, MO 39=19+20, MT 51=31+20.
+		{"split UTF8String noncharacter", [3]string{
+			"30298007912143658709f18101008207912143658709f1a612a010300e06032a03042c070401ef0402bfbe",
+			"3027840291218202912104090100029121000001413012a010300e06032a03042c070401ef0402bfbe",
+			"3033800800010121436587f984029121040f0002912100006210100000000001413012a010300e06032a03042c070401ef0402bfbe",
+		}, "noncharacter", []string{"ef"}, []int{0}},
 		// Payload 4=2+2; private SEQUENCE content 5+4=9, list TLV 13, container TLV 15.
 		// Message contents: SRI 21+15=36, MO 19+15=34, MT 31+15=46 octets.
 		{"BMPString U+FFFE", [3]string{
@@ -695,7 +738,7 @@ func TestParseToleranceOpenStringControls(t *testing.T) {
 						if !errors.Is(err, ber.ErrInvalidValue) || !errors.As(err, &element) {
 							t.Errorf("%s Parse = %v, want ErrInvalidValue in *ber.ElementError", mode, err)
 						}
-						for _, other := range []error{ber.ErrUnexpectedElement, ber.ErrTruncated, ber.ErrInvalidLength, ber.ErrInvalidTag, ber.ErrExtraData} {
+						for _, other := range []error{ber.ErrUnexpectedElement, ber.ErrTruncated, ber.ErrInvalidLength, ber.ErrInvalidTag, ber.ErrExtraData, ber.ErrIndefiniteLength, ber.ErrUnsupported, ber.ErrResourceLimit, ber.ErrInvalidCodec, ber.ErrInvalidBinding} {
 							if errors.Is(err, other) {
 								t.Errorf("%s Parse = %v also matches %v", mode, err, other)
 							}
@@ -722,11 +765,16 @@ func TestParseToleranceOpenStringControls(t *testing.T) {
 						clause = "8.23.5.3"
 						constraint = "IA5String forbids explicit escape sequences (X.690 (02/2021) §8.23.5.3/Table 3)"
 					}
+					rule := ber.RuleRef{Document: "ITU-T X.690", Edition: "02/2021", Clause: clause}
+					if tc.alphabet == "noncharacter" {
+						rule = ber.RuleRef{Document: "ISO/IEC 10646", Edition: "2003", Clause: "7 a), 8"}
+						constraint = "UCS repertoire excludes permanently reserved noncharacters (X.680 (02/2021) §§41.6, 41.15–41.16; ISO/IEC 10646:2003 §§7 a), 8)"
+					}
 					for j, observed := range tc.observed {
 						octetOffset := tc.octetOffsets[j]
 						want := Violation{
 							Kind:       ViolationKindASN1Constraint,
-							Rule:       ber.RuleRef{Document: "ITU-T X.690", Edition: "02/2021", Clause: clause},
+							Rule:       rule,
 							Source:     "MAP-ExtensionDataTypes.PrivateExtension.extType",
 							Path:       "extensionContainer.privateExtensionList.element[0].extType",
 							Constraint: constraint, Offset: &offset, ChildIndexes: []int{3, 0, 0, 1},
@@ -737,6 +785,31 @@ func TestParseToleranceOpenStringControls(t *testing.T) {
 						}
 					}
 				})
+			}
+		})
+	}
+}
+
+// A GeneralizedTime leap second in an open value (X.680 (02/2021) §§3.7 h),
+// 46.3 a) 2)) parses in both modes, with no report.
+func TestParseToleranceOpenLeapSecond(t *testing.T) {
+	// Payload 17=2+15; private SEQUENCE content 5+17=22, list TLV 26, container TLV 28.
+	// Message contents: SRI 21+28=49, MO 19+28=47, MT 31+28=59 octets.
+	wires := [3]string{
+		"30318007912143658709f18101008207912143658709f1a61aa018301606032a0304180f32303136313233313233353936305a",
+		"302f84029121820291210409010002912100000141301aa018301606032a0304180f32303136313233313233353936305a",
+		"303b800800010121436587f984029121040f000291210000621010000000000141301aa018301606032a0304180f32303136313233313233353936305a",
+	}
+	for i, parser := range tolerantParsers {
+		t.Run(parser.name, func(t *testing.T) {
+			data := mustHex(t, wires[i])
+			if _, err := parser.parse(data); err != nil {
+				t.Fatalf("strict Parse = %v, want accepted", err)
+			}
+			var violations []Violation
+			value, err := parser.parse(data, WithTolerance(&violations))
+			if err != nil || value == nil || len(violations) != 0 {
+				t.Fatalf("tolerant Parse = %+v, %v; reports %+v, want accepted with none", value, err, violations)
 			}
 		})
 	}

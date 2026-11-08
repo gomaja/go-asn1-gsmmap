@@ -88,6 +88,26 @@ func TestOpaquePDPContextInfoEncoding(t *testing.T) {
 		}
 		wantEqual(t, "Marshal", mustHex(t, "30123010a40ea50c"+ext), out)
 	})
+	// An entry holding a GeneralizedTime leap second in its DER form (X.680
+	// (02/2021) §46.3 a) 2); X.690 (02/2021) §11.7) marshals unchanged.
+	// Payload 17=2+15, entry content 35=18+17, response content 43=26+17.
+	t.Run("GeneralizedTime leap second", func(t *testing.T) {
+		const entry = "30238001018202f121b11aa018301606032a0304180f32303136313233313233353936305a"
+		const wire = "302b3029a427a52530238001018202f121b11aa018301606032a0304180f32303136313233313233353936305a"
+		in := &AnyTimeInterrogationRes{SubscriberInfo: SubscriberInfo{PsSubscriberState: &PsSubscriberState{
+			PsPDPActiveReachableForPaging: []HexBytes{mustHex(t, entry)},
+		}}}
+		out, err := in.Marshal()
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		wantEqual(t, "Marshal", mustHex(t, wire), out)
+		parsed, err := ParseAnyTimeInterrogationRes(mustHex(t, wire))
+		if err != nil {
+			t.Fatalf("Parse: %v", err)
+		}
+		wantEqual(t, "opaque entry", []HexBytes{mustHex(t, entry)}, parsed.SubscriberInfo.PsSubscriberState.PsPDPActiveReachableForPaging)
+	})
 }
 
 // PagingArea (3GPP TS 29.002 V19.1.0 §17.7.1) entries are opaque
