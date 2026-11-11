@@ -1123,7 +1123,9 @@ uses the bare alternative of CallBarredParam and SystemFailureParam, and a
 higher version the extensible one (§17.1.4). UnknownSubscriberParam,
 IllegalSubscriberParam, IllegalEquipmentParam, TeleservNotProvParam,
 FacilityNotSupParam, AbsentSubscriberParam, DataMissingParam and
-UnexpectedDataParam must not be used before version 3 (§17.6.6).
+UnexpectedDataParam must not be used before version 3 (§17.6.6). The
+[component codec](#application-context-versions), which knows the dialogue's
+version, applies these version rules itself.
 UnexpectedSubscriber must not be used for operations allowing
 unidentifiedSubscriber. From HLR to IP-SM-GW, IMSI is required unless UNRI
 indicates absence for CS and PS but not IMS (§17.7.7). The caller also applies
