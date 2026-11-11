@@ -13,7 +13,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// TS 09.02 V7.15.0 §17.7.1 wires. An AuthenticationSet has 34 content octets
+// GSM 09.02 V4.19.1 §14.7.1 wires. An AuthenticationSet has 34 content octets
 // (RAND TLV 18, SRES TLV 6, Kc TLV 10), 36 with its own tag and length.
 const (
 	// A bare IMSI, eight TBCD octets: 001010123456789.
@@ -61,7 +61,7 @@ func saiV2DistinctTriplet(n byte) AuthenticationTriplet {
 	return t
 }
 
-// SendAuthenticationInfoArg ::= IMSI (TS 09.02 V7.15.0 §17.7.1): eight TBCD
+// SendAuthenticationInfoArg ::= IMSI (GSM 09.02 V4.19.1 §14.7.1): eight TBCD
 // octets decode to fifteen digits and encode back to the same wire.
 func TestSAIV2Argument(t *testing.T) {
 	want := &SendAuthenticationInfoV2{IMSI: "001010123456789"}
@@ -81,7 +81,7 @@ func TestSAIV2Argument(t *testing.T) {
 	}
 }
 
-// The sets keep their order in both directions (TS 09.02 V7.15.0 §17.7.1,
+// The sets keep their order in both directions (GSM 09.02 V4.19.1 §14.7.1,
 // SEQUENCE OF AuthenticationSet).
 func TestSAIV2Result(t *testing.T) {
 	five := make([]AuthenticationTriplet, 5)
@@ -125,7 +125,7 @@ func TestSAIV2ArgumentSeeded(t *testing.T) {
 // Each version's parsers refuse the other's wire with ber.ErrUnexpectedElement.
 // The v3 argument is a SEQUENCE and the v3 result a [3] SEQUENCE (TS 29.002
 // V19.1.0 §17.7.1). The v2 argument is an IMSI and the v2 result a SEQUENCE OF
-// (TS 09.02 V7.15.0 §17.7.1). The v3 result wire is checked first.
+// (GSM 09.02 V4.19.1 §14.7.1). The v3 result wire is checked first.
 func TestSAIV2VersionSeparation(t *testing.T) {
 	arg, err := (&SendAuthenticationInfo{IMSI: "001010123456789", NumberOfRequestedVectors: 1}).Marshal()
 	if err != nil {
@@ -166,7 +166,7 @@ func TestSAIV2VersionSeparation(t *testing.T) {
 	}
 }
 
-// TS 09.02 V7.15.0 §§17.7.1, 17.7.8: codec-owned sizes, including
+// GSM 09.02 V4.19.1 §§14.7.1, 14.7.8: codec-owned sizes, including
 // the one-to-five list constraint. Every literal's enclosing lengths include
 // its child TLVs; six 36-octet sets occupy 216 (0xd8) content octets.
 func TestSAIV2DecodeSizes(t *testing.T) {
@@ -174,10 +174,10 @@ func TestSAIV2DecodeSizes(t *testing.T) {
 		name, wire, path, constraint string
 		n                            int
 	}{
-		{"IMSI short", "04020001", "IMSI", "SIZE (3..8)", 2},              // Two IMSI octets.
-		{"IMSI long", "0409000101214365870911", "IMSI", "SIZE (3..8)", 9}, // Nine IMSI octets.
-		{"empty list", "3000", "TripletList", "SIZE (1..5)", 0},           // Empty SEQUENCE.
-		{"six sets", "3081d830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b8", "TripletList", "SIZE (1..5)", 6}, // Six sets.
+		{"IMSI short", "04020001", "SendAuthenticationInfoArg", "SIZE (3..8)", 2},              // Two IMSI octets.
+		{"IMSI long", "0409000101214365870911", "SendAuthenticationInfoArg", "SIZE (3..8)", 9}, // Nine IMSI octets.
+		{"empty list", "3000", "AuthenticationSetList", "SIZE (1..5)", 0},                      // Empty SEQUENCE.
+		{"six sets", "3081d830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b830220410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b8", "AuthenticationSetList", "SIZE (1..5)", 6}, // Six sets.
 		{"SRES short", "302330210410000102030405060708090a0b0c0d0e0f0403a1a2a30408b1b2b3b4b5b6b7b8", "element[0].sres", "SIZE (4)", 3},   // 35 outer content octets, 33 set content octets.
 		{"RAND short", "30233021040f000102030405060708090a0b0c0d0e0404a1a2a3a40408b1b2b3b4b5b6b7b8", "element[0].rand", "SIZE (16)", 15}, // 35 outer, 33 set content octets.
 		{"Kc long", "302530230410000102030405060708090a0b0c0d0e0f0404a1a2a3a40409b1b2b3b4b5b6b7b8b9", "element[0].kc", "SIZE (8)", 9},    // 37 outer, 35 set content octets.
@@ -199,7 +199,7 @@ func TestSAIV2DecodeSizes(t *testing.T) {
 }
 
 // Marshal leaves the sizes to the codec. An empty list breaks SIZE (1..5) and
-// a three-octet SRES breaks SIZE (4) (TS 09.02 V7.15.0 §17.7.1); both errors
+// a three-octet SRES breaks SIZE (4) (GSM 09.02 V4.19.1 §14.7.1); both errors
 // keep the public encoding context.
 func TestSAIV2EncodeSizes(t *testing.T) {
 	for _, tc := range []struct {
@@ -207,7 +207,7 @@ func TestSAIV2EncodeSizes(t *testing.T) {
 		triplets               []AuthenticationTriplet
 		n                      int
 	}{
-		{"empty", "TripletList", "SIZE (1..5)", nil, 0},
+		{"empty", "AuthenticationSetList", "SIZE (1..5)", nil, 0},
 		{"SRES short", "element[0].sres", "SIZE (4)", []AuthenticationTriplet{{RAND: saiV2Triplet().RAND, SRES: HexBytes{1, 2, 3}, Kc: saiV2Triplet().Kc}}, 3},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -220,8 +220,8 @@ func TestSAIV2EncodeSizes(t *testing.T) {
 	}
 }
 
-// TS 09.02 V7.15.0 §17.1.1 has the same profile as TS 29.002 V19.1.0
-// §17.1.1; go-asn1 reports that clause for the shared IMSI codec.
+// The Phase 2 source edition enforces GSM 09.02 V4.19.1 §14.1.1,
+// including its source-specific error citation.
 func TestSAIV2ArgumentProfile(t *testing.T) {
 	for _, tc := range []struct{ wire, rule string }{
 		{"240c0406000101214365040287f9", "primitive-octet-string"}, // Constructed IMSI, 12 content octets: segments of six and two.
@@ -231,7 +231,18 @@ func TestSAIV2ArgumentProfile(t *testing.T) {
 		if v != nil {
 			t.Fatalf("Parse = %+v, want nil", v)
 		}
-		wantMAPProfileError(t, err, "IMSI", tc.rule)
+		violation := wantValidationError(t, err, "SendAuthenticationInfoArg", "GSM 09.02 V4.19.1 §14.1.1: "+tc.rule)
+		wantRule := ber.RuleRef{Document: "GSM 09.02", Edition: "V4.19.1", Clause: "14.1.1"}
+		if violation.Kind != ber.ProtocolRule || violation.Rule != wantRule {
+			t.Errorf("kind/rule = %v/%+v, want %v/%+v", violation.Kind, violation.Rule, ber.ProtocolRule, wantRule)
+		}
+		if violation.ObservedValue != "received BER form" {
+			t.Errorf("observed value = %q, want received BER form", violation.ObservedValue)
+		}
+		var elementError *ber.ElementError
+		if !errors.As(err, &elementError) {
+			t.Errorf("err = %v, want a *ber.ElementError", err)
+		}
 	}
 }
 
@@ -264,11 +275,12 @@ func TestSAIV2IdentityErrors(t *testing.T) {
 	}
 }
 
-// An entity supporting v2 "shall not reject an unsupported extension following
-// '...'", and v2 private extensions follow the extension marker with PRIVATE
-// tags up to and including 29 (TS 09.02 V7.15.0 §17.1.4). Each wire is one
+// "An entity supporting a version greater 1 shall not reject unsupported
+// extension following "..." of that SEQUENCE", and PLMN specific extensions
+// follow the extension marker with PRIVATE tags up to and including 29
+// (GSM 09.02 V4.19.1 §14.1.4). Each wire is one
 // AuthenticationSet of 34 base octets plus a three-octet addition: set content
-// 37, outer content 39 (§17.7.1).
+// 37, outer content 39 (§14.7.1).
 func TestSAIV2ExtensionDiscarded(t *testing.T) {
 	for _, tc := range []struct{ name, wire string }{
 		{"context [1]", "302730250410000102030405060708090a0b0c0d0e0f0404a1a2a3a40408b1b2b3b4b5b6b7b88101ff"},
@@ -295,7 +307,7 @@ func TestSAIV2ExtensionDiscarded(t *testing.T) {
 }
 
 // X.690 (02/2021) §8.1.3.2 b) lets the sender of a constructed encoding use
-// the indefinite form, and TS 09.02 V7.15.0 §17.1.1 restricts only definite
+// the indefinite form, and GSM 09.02 V4.19.1 §14.1.1 restricts only definite
 // lengths. Parse accepts it; Marshal sends the definite form.
 func TestSAIV2IndefiniteLength(t *testing.T) {
 	// The one-set result with an indefinite outer length, ended by 00 00.
@@ -316,8 +328,8 @@ func TestSAIV2IndefiniteLength(t *testing.T) {
 	}
 }
 
-// A parameterless return result has nothing to parse (TS 09.02 V7.15.0
-// §8.5.2.1); the v2 argument is mandatory (§17.6.1).
+// A parameterless return result has nothing to parse (GSM 09.02 V4.19.1
+// §6.5.2.1); the v2 argument is mandatory (§6.5.2.2).
 func TestSAIV2AbsentParameter(t *testing.T) {
 	for _, parse := range []func([]byte) (marshaler, error){asParser(ParseSendAuthenticationInfoV2), asParser(ParseSendAuthenticationInfoV2Res)} {
 		v, err := parse(nil)
@@ -328,8 +340,7 @@ func TestSAIV2AbsentParameter(t *testing.T) {
 }
 
 // The v3 AuthenticationSetList converters keep their nil and unset-CHOICE
-// results after sharing the triplet conversion with v2; both alternatives
-// are exercised through the public codecs.
+// results; both alternatives are exercised through the public codecs.
 func TestAuthenticationSetListConverterEdges(t *testing.T) {
 	if v, err := convertAuthenticationSetListToWire(nil); v != nil || err != nil {
 		t.Fatalf("nil public list: %v, %v", v, err)

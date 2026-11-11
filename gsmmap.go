@@ -1827,20 +1827,20 @@ type SendAuthenticationInfoRes struct {
 }
 
 // SendAuthenticationInfoV2 is the MAP v2 request (opCode 56), sent by the VLR
-// or SGSN to the HLR: a mandatory bare IMSI (3GPP TS 09.02 V7.15.0 §§8.5.2,
-// 17.6.1, 17.7.1), for infoRetrievalContext-v2 (3GPP TS 29.002 V19.1.0
+// or SGSN to the HLR: a mandatory bare IMSI (GSM 09.02 V4.19.1 §§6.5.2.2,
+// 14.6.1, 14.7.1), for infoRetrievalContext-v2 (3GPP TS 29.002 V19.1.0
 // §17.3.2.15).
 type SendAuthenticationInfoV2 struct {
 	IMSI string // TBCD
 }
 
 // SendAuthenticationInfoV2Res is the MAP v2 result (opCode 56). It carries only
-// triplets: TS 09.02 V7.15.0 §17.7.1 names each element AuthenticationSet,
-// with the components of TS 29.002 V19.1.0 §17.7.1 AuthenticationTriplet.
-// Its SIZE (1..5) errors name TripletList, the wire-identical TS 29.002 type
-// used here; errors in a set give its path, such as element[0].sres.
-// An HLR without triplets returns an empty response (TS 09.02 V7.15.0 §8.5.2.1),
-// a return result with no parameter to parse.
+// triplets: GSM 09.02 V4.19.1 §14.7.1 names each element AuthenticationSet,
+// with RAND, SRES and Kc components. Its SIZE (1..5) errors name
+// AuthenticationSetList; errors in a set give its path, such as element[0].sres.
+// Unknown extension additions are discarded by this typed API.
+// An HLR without triplets returns an empty response (§6.5.2.1), a return result
+// with no parameter to parse.
 type SendAuthenticationInfoV2Res struct {
 	Triplets []AuthenticationTriplet // 1..5
 }
@@ -5176,4 +5176,14 @@ var (
 	ErrDialogueOpenDestinationReferenceDecodedEmpty = errors.New("dialogueOpen: present wire destinationReference decoded to empty digits")
 	ErrDialogueOpenOriginationReferenceDecodedEmpty = errors.New("dialogueOpen: present wire originationReference decoded to empty digits")
 	ErrInvalidOID                                   = errors.New("invalid object identifier")
+	// Application context component catalogue.
+	ErrNotMAPApplicationContext     = errors.New("applicationContext: not a canonical MAP application context name")
+	ErrComponentCodecUnset          = errors.New("componentCodec: no edition selected")
+	ErrComponentUnknownOperation    = errors.New("componentCodec: unknown operation code")
+	ErrComponentUnknownError        = errors.New("componentCodec: unknown error code")
+	ErrComponentUnexpectedParameter = errors.New("componentCodec: parameter has no ASN.1 type")
+	ErrComponentNoResult            = errors.New("componentCodec: operation has no RESULT clause")
+	ErrComponentErrorNotListed      = errors.New("componentCodec: error is not in the operation's ERRORS")
+	ErrComponentValueType           = errors.New("componentCodec: wrong generated value type")
+	ErrVersionRule                  = errors.New("componentCodec: ASN.1 version rule violated")
 )

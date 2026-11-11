@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	phase2 "github.com/gomaja/go-asn1/telecom/ss7/gsm_map/gsm0902_v4_19_1"
 )
 
 // ParseSriSm decodes BER-encoded bytes into an SriSm. Decoding is strict
@@ -248,10 +249,10 @@ func ParseSendAuthenticationInfoRes(data []byte) (*SendAuthenticationInfoRes, er
 }
 
 // ParseSendAuthenticationInfoV2 decodes the mandatory bare IMSI argument for
-// infoRetrievalContext-v2 (TS 09.02 V7.15.0 §§17.6.1, 17.7.1;
-// TS 29.002 V19.1.0 §17.3.2.15).
+// infoRetrievalContext-v2 (GSM 09.02 V4.19.1 §§14.6.1, 14.7.1).
+// The source edition enforces its BER profile in §14.1.1.
 func ParseSendAuthenticationInfoV2(data []byte) (*SendAuthenticationInfoV2, error) {
-	arg, err := gsm_map.UnmarshalBERIMSI(data)
+	arg, err := phase2.UnmarshalBERSendAuthenticationInfoArg(data)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SendAuthenticationInfoV2: %w", err)
 	}
@@ -259,14 +260,14 @@ func ParseSendAuthenticationInfoV2(data []byte) (*SendAuthenticationInfoV2, erro
 }
 
 // ParseSendAuthenticationInfoV2Res decodes a v2 AuthenticationSetList
-// (TS 09.02 V7.15.0 §17.7.1). A return result without a parameter has nothing
-// to parse (§8.5.2.1).
+// (GSM 09.02 V4.19.1 §14.7.1), enforcing its BER profile in §14.1.1.
+// A return result without a parameter has nothing to parse (§6.5.2.1).
 func ParseSendAuthenticationInfoV2Res(data []byte) (*SendAuthenticationInfoV2Res, error) {
-	list, err := gsm_map.UnmarshalBERTripletList(data)
+	list, err := phase2.UnmarshalBERSendAuthenticationInfoRes(data)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SendAuthenticationInfoV2Res: %w", err)
 	}
-	return &SendAuthenticationInfoV2Res{Triplets: convertWireToTriplets(list)}, nil
+	return convertResToSendAuthenticationInfoV2Res(list), nil
 }
 
 // ParseCancelLocation decodes BER-encoded bytes into a CancelLocation

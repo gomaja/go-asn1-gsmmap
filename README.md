@@ -1,6 +1,6 @@
 # go-asn1-gsmmap
 
-High-level Go library for GSM MAP (3GPP TS 29.002) — parse, build, and marshal MAP operations and [dialogue PDUs](#map-dialogue-pdu) using clean Go types.
+High-level Go library for GSM MAP (3GPP TS 29.002) — parse, build, and marshal MAP operations and [dialogue PDUs](#map-dialogue-pdu) using clean Go types. The [component codec](#application-context-versions) decodes and encodes the components of every MAP application context version, with GSM 09.02 Phase 1 and Phase 2 or TS 29.002 as the version selects.
 
 Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs for correct BER encoding/decoding, with [go-sms](https://github.com/gomaja/go-sms) for SMS TPDU handling.
 
@@ -19,7 +19,7 @@ Built on [go-asn1](https://github.com/gomaja/go-asn1)'s generated ASN.1 structs 
 | **AlertServiceCentre** (ASC) | 64 | `AlertServiceCentre` | — |
 | **PurgeMS** | 67 | `PurgeMS` | `PurgeMSRes` |
 | **SendAuthenticationInfo** (SAI) | 56 | `SendAuthenticationInfo` | `SendAuthenticationInfoRes` |
-| **SendAuthenticationInfo** (SAI, MAP v2) | 56 | `SendAuthenticationInfoV2` | `SendAuthenticationInfoV2Res` |
+| **SendAuthenticationInfo** (SAI, MAP v2, GSM 09.02 V4.19.1) | 56 | `SendAuthenticationInfoV2` | `SendAuthenticationInfoV2Res` |
 | **ProvideSubscriberInfo** (PSI) | 70 | `ProvideSubscriberInfo` | `ProvideSubscriberInfoRes` |
 | **CancelLocation** | 3 | `CancelLocation` | `CancelLocationRes` |
 | **InsertSubscriberData** (ISD) | 7 | `InsertSubscriberDataArg` | `InsertSubscriberDataRes` |
@@ -511,10 +511,10 @@ if resp.AuthenticationSetList != nil {
 
 The example above is the v3 form, for `infoRetrievalContext-v3`. In
 `infoRetrievalContext-v2` the argument is a bare IMSI and the result one to
-five triplets (TS 09.02 V7.15.0 §§17.6.1, 17.7.1). The dialogue's application
+five triplets (GSM 09.02 V4.19.1 §§14.6.1, 14.7.1). The dialogue's application
 context selects the version, and the caller uses the matching types (TS 29.002
 V19.1.0 §17.3.2.15). An HLR without triplets returns a result with no parameter
-(TS 09.02 V7.15.0 §8.5.2.1).
+(GSM 09.02 V4.19.1 §6.5.2.1).
 
 ```go
 // An HLR in infoRetrievalContext-v2 parses the bare IMSI it received.
@@ -883,7 +883,7 @@ respectively. Empty digits omit a reference, ignoring its nature and plan.
 The application context version belongs to the caller;
 `DialogueRefuse.AlternativeApplicationContext` must not be used in version 2
 (§17.4). Parse accepts unknown extension additions, which §17.1.4 forbids
-rejecting; like the rest of this package, it drops them and extension
+rejecting; like the typed operation helpers, it drops them and extension
 containers, and Marshal never sends either. User-abort reasons and diagnostics
 are defined in §7.3.4; provider abort is defined in §7.3.5.
 
@@ -945,6 +945,133 @@ if received.Refuse != nil {
 		received.Refuse.Reason, received.Refuse.AlternativeApplicationContext)
 }
 ```
+
+### Application context versions
+
+`ComponentCodecFor` picks the ASN.1 of a dialogue's components from its
+application-context-name, `{map-ac family(n) version(v)}` under map-ac
+0.4.0.0.1.0 (TS 29.002 V19.1.0 §17.3.3). The MAP transfers the name only for
+contexts outside the "version one context set", which models a MAP V1
+implementation of the latest Phase 1 GSM 09.02 (§14.4), so a dialogue without
+a name is a version 1 dialogue. A version 2 dialogue uses the v2-equivalent
+operations (§17.2.1).
+
+| Application context version | Component ASN.1 | Edition |
+|---|---|---|
+| 1, including a dialogue without a name | GSM 09.02 V3.11.0, the final Phase 1 edition | `EditionPhase1` |
+| 2 | GSM 09.02 V4.19.1, the final Phase 2 edition | `EditionPhase2` |
+| 2, for networkFunctionalSs (18), networkUnstructuredSs (19), shortMsgAlert (23) and imsiRetrieval (26) | 3GPP TS 29.002 V19.1.0 | `EditionTS29002` |
+| 3 and later | 3GPP TS 29.002 V19.1.0 | `EditionTS29002` |
+
+TS 29.002 §17.3.3 defines no version above 2 for those four families, and
+TS 29.002 extends their version 2 operations after the extension marker, for
+example `USSD-Arg`'s `msisdn` and `alertingPattern` (§17.7.4), so their
+dialogues keep TS 29.002. The codec takes the four families from go-asn1's application
+context catalogue.
+
+Decode the sendRoutingInfoForSM argument of a shortMsgGatewayContext-v2
+dialogue and encode its result:
+
+```go
+import (
+	"fmt"
+	"log"
+
+	gsmmap "github.com/gomaja/go-asn1-gsmmap"
+	tcap "github.com/gomaja/go-asn1-tcap"
+	phase2 "github.com/gomaja/go-asn1/telecom/ss7/gsm_map/gsm0902_v4_19_1"
+)
+
+// The AARQ of a received TC-BEGIN names shortMsgGatewayContext-v2, and
+// argumentBER is the argument of its sendRoutingInfoForSM invoke: msisdn,
+// sm-RP-PRI and serviceCentreAddress.
+request := tcap.AARQ{ApplicationContextName: "0.4.0.0.1.0.20.2"}
+argumentBER := []byte{0x30, 0x0b, 0x80, 0x02, 0x91, 0x21, 0x81, 0x01, 0x00, 0x82, 0x02, 0x91, 0x43}
+
+codec, err := gsmmap.ComponentCodecFor(gsmmap.OID(request.ApplicationContextName))
+if err != nil {
+	log.Fatal(err)
+}
+value, err := codec.ParseArgument(45, argumentBER)
+if err != nil {
+	log.Fatal(err)
+}
+arg := value.(phase2.RoutingInfoForSMArg)
+fmt.Printf("%s v%d: MSISDN %x\n", codec.Edition(), codec.Version(), arg.Msisdn)
+
+result := phase2.RoutingInfoForSMRes{
+	Imsi: []byte{0x21, 0x43, 0x65},
+	LocationInfoWithLMSI: phase2.LocationInfoWithLMSI{
+		LocationInfo: phase2.NewLocationInfoMscNumber([]byte{0x91, 0x21}),
+	},
+}
+resultBER, err := codec.MarshalResult(45, result)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Printf("SRI-SM result: %x\n", resultBER)
+```
+
+A TC-BEGIN without a dialogue portion carries no name:
+
+```go
+codecV1, err := gsmmap.ComponentCodecFor("")
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(codecV1.Edition(), codecV1.Version()) // GSM 09.02 V3.11.0 1
+```
+
+`ApplicationContextVersion` returns the version arc of a name and refuses
+anything that is not a MAP application context name. Neither function checks
+that a context is assigned or that an operation belongs to it. Operation and
+error codes are the selected edition's local codes: the same number can name
+different operations or errors in different editions.
+
+Parsing applies the edition's strict BER profile (V3.11.0 §6.1, V4.19.1
+§14.1.1 or TS 29.002 §17.1.1). Parsing and marshalling both check that an
+error is in the operation's ERRORS list and apply the version comments that
+restrict the dialogue's version. A violation returns an error matching
+`ErrVersionRule` that names the source module, location and comment:
+- **V4.19.1:** the 35 comments that restrict version 2, by module and line of
+  the official `ASN.1.txt` (go-asn1's `VERSION-COMMENTS.json`). They "state
+  which subset of the abstract syntax must be used in the negotiated
+  application context" (V4.19.1 §14.1.4).
+- **TS 29.002, version 2:** the thirteen error parameters that "must not be
+  used in version <3" (§17.6.6), the extensible alternatives of
+  CallBarredParam and SystemFailureParam (§17.7.7), and ExternalSignalInfo's
+  extension container (§17.7.8).
+- **TS 29.002, version 3 and later:** the version 2 alternatives of
+  CallBarredParam and SystemFailureParam (§§17.1.4, 17.7.7).
+- **V3.11.0:** no version comments.
+
+A component without a parameter is `len(data) == 0` when parsing and a nil
+`value` when marshalling. ARGUMENT, PARAMETER and RESULT are syntactically
+optional even where the procedure needs them (TS 29.002 §17.1.2; V4.19.1
+§14.1.2), so the codec accepts the omission unless a version comment requires
+the parameter. An operation without a RESULT clause returns
+`ErrComponentNoResult`, and a parameter for a role without a type returns
+`ErrComponentUnexpectedParameter`. Marshal accepts exactly the dynamic type
+that Parse returns, a value and not a pointer; any other type returns
+`ErrComponentValueType`.
+
+Values are go-asn1's generated types, and a primitive role can be a
+`BERValue[T]`. V4.19.1 and TS 29.002 values keep unknown extension additions
+as complete TLVs in `ExtData_`. Marshal encodes freshly, without BER replay,
+and copies an addition only if it already passes go-asn1's DER element checks:
+one that needs schema-dependent repair, such as an unknown SET in neither SET
+nor SET OF order, parses but makes Marshal fail with `ber.ErrInvalidValue`.
+Clearing `ExtData_` drops the additions. The typed `Parse<Op>` functions drop
+unknown additions.
+
+The caller checks what the codec does not: that an operation belongs to the
+application context, dialogue state, which parameters a procedure needs, the
+PLMN-specific extension restrictions (V4.19.1 §14.1.4; TS 29.002 §17.1.4),
+LINKED operations, and the dialogue PDU's own version rules.
+
+The typed `Parse<Op>` functions and Marshal methods implement TS 29.002,
+except `SendAuthenticationInfoV2` and `SendAuthenticationInfoV2Res`, which use
+V4.19.1.
 
 ### MAP errors
 
