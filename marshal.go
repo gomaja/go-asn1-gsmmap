@@ -3,18 +3,19 @@ package gsmmap
 import (
 	"fmt"
 
-	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	phase2 "github.com/gomaja/go-asn1/telecom/ss7/gsm_map/gsm0902_v4_19_1"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
 // Every Marshal encodes its current typed value with ber.WithoutBERReplay, so
-// no received form is replayed: the output meets 3GPP TS 29.002 V19.1.0
-// §17.1.1 and uses definite lengths throughout. go-asn1 enforces §17.1.1 on
-// decode, including opaque entries supplied by the caller: OCTET STRING and
-// BIT STRING values must be primitive, definite lengths below 128 octets must
-// use the short form, and long-form lengths must use the fewest octets.
+// no received form is replayed and the output uses definite lengths throughout.
+// TS 29.002 values meet 3GPP TS 29.002 V19.1.0 §17.1.1; SendAuthenticationInfoV2
+// and its result use GSM 09.02 V4.19.1 §14.1.1. Both profiles require primitive
+// OCTET STRING and BIT STRING values, short-form definite lengths below 128
+// octets, and long-form lengths using the fewest octets. go-asn1 enforces the
+// source profile on decode, including opaque entries supplied by the caller.
 // Indefinite lengths remain allowed on decode (ITU-T X.690 (02/2021)
-// §8.1.3.6).
+// §8.1.3.6; GSM 09.02 V4.19.1 §14.1.1).
 
 // Marshal encodes SriSm into BER-encoded bytes.
 func (s *SriSm) Marshal() ([]byte, error) {
@@ -298,23 +299,25 @@ func (s *SendAuthenticationInfoRes) Marshal() ([]byte, error) {
 	return data, nil
 }
 
-// Marshal encodes the v2 bare IMSI argument (TS 09.02 V7.15.0 §17.7.1).
+// Marshal encodes the v2 bare IMSI argument (GSM 09.02 V4.19.1 §14.7.1)
+// using the source edition's BER profile (§14.1.1).
 func (s *SendAuthenticationInfoV2) Marshal() ([]byte, error) {
 	arg, err := convertSendAuthenticationInfoV2ToArg(s)
 	if err != nil {
 		return nil, fmt.Errorf("converting SendAuthenticationInfoV2: %w", err)
 	}
-	data, err := gsm_map.MarshalBERIMSI(arg, ber.WithoutBERReplay())
+	data, err := phase2.MarshalBERSendAuthenticationInfoArg(arg, ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding SendAuthenticationInfoV2: %w", err)
 	}
 	return data, nil
 }
 
-// Marshal encodes the v2 AuthenticationSetList (TS 09.02 V7.15.0 §17.7.1).
+// Marshal encodes the v2 AuthenticationSetList (GSM 09.02 V4.19.1 §14.7.1)
+// using the source edition's BER profile (§14.1.1).
 func (s *SendAuthenticationInfoV2Res) Marshal() ([]byte, error) {
-	list := convertTripletsToWire(s.Triplets)
-	data, err := gsm_map.MarshalBERTripletList(&list, ber.WithoutBERReplay())
+	list := convertSendAuthenticationInfoV2ResToRes(s)
+	data, err := phase2.MarshalBERSendAuthenticationInfoRes(list, ber.WithoutBERReplay())
 	if err != nil {
 		return nil, fmt.Errorf("encoding SendAuthenticationInfoV2Res: %w", err)
 	}

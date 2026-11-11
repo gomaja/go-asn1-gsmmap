@@ -40,7 +40,8 @@ func semTBCD(t *testing.T, digits string) []byte {
 const semMtFsmHex = "3077800832140080803138f684069169318488880463040b916971101174f40000422182612464805bd2e2b1252d467ff6de6c47efd96eb6a1d056cb0d69b49a10269c098537586e96931965b260d15613da72c29b91261bde72c6a1ad2623d682b5996d58331271375a0d1733eee4bd98ec768bd966b41c0d"
 
 // semStandaloneIMSI encodes the v2 sendAuthenticationInfo argument, a bare
-// IMSI (3GPP TS 09.02 V7.15.0 §17.7.1), with go-asn1's standalone codec.
+// IMSI (GSM 09.02 V4.19.1 §14.7.1), using an equivalent standalone IMSI
+// codec to build test input independently of the v2 parser.
 type semStandaloneIMSI gsm_map.BERValue[gsm_map.IMSI]
 
 // MarshalBER encodes the IMSI as the bare v2 argument.

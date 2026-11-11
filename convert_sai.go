@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	gsm_map "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	phase2 "github.com/gomaja/go-asn1/telecom/ss7/gsm_map/gsm0902_v4_19_1"
 )
 
 // --- SendAuthenticationInfo (opCode 56) converters ---
@@ -293,8 +294,8 @@ func convertResToSendAuthenticationInfoRes(res *gsm_map.SendAuthenticationInfoRe
 	return out, nil
 }
 
-// convertTripletsToWire maps the shared components of TS 09.02 V7.15.0
-// §17.7.1 AuthenticationSet and TS 29.002 V19.1.0 §17.7.1 AuthenticationTriplet.
+// convertTripletsToWire maps the public triplet components to
+// TS 29.002 V19.1.0 §17.7.1 AuthenticationTriplet.
 func convertTripletsToWire(triplets []AuthenticationTriplet) gsm_map.TripletList {
 	list := gsm_map.TripletList{Values: make([]gsm_map.AuthenticationTriplet, len(triplets))}
 	for i, t := range triplets {
@@ -321,19 +322,39 @@ func convertWireToTriplets(list *gsm_map.TripletList) []AuthenticationTriplet {
 }
 
 // convertSendAuthenticationInfoV2ToArg encodes the v2 bare IMSI.
-func convertSendAuthenticationInfoV2ToArg(s *SendAuthenticationInfoV2) (*gsm_map.BERValue[gsm_map.IMSI], error) {
+func convertSendAuthenticationInfoV2ToArg(s *SendAuthenticationInfoV2) (*phase2.BERValue[phase2.SendAuthenticationInfoArg], error) {
 	imsi, err := encodeIdentityDigits(identityIMSI, s.IMSI)
 	if err != nil {
 		return nil, fmt.Errorf(errEncodingIMSI, err)
 	}
-	return &gsm_map.BERValue[gsm_map.IMSI]{Value: imsi}, nil
+	return &phase2.BERValue[phase2.SendAuthenticationInfoArg]{Value: imsi}, nil
 }
 
 // convertArgToSendAuthenticationInfoV2 decodes the v2 bare IMSI.
-func convertArgToSendAuthenticationInfoV2(arg *gsm_map.BERValue[gsm_map.IMSI]) (*SendAuthenticationInfoV2, error) {
+func convertArgToSendAuthenticationInfoV2(arg *phase2.BERValue[phase2.SendAuthenticationInfoArg]) (*SendAuthenticationInfoV2, error) {
 	imsi, err := decodeIdentityDigits(identityIMSI, arg.Value)
 	if err != nil {
 		return nil, fmt.Errorf("decoding IMSI: %w", err)
 	}
 	return &SendAuthenticationInfoV2{IMSI: imsi}, nil
+}
+
+// convertSendAuthenticationInfoV2ResToRes maps public triplets to the Phase 2
+// AuthenticationSetList (GSM 09.02 V4.19.1 §14.7.1).
+func convertSendAuthenticationInfoV2ResToRes(s *SendAuthenticationInfoV2Res) *phase2.SendAuthenticationInfoRes {
+	list := &phase2.SendAuthenticationInfoRes{Values: make([]phase2.AuthenticationSet, len(s.Triplets))}
+	for i, triplet := range s.Triplets {
+		list.Values[i] = phase2.AuthenticationSet{Rand: triplet.RAND, Sres: triplet.SRES, Kc: triplet.Kc}
+	}
+	return list
+}
+
+// convertResToSendAuthenticationInfoV2Res keeps only the public triplet fields;
+// unknown additions of AuthenticationSet are discarded by this typed API.
+func convertResToSendAuthenticationInfoV2Res(list *phase2.SendAuthenticationInfoRes) *SendAuthenticationInfoV2Res {
+	out := &SendAuthenticationInfoV2Res{Triplets: make([]AuthenticationTriplet, len(list.Values))}
+	for i, set := range list.Values {
+		out.Triplets[i] = AuthenticationTriplet{RAND: HexBytes(set.Rand), SRES: HexBytes(set.Sres), Kc: HexBytes(set.Kc)}
+	}
+	return out
 }
