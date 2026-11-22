@@ -1045,6 +1045,21 @@ restrict the dialogue's version. A violation returns an error matching
   CallBarredParam and SystemFailureParam (§§17.1.4, 17.7.7).
 - **V3.11.0:** no version comments.
 
+Version 1 passwords are checked against GSM 02.04 version 3.7.1 §5.2: "The
+password will consist of four digits in the range 0000 to 9999." V3.11.0's
+`Password` admits more: a PrintableString form, which its comment excludes for
+GSM systems, and a NumericString of digits of any length or of any four
+characters, because `FROM (...) | SIZE(4)` is a union (X.208 (11/1988) §36.7).
+When a registerPassword or getPassword result decodes but is not four digits
+in the NumericString form, `ParseResult` returns the decoded value together
+with an error matching `ErrComponentPasswordFormat`; every other error returns
+a nil value. The value's own `MarshalBER` replays its received encoding, so a
+caller can still relay it, but `MarshalResult` refuses it. The format error
+does not quote the password. A decode error for a value the ASN.1 itself
+refuses comes from go-asn1 and can quote the received characters.
+V4.19.1 and TS 29.002 restrict `Password` in the ASN.1 itself to four
+NumericString characters "0" to "9", which go-asn1 enforces when decoding.
+
 A component without a parameter is `len(data) == 0` when parsing and a nil
 `value` when marshalling. ARGUMENT, PARAMETER and RESULT are syntactically
 optional even where the procedure needs them (TS 29.002 §17.1.2; V4.19.1

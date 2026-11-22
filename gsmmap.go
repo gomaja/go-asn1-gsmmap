@@ -5186,4 +5186,5 @@ var (
 	ErrComponentErrorNotListed      = errors.New("componentCodec: error is not in the operation's ERRORS")
 	ErrComponentValueType           = errors.New("componentCodec: wrong generated value type")
 	ErrVersionRule                  = errors.New("componentCodec: ASN.1 version rule violated")
+	ErrComponentPasswordFormat      = errors.New("componentCodec: password is not four digits")
 )
