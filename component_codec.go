@@ -147,6 +147,9 @@ func (c ComponentCodec) ParseArgument(opCode int64, data []byte) (any, error) {
 }
 
 // ParseResult decodes an operation's RESULT. An absent RESULT clause is refused.
+// A version 1 registerPassword or getPassword result that decodes but is not
+// four digits in the NumericString form returns the decoded value with an
+// error matching ErrComponentPasswordFormat; every other error returns nil.
 func (c ComponentCodec) ParseResult(opCode int64, data []byte) (any, error) {
 	return c.parseComponent(opCode, 0, componentResult, data)
 }
@@ -251,7 +254,9 @@ func (c ComponentCodec) parseComponent(opCode, errorCode int64, role componentRo
 	if err := c.checkComponentRules(opCode, errorCode, role, value); err != nil {
 		return nil, err
 	}
-	return value, nil
+	// The decoded value conforms to the ASN.1, so it is returned with the error
+	// and replays its received encoding through its own MarshalBER.
+	return value, c.checkComponentPassword(value)
 }
 
 func (c ComponentCodec) marshalComponent(opCode, errorCode int64, role componentRole, value any) ([]byte, error) {
@@ -268,6 +273,9 @@ func (c ComponentCodec) marshalComponent(opCode, errorCode int64, role component
 		}
 	}
 	if err := c.checkComponentRules(opCode, errorCode, role, value); err != nil {
+		return nil, err
+	}
+	if err := c.checkComponentPassword(value); err != nil {
 		return nil, err
 	}
 	if value == nil {

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	mapvalues "github.com/gomaja/go-asn1/telecom/ss7/gsm_map"
+	phase1 "github.com/gomaja/go-asn1/telecom/ss7/gsm_map/gsm0902_v3_11_0"
 	phase2 "github.com/gomaja/go-asn1/telecom/ss7/gsm_map/gsm0902_v4_19_1"
 )
 
@@ -210,4 +211,50 @@ func (r componentVersionRule) breaksValue(v reflect.Value, seen map[uintptr]bool
 		}
 	}
 	return false
+}
+
+// GSM 09.02 V3.11.0 types the registerPassword and getPassword results as
+// Password, a CHOICE of PrintableString (SIZE(4..8)) and NumericString
+// (FROM ("0"|"1"|"2"|"3"|"4"|"5"|"6"|"7"|"8"|"9") | SIZE(4)), and notes that
+// only the second form is used for GSM systems. The union admits digit
+// strings of any length and any four NumericString characters (X.208
+// (11/1988) §36.7). GSM 02.04 version 3.7.1 §5.2 states the format: "The
+// password will consist of four digits in the range 0000 to 9999." Version 2
+// and later write it in the ASN.1, NumericString (FROM ("0".."9")) (SIZE (4)),
+// which go-asn1 enforces, so only the Phase 1 edition needs this check.
+func (c ComponentCodec) checkComponentPassword(value any) error {
+	if c.edition != EditionPhase1 {
+		return nil
+	}
+	password, ok := value.(phase1.Password)
+	if !ok {
+		return nil
+	}
+	switch password.Choice {
+	case phase1.PasswordChoiceAlternative0:
+		return fmt.Errorf("%w: %s Password uses the PrintableString form; GSM 02.04 version 3.7.1 §5.2 requires four digits", ErrComponentPasswordFormat, c.edition)
+	case phase1.PasswordChoiceAlternative1:
+		// A nil selected alternative is go-asn1's refusal, on Marshal.
+		// The error describes the value without quoting it: it is a credential.
+		if p := password.Alternative1; p != nil && !componentFourDigits(*p) {
+			what := "a character other than a digit"
+			if len(*p) != 4 {
+				what = fmt.Sprintf("%d characters", len(*p))
+			}
+			return fmt.Errorf("%w: %s Password has %s; GSM 02.04 version 3.7.1 §5.2 requires four digits 0000 to 9999", ErrComponentPasswordFormat, c.edition, what)
+		}
+	}
+	return nil
+}
+
+func componentFourDigits(s string) bool {
+	if len(s) != 4 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }

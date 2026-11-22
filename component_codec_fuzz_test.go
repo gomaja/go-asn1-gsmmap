@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	phase1 "github.com/gomaja/go-asn1/telecom/ss7/gsm_map/gsm0902_v3_11_0"
 	"github.com/gomaja/go-asn1/telecom/ss7/gsm_map/runtime/ber"
 )
 
@@ -47,6 +48,11 @@ func FuzzComponentCodec(f *testing.F) {
 	seed("0.4.0.0.1.0.1.2", componentArgument, 45, 0, "300b8002912181010182029143")
 	seed("", componentResult, 9, 0, "308080032143650000")
 	seed("", componentArgument, -1, 0, "")
+	// Phase 1 passwords: four digits, then values the ASN.1 admits but GSM 02.04 §5.2 does not.
+	for _, wire := range []string{"120431323334", "12053132333435", "1200", "130461626364"} {
+		seed("", componentResult, 17, 0, wire)
+		seed("0.4.0.0.1.0.1.1", componentResult, 18, 0, wire)
+	}
 	// An unknown addition whose SET needs repair: parsed, refused by Marshal.
 	seed("0.4.0.0.1.0.1.2", componentArgument, 45, 0, componentRepairWire)
 	seed("0.4.0.0.1.0.20.3", componentArgument, 45, 0, componentRepairWire)
@@ -65,6 +71,20 @@ func FuzzComponentCodec(f *testing.F) {
 		}
 		r := componentRole(role % 3)
 		value, err := componentParse(c, r, op, code, data)
+		if errors.Is(err, ErrComponentPasswordFormat) {
+			// The decoded value is kept for relay: it replays the input and Marshal refuses it.
+			password, ok := value.(phase1.Password)
+			if !ok {
+				t.Fatalf("password format error with %T", value)
+			}
+			if replayed, err := password.MarshalBER(); err != nil || !bytes.Equal(replayed, data) {
+				t.Fatalf("replay %x %v, want %x", replayed, err, data)
+			}
+			if encoded, err := componentMarshal(c, r, op, code, value); encoded != nil || !errors.Is(err, ErrComponentPasswordFormat) {
+				t.Fatalf("marshal accepted a refused password: %x %v", encoded, err)
+			}
+			return
+		}
 		if err != nil || value == nil {
 			return
 		}
